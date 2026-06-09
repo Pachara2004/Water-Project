@@ -1,0 +1,65 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: water_quality_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-water_quality}
+      MYSQL_USER: ${MYSQL_USER:-wateruser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-waterpass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        NEXT_PUBLIC_LIFF_ID: ${NEXT_PUBLIC_LIFF_ID:-}
+    container_name: water_quality_db_setup
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality}
+      CRON_SECRET: ${CRON_SECRET:-}
+      TMD_API_TOKEN: ${TMD_API_TOKEN:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: sh -c "npx prisma db push"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_LIFF_ID: ${NEXT_PUBLIC_LIFF_ID:-}
+    container_name: water_quality_web
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality}
+      CRON_SECRET: ${CRON_SECRET:-}
+      TMD_API_TOKEN: ${TMD_API_TOKEN:-}
+      PORT: 3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+      db-setup:
+        condition: service_completed_successfully
+
+volumes:
+  mysql_data:
+    driver: local

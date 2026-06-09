@@ -1,0 +1,3 @@
+# This directory stores uploaded water sample images temporarily.
+# Files are auto-created by the /api/analyze endpoint.
+# Do NOT commit actual images to git.

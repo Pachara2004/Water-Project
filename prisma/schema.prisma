@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EXECUTIVE
+  COLLECTOR
+  GENERAL
+}
+
+enum WaterStatus {
+  SAFE
+  WARNING
+  DANGER
+}
+
+model User {
+  id        String        @id @default(uuid())
+  lineId    String        @unique @map("line_id")
+  name      String
+  phone     String?       // PII Data: Secured via RBAC (Admin only)
+  role      Role          @default(GENERAL)
+  samples   WaterSample[]
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Location {
+  id        String        @id @default(uuid())
+  name      String
+  agency    String
+  lat       Float
+  lon       Float
+  samples   WaterSample[]
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("locations")
+}
+
+model WaterSample {
+  id               String      @id @default(uuid())
+  collectorId      String      @map("collector_id")
+  collector        User        @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  locationId       String      @map("location_id")
+  location         Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  collectionTime   DateTime    @map("collection_time") // Explicitly input by Collector
+  uploadedAt       DateTime    @default(now()) @map("uploaded_at")
+  ammonia          Float       // Extracted via AI Model
+  phosphate        Float       // Extracted via AI Model
+  oxygen           Float?      // Optional Input (mL/L)
+  temperature      Float?      // Weather Data (tc) at collection hour
+  rainVolume       Float?      // Weather Data (rain) at collection hour
+  weatherCondition Int?        @map("weather_condition") // Weather Data (cond code 1-12)
+  status           WaterStatus
+  imageUrl         String?     @map("image_url") @db.Text
+  imageExpiresAt   DateTime?   @map("image_expires_at")
+
+  @@map("samples")
+}
