@@ -71,6 +71,17 @@ export default function MapView({ mode = 'explorer', onLocationPick, pickedPosit
   // React Strict Mode double-invoke or Next.js HMR).
   const [mapKey] = useState(() => `map-${mode}-${Math.random().toString(36).slice(2)}`);
 
+  // Center map on selected location
+  useEffect(() => {
+    if (selectedLocation && leafletMapRef.current) {
+      leafletMapRef.current.flyTo(
+        [selectedLocation.lat, selectedLocation.lng],
+        14,
+        { duration: 1 }
+      );
+    }
+  }, [selectedLocation]);
+
   const handleLocateMe = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
