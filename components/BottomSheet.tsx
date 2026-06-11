@@ -143,8 +143,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
   const handleDragEnd = () => {
     if (!isDragging) return;
     
-    setIsDragging(false);
-    
     const delta = dragStart - currentDragY;
     const baseHeight = getCurrentHeight();
     const newHeight = baseHeight - delta;
@@ -152,12 +150,17 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     
     const nearest = getNearestSnapPoint(clampedHeight);
     
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = 'all 0.3s ease-out';
-    }
-    
+    setIsDragging(false);
     setSheetHeight(nearest);
   };
+
+  // Apply smooth transition when snap animation should occur
+  useEffect(() => {
+    if (!isDragging && sheetRef.current) {
+      sheetRef.current.style.transition = 'height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      sheetRef.current.style.height = `${getCurrentHeight()}px`;
+    }
+  }, [sheetHeight, isDragging]);
 
   if (!location) return null;
 
