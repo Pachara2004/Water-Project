@@ -491,9 +491,9 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
   return (
     <>
-      {/* Shared backdrop - removed on mobile to show map */}
+      {/* Backdrop removed - show map throughout */}
       <div
-        className="hidden sm:block fixed inset-0 bg-black/45 z-[999] transition-opacity"
+        className="hidden"
         onClick={onClose}
       />
 
