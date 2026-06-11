@@ -139,19 +139,29 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     }
   };
 
-  // Handle drag end - snap to nearest point with animation
+  // Handle drag end - snap to next point based on drag direction
   const handleDragEnd = () => {
     if (!isDragging) return;
     
-    const delta = dragStart - currentDragY;
-    const baseHeight = getCurrentHeight();
-    const newHeight = baseHeight - delta;
-    const clampedHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, newHeight));
+    const delta = dragStart - currentDragY; // positive = dragging up
+    const threshold = 10; // minimum movement to trigger next point
     
-    const nearest = getNearestSnapPoint(clampedHeight);
+    let nextPoint: 'collapsed' | 'half' | 'full' = sheetHeight;
+    
+    if (Math.abs(delta) > threshold) {
+      if (delta > 0) {
+        // Dragging up → go to next higher point
+        if (sheetHeight === 'collapsed') nextPoint = 'half';
+        else if (sheetHeight === 'half') nextPoint = 'full';
+      } else {
+        // Dragging down → go to next lower point
+        if (sheetHeight === 'full') nextPoint = 'half';
+        else if (sheetHeight === 'half') nextPoint = 'collapsed';
+      }
+    }
     
     setIsDragging(false);
-    setSheetHeight(nearest);
+    setSheetHeight(nextPoint);
   };
 
   // Apply smooth transition when snap animation should occur
