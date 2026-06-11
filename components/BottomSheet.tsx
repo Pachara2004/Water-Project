@@ -560,7 +560,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             <X size={15} className="text-text-secondary" />
           </button>
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden px-6 pt-5">
+        <div className="flex-1 flex flex-col overflow-y-auto px-6 pt-5 scrollbar-none">
           {renderContent()}
         </div>
       </div>
