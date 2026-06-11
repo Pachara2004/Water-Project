@@ -2,6 +2,7 @@
 
 import { X, MapPin, Building2, Calendar, FlaskConical, ShieldCheck, ShieldX, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect } from 'react';
 import StatusBadge from './StatusBadge';
 import { getOrganizationLabel, evaluateAllStandards, LOCATION_TYPE_LABELS } from '@/lib/standards';
 import TimeSeriesChart, { TimeSeriesDataPoint } from './TimeSeriesChart';
@@ -76,6 +77,100 @@ function getWeatherConditionLabel(code: number | null | undefined): string {
 export default function BottomSheet({ location, onClose }: BottomSheetProps) {
   const router = useRouter();
   const { currentUser } = useAppStore();
+  const [sheetHeight, setSheetHeight] = useState<'collapsed' | 'half' | 'full'>('half');
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(0);
+  const [currentDragY, setCurrentDragY] = useState(0);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Height constants
+  const HEIGHTS = {
+    collapsed: 88,
+    half: typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.45, 400) : 180,
+    full: typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.85, 700) : 300,
+  };
+
+  // Get current height in px
+  const getCurrentHeight = (): number => {
+    if (sheetHeight === 'collapsed') return HEIGHTS.collapsed;
+    if (sheetHeight === 'half') return HEIGHTS.half;
+    return HEIGHTS.full;
+  };
+
+  // Calculate which snap point is nearest
+  const getNearestSnapPoint = (height: number): 'collapsed' | 'half' | 'full' => {
+    const distances = {
+      collapsed: Math.abs(height - HEIGHTS.collapsed),
+      half: Math.abs(height - HEIGHTS.half),
+      full: Math.abs(height - HEIGHTS.full),
+    };
+    
+    const nearest = Object.keys(distances).reduce((a, b) => 
+      distances[a as keyof typeof distances] < distances[b as keyof typeof distances] ? a : b
+    ) as 'collapsed' | 'half' | 'full';
+    
+    return nearest;
+  };
+
+  // Handle drag start
+  const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    setIsDragging(true);
+    setDragStart(clientY);
+    setCurrentDragY(clientY);
+  };
+
+  // Handle drag move - sheet follows finger smoothly
+  const handleDragMove = (clientY: number) => {
+    if (!isDragging) return;
+    
+    setCurrentDragY(clientY);
+    const delta = dragStart - clientY; // positive = dragging up
+    const baseHeight = getCurrentHeight();
+    const newHeight = baseHeight + delta; // Add delta to increase height when dragging up
+    
+    // Clamp height between collapsed and full
+    const clampedHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, newHeight));
+    
+    if (sheetRef.current) {
+      sheetRef.current.style.height = `${clampedHeight}px`;
+      sheetRef.current.style.transition = 'none';
+    }
+  };
+
+  // Handle drag end - snap to next point based on drag direction
+  const handleDragEnd = () => {
+    if (!isDragging) return;
+    
+    const delta = dragStart - currentDragY; // positive = dragging up
+    const threshold = 10; // minimum movement to trigger next point
+    
+    let nextPoint: 'collapsed' | 'half' | 'full' = sheetHeight;
+    
+    if (Math.abs(delta) > threshold) {
+      if (delta > 0) {
+        // Dragging up → go to next higher point
+        if (sheetHeight === 'collapsed') nextPoint = 'half';
+        else if (sheetHeight === 'half') nextPoint = 'full';
+      } else {
+        // Dragging down → go to next lower point
+        if (sheetHeight === 'full') nextPoint = 'half';
+        else if (sheetHeight === 'half') nextPoint = 'collapsed';
+      }
+    }
+    
+    setIsDragging(false);
+    setSheetHeight(nextPoint);
+  };
+
+  // Apply smooth transition when snap animation should occur
+  useEffect(() => {
+    if (!isDragging && sheetRef.current) {
+      sheetRef.current.style.transition = 'height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      sheetRef.current.style.height = `${getCurrentHeight()}px`;
+    }
+  }, [sheetHeight, isDragging]);
 
   if (!location) return null;
 
@@ -180,8 +275,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
   /* ─── Shared scrollable content ─────────────────────────────────────── */
   const renderContent = () => (
-    <div className="overflow-y-auto flex-1 scrollbar-none"
-         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
+    <div className="flex-1">
 
       {/* Location header */}
       <div className="flex items-start gap-4 mb-6">
@@ -397,18 +491,41 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
   return (
     <>
-      {/* Shared backdrop */}
+      {/* Backdrop removed - show map throughout */}
       <div
-        className="fixed inset-0 bg-black/45 z-[999] backdrop-blur-sm transition-opacity"
+        className="hidden"
         onClick={onClose}
       />
 
       {/* ── Mobile: bottom sheet ──────────────────────────────────────── */}
-      <div className="sm:hidden fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 z-[1000] bg-surface rounded-t-[32px] border-t border-border shadow-2xl max-h-[75vh] flex flex-col transition-all duration-300 animate-slide-up">
+      <div
+        ref={sheetRef}
+        className="sm:hidden fixed left-0 right-0 z-[1000] bg-surface rounded-t-[32px] border-t border-border shadow-2xl flex flex-col"
+        style={{
+          bottom: `calc(72px + env(safe-area-inset-bottom))`,
+          height: `${getCurrentHeight()}px`,
+          maxHeight: '85vh',
+          touchAction: 'none',
+          transition: isDragging ? 'none' : 'all 0.3s ease-out',
+        }}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={handleDragEnd}
+        onTouchEnd={handleDragEnd}
+        onMouseMove={(e) => handleDragMove(e.clientY)}
+        onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
+      >
         {/* Handle + Close */}
-        <div className="flex items-center justify-between px-6 pt-4 pb-3 flex-shrink-0">
+        <div
+          className="bottom-sheet-header flex items-center justify-between px-6 pt-4 pb-3 flex-shrink-0 select-none"
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+        >
           <div className="w-8" />
-          <div className="w-12 h-1.5 rounded-full bg-border pointer-events-none" />
+          <div className="bottom-sheet-handle w-12 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing rounded-full hover:bg-border/20 transition-colors"
+               onMouseDown={handleDragStart}
+               onTouchStart={handleDragStart}>
+            <div className="w-10 h-1.5 rounded-full bg-border transition-all" />
+          </div>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-surface-subtle hover:bg-surface-muted flex items-center justify-center border border-border transition-colors active:scale-90 cursor-pointer"
@@ -416,7 +533,13 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             <X size={14} className="text-text-secondary" />
           </button>
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden px-6 pb-4">
+        <div
+          ref={contentRef}
+          className="flex-1 flex flex-col overflow-y-auto scrollbar-none px-6 pb-4 pointer-events-auto"
+          style={{
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+          }}
+        >
           {renderContent()}
         </div>
       </div>
@@ -437,7 +560,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             <X size={15} className="text-text-secondary" />
           </button>
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden px-6 pt-5">
+        <div className="flex-1 flex flex-col overflow-y-auto px-6 pt-5 scrollbar-none">
           {renderContent()}
         </div>
       </div>

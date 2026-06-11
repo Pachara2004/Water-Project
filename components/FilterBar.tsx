@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { Filter, ChevronDown } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Filter, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 interface FilterBarProps {
   value: string;
@@ -49,15 +49,12 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   return (
@@ -71,16 +68,12 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
           <Filter size={14} className="text-primary" />
         </div>
         <div className="flex flex-col items-start leading-none">
-          <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
-            หน่วยงาน
-          </span>
-          <span className="font-extrabold text-text-primary text-xs mt-0.5">
-            {currentLabel}
-          </span>
+          <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">หน่วยงาน</span>
+          <span className="font-extrabold text-text-primary text-xs mt-0.5">{currentLabel}</span>
         </div>
         <ChevronDown
           size={14}
-          className={`text-text-muted ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+          className={`text-text-muted ml-1 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -96,14 +89,14 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 }}
                 className={`w-full px-5 py-4 rounded-xl text-left text-xs font-bold transition-all duration-200 flex items-center gap-4 cursor-pointer ${
                   value === option.value
-                    ? "bg-primary/10 text-primary"
-                    : "text-text-secondary hover:bg-surface-subtle"
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-text-secondary hover:bg-surface-subtle'
                 }`}
               >
-                <div
-                  className={`w-1.5 h-1.5 rounded-full transition-all ${value === option.value ? "bg-primary scale-100" : "bg-transparent scale-0"}`}
-                />
-                <span>{option.label}</span>
+                <div className={`w-1.5 h-1.5 rounded-full transition-all ${value === option.value ? 'bg-primary scale-100' : 'bg-transparent scale-0'}`} />
+                <span>
+                  {option.label}
+                </span>
               </button>
             ))}
           </div>
@@ -112,3 +105,4 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
     </div>
   );
 }
+
