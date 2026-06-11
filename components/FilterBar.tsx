@@ -8,18 +8,44 @@ interface FilterBarProps {
   onChange: (value: string) => void;
 }
 
-const options = [
-  { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'FISHERY', label: 'กรมประมง' },
-  { value: 'POLLUTION', label: 'กรมควบคุมมลพิษ' },
-  { value: 'OTHER', label: 'อื่นๆ' },
-];
+interface Option {
+  value: string;
+  label: string;
+}
 
 export default function FilterBar({ value, onChange }: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentLabel = options.find((o) => o.value === value)?.label || 'ทั้งหมด';
+  const [options, setOptions] = useState<Option[]>([
+    { value: "ALL", label: "ทั้งหมด" },
+  ]);
+
+  useEffect(() => {
+    async function fetchAgencies() {
+      try {
+        const response = await fetch("/api/locations");
+        if (!response.ok) throw new Error("Failed to fetch locations");
+        const data = await response.json();
+        const uniqueAgencies = Array.from(
+          new Set(data.map((loc: any) => loc.organization).filter(Boolean)),
+        ) as string[];
+
+        const dynamicOptions: Option[] = uniqueAgencies.map((agency) => ({
+          value: agency,
+          label: agency,
+        }));
+
+        setOptions([{ value: "ALL", label: "ทั้งหมด" }, ...dynamicOptions]);
+      } catch (error) {
+        console.error("Error fetching agencies:", error);
+      }
+    }
+    fetchAgencies();
+  }, []);
+
+  const currentLabel =
+    options.find((o) => o.value === value)?.label || "ทั้งหมด";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -32,7 +58,8 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
   }, []);
 
   return (
-    <div className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 lg:left-[96px] z-[600]" ref={dropdownRef}>
+    // เปลี่ยนจาก fixed เป็น relative เพื่อให้จัดเรียงคู่กับปุ่มสถานะได้
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="bg-surface/90 backdrop-blur-xl border border-border/80 flex items-center gap-4 px-6 py-4 rounded-full text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
