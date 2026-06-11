@@ -128,7 +128,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     setCurrentDragY(clientY);
     const delta = dragStart - clientY; // positive = dragging up
     const baseHeight = getCurrentHeight();
-    const newHeight = baseHeight - delta;
+    const newHeight = baseHeight + delta; // Add delta to increase height when dragging up
     
     // Clamp height between collapsed and full
     const clampedHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, newHeight));
