@@ -1,51 +1,28 @@
 "use client";
 
-import { Filter, ChevronDown } from "lucide-react";
+import { Droplets, ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
-interface FilterBarProps {
+interface StatusFilterBarProps {
   value: string;
   onChange: (value: string) => void;
 }
 
-interface Option {
-  value: string;
-  label: string;
-}
+const options = [
+  { value: "ALL", label: "ทุกสถานะ", dotClass: "bg-primary" },
+  { value: "SAFE", label: "ปลอดภัย", dotClass: "bg-emerald-500" },
+  { value: "WARNING", label: "เฝ้าระวัง", dotClass: "bg-amber-500" },
+  { value: "DANGER", label: "อันตราย", dotClass: "bg-red-500" },
+];
 
-export default function FilterBar({ value, onChange }: FilterBarProps) {
+export default function StatusFilterBar({
+  value,
+  onChange,
+}: StatusFilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [options, setOptions] = useState<Option[]>([
-    { value: "ALL", label: "ทั้งหมด" },
-  ]);
-
-  useEffect(() => {
-    async function fetchAgencies() {
-      try {
-        const response = await fetch("/api/locations");
-        if (!response.ok) throw new Error("Failed to fetch locations");
-        const data = await response.json();
-        const uniqueAgencies = Array.from(
-          new Set(data.map((loc: any) => loc.organization).filter(Boolean)),
-        ) as string[];
-
-        const dynamicOptions: Option[] = uniqueAgencies.map((agency) => ({
-          value: agency,
-          label: agency,
-        }));
-
-        setOptions([{ value: "ALL", label: "ทั้งหมด" }, ...dynamicOptions]);
-      } catch (error) {
-        console.error("Error fetching agencies:", error);
-      }
-    }
-    fetchAgencies();
-  }, []);
-
-  const currentLabel =
-    options.find((o) => o.value === value)?.label || "ทั้งหมด";
+  const currentOption = options.find((o) => o.value === value) || options[0];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -61,21 +38,23 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
   }, []);
 
   return (
-    // เปลี่ยนจาก fixed เป็น relative เพื่อให้จัดเรียงคู่กับปุ่มสถานะได้
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="bg-surface/90 backdrop-blur-xl border border-border/80 flex items-center gap-4 px-6 py-4 rounded-full text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
       >
-        <div className="bg-primary/10 p-1.5 rounded-full">
-          <Filter size={14} className="text-primary" />
+        <div className="bg-blue-500/10 p-1.5 rounded-full">
+          <Droplets size={14} className="text-blue-500" />
         </div>
         <div className="flex flex-col items-start leading-none">
           <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
-            หน่วยงาน
+            คุณภาพน้ำ
           </span>
-          <span className="font-extrabold text-text-primary text-xs mt-0.5">
-            {currentLabel}
+          <span className="font-extrabold text-text-primary text-xs mt-0.5 flex items-center gap-1.5">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${currentOption.dotClass}`}
+            ></span>
+            {currentOption.label}
           </span>
         </div>
         <ChevronDown
@@ -101,7 +80,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 }`}
               >
                 <div
-                  className={`w-1.5 h-1.5 rounded-full transition-all ${value === option.value ? "bg-primary scale-100" : "bg-transparent scale-0"}`}
+                  className={`w-1.5 h-1.5 rounded-full ${option.dotClass} transition-all ${value === option.value ? "scale-100" : "scale-75 opacity-50"}`}
                 />
                 <span>{option.label}</span>
               </button>
