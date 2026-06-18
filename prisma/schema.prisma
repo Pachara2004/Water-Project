@@ -63,6 +63,10 @@ model WaterSample {
   status           WaterStatus
   imageUrl         String?     @map("image_url") @db.Text
   imageExpiresAt   DateTime?   @map("image_expires_at")
+  isDelete         Boolean     @default(false) @map("is_delete")
+  imagePlotUrl     String?     @map("image_plot_url") @db.Text
+  updatedBy        String?     @map("updated_by") // เก็บ User ID ของคนที่เข้ามาแก้ไขล่าสุด (เช่น Admin)
+  updatedAt        DateTime    @updatedAt @map("updated_at") // อัปเดตเวลาอัตโนมัติเมื่อมีการแก้ไขเรคคอร์ด
 
   @@map("samples")
 }

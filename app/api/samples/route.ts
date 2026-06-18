@@ -5,14 +5,16 @@ import { WaterStatus } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
-// GET /api/samples — List samples, optionally filtered by locationId or collectorId
+// GET /api/samples — ดึงรายการตัวอย่างน้ำ (กรองตัวที่ลบออกแล้ว)
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const locationId = searchParams.get("locationId");
         const collectedBy = searchParams.get("collectedBy");
 
-        const where: { locationId?: string; collectorId?: string } = {};
+        // 🎯 กำหนดค่าเริ่มต้น: ดึงเฉพาะเรคคอร์ดที่ยังไม่โดน Soft Delete เท่านั้น
+        const where: any = { isDelete: false };
+
         if (locationId) where.locationId = locationId;
         if (collectedBy) where.collectorId = collectedBy;
 
@@ -35,10 +37,9 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST /api/samples — Create a new water sample record with weather API data
+// POST /api/samples — บันทึกตัวอย่างน้ำตัวใหม่พร้อมบันทึกไฟล์ภาพลง Disk
 export async function POST(request: NextRequest) {
     try {
-        // 💡 เปลี่ยนจาก request.json() มาสกัดอ่านค่าผ่าน FormData
         const formData = await request.formData();
 
         const locationId = formData.get("locationId") as string;
@@ -49,21 +50,20 @@ export async function POST(request: NextRequest) {
         const ammoniaVal = formData.get("ammoniaVal") as string;
         const oxygen = formData.get("oxygen") as string | null;
 
-        // ดึงไฟล์ Binary รูปภาพดิบ
+        // ดึงไฟล์ Binary ของรูปภาพ (ถ้ามี)
         const imageFile = formData.get("image") as File | null;
+        const imagePlotFile = formData.get("imagePlot") as File | null; // รองรับเผื่อส่งรูปภาพพลอตมาด้วย
 
         if (!locationId || !status || !collectedBy || !collectionTime) {
             return NextResponse.json(
-                { error: "กรุณากรอกข้อมูลและเลือกเวลาบันทึกให้ครบถ้วน" },
+                { error: "กรุณากรอกข้อมูลให้ครบถ้วน" },
                 { status: 400 },
             );
         }
 
-        // 1. ตรวจสอบพิกัดของจุดตรวจในฐานข้อมูล
         const location = await prisma.location.findUnique({
             where: { id: locationId },
         });
-
         if (!location) {
             return NextResponse.json(
                 { error: "ไม่พบจุดตรวจที่ระบุในฐานข้อมูล" },
@@ -71,30 +71,32 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 💡 2. จัดการเซฟไฟล์รูปภาพลง Disk เซิร์ฟเวอร์เพื่อให้ได้ Path สั้นๆ
+        const uploadDir = path.join(process.cwd(), "public", "uploads");
+        await mkdir(uploadDir, { recursive: true });
+
+        // บันทึกรูปต้นฉบับ
         let dbImageUrl: string | null = null;
         if (imageFile && imageFile.size > 0) {
-            const arrayBuffer = await imageFile.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-
-            // สุ่มชื่อไฟล์ด้วย timestamp ป้องกันกรณีชื่อไฟล์ซ้ำกัน
-            const filename = `${Date.now()}-${imageFile.name.replace(/\s+/g, "-")}`;
-            const uploadDir = path.join(process.cwd(), "public", "uploads");
-
-            // สร้างโฟลเดอร์ออโต้หากยังไม่มีในระบบ
-            await mkdir(uploadDir, { recursive: true });
-
-            // เขียนไฟล์ลงไปที่โฟลเดอร์ public/uploads
-            await writeFile(path.join(uploadDir, filename), buffer);
-
-            // กำหนดค่าตำแหน่ง Path สัมพัทธ์สำหรับนำไปใช้งานต่อ
+            const filename = `raw-${Date.now()}-${imageFile.name.replace(/\s+/g, "-")}`;
+            await writeFile(
+                path.join(uploadDir, filename),
+                Buffer.from(await imageFile.arrayBuffer()),
+            );
             dbImageUrl = `/uploads/${filename}`;
         }
 
-        // Parse collection time
-        const parsedCollectionTime = new Date(collectionTime);
+        // บันทึกรูปพลอตวิเคราะห์ค่าสี (Image Plot)
+        let dbImagePlotUrl: string | null = null;
+        if (imagePlotFile && imagePlotFile.size > 0) {
+            const filename = `plot-${Date.now()}-${imagePlotFile.name.replace(/\s+/g, "-")}`;
+            await writeFile(
+                path.join(uploadDir, filename),
+                Buffer.from(await imagePlotFile.arrayBuffer()),
+            );
+            dbImagePlotUrl = `/uploads/${filename}`;
+        }
 
-        // 3. ดึงข้อมูลสภาพอากาศของกรมอุตุนิยมวิทยา (TMD)
+        const parsedCollectionTime = new Date(collectionTime);
         let weather = null;
         try {
             weather = await getTmdHourlyWeather(
@@ -106,12 +108,10 @@ export async function POST(request: NextRequest) {
             console.error("TMD Weather API Error (Non-blocking):", weatherErr);
         }
 
-        // กำหนดวันหมดอายุรูปภาพภายใน 90 วัน
         const imageExpiresAt = dbImageUrl
             ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
             : null;
 
-        // 4. สั่งเขียนข้อมูลเข้าตารางฐานข้อมูลหลัก
         const sample = await prisma.waterSample.create({
             data: {
                 locationId,
@@ -124,14 +124,15 @@ export async function POST(request: NextRequest) {
                 rainVolume: weather?.rainVolume ?? null,
                 weatherCondition: weather?.weatherCondition ?? null,
                 status: status as WaterStatus,
-                imageUrl: dbImageUrl, // หยอดค่าตัวแปร Path สั้นๆ ลงคอลัมน์ image_url
-                imageExpiresAt,
+                imageUrl: dbImageUrl,
+                imagePlotUrl: dbImagePlotUrl, // 👈 บันทึกตำแหน่งพิกัดรูปภาพพลอตสี
+                isDelete: false, // เรคคอร์ดใหม่ ตั้งค่าเริ่มต้นเป็นใช้งานอยู่
             },
         });
 
         return NextResponse.json(sample, { status: 201 });
     } catch (error: any) {
-        console.error("POST /api/samples internal error:", error);
+        console.error("❌ POST /api/samples error:", error);
         return NextResponse.json(
             {
                 error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",

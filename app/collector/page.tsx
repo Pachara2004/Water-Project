@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, FileText, FlaskConical, MapPin, Calendar } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 
+// อัปเดต Interface ด้านบนสุดของไฟล์ Dashboard ของบอสครับ
 interface CollectorSample {
   id: string;
   locationId: string;
@@ -13,8 +14,11 @@ interface CollectorSample {
   collectedAt: string | Date;
   collectedBy: string;
   imageUrl?: string | null;
+  imagePlotUrl?: string | null; 
   phosphateVal?: number | null;
   ammoniaVal?: number | null;
+  isDelete: boolean;            
+  updatedBy?: string | null;    
   location?: {
     id: string;
     name: string;
@@ -40,34 +44,44 @@ export default function CollectorDashboard() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          const mapped = data.map((s: {
-            id: string;
-            locationId: string;
-            status: 'SAFE' | 'WARNING' | 'DANGER';
-            collectionTime: string;
-            collectorId: string;
-            imageUrl?: string | null;
-            phosphate?: number | null;
-            ammonia?: number | null;
-            location?: {
-              name: string;
-              agency: string;
-            } | null;
-          }) => ({
-            id: s.id,
-            locationId: s.locationId,
-            status: s.status,
-            collectedAt: s.collectionTime,
-            collectedBy: s.collectorId,
-            imageUrl: s.imageUrl,
-            phosphateVal: s.phosphate,
-            ammoniaVal: s.ammonia,
-            location: s.location ? {
-              id: s.locationId,
-              name: s.location.name,
-              organization: s.location.agency
-            } : null
-          }));
+          const mapped = data.map(
+              (s: {
+                  id: string;
+                  locationId: string;
+                  status: "SAFE" | "WARNING" | "DANGER";
+                  collectionTime: string;
+                  collectorId: string;
+                  imageUrl?: string | null;
+                  imagePlotUrl?: string | null;
+                  isDelete: boolean;
+                  updatedBy?: string | null;
+                  phosphate?: number | null;
+                  ammonia?: number | null;
+                  location?: {
+                      name: string;
+                      agency: string;
+                  } | null;
+              }) => ({
+                  id: s.id,
+                  locationId: s.locationId,
+                  status: s.status,
+                  collectedAt: s.collectionTime,
+                  collectedBy: s.collectorId,
+                  imageUrl: s.imageUrl,
+                  imagePlotUrl: s.imagePlotUrl, 
+                  isDelete: s.isDelete, 
+                  updatedBy: s.updatedBy,
+                  phosphateVal: s.phosphate,
+                  ammoniaVal: s.ammonia,
+                  location: s.location
+                      ? {
+                            id: s.locationId,
+                            name: s.location.name,
+                            organization: s.location.agency,
+                        }
+                      : null,
+              }),
+          );
           setSamples(mapped);
         } else {
           setSamples([]);

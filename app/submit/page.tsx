@@ -216,18 +216,18 @@ function SubmitContent() {
     };
 
     // แทนที่ฟังก์ชัน handleSave เดิมในคอมโพเนนต์ SubmitContent ของบอสครับ
+    // /src/app/submit/page.tsx (ฟังก์ชัน handleSave ด้านใน SubmitContent)
     const handleSave = async () => {
-        // เพิ่มดักจับให้มั่นใจว่ามี imageFile สดๆ จากกล้องอยู่จริง
         if (!results || !currentLocationId || !currentUser || !imageFile)
             return;
 
         try {
             const formData = new FormData();
-
-            // แนบไฟล์ภาพดิบต้นฉบับ
             formData.append("image", imageFile);
 
-            // แนบค่าข้อมูลทางเทคนิคอื่นๆ
+            // เผื่อในอนาคต บอสเอาไฟล์รูปภาพวิเคราะห์ (Plot) จาก AI state มาเก็บ บอสสามารถ append เข้าไปได้เลยครับ:
+            // if (results.imagePlotFile) formData.append('imagePlot', results.imagePlotFile);
+
             formData.append("locationId", currentLocationId);
             formData.append("phosphateVal", results.phosphate.toString());
             formData.append("ammoniaVal", results.ammonia.toString());
@@ -241,21 +241,14 @@ function SubmitContent() {
 
             const res = await fetch("/api/samples", {
                 method: "POST",
-                // ปล่อยว่างไว้ ไม่ต้องประกาศ headers Content-Type ตัวเบราว์เซอร์จะจัดการ Boundary ให้เอง
                 body: formData,
             });
 
             if (res.ok) {
                 setSaved(true);
-            } else {
-                const errData = await res.json();
-                console.error(
-                    "Save failed on backend:",
-                    errData.error || errData.details,
-                );
             }
         } catch (err) {
-            console.error("Save network connection failed:", err);
+            console.error("Save failed:", err);
         }
     };
 
