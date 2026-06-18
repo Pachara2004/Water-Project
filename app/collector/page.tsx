@@ -209,7 +209,7 @@ export default function CollectorDashboard() {
                   className="bg-surface rounded-2xl p-4 sm:p-5 shadow-md hover:shadow-xl border border-border
                              flex gap-4 items-center transition-all duration-300
                              hover:scale-[1.01] active:scale-[0.99] cursor-pointer group"
-                  onClick={() => router.push(`/submit?locationId=${sample.location?.id}`)}
+                  onClick={() => router.push(`/collector/history/${sample.id}`)}
                 >
                   {sample.imageUrl ? (
                     <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden bg-surface-subtle border border-border flex-shrink-0 relative">
