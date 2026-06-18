@@ -214,7 +214,7 @@ export default function CollectorHistoryDetailPage() {
             <StatusBadge status={sample.status} size="sm" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
             <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
               <Calendar size={13} className="text-primary" />
               <span className="font-bold">{formatDateTime(sample.collectionTime)}</span>
@@ -222,10 +222,6 @@ export default function CollectorHistoryDetailPage() {
             <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
               <User size={13} className="text-primary" />
               <span className="font-bold truncate">{sample.collector.name}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
-              <Clock size={13} className="text-primary" />
-              <span className="font-bold">{formatDateTime(sample.uploadedAt)}</span>
             </div>
           </div>
         </div>
