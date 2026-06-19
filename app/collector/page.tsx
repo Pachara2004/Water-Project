@@ -187,9 +187,10 @@ export default function CollectorDashboard() {
         </div>
 
         {(() => {
-          const displayedSamples = showOnlyMine
+          const displayedSamples = (showOnlyMine
             ? samples.filter((s) => s.collectedBy === currentUser?.id)
-            : samples;
+            : samples
+          ).filter((s) => !s.isDelete);
 
           if (displayedSamples.length === 0) {
             return (
