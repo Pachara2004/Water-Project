@@ -84,93 +84,104 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Height constants
   const HEIGHTS = {
     collapsed: 88,
-    half: typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.45, 400) : 180,
-    full: typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.85, 700) : 300,
+    half: typeof window !== 'undefined' ? window.innerHeight * 0.45 : 300,
+    full: typeof window !== 'undefined' ? window.innerHeight * 0.85 : 600,
   };
 
-  // Get current height in px
-  const getCurrentHeight = (): number => {
-    if (sheetHeight === 'collapsed') return HEIGHTS.collapsed;
-    if (sheetHeight === 'half') return HEIGHTS.half;
-    return HEIGHTS.full;
-  };
+  const getSnapHeight = (snap: 'collapsed' | 'half' | 'full'): number => HEIGHTS[snap];
 
-  // Calculate which snap point is nearest
   const getNearestSnapPoint = (height: number): 'collapsed' | 'half' | 'full' => {
-    const distances = {
+    const dists = {
       collapsed: Math.abs(height - HEIGHTS.collapsed),
       half: Math.abs(height - HEIGHTS.half),
       full: Math.abs(height - HEIGHTS.full),
     };
-    
-    const nearest = Object.keys(distances).reduce((a, b) => 
-      distances[a as keyof typeof distances] < distances[b as keyof typeof distances] ? a : b
-    ) as 'collapsed' | 'half' | 'full';
-    
-    return nearest;
+    return (Object.keys(dists) as Array<'collapsed' | 'half' | 'full'>).reduce((a, b) =>
+      dists[a] < dists[b] ? a : b
+    );
   };
 
-  // Handle drag start
+  const snapTo = (point: 'collapsed' | 'half' | 'full') => {
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      sheetRef.current.style.height = `${getSnapHeight(point)}px`;
+    }
+    setSheetHeight(point);
+  };
+
   const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    setIsDragging(true);
-    setDragStart(clientY);
-    setCurrentDragY(clientY);
+    isDraggingRef.current = true;
+    dragStartYRef.current = clientY;
+    lastYRef.current = clientY;
+    lastTimeRef.current = Date.now();
+    velocityRef.current = 0;
+    // Snapshot current rendered height as base
+    dragBaseHeightRef.current = sheetRef.current
+      ? sheetRef.current.getBoundingClientRect().height
+      : getSnapHeight(sheetHeight);
+    if (sheetRef.current) sheetRef.current.style.transition = 'none';
   };
 
-  // Handle drag move - sheet follows finger smoothly
   const handleDragMove = (clientY: number) => {
-    if (!isDragging) return;
-    
-    setCurrentDragY(clientY);
-    const delta = dragStart - clientY; // positive = dragging up
-    const baseHeight = getCurrentHeight();
-    const newHeight = baseHeight + delta; // Add delta to increase height when dragging up
-    
-    // Clamp height between collapsed and full
-    const clampedHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, newHeight));
-    
+    if (!isDraggingRef.current) return;
+
+    const now = Date.now();
+    const dt = now - lastTimeRef.current;
+    if (dt > 0) {
+      velocityRef.current = (lastYRef.current - clientY) / dt; // px/ms, positive = moving up
+    }
+    lastYRef.current = clientY;
+    lastTimeRef.current = now;
+
+    const delta = dragStartYRef.current - clientY;
+    const newHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, dragBaseHeightRef.current + delta));
+
     if (sheetRef.current) {
-      sheetRef.current.style.height = `${clampedHeight}px`;
-      sheetRef.current.style.transition = 'none';
+      sheetRef.current.style.height = `${newHeight}px`;
     }
   };
 
-  // Handle drag end - snap to next point based on drag direction
   const handleDragEnd = () => {
-    if (!isDragging) return;
-    
-    const delta = dragStart - currentDragY; // positive = dragging up
-    const threshold = 10; // minimum movement to trigger next point
-    
-    let nextPoint: 'collapsed' | 'half' | 'full' = sheetHeight;
-    
-    if (Math.abs(delta) > threshold) {
-      if (delta > 0) {
-        // Dragging up → go to next higher point
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+
+    const currentHeight = sheetRef.current
+      ? sheetRef.current.getBoundingClientRect().height
+      : getSnapHeight(sheetHeight);
+
+    const velocity = velocityRef.current; // px/ms
+    const VELOCITY_THRESHOLD = 0.3; // px/ms — fast flick
+
+    let nextPoint: 'collapsed' | 'half' | 'full';
+
+    if (Math.abs(velocity) > VELOCITY_THRESHOLD) {
+      // Fast flick: go in direction of velocity
+      if (velocity > 0) {
+        // Flicking up
         if (sheetHeight === 'collapsed') nextPoint = 'half';
-        else if (sheetHeight === 'half') nextPoint = 'full';
+        else nextPoint = 'full';
       } else {
-        // Dragging down → go to next lower point
+        // Flicking down
         if (sheetHeight === 'full') nextPoint = 'half';
-        else if (sheetHeight === 'half') nextPoint = 'collapsed';
+        else nextPoint = 'collapsed';
       }
+    } else {
+      // Slow drag: snap to nearest point
+      nextPoint = getNearestSnapPoint(currentHeight);
     }
-    
-    setIsDragging(false);
-    setSheetHeight(nextPoint);
+
+    snapTo(nextPoint);
   };
 
-  // Apply smooth transition when snap animation should occur
   useEffect(() => {
-    if (!isDragging && sheetRef.current) {
-      sheetRef.current.style.transition = 'height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      sheetRef.current.style.height = `${getCurrentHeight()}px`;
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      sheetRef.current.style.height = `${getSnapHeight(sheetHeight)}px`;
     }
-  }, [sheetHeight, isDragging]);
+  }, [sheetHeight]);
 
   if (!location) return null;
 
@@ -503,10 +514,9 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         className="sm:hidden fixed left-0 right-0 z-[1000] bg-surface rounded-t-[32px] border-t border-border shadow-2xl flex flex-col"
         style={{
           bottom: `calc(72px + env(safe-area-inset-bottom))`,
-          height: `${getCurrentHeight()}px`,
+          height: `${getSnapHeight(sheetHeight)}px`,
           maxHeight: '85vh',
           touchAction: 'none',
-          transition: isDragging ? 'none' : 'all 0.3s ease-out',
         }}
         onMouseUp={handleDragEnd}
         onMouseLeave={handleDragEnd}
