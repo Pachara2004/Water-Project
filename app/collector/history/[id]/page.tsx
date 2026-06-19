@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
 import StatusBadge from '@/components/StatusBadge';
@@ -15,15 +15,23 @@ import {
   FlaskConical,
   MapPin,
   Microscope,
+  Pencil,
   ShieldCheck,
   ShieldX,
   Thermometer,
   User,
   Waves,
+  X,
 } from 'lucide-react';
 import { getWeatherConditionLabel } from '@/lib/weather';
 
 type WaterStatus = 'SAFE' | 'WARNING' | 'DANGER';
+
+interface LocationOption {
+  id: string;
+  name: string;
+  agency: string;
+}
 
 interface SampleDetail {
   id: string;
@@ -82,6 +90,14 @@ export default function CollectorHistoryDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [imageView, setImageView] = useState<'original' | 'plot'>('original');
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editData, setEditData] = useState({ collectionTime: '', locationId: '', oxygen: '' });
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [locationSearch, setLocationSearch] = useState('');
+  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!currentUser) return;
     if (currentUser.role !== 'COLLECTOR' && currentUser.role !== 'ADMIN') {
@@ -125,6 +141,82 @@ export default function CollectorHistoryDetailPage() {
       cancelled = true;
     };
   }, [currentUser, params.id]);
+
+  // โหลด locations เมื่อเข้า edit mode
+  useEffect(() => {
+    if (!isEditing || locations.length > 0) return;
+    fetch('/api/locations')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setLocations(data.map((l: LocationOption & { samples?: unknown[] }) => ({ id: l.id, name: l.name, agency: l.agency })));
+      })
+      .catch(console.error);
+  }, [isEditing]);
+
+  // ปิด dropdown เมื่อคลิกข้างนอก
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(e.target as Node)) {
+        setLocationDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function toLocalDatetimeInput(iso: string) {
+    const d = new Date(iso);
+    // แปลงเป็นเวลาท้องถิ่นสำหรับ input[type=datetime-local]
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+
+  function startEdit() {
+    if (!sample) return;
+    setEditData({
+      collectionTime: toLocalDatetimeInput(sample.collectionTime),
+      locationId: sample.location.id,
+      oxygen: sample.oxygen !== null ? String(sample.oxygen) : '',
+    });
+    setLocationSearch(sample.location.name);
+    setIsEditing(true);
+  }
+
+  function cancelEdit() {
+    setIsEditing(false);
+    setLocationDropdownOpen(false);
+  }
+
+  async function handleSave() {
+    if (!sample || !currentUser) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/samples/${sample.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collectionTime: editData.collectionTime,
+          locationId: editData.locationId,
+          oxygen: editData.oxygen === '' ? null : editData.oxygen,
+          adminId: currentUser.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'เกิดข้อผิดพลาด');
+      router.replace(`/collector/history/${data.id}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึก');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const filteredLocations = locations.filter(
+    (l) =>
+      l.name.toLowerCase().includes(locationSearch.toLowerCase()) ||
+      l.agency.toLowerCase().includes(locationSearch.toLowerCase()),
+  );
+
+  const selectedLocationName = locations.find((l) => l.id === editData.locationId)?.name ?? locationSearch;
 
   const standardsEvaluation = useMemo(() => {
     if (!sample) return [];
@@ -180,33 +272,114 @@ export default function CollectorHistoryDetailPage() {
     <div className="min-h-dvh w-full bg-surface-muted pb-10 transition-colors duration-300">
       <div className="w-full max-w-3xl mx-auto px-5 sm:px-8 lg:px-0 py-6 sm:py-10 space-y-5">
         <div className="bg-surface px-5 py-5 sm:px-6 rounded-3xl border border-border shadow-sm">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary active:scale-95 text-xs font-bold mb-5 transition-all bg-surface-subtle border border-border py-1.5 px-3.5 rounded-full w-fit cursor-pointer"
-          >
-            <ArrowLeft size={13} />
-            ย้อนกลับ
-          </button>
+          <div className="flex items-center justify-between mb-5">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary active:scale-95 text-xs font-bold transition-all bg-surface-subtle border border-border py-1.5 px-3.5 rounded-full w-fit cursor-pointer"
+            >
+              <ArrowLeft size={13} />
+              ย้อนกลับ
+            </button>
 
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-subtle border border-border px-4 py-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <MapPin size={14} className="text-primary flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[9px] font-mono font-black uppercase tracking-[0.14em] text-text-muted">
-                  ประวัติผู้เก็บตัวอย่าง
-                </p>
-                <h1 className="text-sm sm:text-base font-black text-text-primary truncate">
-                  {sample.location.name}
-                </h1>
+            {currentUser?.role === 'ADMIN' && (
+              <div className="flex items-center gap-2">
+                {isEditing ? (
+                  <>
+                    <button
+                      onClick={cancelEdit}
+                      className="flex items-center gap-1.5 text-xs font-bold text-text-secondary bg-surface-subtle border border-border py-1.5 px-3.5 rounded-full cursor-pointer active:scale-95 transition-all"
+                    >
+                      <X size={13} />
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="flex items-center gap-1.5 text-xs font-bold text-white bg-primary py-1.5 px-4 rounded-full cursor-pointer active:scale-95 transition-all disabled:opacity-60"
+                    >
+                      {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={startEdit}
+                    className="flex items-center gap-1.5 text-xs font-bold text-text-secondary bg-surface-subtle border border-border py-1.5 px-3.5 rounded-full cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Pencil size={12} />
+                    แก้ไข
+                  </button>
+                )}
               </div>
-            </div>
-            <StatusBadge status={sample.status} size="sm" />
+            )}
+          </div>
+
+          {/* Location — editable */}
+          <div className="rounded-2xl bg-surface-subtle border border-border px-4 py-3">
+            {isEditing ? (
+              <div ref={locationDropdownRef} className="relative">
+                <p className="text-[9px] font-mono font-black uppercase tracking-[0.14em] text-text-muted mb-1.5 flex items-center gap-1">
+                  <MapPin size={10} className="text-primary" /> จุดตรวจ
+                </p>
+                <input
+                  type="text"
+                  value={locationSearch}
+                  onChange={(e) => { setLocationSearch(e.target.value); setLocationDropdownOpen(true); }}
+                  onFocus={() => setLocationDropdownOpen(true)}
+                  placeholder="พิมพ์เพื่อค้นหาจุดตรวจ..."
+                  className="w-full text-sm font-bold text-text-primary bg-surface border border-border rounded-xl px-3 py-2 outline-none focus:border-primary transition-colors"
+                />
+                {locationDropdownOpen && filteredLocations.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-2xl shadow-lg z-50 max-h-48 overflow-y-auto">
+                    {filteredLocations.map((loc) => (
+                      <button
+                        key={loc.id}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setEditData((prev) => ({ ...prev, locationId: loc.id }));
+                          setLocationSearch(loc.name);
+                          setLocationDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs hover:bg-surface-subtle transition-colors cursor-pointer ${editData.locationId === loc.id ? 'text-primary font-black' : 'text-text-primary font-bold'}`}
+                      >
+                        <span className="block">{loc.name}</span>
+                        <span className="text-text-muted font-normal">{loc.agency}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MapPin size={14} className="text-primary flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-mono font-black uppercase tracking-[0.14em] text-text-muted">
+                      ประวัติผู้เก็บตัวอย่าง
+                    </p>
+                    <h1 className="text-sm sm:text-base font-black text-text-primary truncate">
+                      {sample.location.name}
+                    </h1>
+                  </div>
+                </div>
+                <StatusBadge status={sample.status} size="sm" />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+            {/* collectionTime — editable */}
             <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
-              <Calendar size={13} className="text-primary" />
-              <span className="font-bold">{formatDateTime(sample.collectionTime)}</span>
+              <Calendar size={13} className="text-primary flex-shrink-0" />
+              {isEditing ? (
+                <input
+                  type="datetime-local"
+                  value={editData.collectionTime}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, collectionTime: e.target.value }))}
+                  className="flex-1 font-bold text-text-primary bg-transparent outline-none text-xs"
+                />
+              ) : (
+                <span className="font-bold">{formatDateTime(sample.collectionTime)}</span>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
               <User size={13} className="text-primary" />
@@ -223,7 +396,7 @@ export default function CollectorHistoryDetailPage() {
                 <img
                   src={src}
                   alt={imageView === 'original' ? 'ภาพต้นฉบับ' : 'ภาพพลอตสี'}
-                  className="w-full h-52 sm:h-72 object-cover rounded-2xl bg-surface-subtle"
+                  className="w-full h-52 sm:h-72 object-contain rounded-2xl bg-surface-subtle"
                 />
               ) : (
                 <div className="w-full h-52 sm:h-72 rounded-2xl bg-surface-subtle border border-border flex flex-col items-center justify-center gap-2">
@@ -322,9 +495,21 @@ export default function CollectorHistoryDetailPage() {
               ปริมาณออกซิเจนละลายน้ำ (Dissolved Oxygen - DO)
             </label>
             <div className="flex items-center justify-between gap-3 w-full px-5 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl min-h-[48px]">
-              <span className={`text-sm font-black ${sample.oxygen === null ? 'text-text-muted' : 'text-text-primary'}`}>
-                {sample.oxygen === null ? 'ไม่ได้ระบุ' : sample.oxygen.toFixed(2)}
-              </span>
+              {isEditing ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editData.oxygen}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, oxygen: e.target.value }))}
+                  placeholder="ไม่ได้ระบุ"
+                  className="flex-1 text-sm font-black text-text-primary bg-transparent outline-none"
+                />
+              ) : (
+                <span className={`text-sm font-black ${sample.oxygen === null ? 'text-text-muted' : 'text-text-primary'}`}>
+                  {sample.oxygen === null ? 'ไม่ได้ระบุ' : sample.oxygen.toFixed(2)}
+                </span>
+              )}
               <span className="font-mono text-[9px] font-bold text-text-muted">mL/L</span>
             </div>
 
