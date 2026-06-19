@@ -66,7 +66,7 @@ model WaterSample {
   isDelete         Boolean     @default(false) @map("is_delete")
   imagePlotUrl     String?     @map("image_plot_url") @db.Text
   updatedBy        String?     @map("updated_by") // เก็บ User ID ของคนที่เข้ามาแก้ไขล่าสุด (เช่น Admin)
-  updatedAt        DateTime    @updatedAt @map("updated_at") // อัปเดตเวลาอัตโนมัติเมื่อมีการแก้ไขเรคคอร์ด
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
 
   @@map("samples")
 }
