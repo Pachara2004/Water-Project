@@ -78,9 +78,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
   const router = useRouter();
   const { currentUser } = useAppStore();
   const [sheetHeight, setSheetHeight] = useState<'collapsed' | 'half' | 'full'>('half');
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState(0);
-  const [currentDragY, setCurrentDragY] = useState(0);
+  const isDraggingRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const dragBaseHeightRef = useRef(0);
+  const lastYRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const velocityRef = useRef(0);
   const sheetRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
