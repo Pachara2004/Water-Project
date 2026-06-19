@@ -1,32 +1,39 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useAppStore } from '@/lib/store';
-import StatusBadge from '@/components/StatusBadge';
-import { getParameterStatus, LOCATION_STANDARDS, evaluateAllStandards, LOCATION_TYPE_LABELS } from '@/lib/standards';
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAppStore } from "@/lib/store";
+import StatusBadge from "@/components/StatusBadge";
 import {
-  FlaskConical,
-  Loader2,
-  CheckCircle2,
-  MapPin,
-  ArrowLeft,
-  ImagePlus,
-  Sparkles,
-  ShieldCheck,
-  ShieldX,
-} from 'lucide-react';
+    getParameterStatus,
+    LOCATION_STANDARDS,
+    evaluateAllStandards,
+    LOCATION_TYPE_LABELS,
+} from "@/lib/standards";
+import {
+    FlaskConical,
+    Loader2,
+    CheckCircle2,
+    MapPin,
+    ArrowLeft,
+    ImagePlus,
+    Sparkles,
+    ShieldCheck,
+    ShieldX,
+} from "lucide-react";
 
 interface LocationItem {
-  id: number;
-  name: string;
-  type: string;
-  lat: number;
-  lng: number;
-  organization: string;
+    id: number;
+    name: string;
+    type: string;
+    lat: number;
+    lng: number;
+    organization: string;
 }
 
 function SubmitContent() {
+    const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
+    const [imagePlotFile, setImagePlotFile] = useState<File | null>(null);
     const searchParams = useSearchParams();
     const router = useRouter();
     const { currentUser } = useAppStore();
@@ -185,6 +192,91 @@ function SubmitContent() {
         }
     };
 
+    const generateAiImagePlot = (
+        file: File,
+        aiData: any,
+    ): Promise<File | null> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = hiddenCanvasRef.current;
+                if (!canvas) return resolve(null);
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return resolve(null);
+
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                // 1. วาดรูปต้นฉบับลงไปก่อน
+                ctx.drawImage(img, 0, 0);
+
+                // 2. ดึงพิกัดจากคีย์ "bounding box"
+                const box = aiData["bounding box"];
+                if (box && box.length === 4) {
+                    const x_min = box[0];
+                    const x_max = box[1];
+                    const y_min = box[2];
+                    const y_max = box[3];
+
+                    const width = x_max - x_min;
+                    const height = y_max - y_min;
+
+                    // วาดกล่องเขียว (ปรับความหนาตามความละเอียดภาพ)
+                    ctx.strokeStyle = "#28a745";
+                    ctx.lineWidth = Math.max(4, img.width * 0.005);
+                    ctx.strokeRect(x_min, y_min, width, height);
+
+                    // 3. เขียนข้อความกำกับเหนือกล่อง
+                    const chemicalName = aiData.ammonia
+                        ? "Ammonia"
+                        : "Phosphate";
+                    const labelText = `${chemicalName} | ${aiData.concentrated} mg/L`;
+
+                    const fontSize = Math.max(
+                        16,
+                        Math.floor(img.width * 0.018),
+                    );
+                    ctx.font = `bold ${fontSize}px Arial`;
+
+                    const textWidth = ctx.measureText(labelText).width;
+                    const labelHeight = fontSize * 1.4;
+
+                    // วาดพื้นหลังป้ายชื่อ
+                    ctx.fillStyle = "#28a745";
+                    ctx.fillRect(
+                        x_min - 2,
+                        y_min - labelHeight,
+                        textWidth + 20,
+                        labelHeight,
+                    );
+
+                    // เขียนตัวหนังสือสีขาว
+                    ctx.fillStyle = "white";
+                    ctx.fillText(
+                        labelText,
+                        x_min + 10,
+                        y_min - labelHeight * 0.3,
+                    );
+                }
+
+                // 4. แปลงร่างกลับเป็นไฟล์ File Object
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const plottedFile = new File(
+                            [blob],
+                            `plotted-${file.name}`,
+                            { type: "image/png" },
+                        );
+                        resolve(plottedFile);
+                    } else {
+                        resolve(null);
+                    }
+                }, "image/png");
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
     const handleAnalyze = async () => {
         if (!imageFile) return;
 
@@ -201,10 +293,21 @@ function SubmitContent() {
 
             const data = await res.json();
 
+            // 1. เพิ่มโค้ดประมวลผลแยกคีย์สารเคมีให้ตรงตามที่ AI พ่นมา
+            const isAmmonia = data.ammonia === true;
+            const targetPhosphate = isAmmonia ? 0 : data.concentrated;
+            const targetAmmonia = isAmmonia ? data.concentrated : 0;
+
+            // 2. ⚡ สั่งให้พลอตรูปภาพอัตโนมัติเบื้องหลัง
+            const plottedResult = await generateAiImagePlot(imageFile, data);
+            if (plottedResult) {
+                setImagePlotFile(plottedResult); // เก็บลง State
+            }
+
+            // 3. ปรับการเซ็ตค่าผลลัพธ์
             setResults({
-                phosphate:
-                    typeof data.phosphate === "number" ? data.phosphate : 0,
-                ammonia: typeof data.ammonia === "number" ? data.ammonia : 0,
+                phosphate: targetPhosphate,
+                ammonia: targetAmmonia,
                 status: data.status || "SAFE",
                 imageUrl: data.imageUrl || "",
             });
@@ -218,6 +321,7 @@ function SubmitContent() {
     // แทนที่ฟังก์ชัน handleSave เดิมในคอมโพเนนต์ SubmitContent ของบอสครับ
     // /src/app/submit/page.tsx (ฟังก์ชัน handleSave ด้านใน SubmitContent)
     const handleSave = async () => {
+        // เช็กความปลอดภัยเบื้องต้นก่อนกดเซฟ
         if (!results || !currentLocationId || !currentUser || !imageFile)
             return;
 
@@ -225,13 +329,26 @@ function SubmitContent() {
             const formData = new FormData();
             formData.append("image", imageFile);
 
-            // เผื่อในอนาคต บอสเอาไฟล์รูปภาพวิเคราะห์ (Plot) จาก AI state มาเก็บ บอสสามารถ append เข้าไปได้เลยครับ:
-            // if (results.imagePlotFile) formData.append('imagePlot', results.imagePlotFile);
+            if (imagePlotFile) {
+                formData.append("imagePlot", imagePlotFile);
+            }
 
             formData.append("locationId", currentLocationId);
-            formData.append("phosphateVal", results.phosphate.toString());
-            formData.append("ammoniaVal", results.ammonia.toString());
-            formData.append("status", results.status);
+
+            // 🎯 แก้ไขจุดนี้: ป้องกันอาการอ่านค่า undefined ด้วยการเช็กดักไว้ก่อนและแปลงค่าอย่างปลอดภัย
+            const pVal =
+                results.phosphate !== undefined && results.phosphate !== null
+                    ? results.phosphate
+                    : 0;
+            const aVal =
+                results.ammonia !== undefined && results.ammonia !== null
+                    ? results.ammonia
+                    : 0;
+
+            formData.append("phosphateVal", pVal.toString());
+            formData.append("ammoniaVal", aVal.toString());
+
+            formData.append("status", results.status || "SAFE");
             formData.append("collectedBy", currentUser.id);
             formData.append(
                 "collectionTime",
@@ -246,6 +363,10 @@ function SubmitContent() {
 
             if (res.ok) {
                 setSaved(true);
+            } else {
+                // ถ้าฝั่ง Server ตอบกลับมาเป็น 500 จะหลุดมาฟ้องตรงนี้
+                const errData = await res.json();
+                console.error("Server save error details:", errData);
             }
         } catch (err) {
             console.error("Save failed:", err);
@@ -622,8 +743,14 @@ function SubmitContent() {
                             {imagePreview && (
                                 <div className="bg-surface rounded-3xl shadow-md border border-border overflow-hidden p-2 transition-all duration-300">
                                     <img
-                                        src={imagePreview}
-                                        alt="ตัวอย่างน้ำที่วิเคราะห์"
+                                        src={
+                                            imagePlotFile
+                                                ? URL.createObjectURL(
+                                                      imagePlotFile,
+                                                  )
+                                                : imagePreview!
+                                        }
+                                        alt="ภาพวิเคราะห์จาก AI"
                                         className="w-full h-44 object-cover rounded-2xl"
                                     />
                                 </div>
@@ -862,20 +989,21 @@ function SubmitContent() {
                     )}
                 </div>
             </div>
+            <canvas ref={hiddenCanvasRef} className="hidden" />
         </div>
     );
 }
 
-      export default function SubmitPage() {
-  return (
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center min-h-dvh">
-            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        }
-      >
-        <SubmitContent />
-      </Suspense>
-      );
+export default function SubmitPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex items-center justify-center min-h-dvh">
+                    <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+            }
+        >
+            <SubmitContent />
+        </Suspense>
+    );
 }
