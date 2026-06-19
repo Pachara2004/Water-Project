@@ -8,11 +8,13 @@ import { evaluateAllStandards, LOCATION_TYPE_LABELS } from '@/lib/standards';
 import {
   ArrowLeft,
   Calendar,
+  Camera,
   CheckCircle2,
   Clock,
   CloudRain,
   FlaskConical,
   MapPin,
+  Microscope,
   ShieldCheck,
   ShieldX,
   Thermometer,
@@ -37,6 +39,7 @@ interface SampleDetail {
   weatherCondition: number | null;
   status: WaterStatus;
   imageUrl: string | null;
+  imagePlotUrl: string | null;
   location: {
     id: string;
     name: string;
@@ -77,6 +80,7 @@ export default function CollectorHistoryDetailPage() {
   const [sample, setSample] = useState<SampleDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageView, setImageView] = useState<'original' | 'plot'>('original');
 
   useEffect(() => {
     if (!currentUser) return;
@@ -211,15 +215,42 @@ export default function CollectorHistoryDetailPage() {
           </div>
         </div>
 
-        {sample.imageUrl && (
-          <div className="bg-surface rounded-3xl shadow-sm border border-border overflow-hidden p-2">
-            <img
-              src={sample.imageUrl}
-              alt="ภาพตัวอย่างน้ำ"
-              className="w-full h-52 sm:h-72 object-cover rounded-2xl bg-surface-subtle"
-            />
+        <div className="bg-surface rounded-3xl shadow-sm border border-border overflow-hidden p-2">
+          <div className="relative">
+            {(() => {
+              const src = imageView === 'original' ? sample.imageUrl : sample.imagePlotUrl;
+              return src ? (
+                <img
+                  src={src}
+                  alt={imageView === 'original' ? 'ภาพต้นฉบับ' : 'ภาพพลอตสี'}
+                  className="w-full h-52 sm:h-72 object-cover rounded-2xl bg-surface-subtle"
+                />
+              ) : (
+                <div className="w-full h-52 sm:h-72 rounded-2xl bg-surface-subtle border border-border flex flex-col items-center justify-center gap-2">
+                  {imageView === 'original' ? (
+                    <Camera size={28} className="text-text-muted" />
+                  ) : (
+                    <Microscope size={28} className="text-text-muted" />
+                  )}
+                  <span className="text-[10px] font-bold text-text-muted">
+                    {imageView === 'original' ? 'ไม่มีภาพต้นฉบับ' : 'ไม่มีภาพพลอตสี'}
+                  </span>
+                </div>
+              );
+            })()}
+
+            <button
+              onClick={() => setImageView(v => v === 'original' ? 'plot' : 'original')}
+              className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-full shadow-lg text-white cursor-pointer transition-all active:scale-90"
+              title={imageView === 'original' ? 'ดูภาพพลอตสี' : 'ดูภาพต้นฉบับ'}
+            >
+              {imageView === 'original' ? <Microscope size={13} /> : <Camera size={13} />}
+              <span className="text-[10px] font-bold">
+                {imageView === 'original' ? 'พลอตสี' : 'ต้นฉบับ'}
+              </span>
+            </button>
           </div>
-        )}
+        </div>
 
         <div className="bg-surface rounded-3xl shadow-sm border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
