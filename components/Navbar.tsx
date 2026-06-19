@@ -19,7 +19,7 @@ export default function Navbar() {
     }
 
     if (currentUser.role === 'COLLECTOR' || currentUser.role === 'EXECUTIVE' || currentUser.role === 'ADMIN') {
-      items.push({ href: '/executive', label: 'แดชบอร์ด', icon: BarChart2 });
+      items.push({ href: '/dashboard', label: 'แดชบอร์ด', icon: BarChart2 });
     }
 
     if (currentUser.role === 'ADMIN') {

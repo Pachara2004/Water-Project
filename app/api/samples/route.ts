@@ -6,6 +6,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 // GET /api/samples — ดึงรายการตัวอย่างน้ำ (กรองตัวที่ลบออกแล้ว)
+// GET /api/samples — ดึงรายการตัวอย่างน้ำ (กรองตัวที่ลบออกแล้ว)
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -21,8 +22,8 @@ export async function GET(request: NextRequest) {
         const samples = await prisma.waterSample.findMany({
             where,
             include: {
-                location: { select: { name: true, agency: true } },
-                collector: { select: { name: true } },
+                location: true,  //  ดึงข้อมูลสถานที่ทั้งหมด (ได้ id, name, agency ครบถ้วน)
+                collector: true, //  ดึงข้อมูลผู้เก็บข้อมูลทั้งหมด
             },
             orderBy: { collectionTime: "desc" },
         });
