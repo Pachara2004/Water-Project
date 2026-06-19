@@ -19,6 +19,7 @@ import {
   User,
   Waves,
 } from 'lucide-react';
+import { getWeatherConditionLabel } from '@/lib/weather';
 
 type WaterStatus = 'SAFE' | 'WARNING' | 'DANGER';
 
@@ -49,21 +50,6 @@ interface SampleDetail {
   };
 }
 
-const WEATHER_CONDITIONS: Record<number, string> = {
-  1: 'ท้องฟ้าแจ่มใส (Clear)',
-  2: 'มีเมฆบางส่วน (Partly cloudy)',
-  3: 'เมฆเป็นส่วนมาก (Cloudy)',
-  4: 'มีเมฆมาก (Overcast)',
-  5: 'ฝนตกเล็กน้อย (Light rain)',
-  6: 'ฝนปานกลาง (Moderate rain)',
-  7: 'ฝนตกหนัก (Heavy rain)',
-  8: 'ฝนฟ้าคะนอง (Thunderstorm)',
-  9: 'อากาศหนาวจัด (Very cold)',
-  10: 'อากาศหนาว (Cold)',
-  11: 'อากาศเย็น (Cool)',
-  12: 'อากาศร้อนจัด (Very hot)',
-};
-
 function formatDateTime(value: string) {
   return new Date(value).toLocaleDateString('th-TH', {
     year: 'numeric',
@@ -75,8 +61,7 @@ function formatDateTime(value: string) {
 }
 
 function formatWeatherCondition(code: number | null) {
-  if (code === null) return 'ไม่พบข้อมูลสภาพอากาศ';
-  return WEATHER_CONDITIONS[code] || `สภาพอากาศรหัส ${code}`;
+  return getWeatherConditionLabel(code ?? undefined);
 }
 
 function getValueColor(status: WaterStatus) {
