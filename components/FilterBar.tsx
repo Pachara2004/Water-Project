@@ -82,7 +82,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
           </button>
 
           {isOpen && (
-              <div className="absolute top-[calc(100%+8px)] left-0 w-56 bg-surface/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-xl overflow-hidden animate-slide-down origin-top">
+              <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-surface rounded-2xl overflow-hidden animate-slide-down origin-top">
                   <div className="p-1.5">
                       {options.map((option) => (
                           <button
@@ -91,14 +91,14 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                                   onChange(option.value);
                                   setIsOpen(false);
                               }}
-                              className={`w-full px-5 py-4 rounded-xl text-left text-xs font-bold transition-all duration-200 flex items-center gap-4 cursor-pointer ${
+                              className={`w-full px-4 py-3 rounded-xl text-center text-xs font-bold transition-all duration-200 items-left flex cursor-pointer${
                                   value === option.value
                                       ? "bg-primary/10 text-primary"
                                       : "text-text-secondary hover:bg-surface-subtle"
                               }`}
                           >
                               <div
-                                  className={`w-1.5 h-1.5 rounded-full transition-all ${value === option.value ? "bg-primary scale-100" : "bg-transparent scale-0"}`}
+                                  className={`transition-all ${value === option.value ? "bg-primary scale-100" : "bg-transparent scale-0"}`}
                               />
                               <span>{option.label}</span>
                           </button>
