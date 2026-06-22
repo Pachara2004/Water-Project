@@ -41,18 +41,18 @@ export default function StatusFilterBar({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-surface/90 backdrop-blur-xl border border-border/80 flex items-center gap-4 px-6 py-4 rounded-full text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
+        className="bg-surface flex items-center gap-4 px-6 py-4 rounded-2xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
       >
-        <div className="bg-blue-500/10 p-1.5 rounded-full">
-          <Droplets size={14} className="text-blue-500" />
+        <div>
+          <Droplets size={18} className="text-blue-500" />
         </div>
         <div className="flex flex-col items-start leading-none">
           <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
             คุณภาพน้ำ
           </span>
-          <span className="font-extrabold text-text-primary text-xs mt-0.5 flex items-center gap-1.5">
+          <span className="font-bold text-text-primary text-xs mt-0.5 flex items-center">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${currentOption.dotClass}`}
+              className={`${currentOption.dotClass}`}
             ></span>
             {currentOption.label}
           </span>
@@ -64,7 +64,7 @@ export default function StatusFilterBar({
       </button>
 
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-56 bg-surface/90 backdrop-blur-xl border border-border/80 rounded-2xl shadow-xl overflow-hidden animate-slide-down origin-top">
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-surface rounded-2xl overflow-hidden animate-slide-down origin-top">
           <div className="p-1.5">
             {options.map((option) => (
               <button
@@ -73,14 +73,14 @@ export default function StatusFilterBar({
                   onChange(option.value);
                   setIsOpen(false);
                 }}
-                className={`w-full px-5 py-4 rounded-xl text-left text-xs font-bold transition-all duration-200 flex items-center gap-4 cursor-pointer ${
+                className={`w-full px-4 py-3 rounded-xl text-center text-xs font-bold transition-all duration-200 items-center cursor-pointer${
                   value === option.value
                     ? "bg-primary/10 text-primary"
                     : "text-text-secondary hover:bg-surface-subtle"
                 }`}
               >
                 <div
-                  className={`w-1.5 h-1.5 rounded-full ${option.dotClass} transition-all ${value === option.value ? "scale-100" : "scale-75 opacity-50"}`}
+                  className={`${option.dotClass} transition-all ${value === option.value ? "scale-100" : "scale-75 opacity-50"}`}
                 />
                 <span>{option.label}</span>
               </button>
