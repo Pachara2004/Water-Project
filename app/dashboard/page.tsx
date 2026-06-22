@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts, { SampleItem } from "@/components/AnalyticsCharts";
+import ExportButtons from "@/components/ExportButtons";
 
 interface ApiSampleResponse {
     id: string;
@@ -68,7 +69,7 @@ export default function ExecutiveDashboard() {
                         locationId: s.locationId,
                         status: s.status,
                         collectedAt: s.collectionTime,
-                        collectedBy: s.collectorId, // 👈 เก็บเก็บรหัสผู้ตรวจ (UUID) ไว้ใช้เช็ก
+                        collectedBy: s.collectorId,
                         imageUrl: s.imageUrl,
                         imagePlotUrl: s.imagePlotUrl,
                         isDelete: s.isDelete,
@@ -139,6 +140,7 @@ export default function ExecutiveDashboard() {
                             ศูนย์ข้อมูลคุณภาพสารเคมีแบบเรียลไทม์
                             และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม
                         </p>
+                        <ExportButtons />
                     </div>
                 </div>
 
