@@ -41,18 +41,18 @@ export default function StatusFilterBar({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-surface/90 backdrop-blur-xl border border-border/80 flex items-center gap-4 px-6 py-4 rounded-full text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
+        className="bg-surface flex items-center gap-4 px-6 py-4 rounded-2xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
       >
-        <div className="bg-blue-500/10 p-1.5 rounded-full">
-          <Droplets size={14} className="text-blue-500" />
+        <div>
+          <Droplets size={18} className="text-blue-500" />
         </div>
         <div className="flex flex-col items-start leading-none">
           <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
             คุณภาพน้ำ
           </span>
-          <span className="font-extrabold text-text-primary text-xs mt-0.5 flex items-center gap-1.5">
+          <span className="font-bold text-text-primary text-xs mt-0.5 flex items-center">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${currentOption.dotClass}`}
+              className={`${currentOption.dotClass}`}
             ></span>
             {currentOption.label}
           </span>

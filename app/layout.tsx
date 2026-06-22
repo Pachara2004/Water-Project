@@ -42,14 +42,14 @@ export default function RootLayout({
       </head>
       <body>
         <LiffProvider>
-          {/* Mobile/tablet: bottom-left corner */}
+          {/* Mobile/tablet: bottom-left corner
           <div className="lg:hidden fixed bottom-[calc(96px+env(safe-area-inset-bottom))] left-4 z-[900] flex items-center gap-2 pointer-events-auto">
             <ThemeToggle />
           </div>
           {/* Desktop: top-right corner */}
-          <div className="hidden lg:flex fixed top-4 right-4 z-[900] items-center gap-2 pointer-events-auto">
+          {/* <div className="hidden lg:flex fixed top-4 right-4 z-[900] items-center gap-2 pointer-events-auto">
             <ThemeToggle />
-          </div>
+          // </div> */} 
           <main className="min-h-screen min-h-[100dvh] lg:pl-[80px]" style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>
             {/* On desktop, reset padding bottom via CSS in pages or handle globally */}
             <style>{`
