@@ -214,7 +214,7 @@ export default function AdminLocationsPage() {
         {/* Header */}
         <div className="bg-surface px-6 sm:px-8 pt-10 sm:pt-16 pb-6 sm:pb-10 mb-6 sm:mb-10 border-b border-border transition-colors duration-300">
           <button
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push("/manage")}
             className="flex items-center gap-2 text-xs font-bold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer"
           >
             <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />

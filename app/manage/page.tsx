@@ -13,7 +13,7 @@ import {
 
 const adminMenus = [
   {
-    href: "/admin/locations",
+    href: "/manage/locations",
     icon: MapPin,
     label: "จัดการสถานีตรวจวัด",
     description: "เพิ่ม แก้ไข หรือลบจุดเก็บตัวอย่างน้ำบนแผนที่",
@@ -23,7 +23,7 @@ const adminMenus = [
     available: true,
   },
   {
-    href: "/admin/users",
+    href: "/manage/users",
     icon: Users,
     label: "จัดการผู้ใช้งาน",
     description: "กำหนดสิทธิ์และบทบาทของผู้ใช้ในระบบ",
@@ -33,7 +33,7 @@ const adminMenus = [
     available: true,
   },
   {
-    href: "/admin/reports",
+    href: "/manage/reports",
     icon: Activity,
     label: "รายงานระบบ",
     description: "ดูสถานะและบันทึกกิจกรรมทั้งหมดในระบบ",

@@ -23,7 +23,7 @@ export default function Navbar() {
     }
 
     if (currentUser.role === 'ADMIN') {
-      items.push({ href: '/admin', label: 'จัดการ', icon: Settings });
+      items.push({ href: '/manage', label: 'จัดการ', icon: Settings });
     }
 
     if (currentUser.role === 'USER') {

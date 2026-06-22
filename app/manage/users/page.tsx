@@ -93,10 +93,12 @@ export default function AdminUsersPage() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [toast, setToast] = useState<{ name: string; role: Role } | null>(null);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (keyword: string) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/users");
+      const params = new URLSearchParams();
+      if (keyword) params.set("search", keyword);
+      const res = await fetch(`/api/users?${params.toString()}`);
       const data = await res.json();
       setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -106,9 +108,18 @@ export default function AdminUsersPage() {
     }
   }, []);
 
+  // โหลดครั้งแรก
   useEffect(() => {
-    if (currentUser?.role === "ADMIN") fetchUsers();
+    if (currentUser?.role === "ADMIN") fetchUsers("");
   }, [currentUser?.role, fetchUsers]);
+
+  // debounce search 400ms — ส่ง keyword ไป DB แทนกรองใน browser
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (currentUser?.role === "ADMIN") fetchUsers(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, currentUser?.role, fetchUsers]);
 
   const handleRoleChange = async (userId: string, role: Role) => {
     setUpdating(userId);
@@ -152,9 +163,7 @@ export default function AdminUsersPage() {
   }
 
   const queue = users.filter((u) => u.role === "GENERAL");
-  const filtered = (tab === "queue" ? queue : users).filter((u) =>
-    u.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = tab === "queue" ? queue : users;
 
   return (
     <div
@@ -166,7 +175,7 @@ export default function AdminUsersPage() {
         {/* Header */}
         <div className="pt-10 sm:pt-16 pb-8 border-b border-border mb-6">
           <button
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push("/manage")}
             className="flex items-center gap-2 text-xs font-bold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer"
           >
             <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
@@ -186,7 +195,7 @@ export default function AdminUsersPage() {
               </div>
             </div>
             <button
-              onClick={fetchUsers}
+              onClick={() => fetchUsers(search)}
               className="w-9 h-9 flex items-center justify-center rounded-xl bg-surface border border-border hover:border-primary/30 text-text-muted hover:text-primary transition-all cursor-pointer flex-shrink-0 mt-1"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />

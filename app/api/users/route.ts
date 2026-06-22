@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/users — all users with sample count
-export async function GET() {
+// GET /api/users?search=...&role=... — filtered by DB
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search')?.trim() ?? '';
+    const role   = searchParams.get('role') ?? '';
+
     const users = await prisma.user.findMany({
+      where: {
+        ...(search ? { name: { contains: search } } : {}),
+        ...(role   ? { role: role as never }        : {}),
+      },
       select: {
         id: true,
         name: true,
