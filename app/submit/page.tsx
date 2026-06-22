@@ -394,7 +394,7 @@ function SubmitContent() {
             {/* Centred content wrapper — page bg fills full-width, content stays readable */}
             <div className="w-full max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="bg-surface px-5 sm:px-8 lg:px-12 pt-12 pb-6 mb-6 sm:mb-8 border-b border-border transition-colors duration-300">
+                <div className="bg-surface px-5 sm:px-8 lg:px-12 pt-12 pb-6 mb-6 sm:mb-8 border-b border-border transition-colors duration-300 max-w-2xl mx-auto w-full rounded-b-3xl">
                     <button
                         onClick={() => router.back()}
                         className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary active:scale-95 text-xs font-bold mb-5 transition-all bg-surface-subtle border border-border py-1.5 px-3.5 rounded-full w-fit cursor-pointer"
@@ -555,8 +555,7 @@ function SubmitContent() {
                     )}
                 </div>
 
-                {/* lg: two-column grid — form left, results right */}
-                <div className="px-5 sm:px-8 lg:px-12 space-y-5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
+                    <div className="px-5 sm:px-8 lg:px-12 space-y-5 max-w-2xl mx-auto">
                     {/* Step 1: Upload */}
                     {step === "upload" && (
                         <div className="bg-surface rounded-3xl shadow-md border border-border overflow-hidden transition-all duration-300">
@@ -585,7 +584,7 @@ function SubmitContent() {
                                         <img
                                             src={imagePreview}
                                             alt="ตัวอย่างน้ำ"
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full object-contain bg-surface-subtle"
                                         />
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full gap-3 px-6">
@@ -696,7 +695,7 @@ function SubmitContent() {
                                     <img
                                         src={imagePreview}
                                         alt="ตัวอย่างน้ำ"
-                                        className="w-full h-full object-cover opacity-40 filter blur-[0.5px]"
+                                        className="w-full h-full object-contain bg-surface-subtle opacity-40 filter blur-[0.5px]"
                                     />
                                 )}
                                 {/* Scanning Laser Line (pure CSS) */}

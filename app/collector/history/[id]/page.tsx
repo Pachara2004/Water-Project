@@ -172,12 +172,13 @@ export default function CollectorHistoryDetailPage() {
 
   function startEdit() {
     if (!sample) return;
+    const locName = sample.location.name;
     setEditData({
       collectionTime: toLocalDatetimeInput(sample.collectionTime),
       locationId: sample.location.id,
       oxygen: sample.oxygen !== null ? String(sample.oxygen) : '',
     });
-    setLocationSearch(sample.location.name);
+    setLocationSearch(locName);
     setIsEditing(true);
   }
 
@@ -212,11 +213,16 @@ export default function CollectorHistoryDetailPage() {
 
   const filteredLocations = locations.filter(
     (l) =>
-      l.name.toLowerCase().includes(locationSearch.toLowerCase()) ||
-      l.agency.toLowerCase().includes(locationSearch.toLowerCase()),
+      l.name?.toLowerCase().includes(locationSearch.toLowerCase()) ||
+      l.agency?.toLowerCase().includes(locationSearch.toLowerCase()),
   );
 
   const selectedLocationName = locations.find((l) => l.id === editData.locationId)?.name ?? locationSearch;
+  const isLocationValid =
+    // ตรงกับ location ในรายการ
+    locations.some((l) => l.id === editData.locationId && l.name === locationSearch) ||
+    // locations ยังโหลดไม่เสร็จแต่ locationId ยังเป็นค่าเดิมจาก sample
+    (locations.length === 0 && editData.locationId !== '');
 
   const standardsEvaluation = useMemo(() => {
     if (!sample) return [];
@@ -294,8 +300,8 @@ export default function CollectorHistoryDetailPage() {
                     </button>
                     <button
                       onClick={handleSave}
-                      disabled={saving}
-                      className="flex items-center gap-1.5 text-xs font-bold text-white bg-primary py-1.5 px-4 rounded-full cursor-pointer active:scale-95 transition-all disabled:opacity-60"
+                      disabled={saving || !isLocationValid}
+                      className="flex items-center gap-1.5 text-xs font-bold text-white bg-primary py-1.5 px-4 rounded-full cursor-pointer active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {saving ? 'กำลังบันทึก...' : 'บันทึก'}
                     </button>
@@ -323,11 +329,23 @@ export default function CollectorHistoryDetailPage() {
                 <input
                   type="text"
                   value={locationSearch}
-                  onChange={(e) => { setLocationSearch(e.target.value); setLocationDropdownOpen(true); }}
+                  onChange={(e) => {
+                    setLocationSearch(e.target.value);
+                    setLocationDropdownOpen(true);
+                    // ล้าง locationId ถ้าผู้ใช้แก้ข้อความ
+                    setEditData((prev) => ({ ...prev, locationId: '' }));
+                  }}
                   onFocus={() => setLocationDropdownOpen(true)}
                   placeholder="พิมพ์เพื่อค้นหาจุดตรวจ..."
-                  className="w-full text-sm font-bold text-text-primary bg-surface border border-border rounded-xl px-3 py-2 outline-none focus:border-primary transition-colors"
+                  className={`w-full text-sm font-bold text-text-primary bg-surface border rounded-xl px-3 py-2 outline-none transition-colors ${
+                    locationSearch && !isLocationValid ? 'border-red-400 focus:border-red-500' : 'border-border focus:border-primary'
+                  }`}
                 />
+                {locationSearch && !isLocationValid && (
+                  <p className="text-[10px] text-red-500 font-bold mt-1.5 px-1">
+                    กรุณาเลือกจุดตรวจจากรายการ
+                  </p>
+                )}
                 {locationDropdownOpen && filteredLocations.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-2xl shadow-lg z-50 max-h-48 overflow-y-auto">
                     {filteredLocations.map((loc) => (
