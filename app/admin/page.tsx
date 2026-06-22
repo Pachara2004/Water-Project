@@ -28,9 +28,9 @@ const adminMenus = [
     label: "จัดการผู้ใช้งาน",
     description: "กำหนดสิทธิ์และบทบาทของผู้ใช้ในระบบ",
     badge: "Users",
-    color: "bg-surface-subtle text-text-muted border-border",
-    iconBg: "bg-surface text-text-muted border border-border",
-    available: false,
+    color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
+    iconBg: "bg-blue-500 text-white",
+    available: true,
   },
   {
     href: "/admin/reports",
