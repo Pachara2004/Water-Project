@@ -35,7 +35,7 @@ export default function UpgradePage() {
 
       if (data.role === 'COLLECTOR') router.push('/collector');
       else if (data.role === 'EXECUTIVE') router.push('/executive');
-      else if (data.role === 'ADMIN') router.push('/admin/locations');
+      else if (data.role === 'ADMIN') router.push('/manage/locations');
       else router.push('/map');
 
     } catch (err) {
