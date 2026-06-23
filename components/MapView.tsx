@@ -237,7 +237,7 @@ export default function MapView({
 
             {/* Locate Me Button */}
             {mode === "explorer" && (
-                <button
+                <button title="Locate Me"
                     onClick={handleLocateMe}
                     className="absolute bottom-6 right-4 lg:bottom-8 lg:right-6 z-[600] bg-surface p-3.5 rounded-full shadow-lg border border-border text-primary hover:bg-surface-subtle transition-all duration-300 active:scale-95 cursor-pointer"
                 >
