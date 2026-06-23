@@ -22,7 +22,7 @@ export default function Navbar() {
       items.push({ href: '/dashboard', label: 'แดชบอร์ด', icon: BarChart2 });
     }
 
-    if (currentUser.role === 'ADMIN') {
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'COLLECTOR' || currentUser.role === 'EXECUTIVE') {
       items.push({ href: '/manage', label: 'จัดการ', icon: Settings });
     }
 
