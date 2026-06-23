@@ -45,9 +45,10 @@ const adminMenus = [
 ];
 
 const ROLE_LABEL: Record<string, string> = {
-  COLLECTOR: "ผู้เก็บตัวอย่างน้ำ",
-  EXECUTIVE: "ผู้บริหาร",
-  ADMIN:     "ผู้ดูแลระบบ",
+  GENERAL:   "general",
+  COLLECTOR: "collector",
+  EXECUTIVE: "officer",
+  ADMIN:     "admin",
 };
 
 const ROLE_COLOR: Record<string, string> = {
@@ -307,7 +308,7 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-bold text-text-primary truncate">{currentUser.name}</h2>
 
-          <span className={`inline-flex items-center gap-1.5 mt-1.5 text-[9px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${roleColor}`}>
+          <span className={`inline-flex items-center gap-1.5 mt-1.5 text-[9px] font-bold px-2.5 py-1 rounded-full border tracking-wider ${roleColor}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${roleDot}`} />
             {roleLabel}
           </span>
