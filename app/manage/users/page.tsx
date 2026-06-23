@@ -32,22 +32,22 @@ interface UserItem {
 
 const ROLE_CONFIG: Record<Role, { label: string; color: string; dot: string }> = {
   GENERAL: {
-    label: "ทั่วไป",
+    label: "general",
     color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
     dot: "bg-amber-500",
   },
   COLLECTOR: {
-    label: "ผู้เก็บข้อมูล",
+    label: "collector",
     color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
     dot: "bg-blue-500",
   },
   EXECUTIVE: {
-    label: "ผู้บริหาร",
+    label: "officer",
     color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
     dot: "bg-violet-500",
   },
   ADMIN: {
-    label: "ผู้ดูแลระบบ",
+    label: "admin",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
     dot: "bg-emerald-500",
   },
