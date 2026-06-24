@@ -113,7 +113,6 @@ export default function CollectorDashboard() {
     return (
         <div className="min-h-screen w-full bg-surface-muted pb-16 transition-colors duration-300">
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6 pt-6 sm:pt-10">
-                {/* Top Banner Control Header */}
                 <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                     <div className="space-y-1.5">
                         <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary flex items-center gap-2">
