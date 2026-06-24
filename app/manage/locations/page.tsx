@@ -20,7 +20,7 @@ import {
     Layers,
 } from "lucide-react";
 
-const MapView = dynamic(() => import("@/components/MapView"), {
+const MapView = dynamic(() => import("@/components/map/MapView"), {
     ssr: false,
     loading: () => (
         <div className="w-full h-full bg-surface-subtle flex items-center justify-center border border-border rounded-2xl">

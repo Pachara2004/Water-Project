@@ -12,7 +12,7 @@ import {
     Beaker,
     ImageOff,
 } from "lucide-react";
-import StatusBadge from "@/components/StatusBadge";
+import StatusBadge from "@/components/map/StatusBadge";
 
 interface CollectorSample {
     id: string;

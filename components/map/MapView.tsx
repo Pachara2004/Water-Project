@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import { createLocationIcon } from "./LocationPin";
+import { createLocationIcon } from "../LocationPin";
 import BottomSheet, { BottomSheetLocation } from "./BottomSheet";
-import FilterBar from "./FilterBar";
+import FilterBar from "./OfficerFilterBar";
 import StatusFilterBar from "./StatusFilterBar"; // <-- 1. เพิ่ม Import Component ใหม่
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -237,7 +237,8 @@ export default function MapView({
 
             {/* Locate Me Button */}
             {mode === "explorer" && (
-                <button title="Locate Me"
+                <button
+                    title="Locate Me"
                     onClick={handleLocateMe}
                     className="absolute bottom-6 right-4 lg:bottom-8 lg:right-6 z-[600] bg-surface p-3.5 rounded-full shadow-lg border border-border text-primary hover:bg-surface-subtle transition-all duration-300 active:scale-95 cursor-pointer"
                 >

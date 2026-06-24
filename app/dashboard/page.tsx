@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts, { SampleItem } from "@/components/AnalyticsCharts";
-import ExportButtons from "@/components/ExportButtons";
+import ExportButtons from "@/components/dashboard/ExportButtons";
 
 interface ApiSampleResponse {
     id: string;
