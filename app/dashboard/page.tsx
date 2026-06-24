@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts, { SampleItem } from "@/components/AnalyticsCharts";
-import ExportButtons from "@/components/ExportButtons";
+import ExportButtons from "@/components/dashboard/ExportButtons";
 
 interface ApiSampleResponse {
     id: string;
@@ -125,23 +125,22 @@ export default function ExecutiveDashboard() {
     }
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-10 relative transition-colors duration-300">
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
-                {/* Header */}
-                <div className="pt-6 sm:pt-10 pb-4">
-                    <div className="relative w-full rounded-3xl overflow-hidden bg-surface text-text-primary p-8 sm:p-10 shadow-sm border border-border transition-all duration-300">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-wide leading-tight mb-3 text-text-primary">
+        <div className="min-h-screen w-full bg-surface-muted pb-16 transition-colors duration-300">
+            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6 pt-6 sm:pt-10">
+                <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                    <div className="space-y-1.5">
+                        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary flex items-center gap-2">
                             ระบบวิเคราะห์และติดตาม{" "}
-                            <span className="text-primary font-bold">
+                            <span className="text-primary font-black">
                                 คุณภาพน้ำทะเล
                             </span>
                         </h1>
-                        <p className="text-text-secondary text-xs sm:text-sm max-w-[85%] leading-loose">
+                        <p className="text-text-secondary text-xs sm:text-sm">
                             ศูนย์ข้อมูลคุณภาพสารเคมีแบบเรียลไทม์
-                            และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม
+                            และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม{" "}
                         </p>
-                        <ExportButtons />
                     </div>
+                    <ExportButtons />
                 </div>
 
                 {/* ส่วนปุ่มสลับมุมมองสำหรับ ADMIN เท่านั้น */}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import StatusBadge from "@/components/StatusBadge";
+import StatusBadge from "@/components/map/StatusBadge";
 import {
     getParameterStatus,
     LOCATION_STANDARDS,
@@ -555,7 +555,7 @@ function SubmitContent() {
                     )}
                 </div>
 
-                    <div className="px-5 sm:px-8 lg:px-12 space-y-5 max-w-2xl mx-auto">
+                <div className="px-5 sm:px-8 lg:px-12 space-y-5 max-w-2xl mx-auto">
                     {/* Step 1: Upload */}
                     {step === "upload" && (
                         <div className="bg-surface rounded-3xl shadow-md border border-border overflow-hidden transition-all duration-300">

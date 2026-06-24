@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-const MapView = dynamic(() => import("@/components/MapView"), {
+const MapView = dynamic(() => import("@/components/map/MapView"), {
     ssr: false,
     loading: () => (
         <div className="flex items-center justify-center h-full bg-surface-muted">

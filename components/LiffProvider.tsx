@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import liff from '@line/liff';
 import { useAppStore } from '@/lib/store';
-import { Phone, Lock, ShieldAlert } from 'lucide-react';
+import { Phone, Lock, ShieldAlert, User } from "lucide-react";
 
 export default function LiffProvider({ children }: { children: React.ReactNode }) {
   const [liffLoaded, setLiffLoaded] = useState(false);
@@ -146,71 +146,84 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
   // 🔐 Phone Onboarding Guard Modal (Blocking/Non-bypassable)
   if (currentUser && !currentUser.phone) {
     return (
-      <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4">
-        <div className="bg-surface w-full max-w-md rounded-3xl border border-border p-6 sm:p-8 shadow-2xl animate-slide-up flex flex-col justify-between">
-          
-          <div className="text-center space-y-4">
-            <div className="w-14 h-14 bg-primary-light text-primary rounded-2xl flex items-center justify-center mx-auto border border-primary/10 shadow-sm">
-              <Phone size={24} />
-            </div>
-            
-            <h1 className="text-xl font-black text-text-primary tracking-wide">
-              ลงทะเบียนเบอร์ติดต่อผู้ใช้งาน
-            </h1>
-            <p className="text-xs text-text-secondary leading-relaxed max-w-[90%] mx-auto">
-              กรุณาระบุหมายเลขโทรศัพท์มือถือของคุณ เพื่อใช้ในการยืนยันตัวตนและความปลอดภัยในการอัปโหลดรายงานคุณภาพน้ำทะเลชายฝั่ง
-            </p>
-          </div>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-indigo-400 backdrop-blur-md p-4">
+            <div className="bg-surface w-full max-w-md rounded-xl border border-border p-1 sm:p-8 shadow-xl animate-slide-up flex flex-col justify-between">
+                <div className="text-center space-y-2">
+                    <div className="w-18 h-18 bg-white text-primary rounded-full flex items-center justify-center mx-auto border border-border shadow-md mb-5">
+                        <User size={24} />
+                    </div>
 
-          <form onSubmit={handlePhoneSubmit} className="mt-8 space-y-5">
-            <div className="space-y-2">
-              <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">
-                เบอร์โทรศัพท์ติดต่อ (Contact Phone Number)
-              </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  maxLength={10}
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="เช่น 0891234567"
-                  className="w-full px-5 py-4 pl-12 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[52px]"
-                />
-                <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
-              </div>
-              
-              {phoneError && (
-                <p className="text-[10px] text-danger font-bold mt-1 px-1 flex items-center gap-1.5 animate-fade-in">
-                  <ShieldAlert size={12} />
-                  {phoneError}
-                </p>
-              )}
-            </div>
+                    <h1 className="text-xl font-black text-text-primary tracking-wide">
+                        ลงทะเบียนเข้าใช้งานครั้งแรก
+                    </h1>
+                    <p className="text-xs text-text-secondary leading-relaxed max-w-[90%] mx-auto">
+                        กรุณาระบุชื่อ-นามสกุล และหมายเลขบัตรประชาชนของคุณ
+                        เพื่อใช้ในการยืนยันตัวตนและความปลอดภัยในการเข้าใช้งานระบบ
+                    </p>
+                </div>
 
-            <div className="bg-surface-subtle p-3 rounded-2xl border border-border flex items-start gap-2.5">
-              <Lock size={12} className="text-text-muted flex-shrink-0 mt-0.5" />
-              <p className="text-[9px] text-text-secondary leading-relaxed font-semibold">
-                ข้อมูลส่วนบุคคลของท่าน (PII) จะถูกเก็บรักษาไว้อย่างปลอดภัยสูงสุดและแสดงเฉพาะผู้ดูแลระบบหลัก (Admin) เท่านั้นตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA)
-              </p>
-            </div>
+                <form onSubmit={handlePhoneSubmit} className="mt-5 space-y-5">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">
+                            ชื่อ-นามสกุล (first and last name )
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="tel"
+                                maxLength={10}
+                                value={phoneNumber}
+                                onChange={(e) =>
+                                    setPhoneNumber(
+                                        e.target.value.replace(/[^0-9]/g, ""),
+                                    )
+                                }
+                                placeholder="เช่น 0891234567"
+                                className="w-full pl-12 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[52px]"
+                            />
+                            <Phone
+                                size={14}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted"
+                            />
+                        </div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">
+                            หมายเลขบัตรประชาชน (ID Number)
+                        </label>
+                        <div className="relative">
+                            <input
+                                placeholder="เช่น 0891234567"
+                                className="w-full pl-12 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[52px]"
+                            />
+                            <Phone
+                                size={14}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted"
+                            />
+                        </div>
 
-            <button
-              type="submit"
-              disabled={submittingPhone || phoneNumber.length < 10}
-              className="w-full py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-            >
-              {submittingPhone ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  กำลังลงทะเบียน...
-                </>
-              ) : (
-                'ยืนยันข้อมูลและเข้าใช้งาน'
-              )}
-            </button>
-          </form>
+                        {phoneError && (
+                            <p className="text-[10px] text-danger font-bold mt-1 px-1 flex items-center gap-1.5 animate-fade-in">
+                                <ShieldAlert size={12} />
+                                {phoneError}
+                            </p>
+                        )}
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={submittingPhone || phoneNumber.length < 10}
+                        className="w-full py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    >
+                        {submittingPhone ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                กำลังลงทะเบียน...
+                            </>
+                        ) : (
+                            "ยืนยันข้อมูลและเข้าใช้งาน"
+                        )}
+                    </button>
+                </form>
+            </div>
         </div>
-      </div>
     );
   }
 

@@ -41,7 +41,7 @@ export default function StatusFilterBar({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-surface flex items-center gap-4 px-6 py-4 rounded-2xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
+        className="bg-surface flex items-center gap-4 px-6 py-3 rounded-xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
       >
         <div>
           <Droplets size={18} className="text-blue-500" />
