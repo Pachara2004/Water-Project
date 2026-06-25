@@ -21,7 +21,7 @@ export default function Navbar() {
 
         if (!currentUser) return items;
 
-        if (currentUser.role === "COLLECTOR" || currentUser.role === "ADMIN") {
+        if (currentUser.role === "collector" || currentUser.role === "admin") {
             items.push({
                 href: "/collector",
                 label: "ตรวจคุณภาพน้ำ",
@@ -30,9 +30,9 @@ export default function Navbar() {
         }
 
         if (
-            currentUser.role === "COLLECTOR" ||
-            currentUser.role === "EXECUTIVE" ||
-            currentUser.role === "ADMIN"
+            currentUser.role === "collector" ||
+            currentUser.role === "officer" ||
+            currentUser.role === "admin"
         ) {
             items.push({
                 href: "/dashboard",
@@ -42,9 +42,9 @@ export default function Navbar() {
         }
 
         if (
-            currentUser.role === "ADMIN" ||
-            currentUser.role === "COLLECTOR" ||
-            currentUser.role === "EXECUTIVE"
+            currentUser.role === "admin" ||
+            currentUser.role === "collector" ||
+            currentUser.role === "officer"
         ) {
             items.push({
                 href: "/manage",
@@ -53,10 +53,7 @@ export default function Navbar() {
             });
         }
 
-        if (
-            currentUser.role === "GENERAL" ||
-            currentUser.role === "EXECUTIVE"
-        ) {
+        if (currentUser.role === "guest" || currentUser.role === "officer") {
             items.push({
                 href: "/upgrade",
                 label: "อัปเกรดสิทธิ์",
@@ -71,12 +68,11 @@ export default function Navbar() {
 
     return (
         <>
-            {/* ── Mobile / Tablet: docked bottom bar (คงเดิมไว้) ─────────────────────── */}
+            {/* ── Mobile / Tablet: docked bottom bar ─────────────────────── */}
             <nav
                 className="lg:hidden fixed bottom-0 left-0 w-full z-[950] bg-white transition-all duration-300"
                 style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
             >
-                {/* ปรับเป็น w-full และ px-4 เพื่อขยายแผงรับหน้าจอมือถือให้เต็มศักยภาพสูงสุด */}
                 <div className="flex items-center justify-around h-18 px-4 w-full mx-auto">
                     {navItems.map((item) => {
                         const isActive =
@@ -84,7 +80,6 @@ export default function Navbar() {
                             pathname?.startsWith(item.href + "/");
                         const Icon = item.icon;
 
-                        // ปรับชื่อป้ายกำกับบน Mobile ให้สั้นลงเองในระดับ UI เพื่อให้อ่านง่าย ไม่เบียดกัน
                         const displayLabel =
                             item.label === "แผนที่พิกัดสถานี"
                                 ? "แผนที่"
@@ -98,7 +93,6 @@ export default function Navbar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                // เปลี่ยนจาก w-20 เป็น flex-1 เพื่อกระจายพื้นที่กดให้กว้างเต็มขีดจำกัด กดง่ายขึ้น 100%
                                 className={`flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-all duration-300 relative active:scale-[0.93] ${
                                     isActive
                                         ? "text-primary font-black"
@@ -106,7 +100,6 @@ export default function Navbar() {
                                 }`}
                             >
                                 {isActive && (
-                                    // ปรับ Background Active ไฮไลท์ให้เกาะกลุ่มสวยงาม ไม่บานออกข้างจนกลืนกัน
                                     <div className="absolute inset-x-0 inset-y-1 bg-primary/20 rounded-2xl shadow-sm" />
                                 )}
                                 <Icon
@@ -129,9 +122,8 @@ export default function Navbar() {
                 </div>
             </nav>
 
-            {/* ── Desktop: Left Sidebar ล็อกความกว้างถาวร (Fixed Standard Drawer) ── */}
+            {/* ── Desktop: Left Sidebar ล็อกความกว้างถาวร ── */}
             <nav className="hidden lg:flex fixed left-0 top-0 h-full w-50 z-95 flex-col justify-between p-3 bg-surface backdrop-blur-xl shadow-sm">
-                {/* Top Section */}
                 <div className="flex flex-col gap-6 w-full">
                     {/* Logo Brand Group */}
                     <div className="flex items-center justify-center gap-3 px-1.5 py-1 min-h-[40px] w-full">
@@ -183,7 +175,8 @@ export default function Navbar() {
                             </div>
                             <div className="flex flex-col min-w-0 ml-3 leading-tight">
                                 <span className="text-xs font-black text-text-primary truncate">
-                                    {currentUser.name || "เจ้าหน้าที่"}
+                                    {currentUser.firstName ||
+                                        currentUser.lineProfileName}
                                 </span>
                                 <span className="text-[9px] text-text-muted font-bold tracking-wider uppercase mt-0.5 truncate">
                                     {currentUser.role}

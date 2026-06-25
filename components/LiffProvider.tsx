@@ -1,231 +1,288 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import liff from '@line/liff';
-import { useAppStore } from '@/lib/store';
-import { Phone, Lock, ShieldAlert, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import liff from "@line/liff";
+import { useAppStore } from "@/lib/store";
+import { Phone, UserPen, ShieldAlert, User, CheckCircle2 } from "lucide-react";
 
-export default function LiffProvider({ children }: { children: React.ReactNode }) {
-  const [liffLoaded, setLiffLoaded] = useState(false);
-  const [liffError, setLiffError] = useState<string | null>(null);
-  const currentUser = useAppStore((state) => state.currentUser);
-  const setUser = useAppStore((state) => state.setUser);
+export default function LiffProvider({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    const [liffLoaded, setLiffLoaded] = useState(false);
+    const [liffError, setLiffError] = useState<string | null>(null);
+    const currentUser = useAppStore((state) => state.currentUser);
+    const setUser = useAppStore((state) => state.setUser);
 
-  // Phone onboarding state
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [submittingPhone, setSubmittingPhone] = useState(false);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
+    // Onboarding States
+    const [fullName, setFullName] = useState("");
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // If no LIFF ID is provided, mock the user for local development
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-    if (!liffId) {
-      console.warn('NEXT_PUBLIC_LIFF_ID is not set. Authenticating mock user with backend...');
-      fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lineUid: 'U_ADMIN_MOCK',
-          name: 'Mock Admin',
-        }),
-      })
-        .then((res) => res.json())
-        .then((userData) => {
-          // Force role to ADMIN and phone to null for onboarding and permission testing
-          setUser({
-            ...userData,
-            role: 'ADMIN',
-            phone: null,
-          });
-          setLiffLoaded(true);
-        })
-        .catch((err) => {
-          console.error('Failed to mock authenticate:', err);
-          setLiffError('ไม่สามารถจำลองการยืนยันตัวตนกับฐานข้อมูลได้');
-        });
-      return;
-    }
+    useEffect(() => {
+        const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
 
-    liff
-      .init({ liffId })
-      .then(async () => {
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return; // Wait for redirect
+        // ─── ท่อนพัฒนา/MOCK SYSTEM ───
+        if (!liffId) {
+            console.warn(
+                "NEXT_PUBLIC_LIFF_ID is not set. Authenticating mock user...",
+            );
+            fetch("/api/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    lineUid: "U_ADMIN_MOCK",
+                    name: "Mock Admin",
+                }),
+            })
+                .then((res) => res.json())
+                .then((resData) => {
+                    setUser({
+                        ...resData,
+                        role: "admin",
+                        phoneNumber: null, // บังคับเป็น null เผื่อให้บอสทดสอบแผงหน้ากาก Onboarding
+                    });
+                    setLiffLoaded(true);
+                })
+                .catch((err) => {
+                    console.error("Failed to mock authenticate:", err);
+                    setLiffError("ไม่สามารถจำลองการยืนยันตัวตนกับฐานข้อมูลได้");
+                    setLiffLoaded(true);
+                });
+            return;
         }
 
-        const profile = await liff.getProfile();
-        
-        // Authenticate with our backend
-        const response = await fetch('/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lineUid: profile.userId,
-            name: profile.displayName,
-          }),
-        });
+        // ─── ท่อนเชื่อมต่อ LINE LIFF PRODUCTION REAL SYSTEM ───
+        liff.init({ liffId })
+            .then(async () => {
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
 
-        if (!response.ok) {
-          throw new Error('Failed to authenticate with backend');
+                const profile = await liff.getProfile();
+                const response = await fetch("/api/auth", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        lineUid: profile.userId,
+                        name: profile.displayName,
+                    }),
+                });
+
+                if (!response.ok)
+                    throw new Error("Failed to authenticate with backend");
+
+                const resData = await response.json();
+                setUser(resData); // ยัดข้อมูล { id, lineUniqueId, role, phoneNumber } ลง Zustand ตรง ๆ
+                setLiffLoaded(true); // ปลดล็อกหน้าจอ Connecting LINE
+            })
+            .catch((err) => {
+                console.error("LIFF init error", err);
+                setLiffError(err.message || "Failed to initialize LIFF");
+                setLiffLoaded(true);
+            });
+    }, [setUser]);
+
+    const handleOnboardingSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!currentUser) return;
+
+        const trimmedName = fullName.trim();
+        if (!trimmedName) {
+            setFormError("กรุณากรอกชื่อ-นามสกุลจริงของคุณ");
+            return;
         }
 
-        const userData = await response.json();
-        setUser(userData);
-        setLiffLoaded(true);
-      })
-      .catch((err) => {
-        console.error('LIFF init error', err);
-        setLiffError(err.message || 'Failed to initialize LIFF');
-        setLiffLoaded(true); // Proceed anyway so app doesn't hang
-      });
-  }, [setUser]);
+        if (!/^[0-9]{10}$/.test(phoneNumber)) {
+            setFormError(
+                "กรุณากรอกเบอร์โทรศัพท์มือถือให้ครบ 10 หลัก (เช่น 0812345678)",
+            );
+            return;
+        }
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) return;
+        const nameParts = trimmedName.split(/\s+/);
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(" ") || "";
 
-    // Validate 10-digit Thailand mobile number
-    if (!/^[0-9]{10}$/.test(phoneNumber)) {
-      setPhoneError('กรุณากรอกเบอร์โทรศัพท์มือถือ 10 หลัก (เช่น 0812345678)');
-      return;
-    }
+        setSubmitting(true);
+        setFormError(null);
 
-    setSubmittingPhone(true);
-    setPhoneError(null);
+        try {
+            const res = await fetch("/api/auth/onboarding", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    firstName,
+                    lastName,
+                    phoneNumber,
+                }),
+            });
 
-    try {
-      const res = await fetch('/api/auth/phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          phone: phoneNumber,
-        }),
-      });
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(
+                    errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+                );
+            }
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'เกิดข้อผิดพลาดในการเซฟข้อมูล');
-      }
+            const resData = await res.json();
+            if (resData.success) {
+                setUser(resData.user); // อัปเดตทับข้อมูลเก่าในคลังเพื่อให้หน้ากากจางหายไป
+            }
+        } catch (err: unknown) {
+            const errMsg =
+                err instanceof Error
+                    ? err.message
+                    : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
+            setFormError(errMsg);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
-      const updatedUser = await res.json();
-      // Update global Zustand state with saved phone to lift onboarding screen
-      setUser(updatedUser);
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
-      setPhoneError(errMsg);
-    } finally {
-      setSubmittingPhone(false);
-    }
-  };
-
-  if (!liffLoaded) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-surface-muted">
-        <div className="flex flex-col items-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="mt-4 text-primary font-bold text-sm">กำลังเชื่อมต่อ LINE...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (liffError) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center p-4 bg-surface-muted">
-        <div className="rounded-2xl bg-surface border border-border p-6 text-center shadow-lg max-w-sm">
-          <ShieldAlert className="w-12 h-12 text-danger mx-auto mb-4" />
-          <p className="font-extrabold text-text-primary">เกิดข้อผิดพลาดในการโหลดระบบ</p>
-          <p className="mt-2 text-xs text-text-secondary leading-relaxed">{liffError}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 🔐 Phone Onboarding Guard Modal (Blocking/Non-bypassable)
-  if (currentUser && !currentUser.phone) {
-    return (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-indigo-400 backdrop-blur-md p-4">
-            <div className="bg-surface w-full max-w-md rounded-xl border border-border p-1 sm:p-8 shadow-xl animate-slide-up flex flex-col justify-between">
-                <div className="text-center space-y-2">
-                    <div className="w-18 h-18 bg-white text-primary rounded-full flex items-center justify-center mx-auto border border-border shadow-md mb-5">
-                        <User size={24} />
-                    </div>
-
-                    <h1 className="text-xl font-black text-text-primary tracking-wide">
-                        ลงทะเบียนเข้าใช้งานครั้งแรก
-                    </h1>
-                    <p className="text-xs text-text-secondary leading-relaxed max-w-[90%] mx-auto">
-                        กรุณาระบุชื่อ-นามสกุล และหมายเลขบัตรประชาชนของคุณ
-                        เพื่อใช้ในการยืนยันตัวตนและความปลอดภัยในการเข้าใช้งานระบบ
+    // ถ้ากระบวนการโหลดตั๋วสิทธิ์ LINE LIFF ยังไม่เสร็จสิ้น บล็อกหน้าจอห้ามผ่านเด็ดขาด
+    if (!liffLoaded) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-surface-muted">
+                <div className="flex flex-col items-center">
+                    <div className="h-9 w-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                    <p className="mt-4 text-primary font-black text-xs uppercase tracking-widest animate-pulse">
+                        Connecting LINE...
                     </p>
                 </div>
+            </div>
+        );
+    }
 
-                <form onSubmit={handlePhoneSubmit} className="mt-5 space-y-5">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">
-                            ชื่อ-นามสกุล (first and last name )
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="tel"
-                                maxLength={10}
-                                value={phoneNumber}
-                                onChange={(e) =>
-                                    setPhoneNumber(
-                                        e.target.value.replace(/[^0-9]/g, ""),
-                                    )
-                                }
-                                placeholder="เช่น 0891234567"
-                                className="w-full pl-12 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[52px]"
-                            />
-                            <Phone
-                                size={14}
-                                className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted"
-                            />
-                        </div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">
-                            หมายเลขบัตรประชาชน (ID Number)
-                        </label>
-                        <div className="relative">
-                            <input
-                                placeholder="เช่น 0891234567"
-                                className="w-full pl-12 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[52px]"
-                            />
-                            <Phone
-                                size={14}
-                                className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted"
-                            />
-                        </div>
+    // หากระบบเซิร์ฟเวอร์แครช ดีดหน้าแจ้งเตือนภัยความปลอดภัย
+    if (liffError) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center p-4 bg-surface-muted">
+                <div className="rounded-2xl bg-surface border border-border/60 p-6 text-center shadow-lg max-w-sm w-full">
+                    <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <p className="font-black text-text-primary text-sm">
+                        เกิดข้อผิดพลาดในการโหลดระบบ
+                    </p>
+                    <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">
+                        {liffError}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
-                        {phoneError && (
-                            <p className="text-[10px] text-danger font-bold mt-1 px-1 flex items-center gap-1.5 animate-fade-in">
-                                <ShieldAlert size={12} />
-                                {phoneError}
-                            </p>
-                        )}
+    // แผง Onboarding Guard ดักจับบังคับกรอกข้อมูลส่วนบุคคลจริง (สมบูรณ์ ไร้รอยต่อ)
+    if (currentUser && !currentUser.phoneNumber) {
+        return (
+            <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-surface-muted/60 backdrop-blur-xl p-4 sm:p-6 transition-all">
+                <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 shadow-xl flex flex-col justify-between animate-fade-in">
+                    <div className="text-center space-y-2.5">
+                        <div className="w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 shadow-xs mb-4">
+                            <User size={22} strokeWidth={2.5} />
+                        </div>
+                        <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">
+                            ลงทะเบียนเข้าใช้งานครั้งแรก
+                        </h1>
+                        <p className="text-xs text-text-secondary leading-relaxed max-w-[92%] mx-auto">
+                            กรุณาระบุข้อมูลส่วนบุคคลของท่าน
+                            เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำชายฝั่ง
+                        </p>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={submittingPhone || phoneNumber.length < 10}
-                        className="w-full py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    <form
+                        onSubmit={handleOnboardingSubmit}
+                        className="mt-6 space-y-4"
                     >
-                        {submittingPhone ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                กำลังลงทะเบียน...
-                            </>
-                        ) : (
-                            "ยืนยันข้อมูลและเข้าใช้งาน"
-                        )}
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
-  }
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">
+                                ชื่อ - นามสกุลจริง
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={fullName}
+                                    onChange={(e) =>
+                                        setFullName(e.target.value)
+                                    }
+                                    placeholder="เช่น นายสมชาย ใจดี"
+                                    className="w-full pl-11 pr-4 bg-surface-subtle border border-border/80 text-text-primary rounded-xl text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-bold"
+                                />
+                                <UserPen
+                                    size={14}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80"
+                                />
+                            </div>
+                        </div>
 
-  return <>{children}</>;
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">
+                                เบอร์โทรศัพท์มือถือ (10 หลัก)
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="tel"
+                                    maxLength={10}
+                                    value={phoneNumber}
+                                    onChange={(e) =>
+                                        setPhoneNumber(
+                                            e.target.value.replace(
+                                                /[^0-9]/g,
+                                                "",
+                                            ),
+                                        )
+                                    }
+                                    placeholder="เช่น 0812345678"
+                                    className="w-full pl-11 pr-4 bg-surface-subtle border border-border/80 text-text-primary rounded-xl text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-mono font-bold"
+                                />
+                                <Phone
+                                    size={14}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80"
+                                />
+                            </div>
+                        </div>
+
+                        {formError && (
+                            <div className="text-[10px] text-red-500 font-extrabold px-1 pt-1 flex items-start gap-2 leading-normal">
+                                <ShieldAlert
+                                    size={12}
+                                    className="shrink-0 mt-0.5"
+                                />
+                                <span>{formError}</span>
+                            </div>
+                        )}
+
+                        <div className="pt-3">
+                            <button
+                                type="submit"
+                                disabled={
+                                    submitting ||
+                                    !fullName.trim() ||
+                                    phoneNumber.length < 10
+                                }
+                                className="w-full h-11 bg-primary hover:bg-primary/95 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                            >
+                                {submitting ? (
+                                    <>
+                                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>กำลังลงทะเบียนระบบ...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 size={13} />
+                                        <span>ยืนยันข้อมูลและเข้าใช้งาน</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
+    return <>{children}</>;
 }

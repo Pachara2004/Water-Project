@@ -7,66 +7,82 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  EXECUTIVE
-  COLLECTOR
-  GENERAL
+enum WaterStatus {
+  safe
+  warning
+  danger
 }
 
-enum WaterStatus {
-  SAFE
-  WARNING
-  DANGER
+model Role {
+  id          Int      @id @default(autoincrement()) 
+  roleName    String   @unique @map("role_name")  
+  users       User[]
+
+  @@map("roles")
 }
 
 model User {
-  id        String        @id @default(uuid())
-  lineId    String        @unique @map("line_id")
-  name      String
-  phone     String?       // PII Data: Secured via RBAC (Admin only)
-  role      Role          @default(GENERAL)
-  samples   WaterSample[]
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id              Int           @id @default(autoincrement()) 
+  lineUniqueId    String        @unique @map("line_unique_id") 
+  lineProfileName String        @map("line_profile_name")    
+  firstName       String?       @map("first_name") 
+  lastName        String?       @map("last_name") 
+  phoneNumber     String?       @map("phone_number")   
+  roleId          Int           @map("role_id")
+  systemRole      Role          @relation(fields: [roleId], references: [id])
+  
+  samples         WaterSample[]
+  
+  registeredAt    DateTime      @default(now()) @map("registered_at") 
+  lastActiveAt    DateTime      @updatedAt @map("last_active_at")    
 
   @@map("users")
 }
 
 model Location {
-  id        String        @id @default(uuid())
-  name      String
-  agency    String
-  lat       Float
-  lon       Float
-  samples   WaterSample[]
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id              Int           @id @default(autoincrement()) 
+  stationName     String        @map("station_name")          
+  governingAgency String        @map("governing_agency")    
+  latitude        Float         @map("latitude")           
+  longitude       Float         @map("longitude")            
+  
+  samples         WaterSample[]
+  
+  createdActiveAt DateTime      @default(now()) @map("created_active_at")
+  updatedActiveAt DateTime      @updatedAt @map("updated_active_at")
 
   @@map("locations")
 }
 
 model WaterSample {
-  id               String      @id @default(uuid())
-  collectorId      String      @map("collector_id")
-  collector        User        @relation(fields: [collectorId], references: [id], onDelete: Cascade)
-  locationId       String      @map("location_id")
-  location         Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  collectionTime   DateTime    @map("collection_time") // Explicitly input by Collector
-  uploadedAt       DateTime    @default(now()) @map("uploaded_at")
-  ammonia          Float       // Extracted via AI Model
-  phosphate        Float       // Extracted via AI Model
-  oxygen           Float?      // Optional Input (mL/L)
-  temperature      Float?      // Weather Data (tc) at collection hour
-  rainVolume       Float?      // Weather Data (rain) at collection hour
-  weatherCondition Int?        @map("weather_condition") // Weather Data (cond code 1-12)
-  status           WaterStatus
-  imageUrl         String?     @map("image_url") @db.Text
-  imageExpiresAt   DateTime?   @map("image_expires_at")
-  isDelete         Boolean     @default(false) @map("is_delete")
-  imagePlotUrl     String?     @map("image_plot_url") @db.Text
-  updatedBy        String?     @map("updated_by") // เก็บ User ID ของคนที่เข้ามาแก้ไขล่าสุด (เช่น Admin)
-  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+  id                Int         @id @default(autoincrement()) 
+  
+  collectorId       Int         @map("collector_id")         
+  collector         User        @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  
+  locationId        Int         @map("location_id")           
+  location          Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  
+  collectionTime    DateTime    @map("collection_time")     
+  uploadedActiveAt  DateTime    @default(now()) @map("uploaded_active_at") 
+  
+  ammoniaValue      Float       @map("ammonia_value")       
+  phosphateValue    Float       @map("phosphate_value")      
+  dissolvedOxygen   Float?      @map("dissolved_oxygen")     
+  
+  airTemperature    Float?      @map("air_temperature")      
+  rainAccumulation  Float?      @map("rain_accumulation")    
+  weatherCondCode   Int?        @map("weather_cond_code")    
+  
+  status            WaterStatus
+  
+  rawImageUrl       String?     @map("raw_image_url") @db.Text
+  imageExpiresAt    DateTime?   @map("image_expires_at")
+  isDeleted         Boolean     @default(false) @map("is_deleted") 
+  analyzedPlotUrl   String?     @map("analyzed_plot_url") @db.Text 
+  
+  lastModifiedBy    Int?        @map("last_modified_by")   
+  updatedActiveAt   DateTime    @default(now()) @updatedAt @map("updated_active_at") 
 
   @@map("samples")
 }

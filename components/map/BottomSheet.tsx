@@ -20,7 +20,7 @@ import {
     evaluateAllStandards,
     LOCATION_TYPE_LABELS,
 } from "@/lib/standards";
-import TimeSeriesChart, { TimeSeriesDataPoint } from "./TimeSeriesChart";
+import TimeSeriesChart, { TimeSeriesDataPoint } from "../TimeSeriesChart";
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
 

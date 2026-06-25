@@ -1,247 +1,332 @@
 /**
- * prisma/seed.ts — Database seed สำหรับทดสอบระบบตรวจวัดคุณภาพน้ำชายฝั่ง
- *
- * ข้อมูลที่สร้างทั้งหมด:
+ * prisma/seed.ts — Database seed สำหรับโครงสร้าง Expressive Snake Case ล่าสุด (ฉบับเสถียร)
  * ─────────────────────────────────────────────────────────
- * USERS (11 คน)
- *   - ADMIN      1 คน  : สมชาย แอดมินระบบ
- *   - EXECUTIVE  1 คน  : อนันต์ บริหารศุลกากร
- *   - COLLECTOR  3 คน  : วิชัย, มานี, สมศรี
- *   - GENERAL    6 คน  : ผู้ใช้ทั่วไปรอการอนุมัติ (ใช้ทดสอบหน้า Admin Users)
- *
- * LOCATIONS (12 จุด)
- *   - อ่าวไทยฝั่งตะวันออก ครอบคลุมตั้งแต่ปากแม่น้ำบางปะกง → เกาะเสม็ด → คุ้งกระเบน
- *   - หน่วยงาน: กรมประมง, กรมควบคุมมลพิษ, หน่วยงานส่วนท้องถิ่น
- *
- * WATER SAMPLES (250 ตัวอย่าง)
- *   - กระจายใน 180 วันย้อนหลัง
- *   - สุ่ม 3 สถานะ: SAFE / WARNING / DANGER สัมพันธ์กับปริมาณฝน
- *   - มีข้อมูลสภาพอากาศ: อุณหภูมิ, ปริมาณฝน, รหัสสภาพอากาศ
- *   - มีค่าเคมี: แอมโมเนีย (ammonia), ฟอสเฟต (phosphate), ออกซิเจน (oxygen)
- *   - บางตัวอย่างมี imageUrl (picsum.photos)
- * ─────────────────────────────────────────────────────────
- * รัน: npm run seed
+ * รัน: npx prisma db seed
  */
 
-import { PrismaClient, Role, WaterStatus } from "@prisma/client";
+import { PrismaClient, WaterStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log("🌱 Starting database seeding...");
+    console.log("🌱 Starting database seeding based on new schema...");
 
-    // 1. Clean existing data (ลบตามลำดับ FK)
+    // 1. Clean existing data (ลบตามลำดับ Foreign Key Constraints)
     console.log("🧹 Cleaning existing data...");
     await prisma.waterSample.deleteMany();
     await prisma.location.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.role.deleteMany();
 
-    // ─── 2. USERS ────────────────────────────────────────────────
+    // ─── 2. ROLES SEEDING (สร้างสิทธิ์ 4 กลุ่มตามบอสสั่ง เป็นพิมพ์เล็กทั้งหมด) ───
+    console.log("🔒 Creating system roles...");
+    const roleAdmin = await prisma.role.create({ data: { roleName: "admin" } });
+    const roleOfficer = await prisma.role.create({
+        data: { roleName: "officer" },
+    });
+    const roleCollector = await prisma.role.create({
+        data: { roleName: "collector" },
+    });
+    const roleGuest = await prisma.role.create({ data: { roleName: "guest" } });
 
+    // ─── 3. USERS SEEDING (สร้างผู้ใช้จำลองเชื่อมโยงสิทธิ์ผ่าน roleId) ───
     console.log("👤 Creating users...");
 
-    // ADMIN
-    const admin = await prisma.user.create({
+    // admin
+    const adminUser = await prisma.user.create({
         data: {
-            lineId: "U_ADMIN_999",
-            name: "สมชาย แอดมินระบบ",
-            role: Role.ADMIN,
-            phone: "0812345678",
+            lineUniqueId: "U_ADMIN_999",
+            lineProfileName: "Somchai_LINE",
+            firstName: "สมชาย",
+            lastName: "แอดมินระบบ",
+            phoneNumber: "0812345678",
+            roleId: roleAdmin.id,
         },
     });
 
-    // EXECUTIVE
-    const executive = await prisma.user.create({
+    // officer
+    const officerUser = await prisma.user.create({
         data: {
-            lineId: "U_EXEC_888",
-            name: "อนันต์ บริหารศุลกากร",
-            role: Role.EXECUTIVE,
-            phone: "0822223333",
+            lineUniqueId: "U_EXEC_888",
+            lineProfileName: "Anan_VIP",
+            firstName: "อนันต์",
+            lastName: "บริหารศุลกากร",
+            phoneNumber: "0822223333",
+            roleId: roleOfficer.id,
         },
     });
 
-    // COLLECTORS
+    // ROLE: collector (กลุ่มเจ้าหน้าที่ภาคสนาม)
     const collectors = await Promise.all([
         prisma.user.create({
             data: {
-                lineId: "COL_001",
-                name: "วิชัย เก็บตัวอย่าง 1",
-                role: Role.COLLECTOR,
-                phone: "0891112222",
+                lineUniqueId: "COL_001",
+                lineProfileName: "Wichai_Field",
+                firstName: "วิชัย",
+                lastName: "เก็บตัวอย่างที่หนึ่ง",
+                phoneNumber: "0891112222",
+                roleId: roleCollector.id,
             },
         }),
         prisma.user.create({
             data: {
-                lineId: "COL_002",
-                name: "มานี เก็บตัวอย่าง 2",
-                role: Role.COLLECTOR,
-                phone: "0892223333",
+                lineUniqueId: "COL_002",
+                lineProfileName: "Manee_Ka",
+                firstName: "มานี",
+                lastName: "เก็บตัวอย่างที่สอง",
+                phoneNumber: "0892223333",
+                roleId: roleCollector.id,
             },
         }),
         prisma.user.create({
             data: {
-                lineId: "COL_003",
-                name: "สมศรี นักวิจัยชายฝั่ง",
-                role: Role.COLLECTOR,
-                phone: "0893334444",
+                lineUniqueId: "COL_003",
+                lineProfileName: "Somsri_SeaResearch",
+                firstName: "สมศรี",
+                lastName: "นักวิจัยชายฝั่ง",
+                phoneNumber: "0893334444",
+                roleId: roleCollector.id,
             },
         }),
     ]);
 
-    // GENERAL — ผู้ใช้รอการอนุมัติ (ใช้ทดสอบหน้า Admin > จัดการผู้ใช้งาน)
+    // ROLE: guest (ผู้ใช้รอยืนยันสิทธิ์)
     await Promise.all([
         prisma.user.create({
             data: {
-                lineId: "GEN_001",
-                name: "ประยุทธ์ รอสิทธิ์",
-                role: Role.GENERAL,
-                phone: "0811111111",
+                lineUniqueId: "GEN_001",
+                lineProfileName: "P_Yut",
+                firstName: "ประยุทธ์",
+                lastName: "รอรับสิทธิ์",
+                phoneNumber: "0811111111",
+                roleId: roleGuest.id,
             },
         }),
         prisma.user.create({
             data: {
-                lineId: "GEN_002",
-                name: "สุดา อยากเป็นคอลเลกเตอร์",
-                role: Role.GENERAL,
-                phone: "0822222222",
+                lineUniqueId: "GEN_002",
+                lineProfileName: "Suda_Cute",
+                firstName: "สุดา",
+                lastName: "อยากเป็นคอลเลกเตอร์",
+                phoneNumber: "0822222222",
+                roleId: roleGuest.id,
             },
         }),
         prisma.user.create({
             data: {
-                lineId: "GEN_003",
-                name: "ธนกร นักศึกษาวิทยาศาสตร์",
-                role: Role.GENERAL,
-                phone: null,
+                lineUniqueId: "GEN_003",
+                lineProfileName: "Thanakon_Sci",
+                firstName: "ธนกร",
+                lastName: "นักศึกษาวิทยาศาสตร์",
+                phoneNumber: null,
+                roleId: roleGuest.id,
             },
         }),
         prisma.user.create({
             data: {
-                lineId: "GEN_004",
-                name: "อรุณี เจ้าหน้าที่ใหม่",
-                role: Role.GENERAL,
-                phone: "0844444444",
+                lineUniqueId: "GEN_004",
+                lineProfileName: "Arunee_Newbie",
+                firstName: "อรุณี",
+                lastName: "เจ้าหน้าที่ใหม่",
+                phoneNumber: "0844444444",
+                roleId: roleGuest.id,
             },
         }),
         prisma.user.create({
             data: {
-                lineId: "GEN_005",
-                name: "ชัยวัฒน์ ประมงชายฝั่ง",
-                role: Role.GENERAL,
-                phone: "0855555555",
+                lineUniqueId: "GEN_005",
+                lineProfileName: "Chaiwat_Fisherman",
+                firstName: "ชัยวัฒน์",
+                lastName: "ประมงชายฝั่ง",
+                phoneNumber: "0855555555",
+                roleId: roleGuest.id,
             },
         }),
         prisma.user.create({
             data: {
-                lineId: "GEN_006",
-                name: "พิมพ์ใจ อาสาสมัคร",
-                role: Role.GENERAL,
-                phone: null,
+                lineUniqueId: "GEN_006",
+                lineProfileName: "PimJai_Volunteer",
+                firstName: "พิมพ์ใจ",
+                lastName: "อาสาสมัคร",
+                phoneNumber: null,
+                roleId: roleGuest.id,
             },
         }),
     ]);
 
-    // ─── 3. LOCATIONS ─────────────────────────────────────────────
-
-    console.log("📍 Creating locations...");
-    const locationData = [
-        { name: "ปากแม่น้ำบางปะกง",         agency: "กรมประมง",                lat: 13.4543, lon: 100.9823 },
-        { name: "อ่าวศรีราชา",               agency: "กรมประมง",                lat: 13.1676, lon: 100.9267 },
-        { name: "ท่าเรือแหลมฉบัง",           agency: "กรมควบคุมมลพิษ",          lat: 13.0833, lon: 100.8833 },
-        { name: "คลองอุตสาหกรรมมาบตาพุด",    agency: "กรมควบคุมมลพิษ",          lat: 12.7283, lon: 101.1561 },
-        { name: "หาดบางแสน",                 agency: "หน่วยงานส่วนท้องถิ่น",     lat: 13.2833, lon: 100.9167 },
-        { name: "เกาะสีชัง",                 agency: "หน่วยงานส่วนท้องถิ่น",     lat: 13.1547, lon: 100.8122 },
-        { name: "หาดพัทยาเหนือ",             agency: "หน่วยงานส่วนท้องถิ่น",     lat: 12.9482, lon: 100.8841 },
-        { name: "เกาะล้าน",                  agency: "หน่วยงานส่วนท้องถิ่น",     lat: 12.9184, lon: 100.7785 },
-        { name: "ปากน้ำประแสร์",             agency: "กรมประมง",                lat: 12.6984, lon: 101.7051 },
-        { name: "หาดทรายแก้ว เกาะเสม็ด",    agency: "หน่วยงานส่วนท้องถิ่น",     lat: 12.5684, lon: 101.4651 },
-        { name: "อ่าวคุ้งกระเบน",            agency: "กรมประมง",                lat: 12.5852, lon: 101.9023 },
-        { name: "หาดเจ้าหลาว",              agency: "หน่วยงานส่วนท้องถิ่น",     lat: 12.5583, lon: 101.9167 },
+    // ─── 4. LOCATIONS MONITORING STATIONS ───────────────────────────
+    console.log("📍 Creating coastal monitoring stations...");
+    const locationsPayload = [
+        {
+            stationName: "ปากแม่น้ำบางปะกง",
+            governingAgency: "กรมประมง",
+            latitude: 13.4543,
+            longitude: 100.9823,
+        },
+        {
+            stationName: "อ่าวศรีราชา",
+            governingAgency: "กรมประมง",
+            latitude: 13.1676,
+            longitude: 100.9267,
+        },
+        {
+            stationName: "ท่าเรือแหลมฉบัง",
+            governingAgency: "กรมควบคุมมลพิษ",
+            latitude: 13.0833,
+            longitude: 100.8833,
+        },
+        {
+            stationName: "คลองอุตสาหกรรมมาบตาพุด",
+            governingAgency: "กรมควบคุมมลพิษ",
+            latitude: 12.7283,
+            longitude: 101.1561,
+        },
+        {
+            stationName: "หาดบางแสน",
+            governingAgency: "หน่วยงานส่วนท้องถิ่น",
+            latitude: 13.2833,
+            longitude: 100.9167,
+        },
+        {
+            stationName: "หาดพัทยาเหนือ",
+            governingAgency: "หน่วยงานส่วนท้องถิ่น",
+            latitude: 12.9461,
+            longitude: 100.8872,
+        },
+        {
+            stationName: "หาดจอมเทียน",
+            governingAgency: "หน่วยงานส่วนท้องถิ่น",
+            latitude: 12.8767,
+            longitude: 100.8752,
+        },
+        {
+            id: 8,
+            stationName: "เกาะสีชัง จุดตรวจที่ 1",
+            governingAgency: "กรมควบคุมมลพิษ",
+            latitude: 13.1623,
+            longitude: 100.8124,
+        },
+        {
+            id: 9,
+            stationName: "แหลมฉบัง จุดจอดเรือ",
+            governingAgency: "กรมควบคุมมลพิษ",
+            latitude: 13.0921,
+            longitude: 100.8931,
+        },
+        {
+            id: 10,
+            stationName: "หาดตาแหวน เกาะล้าน",
+            governingAgency: "หน่วยงานส่วนท้องถิ่น",
+            latitude: 12.9231,
+            longitude: 100.7761,
+        },
+        {
+            id: 11,
+            stationName: "หาดแม่รำพึง",
+            governingAgency: "กรมควบคุมมลพิษ",
+            latitude: 12.6124,
+            longitude: 101.4421,
+        },
+        {
+            id: 12,
+            stationName: "อ่าวคุ้งกระเบน",
+            governingAgency: "กรมประมง",
+            latitude: 12.5732,
+            longitude: 101.8924,
+        },
     ];
 
-    const locations = await Promise.all(
-        locationData.map((loc) => prisma.location.create({ data: loc })),
-    );
+    const insertedLocations = [];
+    for (const loc of locationsPayload) {
+        const createdLoc = await prisma.location.create({
+            data: {
+                stationName: loc.stationName,
+                governingAgency: loc.governingAgency,
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+            },
+        });
+        insertedLocations.push(createdLoc);
+    }
 
-    // ─── 4. WATER SAMPLES ─────────────────────────────────────────
+    // ─── 5. WATER SAMPLES (250 ตัวอย่างย้อนหลัง) ──────────────────────
+    // ─── 5. WATER SAMPLES (250 ตัวอย่างย้อนหลัง) ──────────────────────
+    console.log("🧪 Generating 250 water samples over last 180 days...");
+    const samplesCount = 250;
 
-    console.log("🧪 Generating 250 water samples...");
-    const samples = [];
-    const now = new Date();
-
-    for (let i = 0; i < 250; i++) {
-        const loc       = locations[Math.floor(Math.random() * locations.length)];
-        const collector = collectors[Math.floor(Math.random() * collectors.length)];
-
-        // กระจาย 180 วันย้อนหลัง
+    for (let i = 0; i < samplesCount; i++) {
         const daysAgo = Math.floor(Math.random() * 180);
-        const collectionTime = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-        const hours = [8, 9, 10, 11, 13, 14, 15, 16, 17];
-        collectionTime.setHours(hours[Math.floor(Math.random() * hours.length)], Math.floor(Math.random() * 60), 0, 0);
+        const hourAgo = Math.floor(Math.random() * 24);
+        const sampleDate = new Date();
+        sampleDate.setDate(sampleDate.getDate() - daysAgo);
+        sampleDate.setHours(sampleDate.getHours() - hourAgo);
 
-        // จำลองสภาพอากาศ → กำหนดค่าเคมีและสถานะน้ำ
-        const isHeavyRain  = Math.random() > 0.82;
-        const hasLightRain = !isHeavyRain && Math.random() > 0.7;
+        // 🔑 1. เลือก ID เจ้าหน้าที่เป็นตัวเลข (ตรงกับ id: 3, 4, 5 ที่เรา seed ไว้ข้างบน)
+        const randomCollector = i % 3 === 0 ? 3 : i % 3 === 1 ? 4 : 5;
+        const randomLocation =
+            insertedLocations[
+                Math.floor(Math.random() * insertedLocations.length)
+            ];
 
-        let rainVolume: number, temp: number, weatherCondition: number;
-        let phosphate: number, ammonia: number, oxygen: number;
-        let status: WaterStatus;
+        const rainVol =
+            Math.random() > 0.6
+                ? parseFloat((Math.random() * 45).toFixed(2))
+                : 0;
+        let computedStatus: WaterStatus = WaterStatus.safe;
+        let weatherCode = 1; // 🔑 2. เพิ่มตัวแปรเก็บรหัสตัวเลขสภาพอากาศแทนข้อความ
 
-        if (isHeavyRain) {
-            rainVolume       = parseFloat((12.0 + Math.random() * 20.0).toFixed(1));
-            weatherCondition = Math.random() > 0.4 ? 7 : 8;
-            temp             = parseFloat((25.0 + Math.random() * 3.0).toFixed(1));
-            oxygen           = parseFloat((3.5  + Math.random() * 1.5).toFixed(1));
-            phosphate        = parseFloat((0.055 + Math.random() * 0.12).toFixed(4));
-            ammonia          = parseFloat((0.75  + Math.random() * 0.9).toFixed(4));
-            status           = WaterStatus.DANGER;
-        } else if (hasLightRain) {
-            rainVolume       = parseFloat((0.5 + Math.random() * 3.0).toFixed(1));
-            weatherCondition = 5;
-            temp             = parseFloat((28.0 + Math.random() * 4.0).toFixed(1));
-            oxygen           = parseFloat((4.5  + Math.random() * 1.5).toFixed(1));
-            phosphate        = parseFloat((0.016 + Math.random() * 0.02).toFixed(4));
-            ammonia          = parseFloat((0.22  + Math.random() * 0.35).toFixed(4));
-            status           = WaterStatus.WARNING;
+        if (rainVol > 30) {
+            computedStatus = WaterStatus.danger;
+            weatherCode = 7; // ฝนตกหนัก
+        } else if (rainVol > 10) {
+            computedStatus = WaterStatus.warning;
+            weatherCode = 5; // ฝนตกเบาบาง
         } else {
-            rainVolume       = 0;
-            weatherCondition = Math.random() > 0.5 ? 1 : 2;
-            temp             = parseFloat((28.0 + Math.random() * 5.0).toFixed(1));
-            oxygen           = parseFloat((5.5  + Math.random() * 2.0).toFixed(1));
-            phosphate        = parseFloat((0.002 + Math.random() * 0.012).toFixed(4));
-            ammonia          = parseFloat((0.02  + Math.random() * 0.16).toFixed(4));
-            status           = WaterStatus.SAFE;
+            computedStatus = WaterStatus.safe;
+            weatherCode = 1; // ท้องฟ้าแจ่มใส
         }
 
-        samples.push({
-            locationId:       loc.id,
-            collectorId:      collector.id,
-            phosphate,
-            ammonia,
-            oxygen,
-            temperature:      temp,
-            rainVolume,
-            weatherCondition,
-            status,
-            collectionTime,
-            uploadedAt:       new Date(collectionTime.getTime() + 10 * 60 * 1000),
-            imageUrl:         Math.random() > 0.65 ? `https://picsum.photos/seed/${i}/400/400` : null,
-            imageExpiresAt:   new Date(collectionTime.getTime() + 90 * 24 * 60 * 60 * 1000),
-            updatedAt:        new Date(),
+        const ammonia =
+            computedStatus === WaterStatus.danger
+                ? parseFloat((1.5 + Math.random() * 2).toFixed(2))
+                : computedStatus === WaterStatus.warning
+                  ? parseFloat((0.5 + Math.random() * 1).toFixed(2))
+                  : parseFloat((Math.random() * 0.4).toFixed(2));
+
+        const phosphate =
+            computedStatus === WaterStatus.danger
+                ? parseFloat((0.8 + Math.random() * 1.5).toFixed(2))
+                : computedStatus === WaterStatus.warning
+                  ? parseFloat((0.2 + Math.random() * 0.6).toFixed(2))
+                  : parseFloat((Math.random() * 0.19).toFixed(2));
+
+        const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
+        const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
+
+        // 🚀 ยิงบันทึกข้อมูลแบบแปลงคู่ค่าถูกต้อง
+        await prisma.waterSample.create({
+            data: {
+                collectorId: randomCollector, // ✅ ส่งตัวเลข Int ตรง ๆ ไม่ต้อง .toString() แล้วครับบอส
+                locationId: randomLocation.id, // ✅ รหัสพิกัดสถานีที่เป็น Int ออโต้
+                collectionTime: sampleDate,
+                ammoniaValue: ammonia,
+                phosphateValue: phosphate,
+                dissolvedOxygen: doValue,
+                airTemperature: tempValue,
+                rainAccumulation: rainVol,
+                weatherCondCode: weatherCode, // ✅ แมปเข้าฟิลด์รหัสตัวเลขให้ตรงตาม Schema เป๊ะ ๆ
+                status: computedStatus,
+                rawImageUrl:
+                    Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null,
+                analyzedPlotUrl:
+                    Math.random() > 0.5 ? `/uploads/mock-plot.jpg` : null,
+            },
         });
     }
 
-    console.log("⚡ Inserting samples...");
-    await prisma.waterSample.createMany({ data: samples });
-
-    // ─── Summary ──────────────────────────────────────────────────
-
-    console.log("\n✅ Seeding completed!");
-    console.log(`   👑 Admin      : 1 คน  (${admin.name})`);
-    console.log(`   📊 Executive  : 1 คน  (${executive.name})`);
-    console.log(`   🔬 Collector  : ${collectors.length} คน`);
-    console.log(`   ⏳ General    : 6 คน  (รอการอนุมัติ)`);
-    console.log(`   📍 Locations  : ${locations.length} จุด`);
-    console.log(`   🧪 Samples    : ${samples.length} ตัวอย่าง`);
+    console.log("\n✅ Seeding completed successfully!");
+    console.log(` 🔑 Roles created : admin, officer, collector, guest`);
+    console.log(` 👥 Generated 250 history records into table WaterSample.`);
 }
 
 main()

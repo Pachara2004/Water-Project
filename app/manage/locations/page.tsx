@@ -30,12 +30,11 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
 });
 
 interface LocationItem {
-    id: string;
+    id: number; // 🔢 อัปเกรดเป็นตัวเลข Int รองรับฐานข้อมูลจริง
     name: string;
     organization: string;
     lat: number;
     lng: number;
-    createdAt: string;
 }
 
 export default function AdminLocationsPage() {
@@ -44,7 +43,7 @@ export default function AdminLocationsPage() {
 
     // Create form
     const [name, setName] = useState("");
-    const [organization, setOrganization] = useState(""); // เปลี่ยนจาก 'FISHERY' เป็นค่าว่าง
+    const [organization, setOrganization] = useState("");
     const [customOrg, setCustomOrg] = useState("");
     const [pickedPosition, setPickedPosition] = useState<{
         lat: number;
@@ -65,7 +64,7 @@ export default function AdminLocationsPage() {
     const [editSaving, setEditSaving] = useState(false);
 
     // Delete confirmation
-    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<number | null>(null); // 🔢 ปรับประเภทเป็น number
     const [deleting, setDeleting] = useState(false);
 
     const fetchLocations = useCallback(async () => {
@@ -73,7 +72,20 @@ export default function AdminLocationsPage() {
         try {
             const res = await fetch("/api/locations");
             const data = await res.json();
-            setLocations(Array.isArray(data) ? data : []);
+
+            // 🔄 โหลดแมปตัวแปรจาก Expressive Snake Case หลังบ้านเข้าหาโครงสร้างฝั่ง UI คอร์หลัก
+            if (Array.isArray(data)) {
+                const mapped = data.map((l: any) => ({
+                    id: l.id,
+                    name: l.name, // จากคีย์แมปฝั่ง API หลังบ้านที่แปลงเป็น name แล้ว
+                    organization: l.organization, // จากคีย์แมปฝั่ง API หลังบ้านที่แปลงเป็น organization แล้ว
+                    lat: l.lat,
+                    lng: l.lng,
+                }));
+                setLocations(mapped);
+            } else {
+                setLocations([]);
+            }
         } catch (err) {
             console.error("Failed to fetch locations:", err);
         } finally {
@@ -82,7 +94,8 @@ export default function AdminLocationsPage() {
     }, []);
 
     useEffect(() => {
-        if (currentUser?.role === "ADMIN") {
+        // 🔒 ตรวจเช็กสิทธิ์ Gate ระบบความปลอดภัยพิมพ์เล็กของบอส
+        if (currentUser?.role === "admin") {
             const timer = setTimeout(() => {
                 fetchLocations();
             }, 0);
@@ -106,16 +119,12 @@ export default function AdminLocationsPage() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": currentUser.id,
-                    "x-user-role": currentUser.role,
                 },
                 body: JSON.stringify({
                     name: name.trim(),
                     organization: orgVal,
                     lat: pickedPosition.lat,
                     lng: pickedPosition.lng,
-                    "x-user-id": currentUser.id,
-                    "x-user-role": currentUser.role,
                 }),
             });
 
@@ -123,7 +132,7 @@ export default function AdminLocationsPage() {
                 setSuccess(true);
                 setName("");
                 setPickedPosition(null);
-                setOrganization(""); // รีเซ็ตกลับเป็นค่าว่าง
+                setOrganization("");
                 setCustomOrg("");
                 fetchLocations();
                 setTimeout(() => setSuccess(false), 3000);
@@ -144,8 +153,6 @@ export default function AdminLocationsPage() {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": currentUser.id,
-                    "x-user-role": currentUser.role,
                 },
                 body: JSON.stringify({
                     id: editingLoc.id,
@@ -164,16 +171,13 @@ export default function AdminLocationsPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: number) => {
+        // 🔢 สับเปลี่ยน Arguments รับค่าเป็น number
         if (!currentUser) return;
         setDeleting(true);
         try {
             const res = await fetch(`/api/locations?id=${id}`, {
                 method: "DELETE",
-                headers: {
-                    "x-user-id": currentUser.id,
-                    "x-user-role": currentUser.role,
-                },
             });
             if (res.ok) {
                 setDeletingId(null);
@@ -192,8 +196,8 @@ export default function AdminLocationsPage() {
         setEditOrg(loc.organization);
     };
 
-    // Role gate
-    if (!currentUser || currentUser.role !== "ADMIN") {
+    // Role Security Gate (เปรียบเทียบสิทธิ์ตัวพิมพ์เล็ก)
+    if (!currentUser || currentUser.role !== "admin") {
         return (
             <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto bg-surface-muted border-x border-border">
                 <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
@@ -220,7 +224,6 @@ export default function AdminLocationsPage() {
         (loc) => filterOrg === "ALL" || loc.organization === filterOrg,
     );
 
-    // Get unique orgs for filter and form (Dynamic from Database)
     const uniqueOrgs = Array.from(
         new Set(locations.map((l) => l.organization).filter(Boolean)),
     );
@@ -362,7 +365,6 @@ export default function AdminLocationsPage() {
                                 )}
                             </div>
 
-                            {/* Success Prompt */}
                             {success && (
                                 <div className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 font-bold text-center flex items-center justify-center gap-1.5 animate-fade-in">
                                     <Check
@@ -373,7 +375,7 @@ export default function AdminLocationsPage() {
                                 </div>
                             )}
 
-                            {/* Submit */}
+                            {/* Submit Button */}
                             <button
                                 onClick={handleSubmit}
                                 disabled={
@@ -468,7 +470,6 @@ export default function AdminLocationsPage() {
                                         key={loc.id}
                                         className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden transition-all hover:scale-[1.01] duration-200"
                                     >
-                                        {/* Delete confirmation */}
                                         {deletingId === loc.id ? (
                                             <div className="p-6 bg-red-500/5 border-b border-red-500/10 space-y-5">
                                                 <p className="text-xs font-bold text-danger">
@@ -489,7 +490,7 @@ export default function AdminLocationsPage() {
                                                         ) : (
                                                             <Trash2 size={12} />
                                                         )}
-                                                        ยืนยันลบ
+                                                        <span>ยืนยันลบ</span>
                                                     </button>
                                                     <button
                                                         onClick={() =>
@@ -528,7 +529,7 @@ export default function AdminLocationsPage() {
                                                             •
                                                         </span>
                                                         <span className="text-text-muted text-[8px] sm:text-[9px] bg-surface-subtle px-1.5 py-0.5 rounded border border-border">
-                                                            {loc.lat.toFixed(4)}
+                                                            {loc.lat.toFixed(4)}{" "}
                                                             ,{" "}
                                                             {loc.lng.toFixed(4)}
                                                         </span>
@@ -620,7 +621,6 @@ export default function AdminLocationsPage() {
                                     <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block ">
                                         หน่วยงานหลัก
                                     </label>
-
                                     <div className="relative">
                                         <select
                                             value={
@@ -634,7 +634,7 @@ export default function AdminLocationsPage() {
                                                 ) {
                                                     setEditOrg(e.target.value);
                                                 } else {
-                                                    setEditOrg(""); // เคลียร์ค่าเพื่อเปิดช่องให้พิมพ์ใหม่
+                                                    setEditOrg("");
                                                 }
                                             }}
                                             className="w-full px-5 py-4 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs focus:border-primary outline-none min-h-[52px] appearance-none cursor-pointer"
@@ -653,7 +653,6 @@ export default function AdminLocationsPage() {
                                         </div>
                                     </div>
 
-                                    {/* จะแสดงช่องพิมพ์ก็ต่อเมื่อเลือก CUSTOM หรือพิมพ์ค่าแปลกๆ เข้าไป */}
                                     {!uniqueOrgs.includes(editOrg) && (
                                         <input
                                             type="text"
@@ -681,7 +680,7 @@ export default function AdminLocationsPage() {
                                     ) : (
                                         <Check size={14} />
                                     )}
-                                    บันทึกข้อมูลการแก้ไข
+                                    <span>บันทึกข้อมูลการแก้ไข</span>
                                 </button>
                             </div>
                         </div>

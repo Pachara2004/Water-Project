@@ -3,31 +3,24 @@
 import { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import {
-    Camera,
-    FileText,
-    FlaskConical,
-    MapPin,
-    Calendar,
-    Beaker,
-    ImageOff,
-} from "lucide-react";
+import { Camera, FileText, FlaskConical, MapPin, Calendar, Beaker, ImageOff} from "lucide-react"; /* prettier-ignore */
+
 import StatusBadge from "@/components/map/StatusBadge";
 
 interface CollectorSample {
-    id: string;
-    locationId: string;
-    status: "SAFE" | "WARNING" | "DANGER";
+    id: number; // 🔢 อัปเกรดเป็นเลข Int ออโต้ตามผังหลังบ้าน
+    locationId: number; // 🔢 อัปเกรดเป็นเลข Int ออโต้ตามผังหลังบ้าน
+    status: "safe" | "warning" | "danger"; // 🔒 เปลี่ยนตาม Enum พิมพ์เล็กสากลล่าสุด
     collectedAt: string | Date;
-    collectedBy: string;
+    collectedBy: number; // 🔢 อัปเกรดเป็นเลข Int ออโต้ตามผังหลังบ้าน
     imageUrl?: string | null;
     imagePlotUrl?: string | null;
     phosphateVal?: number | null;
     ammoniaVal?: number | null;
-    isDelete: boolean;
-    updatedBy?: string | null;
+    isDeleted: boolean; // 👈 แก้ชื่อตัวแปร Expressive ล่าสุด
+    updatedBy?: number | null;
     location?: {
-        id: string;
+        id: number;
         name: string;
         organization: string;
     } | null;
@@ -41,11 +34,12 @@ export default function CollectorDashboard() {
     const [showOnlyMine, setShowOnlyMine] = useState(true);
 
     // สเตตัสสำหรับเก็บไอดีของการ์ดที่รูปภาพโหลดพัง (Image Fallback State)
-    const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+    const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "COLLECTOR" && currentUser.role !== "ADMIN") {
+        // 🔒 ดักจับสิทธิ์ระบบพิมพ์เล็กสมบูรณ์แบบ
+        if (currentUser.role !== "collector" && currentUser.role !== "admin") {
             router.push("/map");
             return;
         }
@@ -60,17 +54,17 @@ export default function CollectorDashboard() {
                         status: s.status,
                         collectedAt: s.collectionTime,
                         collectedBy: s.collectorId,
-                        imageUrl: s.imageUrl,
-                        imagePlotUrl: s.imagePlotUrl,
-                        isDelete: s.isDelete,
-                        updatedBy: s.updatedBy,
-                        phosphateVal: s.phosphate,
-                        ammoniaVal: s.ammonia,
+                        imageUrl: s.rawImageUrl, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
+                        imagePlotUrl: s.analyzedPlotUrl, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
+                        isDeleted: s.isDeleted, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
+                        updatedBy: s.lastModifiedBy, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
+                        phosphateVal: s.phosphateValue, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
+                        ammoniaVal: s.ammoniaValue, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
                         location: s.location
                             ? {
                                   id: s.locationId,
-                                  name: s.location.name,
-                                  organization: s.location.agency,
+                                  name: s.location.stationName, // 👈 แมปตรงตามฟิลด์ใหม่
+                                  organization: s.location.governingAgency, // 👈 แมปตรงตามฟิลด์ใหม่
                               }
                             : null,
                     }));
@@ -83,7 +77,7 @@ export default function CollectorDashboard() {
             .finally(() => setLoading(false));
     }, [currentUser, router]);
 
-    const handleImageError = (sampleId: string) => {
+    const handleImageError = (sampleId: number) => {
         setImageErrors((prev) => ({ ...prev, [sampleId]: true }));
     };
 
@@ -175,7 +169,7 @@ export default function CollectorDashboard() {
                                   (s) => s.collectedBy === currentUser?.id,
                               )
                             : samples
-                    ).filter((s) => !s.isDelete);
+                    ).filter((s) => !s.isDeleted); // 👈 เปลี่ยนเป็นตัวแปรใหม่
 
                     if (displayedSamples.length === 0) {
                         return (
@@ -196,7 +190,7 @@ export default function CollectorDashboard() {
                                     className="px-5 py-2.5 min-h-[42px] bg-primary text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2"
                                 >
                                     <Camera size={14} />
-                                    ส่งผลตรวจครั้งแรก
+                                    <span>ส่งผลตรวจครั้งแรก</span>
                                 </button>
                             </div>
                         );
@@ -219,7 +213,7 @@ export default function CollectorDashboard() {
                                     >
                                         {/* Top Row: Meta and Badges */}
                                         <div className="flex gap-4 items-start w-full">
-                                            {/* Thumbnail Section พร้อมตัวดักจับรูปโหลดไม่ขึ้น */}
+                                            {/* Thumbnail Section */}
                                             {sample.imageUrl &&
                                             !hasImageError ? (
                                                 <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-subtle border border-border/60 flex-shrink-0 relative bg-neutral-100">
@@ -236,9 +230,8 @@ export default function CollectorDashboard() {
                                                 </div>
                                             ) : sample.imageUrl &&
                                               hasImageError ? (
-                                                /* ⚠️ เคสที่ 1: มีลิงก์รูปแต่รูปพัง/โหลดไม่ขึ้น (Image Load Failed Fallback) */
                                                 <div
-                                                    className="w-16 h-16 border border-border/60 rounded-xl flex flex-col items-center justify-center gap-0.5 animate-fade-in"
+                                                    className="w-16 h-16 border border-border/60 rounded-xl flex flex-col items-center justify-center gap-0.5 animate-fade-in text-text-muted"
                                                     title="ไม่สามารถโหลดรูปภาพได้"
                                                 >
                                                     <ImageOff
@@ -250,7 +243,6 @@ export default function CollectorDashboard() {
                                                     </span>
                                                 </div>
                                             ) : (
-                                                /* 🧪 เคสที่ 2: ไม่มีรูปตั้งแต่แรก (เช่น เป็นการคีย์ผลแล็บเปล่าๆ) */
                                                 <div className="w-16 h-16 bg-surface-subtle rounded-xl flex items-center justify-center border border-border/60 flex-shrink-0 text-primary">
                                                     <FlaskConical
                                                         size={18}

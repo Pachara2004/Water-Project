@@ -18,42 +18,44 @@ import {
   Search,
 } from "lucide-react";
 
-type Role = "GENERAL" | "COLLECTOR" | "EXECUTIVE" | "ADMIN";
+// 🔒 สลับเปลี่ยนกลุ่มสิทธิ์พิมพ์เล็กตามระบบ Seed ความปลอดภัยใหม่ของบอส
+type Role = "guest" | "collector" | "officer" | "admin";
 
 interface UserItem {
-  id: string;
-  name: string;
-  phone: string | null;
+  id: number;              // 🔢 อัปเกรดเป็นตัวเลข Int รองรับฐานข้อมูลจริง
+  lineProfileName: string;
+  fullName: string;
+  phoneNumber: string | null;
   role: Role;
-  createdAt: string;
-  updatedAt: string;
-  _count: { samples: number };
+  registeredAt: string;    // 👈 ปรับชื่อตามฟิลด์ใหม่ @map
+  lastActiveAt: string;    // 👈 ปรับชื่อตามฟิลด์ใหม่ @map
+  samplesCount: number;
 }
 
 const ROLE_CONFIG: Record<Role, { label: string; color: string; dot: string }> = {
-  GENERAL: {
-    label: "general",
+  guest: {
+    label: "ทั่วไป",
     color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
     dot: "bg-amber-500",
   },
-  COLLECTOR: {
-    label: "collector",
+  collector: {
+    label: "ผู้เก็บข้อมูลภาคสนาม",
     color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
     dot: "bg-blue-500",
   },
-  EXECUTIVE: {
-    label: "officer",
+  officer: {
+    label: "ผู้บริหาร",
     color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
     dot: "bg-violet-500",
   },
-  ADMIN: {
-    label: "admin",
+  admin: {
+    label: "ผู้ดูแลระบบ",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
     dot: "bg-emerald-500",
   },
 };
 
-const ROLE_OPTIONS: Role[] = ["GENERAL", "COLLECTOR", "EXECUTIVE", "ADMIN"];
+const ROLE_OPTIONS: Role[] = ["guest", "collector", "officer", "admin"];
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("th-TH", {
@@ -63,14 +65,13 @@ function formatDate(iso: string) {
   });
 }
 
-function getInitials(name: string) {
-  const parts = name.trim().split(" ");
-  return parts.length >= 2
-    ? parts[0][0] + parts[1][0]
-    : name.slice(0, 2);
+function getInitials(fullName: string, lineName: string) {
+  if (fullName && fullName.trim() && fullName !== "ยังไม่ลงทะเบียนข้อมูล") {
+    return fullName.trim().slice(0, 2).toUpperCase();
+  }
+  return lineName.trim().slice(0, 2).toUpperCase();
 }
 
-// Avatar color based on name hash
 const AVATAR_COLORS = [
   "bg-blue-500", "bg-violet-500", "bg-emerald-500",
   "bg-rose-500", "bg-amber-500", "bg-cyan-500", "bg-indigo-500",
@@ -89,39 +90,39 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"queue" | "all">("queue");
   const [search, setSearch] = useState("");
-  const [updating, setUpdating] = useState<string | null>(null);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<number | null>(null); // 🔢 ปรับประเภทเป็น number
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null); // 🔢 ปรับประเภทเป็น number
   const [toast, setToast] = useState<{ name: string; role: Role } | null>(null);
 
   const fetchUsers = useCallback(async (keyword: string) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (keyword) params.set("search", keyword);
-      const res = await fetch(`/api/users?${params.toString()}`);
-      const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+        const params = new URLSearchParams();
+        if (keyword) params.set("search", keyword);
+        const res = await fetch(`/api/users?${params.toString()}`);
+        const data = await res.json();
+        setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
+        console.error(e);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   }, []);
 
-  // โหลดครั้งแรก
+  // โหลดครั้งแรก (ดักตรวจสิทธิ์ผ่านพิมพ์เล็ก "admin")
   useEffect(() => {
-    if (currentUser?.role === "ADMIN") fetchUsers("");
+    if (currentUser?.role === "admin") fetchUsers("");
   }, [currentUser?.role, fetchUsers]);
 
-  // debounce search 400ms — ส่ง keyword ไป DB แทนกรองใน browser
+  // debounce search 400ms 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (currentUser?.role === "ADMIN") fetchUsers(search);
+      if (currentUser?.role === "admin") fetchUsers(search);
     }, 400);
     return () => clearTimeout(timer);
   }, [search, currentUser?.role, fetchUsers]);
 
-  const handleRoleChange = async (userId: string, role: Role) => {
+  const handleRoleChange = async (userId: number, role: Role) => { // 🔢 สับเปลี่ยนเป็น number
     setUpdating(userId);
     setOpenDropdown(null);
     try {
@@ -136,7 +137,7 @@ export default function AdminUsersPage() {
           prev.map((u) => (u.id === userId ? { ...u, role } : u))
         );
         if (user) {
-          setToast({ name: user.name, role });
+          setToast({ name: user.fullName !== "ยังไม่ลงทะเบียนข้อมูล" ? user.fullName : user.lineProfileName, role });
           setTimeout(() => setToast(null), 3000);
         }
       }
@@ -147,14 +148,15 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (!currentUser || currentUser.role !== "ADMIN") {
+  // 🔒 Security Gate บังคับดีดหน้าเตือนหากไม่ได้สิทธิ์ตัวพิมพ์เล็ก "admin" 
+  if (!currentUser || currentUser.role !== "admin") {
     return (
       <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto">
         <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
           <ShieldAlert size={28} className="animate-pulse" />
         </div>
         <h1 className="font-display text-xl font-bold text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
-        <p className="text-xs text-text-secondary mb-6">หน้านี้สำหรับ Admin เท่านั้น</p>
+        <p className="text-xs text-text-secondary mb-6">หน้านี้สำหรับผู้ดูแลระบบสูงสุดสูงสุดเท่านั้น</p>
         <button onClick={() => router.push("/map")} className="py-3 px-8 bg-primary text-white font-bold rounded-2xl text-xs cursor-pointer">
           กลับหน้าแผนที่
         </button>
@@ -162,7 +164,7 @@ export default function AdminUsersPage() {
     );
   }
 
-  const queue = users.filter((u) => u.role === "GENERAL");
+  const queue = users.filter((u) => u.role === "guest"); // รอการอนุมัติคือกลุ่มผู้ใช้เริ่มต้น 'guest'
   const filtered = tab === "queue" ? queue : users;
 
   return (
@@ -191,7 +193,7 @@ export default function AdminUsersPage() {
                 <h1 className="font-display text-2xl font-bold text-text-primary leading-tight">
                   จัดการ <span className="text-primary">ผู้ใช้งาน</span>
                 </h1>
-                <p className="text-xs text-text-secondary mt-0.5">อนุมัติสิทธิ์และจัดการบทบาทผู้ใช้</p>
+                <p className="text-xs text-text-secondary mt-0.5">อนุมัติสิทธิ์และจัดการบทบาทผู้ใช้ในระบบ</p>
               </div>
             </div>
             <button
@@ -207,7 +209,7 @@ export default function AdminUsersPage() {
             {[
               { label: "ทั้งหมด", value: users.length, color: "text-text-primary" },
               { label: "รอการอนุมัติ", value: queue.length, color: queue.length > 0 ? "text-amber-600 dark:text-amber-400" : "text-text-primary" },
-              { label: "ผู้เก็บข้อมูล", value: users.filter((u) => u.role === "COLLECTOR").length, color: "text-blue-600 dark:text-blue-400" },
+              { label: "ผู้เก็บข้อมูล", value: users.filter((u) => u.role === "collector").length, color: "text-blue-600 dark:text-blue-400" },
             ].map((s) => (
               <div key={s.label} className="flex-1 bg-surface rounded-2xl border border-border px-4 py-3 text-center">
                 <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
@@ -256,7 +258,7 @@ export default function AdminUsersPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ค้นหาชื่อผู้ใช้..."
+            placeholder="ค้นหาชื่อ หรือชื่อไลน์ไอดีผู้ใช้..."
             className="w-full pl-10 pr-4 py-3 bg-surface border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all min-h-[44px]"
           />
         </div>
@@ -264,7 +266,7 @@ export default function AdminUsersPage() {
         {/* List */}
         <div className="space-y-3">
           {loading ? (
-            <div className="bg-surface rounded-3xl p-10 text-center border border-border flex flex-col items-center gap-3">
+            <div className="bg-surface rounded-3xl p-10 text-center border border-border flex flex-col items-center justify-center gap-3">
               <RefreshCw size={22} className="animate-spin text-primary" />
               <span className="text-xs text-text-muted font-bold">กำลังโหลดข้อมูลผู้ใช้...</span>
             </div>
@@ -282,6 +284,8 @@ export default function AdminUsersPage() {
               const cfg = ROLE_CONFIG[user.role];
               const isUpdating = updating === user.id;
               const isOpen = openDropdown === user.id;
+              
+              const displayName = user.fullName !== "ยังไม่ลงทะเบียนข้อมูล" ? user.fullName : user.lineProfileName;
 
               return (
                 <div
@@ -290,34 +294,34 @@ export default function AdminUsersPage() {
                 >
                   <div className="p-4 sm:p-5 flex items-center gap-4">
                     {/* Avatar */}
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white text-xs font-black ${avatarColor(user.name)}`}>
-                      {getInitials(user.name)}
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white text-xs font-black ${avatarColor(displayName)}`}>
+                      {getInitials(user.fullName, user.lineProfileName)}
                     </div>
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-bold text-text-primary truncate">{user.name}</h3>
+                        <h3 className="text-sm font-bold text-text-primary truncate">{displayName}</h3>
                         <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border ${cfg.color}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                           {cfg.label}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                        {user.phone && (
-                          <span className="flex items-center gap-1 text-[10px] text-text-muted">
+                        {user.phoneNumber && (
+                          <span className="flex items-center gap-1 text-[10px] text-text-muted font-mono">
                             <Phone size={9} />
-                            {user.phone}
+                            {user.phoneNumber}
                           </span>
                         )}
                         <span className="flex items-center gap-1 text-[10px] text-text-muted">
                           <CalendarDays size={9} />
-                          {formatDate(user.createdAt)}
+                          {formatDate(user.registeredAt)}
                         </span>
-                        {user._count.samples > 0 && (
+                        {user.samplesCount > 0 && (
                           <span className="flex items-center gap-1 text-[10px] text-text-muted">
                             <Layers size={9} />
-                            {user._count.samples} ตัวอย่าง
+                            {user.samplesCount} ตัวอย่างน้ำ
                           </span>
                         )}
                       </div>
@@ -371,11 +375,11 @@ export default function AdminUsersPage() {
                     </div>
                   </div>
 
-                  {/* Queue action strip — only for GENERAL in queue tab */}
-                  {tab === "queue" && user.role === "GENERAL" && (
+                  {/* Queue action strip — อนุมัติเป็นเลขสิทธิ์แบบพิมพ์เล็ก */}
+                  {tab === "queue" && user.role === "guest" && (
                     <div className="px-4 sm:px-5 pb-4 flex gap-2 border-t border-border/50 pt-3">
                       <button
-                        onClick={() => handleRoleChange(user.id, "COLLECTOR")}
+                        onClick={() => handleRoleChange(user.id, "collector")}
                         disabled={!!updating}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-primary hover:bg-navy-dark text-white text-xs font-bold rounded-xl transition-all disabled:opacity-40 cursor-pointer active:scale-[0.97]"
                       >
@@ -383,7 +387,7 @@ export default function AdminUsersPage() {
                         อนุมัติเป็น Collector
                       </button>
                       <button
-                        onClick={() => handleRoleChange(user.id, "GENERAL")}
+                        onClick={() => handleRoleChange(user.id, "guest")}
                         disabled={true}
                         className="flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[40px] bg-surface-subtle border border-border text-text-muted text-xs font-bold rounded-xl opacity-40 cursor-not-allowed"
                       >
@@ -404,7 +408,7 @@ export default function AdminUsersPage() {
         <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 z-[999] animate-slide-up">
           <div className="flex items-center gap-2.5 bg-foreground text-background text-xs font-bold px-5 py-3 rounded-2xl shadow-xl whitespace-nowrap">
             <CheckCircle2 size={14} className="text-emerald-400" />
-            อัปเดตสิทธิ์ <span className="text-emerald-400">{toast.name}</span> เป็น {ROLE_CONFIG[toast.role].label}
+            อัปเดตสิทธิ์ <span className="text-emerald-400">{toast.name}</span> เป็น {ROLE_CONFIG[toast.role].label} สำเร็จ
           </div>
         </div>
       )}
