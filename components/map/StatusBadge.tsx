@@ -2,7 +2,6 @@
 
 import { getStatusLabel } from "@/lib/standards";
 
-// 🔒 ปรับเปลี่ยนกลุ่มประเภทสเตตัส Props ให้เป็นพิมพ์เล็กตรงล็อกระบบความปลอดภัยใหม่ของบอส
 interface StatusBadgeProps {
     status: "safe" | "warning" | "danger" | null;
     size?: "sm" | "md" | "lg";
@@ -34,7 +33,6 @@ const dotSizes = {
 };
 
 export default function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
-    // ⏳ เคสกรณีที่ข้อมูลยังโหลดไม่เสร็จสิ้น หรือโมดูยังไม่พร้อมคืนค่า
     if (!status) {
         return (
             <span
