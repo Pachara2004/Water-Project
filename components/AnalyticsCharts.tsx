@@ -33,20 +33,20 @@ import { getOrganizationLabel } from "@/lib/standards";
 import { useAppStore } from "@/lib/store";
 
 export interface SampleItem {
-    id: number; // 🔢 อัปเกรดเป็นตัวเลข Int ตามผังฐานข้อมูลหลัก
-    locationId: number; // 🔢 อัปเกรดเป็นตัวเลข Int ตามผังฐานข้อมูลหลัก
-    status: "safe" | "warning" | "danger"; // 🔒 ปรับตาม Enum พิมพ์เล็กสากลล่าสุด
-    collectionTime: string | Date; // 👈 ซิงค์ตามชื่อฟิลด์จริง
-    phosphateValue: number | null; // 👈 ซิงค์ตามชื่อฟิลด์จริง
-    ammoniaValue: number | null; // 👈 ซิงค์ตามชื่อฟิลด์จริง
-    rainAccumulation?: number | null; // 👈 ซิงค์ตามชื่อฟิลด์จริง
-    weatherCondCode?: number | null; // 👈 ซิงค์ตามชื่อฟิลด์จริง
+    id: number;
+    locationId: number;
+    status: "safe" | "warning" | "danger";
+    collectionTime: string | Date;
+    phosphateValue: number | null; // ซิงค์ตามฟิลด์จริงของบอส
+    ammoniaValue: number | null; // ซิงค์ตามฟิลด์จริงของบอส
+    rainAccumulation?: number | null;
+    weatherCondCode?: number | null;
     location?: {
         id?: number;
-        stationName: string; // 👈 ซิงค์ตามชื่อฟิลด์จริง
-        governingAgency: string; // 👈 ซิงค์ตามชื่อฟิลด์จริง
-        latitude?: number;
-        longitude?: number;
+        name: string; // ✅ กลับมาใช้ name ตาม DB จริง
+        organization: string; // ✅ กลับมาใช้ organization ตาม DB จริง
+        lat?: number;
+        lng?: number;
     };
 }
 
@@ -62,26 +62,25 @@ export default function AnalyticsCharts({
     const [filterTime, setFilterTime] = useState<string>("ALL");
     const [filterWeather, setFilterWeather] = useState<string>("ALL");
 
-    // ดึงรายชื่อหน่วยงานที่ไม่ซ้ำกันเพื่อสร้าง Select Option
+    // ดึงรายชื่อหน่วยงาน
     const uniqueOrgs = useMemo(() => {
         const orgs = new Set<string>();
         samples.forEach((s) => {
-            if (s.location?.governingAgency)
-                orgs.add(s.location.governingAgency);
+            if (s.location?.organization) orgs.add(s.location.organization);
         });
         return Array.from(orgs);
     }, [samples]);
 
-    // ดึงรายชื่อสถานีตรวจวัดชายฝั่งที่ไม่ซ้ำกัน
+    // ดึงรายชื่อสถานที่
     const uniqueLocs = useMemo(() => {
         const locs = new Map<number, string>();
         samples.forEach((s) => {
             if (s.location) {
                 if (
                     filterOrg === "ALL" ||
-                    s.location.governingAgency === filterOrg
+                    s.location.organization === filterOrg
                 ) {
-                    locs.set(s.locationId, s.location.stationName);
+                    locs.set(s.locationId, s.location.name);
                 }
             }
         });
@@ -93,18 +92,16 @@ export default function AnalyticsCharts({
         setFilterLoc("ALL");
     };
 
-    // 🛡️ กรองข้อมูลตัวอย่างน้ำตามมิติเงื่อนไขความปลอดภัยและสภาพภูมิอากาศ
     const filteredSamples = useMemo(() => {
         return samples.filter((s) => {
             const matchOrg =
-                filterOrg === "ALL" ||
-                s.location?.governingAgency === filterOrg;
+                filterOrg === "ALL" || s.location?.organization === filterOrg;
             const matchLoc =
                 filterLoc === "ALL" || s.locationId.toString() === filterLoc;
 
             let matchTime = true;
             if (filterTime !== "ALL") {
-                const hour = new Date(s.collectionTime).getHours(); // แกะพิกัดชั่วโมงตรวจจริง
+                const hour = new Date(s.collectionTime).getHours();
                 if (filterTime === "MORNING")
                     matchTime = hour >= 6 && hour < 12;
                 if (filterTime === "AFTERNOON")
@@ -131,15 +128,16 @@ export default function AnalyticsCharts({
         });
     }, [samples, filterOrg, filterLoc, filterTime, filterWeather]);
 
-    // 📈 1. สัดส่วนคุณภาพน้ำรวม (Pie Chart พิมพ์เล็ก)
+    // 🥧 1. สัดส่วนคุณภาพน้ำรวม (รองรับทั้งพิมพ์เล็กพิมพ์ใหญ่ด้วย .toLowerCase)
     const statusDist = useMemo(() => {
         let safe = 0,
             warning = 0,
             danger = 0;
         filteredSamples.forEach((s) => {
-            if (s.status === "safe") safe++;
-            if (s.status === "warning") warning++;
-            if (s.status === "danger") danger++;
+            const currentStatus = s.status?.toLowerCase();
+            if (currentStatus === "safe") safe++;
+            if (currentStatus === "warning") warning++;
+            if (currentStatus === "danger") danger++;
         });
         return [
             { name: "ปลอดภัย", value: safe, color: "#10B981" },
@@ -160,7 +158,7 @@ export default function AnalyticsCharts({
         );
     };
 
-    // 📊 2. สหสัมพันธ์เคมีน้ำและปริมาณน้ำฝนสะสมสัปดาห์ล่าสุด
+    // 📊 2. สหสัมพันธ์สารเคมีและน้ำฝนสะสม
     const avgChemData = useMemo(() => {
         const map: Record<
             string,
@@ -236,19 +234,20 @@ export default function AnalyticsCharts({
             }
         > = {};
         filteredSamples.forEach((s) => {
-            if (s.status === "warning" || s.status === "danger") {
+            const currentStatus = s.status?.toLowerCase();
+            if (currentStatus === "warning" || currentStatus === "danger") {
                 if (!locMap[s.locationId]) {
                     locMap[s.locationId] = {
                         id: s.locationId,
-                        name: s.location?.stationName || "ไม่ทราบสถานที่",
-                        org: s.location?.governingAgency || "ไม่ระบุหน่วยงาน",
+                        name: s.location?.name || "ไม่ทราบสถานที่",
+                        org: s.location?.organization || "ไม่ระบุหน่วยงาน",
                         warning: 0,
                         danger: 0,
                         total: 0,
                     };
                 }
-                if (s.status === "warning") locMap[s.locationId].warning++;
-                if (s.status === "danger") locMap[s.locationId].danger++;
+                if (currentStatus === "warning") locMap[s.locationId].warning++;
+                if (currentStatus === "danger") locMap[s.locationId].danger++;
                 locMap[s.locationId].total++;
             }
         });
@@ -260,7 +259,7 @@ export default function AnalyticsCharts({
             .slice(0, 5);
     }, [filteredSamples]);
 
-    // ☀️ 4. กราฟเปรียบเทียบคุณภาพน้ำตามเวลาตรวจ (เช้า-เย็น)
+    // ☀️ 4. กราฟเปรียบเทียบคุณภาพน้ำตามเวลาตรวจ
     const timeDimensionData = useMemo(() => {
         let morningSafe = 0,
             morningWarning = 0,
@@ -273,15 +272,16 @@ export default function AnalyticsCharts({
             const d = new Date(s.collectionTime);
             const hour = d.getHours();
             const isMorning = hour >= 0 && hour < 12;
+            const currentStatus = s.status?.toLowerCase();
 
             if (isMorning) {
-                if (s.status === "safe") morningSafe++;
-                if (s.status === "warning") morningWarning++;
-                if (s.status === "danger") morningDanger++;
+                if (currentStatus === "safe") morningSafe++;
+                if (currentStatus === "warning") morningWarning++;
+                if (currentStatus === "danger") morningDanger++;
             } else {
-                if (s.status === "safe") eveningSafe++;
-                if (s.status === "warning") eveningWarning++;
-                if (s.status === "danger") eveningDanger++;
+                if (currentStatus === "safe") eveningSafe++;
+                if (currentStatus === "warning") eveningWarning++;
+                if (currentStatus === "danger") eveningDanger++;
             }
         });
 
@@ -289,13 +289,13 @@ export default function AnalyticsCharts({
             {
                 name: "เช้า (00:00-11:59)",
                 ปลอดภัย: morningSafe,
-                เเฝ้าระวัง: morningWarning,
+                เฝ้าระวัง: morningWarning,
                 อันตราย: morningDanger,
             },
             {
                 name: "เย็น (12:00-23:59)",
                 ปลอดภัย: eveningSafe,
-                เเฝ้าระวัง: eveningWarning,
+                เฝ้าระวัง: eveningWarning,
                 อันตราย: eveningDanger,
             },
         ];
@@ -347,10 +347,9 @@ export default function AnalyticsCharts({
 
     return (
         <div className="space-y-6 pb-[calc(20px+env(safe-area-inset-bottom))]">
-            {/* 📊 KPI Summary Cards ตรวจนับตามสิทธิ์พิมพ์เล็กชุดใหม่ */}
+            {/* KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {/* Total */}
-                <div className="bg-surface rounded-3xl p-6 sm:p-8 shadow-md border border-border flex flex-col justify-between transition-all duration-200">
+                <div className="bg-surface rounded-3xl p-6 shadow-md border border-border flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
                             ตัวอย่างทั้งหมด
@@ -360,7 +359,7 @@ export default function AnalyticsCharts({
                         </div>
                     </div>
                     <div>
-                        <p className="text-3xl sm:text-4xl font-black text-text-primary tracking-tight leading-none mb-2">
+                        <p className="text-3xl font-black text-text-primary tracking-tight leading-none mb-2">
                             {filteredSamples.length}
                         </p>
                         <p className="text-xs text-text-muted font-bold mt-1">
@@ -369,8 +368,7 @@ export default function AnalyticsCharts({
                     </div>
                 </div>
 
-                {/* Safety Rate */}
-                <div className="bg-surface rounded-3xl p-6 sm:p-8 shadow-md border border-border flex flex-col justify-between transition-all duration-200">
+                <div className="bg-surface rounded-3xl p-6 shadow-md border border-border flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
                             อัตราปลอดภัย
@@ -380,11 +378,13 @@ export default function AnalyticsCharts({
                         </div>
                     </div>
                     <div>
-                        <p className="text-3xl sm:text-4xl font-black text-safe tracking-tight leading-none mb-2">
+                        <p className="text-3xl font-black text-safe tracking-tight leading-none mb-2">
                             {filteredSamples.length > 0
                                 ? Math.round(
                                       (filteredSamples.filter(
-                                          (s) => s.status === "safe",
+                                          (s) =>
+                                              s.status?.toLowerCase() ===
+                                              "safe",
                                       ).length /
                                           filteredSamples.length) *
                                           100,
@@ -398,8 +398,7 @@ export default function AnalyticsCharts({
                     </div>
                 </div>
 
-                {/* Critical Danger */}
-                <div className="bg-surface rounded-3xl p-6 sm:p-8 shadow-md border border-border flex flex-col justify-between transition-all duration-200">
+                <div className="bg-surface rounded-3xl p-6 shadow-md border border-border flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
                             จุดวิกฤตอันตราย
@@ -409,10 +408,10 @@ export default function AnalyticsCharts({
                         </div>
                     </div>
                     <div>
-                        <p className="text-3xl sm:text-4xl font-black text-danger tracking-tight leading-none mb-2">
+                        <p className="text-3xl font-black text-danger tracking-tight leading-none mb-2">
                             {
                                 filteredSamples.filter(
-                                    (s) => s.status === "danger",
+                                    (s) => s.status?.toLowerCase() === "danger",
                                 ).length
                             }
                         </p>
@@ -422,8 +421,7 @@ export default function AnalyticsCharts({
                     </div>
                 </div>
 
-                {/* Warning */}
-                <div className="bg-surface rounded-3xl p-6 sm:p-8 shadow-md border border-border flex flex-col justify-between transition-all duration-200">
+                <div className="bg-surface rounded-3xl p-6 shadow-md border border-border flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
                             จุดเฝ้าระวัง
@@ -433,10 +431,11 @@ export default function AnalyticsCharts({
                         </div>
                     </div>
                     <div>
-                        <p className="text-3xl sm:text-4xl font-black text-warning tracking-tight leading-none mb-2">
+                        <p className="text-3xl font-black text-warning tracking-tight leading-none mb-2">
                             {
                                 filteredSamples.filter(
-                                    (s) => s.status === "warning",
+                                    (s) =>
+                                        s.status?.toLowerCase() === "warning",
                                 ).length
                             }
                         </p>
@@ -447,7 +446,7 @@ export default function AnalyticsCharts({
                 </div>
             </div>
 
-            {/* 🎛️ Global Filters Panel Dropdown ลิสต์ข้อมูลรายสถานที่ */}
+            {/* Filters */}
             <div className="bg-surface rounded-2xl p-6 border border-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <div>
                     <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-3 flex items-center gap-1.5 px-1">
@@ -457,7 +456,7 @@ export default function AnalyticsCharts({
                     <select
                         value={filterOrg}
                         onChange={handleOrgChange}
-                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer min-h-[44px]"
+                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none min-h-[44px]"
                     >
                         <option value="ALL">ทุกหน่วยงาน</option>
                         {uniqueOrgs.map((org) => (
@@ -475,7 +474,7 @@ export default function AnalyticsCharts({
                     <select
                         value={filterLoc}
                         onChange={(e) => setFilterLoc(e.target.value)}
-                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer min-h-[44px]"
+                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none min-h-[44px]"
                     >
                         <option value="ALL">ทุกสถานที่</option>
                         {uniqueLocs.map(([id, name]) => (
@@ -493,7 +492,7 @@ export default function AnalyticsCharts({
                     <select
                         value={filterTime}
                         onChange={(e) => setFilterTime(e.target.value)}
-                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer min-h-[44px]"
+                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none min-h-[44px]"
                     >
                         <option value="ALL">ทุกช่วงเวลา</option>
                         <option value="MORNING">เช้า (06:00 - 11:59)</option>
@@ -511,7 +510,7 @@ export default function AnalyticsCharts({
                     <select
                         value={filterWeather}
                         onChange={(e) => setFilterWeather(e.target.value)}
-                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer min-h-[44px]"
+                        className="w-full text-xs px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl outline-none min-h-[44px]"
                     >
                         <option value="ALL">ทุกสภาพอากาศ</option>
                         <option value="RAINY">
@@ -524,8 +523,8 @@ export default function AnalyticsCharts({
                 </div>
             </div>
 
+            {/* Charts Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
-                {/* 🥧 Pie Chart */}
                 <div className="bg-surface rounded-2xl p-6 shadow-md border border-border flex flex-col justify-between">
                     <div className="inline-flex items-center gap-2 mb-4">
                         <span className="h-2 w-2 rounded-full bg-primary" />
@@ -577,7 +576,6 @@ export default function AnalyticsCharts({
                     </div>
                 </div>
 
-                {/* 📈 Composed Chart */}
                 <div className="bg-surface rounded-2xl p-6 shadow-md border border-border flex flex-col justify-between">
                     <div className="inline-flex items-center gap-2 mb-4">
                         <span className="h-2 w-2 rounded-full bg-primary" />
@@ -713,7 +711,7 @@ export default function AnalyticsCharts({
                 </div>
             </div>
 
-            {/* 🕒 Time Bar Chart */}
+            {/* Time Chart */}
             <div className="bg-surface rounded-2xl p-6 shadow-md border border-border">
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
@@ -794,7 +792,7 @@ export default function AnalyticsCharts({
                 </div>
             </div>
 
-            {/* 📉 Daily Variance Chart */}
+            {/* Variance Chart */}
             <div className="bg-surface rounded-2xl p-6 shadow-md border border-border">
                 <div className="flex items-center gap-2 mb-5">
                     <Activity size={15} className="text-pink-500" />
@@ -872,7 +870,7 @@ export default function AnalyticsCharts({
                 </div>
             </div>
 
-            {/* 📋 Critical Table */}
+            {/* Critical Table */}
             <div className="bg-surface rounded-2xl p-6 shadow-md border border-border">
                 <div className="flex items-center gap-2.5 mb-5">
                     <div className="w-8 h-8 bg-red-50 dark:bg-red-950/20 rounded-xl flex items-center justify-center border border-red-100/50">
@@ -921,7 +919,7 @@ export default function AnalyticsCharts({
                                             </td>
                                             <td className="px-5 py-4 text-center">
                                                 {loc.danger > 0 ? (
-                                                    <span className="bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-2.5 py-1 rounded-lg border border-red-100 dark:border-red-900/30">
+                                                    <span className="bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-2.5 py-1 rounded-lg border border-red-100">
                                                         {loc.danger} ครั้ง
                                                     </span>
                                                 ) : (
@@ -932,7 +930,7 @@ export default function AnalyticsCharts({
                                             </td>
                                             <td className="px-5 py-4 text-center">
                                                 {loc.warning > 0 ? (
-                                                    <span className="bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                                                    <span className="bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-100">
                                                         {loc.warning} ครั้ง
                                                     </span>
                                                 ) : (

@@ -5,23 +5,20 @@ import { WaterStatus } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
-// 🔒 ฟังก์ชันช่วยตรวจสอบสิทธิ์และแกะแปลง ID ผู้ใช้เป็น Int
 async function getAuthenticatedUser(request: NextRequest) {
     const id = request.headers.get("x-user-id");
     const role = request.headers.get("x-user-role");
 
     if (!id || !role) return null;
-    return { id: Number(id), role: role.toLowerCase() }; // 🛡️ บังคับแปลงเป็นพิมพ์เล็กเพื่อความปลอดภัยสากล
+    return { id: Number(id), role: role.toLowerCase() };
 }
 
-// 📌 GET /api/samples — ดึงรายการตัวอย่างน้ำทั้งหมดตามเงื่อนไขตัวกรอง
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const locationId = searchParams.get("locationId");
         const collectedBy = searchParams.get("collectedBy");
 
-        // 📝 ปรับคีย์เงื่อนไขตาม Schema ใหม่ (isDeleted)
         const where: any = { isDeleted: false };
         if (locationId) where.locationId = Number(locationId);
         if (collectedBy) where.collectorId = Number(collectedBy);
@@ -43,9 +40,36 @@ export async function GET(request: NextRequest) {
             orderBy: { collectionTime: "desc" },
         });
 
-        return NextResponse.json(samples);
+        const formattedSamples = samples.map((s: any) => ({
+            ...s,
+            // 1. จำลองสร้างฟิลด์สารเคมีตัวย่อ (phosphateVal, ammoniaVal) ส่งไปให้กราฟ Recharts อ่านค่า
+            phosphateVal: s.phosphateValue,
+            ammoniaVal: s.ammoniaValue,
+
+            // 2. จำลองสร้างฟิลด์สภาพอากาศเดิม ส่งไปสนับสนุนลอจิกคัดกรองฝั่งหน้าบ้าน
+            rainVolume: s.rainAccumulation,
+            weatherCondition: s.weatherCondCode,
+            collectedAt: s.collectionTime,
+
+            // 3. ปรับโครงสร้าง Object ในตารางพิกัด ย้ายจาก name/organization ไปเข้าคู่ฟิลด์เดิมของชาร์ตบอส
+            location: s.location
+                ? {
+                      id: s.location.id,
+                      name: s.location.name,
+                      organization: s.location.organization,
+                      lat: s.location.latitude,
+                      lng: s.location.longitude,
+                  }
+                : null,
+
+            // 4. บังคับแปลงสถานะผลน้ำกลับไปเป็นตัวพิมพ์ใหญ่ ('SAFE' | 'WARNING' | 'DANGER')
+            status: s.status ? s.status.toUpperCase() : "SAFE",
+        }));
+
+        // จัดส่งอาร์เรย์โครงสร้างข้อมูลพิกัดเดิมไปให้หน้าบ้านเรนเดอร์กราฟ
+        return NextResponse.json(formattedSamples);
     } catch (error) {
-        console.error("❌ GET /api/samples error:", error);
+        console.error("GET /api/samples error:", error);
         return NextResponse.json(
             { error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" },
             { status: 500 },
@@ -53,10 +77,10 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// 📌 POST /api/samples — บันทึกตัวอย่างน้ำ (🔒 เฉพาะ admin และ collector)
+// POST /api/samples — บันทึกตัวอย่างน้ำ
 export async function POST(request: NextRequest) {
     try {
-        // 🛡️ SECURITY STEP 1: ตรวจสอบสิทธิ์ผู้ใช้งานผ่านระบบ Headers (ซิงค์พิมพ์เล็กเรียบร้อย)
+        // SECURITY STEP 1: ตรวจสอบสิทธิ์ผู้ใช้งานผ่านระบบ Headers (ซิงค์พิมพ์เล็กเรียบร้อย)
         const user = await getAuthenticatedUser(request);
         if (!user) {
             return NextResponse.json(
@@ -92,7 +116,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 🛡️ SECURITY STEP 2: ป้องกันการส่งข้อมูลสวมรอยข้ามชื่อเจ้าหน้าที่ท่านอื่น
+        // SECURITY STEP 2: ป้องกันการส่งข้อมูลสวมรอยข้ามชื่อเจ้าหน้าที่ท่านอื่น
         if (user.role !== "admin" && Number(collectedBy) !== user.id) {
             return NextResponse.json(
                 {
@@ -120,7 +144,7 @@ export async function POST(request: NextRequest) {
         const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
         const maxFileSize = 5 * 1024 * 1024;
 
-        // 🛡️ SECURITY STEP 3: Safe File Upload รูปภาพต้นฉบับ (สุ่มชื่อใหม่เป็น UUID ขจัด Filename Injection)
+        // SECURITY STEP 3: Safe File Upload รูปภาพต้นฉบับ (สุ่มชื่อใหม่เป็น UUID ขจัด Filename Injection)
         let dbImageUrl: string | null = null;
         if (imageFile && imageFile.size > 0) {
             if (!allowedImageTypes.includes(imageFile.type)) {
@@ -147,7 +171,7 @@ export async function POST(request: NextRequest) {
             dbImageUrl = `/uploads/${filename}`;
         }
 
-        // 🛡️ SECURITY STEP 4: Safe File Upload รูปผลพล็อตสีวิเคราะห์ค่า
+        // SECURITY STEP 4: Safe File Upload รูปผลพล็อตสีวิเคราะห์ค่า
         let dbImagePlotUrl: string | null = null;
         if (imagePlotFile && imagePlotFile.size > 0) {
             if (!allowedImageTypes.includes(imagePlotFile.type)) {
@@ -178,38 +202,38 @@ export async function POST(request: NextRequest) {
         let weather = null;
         try {
             weather = await getTmdHourlyWeather(
-                location.latitude, // 👈 ปรับชื่อฟิลด์ตามตารางจริงล่าสุดของบอส
-                location.longitude, // 👈 ปรับชื่อฟิลด์ตามตารางจริงล่าสุดของบอส
+                location.latitude,
+                location.longitude,
                 parsedCollectionTime,
             );
         } catch (weatherErr) {
             console.error("TMD Weather API Error (Non-blocking):", weatherErr);
         }
 
-        // 🚀 บันทึกข้อมูลลงฐานข้อมูลโดยจับคู่ความสัมพันธ์ของฟิลด์ Expressive Snake Case ใหม่
+        // บันทึกข้อมูลลงฐานข้อมูลโดยจับคู่ความสัมพันธ์ของฟิลด์ Expressive Snake Case ใหม่
         const sample = await prisma.waterSample.create({
             data: {
                 locationId: Number(locationId),
                 collectorId: Number(collectedBy),
                 collectionTime: parsedCollectionTime,
-                ammoniaValue: parseFloat(ammoniaVal || "0"), // 👈 ปรับฟิลด์นามสกุล Value
-                phosphateValue: parseFloat(phosphateVal || "0"), // 👈 ปรับฟิลด์นามสกุล Value
-                dissolvedOxygen: oxygen ? parseFloat(oxygen) : null, // 👈 ปรับฟิลด์ชื่อเต็ม
-                airTemperature: weather?.temperature ?? null, // 👈 ดึงเชื่อมพยากรณ์อากาศใหม่
-                rainAccumulation: weather?.rainVolume ?? null, // 👈 ดึงเชื่อมพยากรณ์อากาศใหม่
+                ammoniaValue: parseFloat(ammoniaVal || "0"),
+                phosphateValue: parseFloat(phosphateVal || "0"),
+                dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
+                airTemperature: weather?.temperature ?? null,
+                rainAccumulation: weather?.rainVolume ?? null,
                 weatherCondCode: weather?.weatherCondition
                     ? Number(weather.weatherCondition)
                     : null,
-                status: status.toLowerCase() as WaterStatus, // แมปตรงพิมพ์เล็ก 'safe' | 'warning' | 'danger'
+                status: status.toLowerCase() as WaterStatus,
                 rawImageUrl: dbImageUrl,
-                analyzedPlotUrl: dbImagePlotUrl, // 👈 บันทึกพาธภาพแปรผลวิเคราะห์
+                analyzedPlotUrl: dbImagePlotUrl,
                 isDeleted: false,
             },
         });
 
         return NextResponse.json(sample, { status: 201 });
     } catch (error: any) {
-        console.error("❌ POST /api/samples error:", error);
+        console.error("POST /api/samples error:", error);
         return NextResponse.json(
             {
                 error: "เกิดข้อผิดพลาดในการบันทึกข้อมูลตัวอย่างน้ำ",
