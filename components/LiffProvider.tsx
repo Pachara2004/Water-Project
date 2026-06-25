@@ -62,7 +62,7 @@ export default function LiffProvider({
                 }
 
                 const profile = await liff.getProfile();
-                const response = await fetch("/api/auth/session", {
+                const response = await fetch("/api/auth", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -104,7 +104,6 @@ export default function LiffProvider({
             return;
         }
 
-        // 🧠 กลไกแตกคำ: แยกข้อความชื่อ-นามสกุลออกจากกันด้วยช่องว่าง (Space) เพื่อให้ตรงล็อกตามโครงสร้าง DB ใหม่
         const nameParts = trimmedName.split(/\s+/);
         const firstName = nameParts[0];
         const lastName = nameParts.slice(1).join(" ") || ""; // เผื่อนามสกุลพิมพ์ยาวหรือเว้นวรรคซ้อน
@@ -113,7 +112,6 @@ export default function LiffProvider({
         setFormError(null);
 
         try {
-            // 🚀 ยิงคำขออัปเดตไปที่สเตปถัดไป: API จัดเก็บประวัติข้อมูลส่วนตัวผู้ใช้ใหม่
             const res = await fetch("/api/auth/onboarding", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -147,7 +145,6 @@ export default function LiffProvider({
         }
     };
 
-    // 🔐 ดักจับแผง Onboarding Guard พึ่งพาตัวแปรชื่อฟิลด์ตามโครงสร้าง Expressive ล่าสุด
     if (currentUser && !currentUser.phoneNumber) {
         return (
             <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-surface-muted/60 backdrop-blur-xl p-4 sm:p-6 transition-all">
