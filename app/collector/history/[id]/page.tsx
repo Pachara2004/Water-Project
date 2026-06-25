@@ -25,39 +25,41 @@ import {
 } from "lucide-react";
 import { getWeatherConditionLabel } from "@/lib/weather";
 
-type WaterStatus = "SAFE" | "WARNING" | "DANGER";
+type WaterStatus = "safe" | "warning" | "danger"; // 🔒 อัปเดตสิทธิ์ Enum ตัวพิมพ์เล็ก
 
 interface LocationOption {
-    id: string;
+    id: number; // 🔢 อัปเกรดเป็นตัวเลข Int
     name: string;
     agency: string;
 }
 
 interface SampleDetail {
-    id: string;
-    collectorId: string;
-    locationId: string;
+    id: number; // 🔢 อัปเกรดเป็นตัวเลข Int
+    collectorId: number; // 🔢 อัปเกรดเป็นตัวเลข Int
+    locationId: number; // 🔢 อัปเกรดเป็นตัวเลข Int
     collectionTime: string;
-    uploadedAt: string;
-    ammonia: number;
-    phosphate: number;
-    oxygen: number | null;
-    temperature: number | null;
-    rainVolume: number | null;
-    weatherCondition: number | null;
+    uploadedActiveAt: string; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+    ammoniaValue: number; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+    phosphateValue: number; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+    dissolvedOxygen: number | null; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+    airTemperature: number | null; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+    rainAccumulation: number | null; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+    weatherCondCode: number | null; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
     status: WaterStatus;
-    imageUrl: string | null;
-    imagePlotUrl: string | null;
+    rawImageUrl: string | null; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+    analyzedPlotUrl: string | null; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
     location: {
-        id: string;
-        name: string;
-        agency: string;
-        lat: number;
-        lon: number;
+        id: number;
+        stationName: string; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+        governingAgency: string; // 👈 ปรับชื่อฟิลด์ @map ตัวใหม่
+        latitude: number;
+        longitude: number;
     };
     collector: {
-        id: string;
-        name: string;
+        id: number;
+        lineProfileName: string; // ดึงชื่อโปรไฟล์ไลน์หลักมาเรนเดอร์เซ็ตแรก
+        firstName?: string | null;
+        lastName?: string | null;
     };
 }
 
@@ -76,8 +78,8 @@ function formatWeatherCondition(code: number | null) {
 }
 
 function getValueColor(status: WaterStatus) {
-    if (status === "DANGER") return "text-red-600 dark:text-red-400";
-    if (status === "WARNING") return "text-amber-600 dark:text-amber-400";
+    if (status === "danger") return "text-red-600 dark:text-red-400";
+    if (status === "warning") return "text-amber-600 dark:text-amber-400";
     return "text-emerald-600 dark:text-emerald-400";
 }
 
@@ -104,7 +106,8 @@ export default function CollectorHistoryDetailPage() {
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "COLLECTOR" && currentUser.role !== "ADMIN") {
+        // 🔒 ตรวจสอบเทียบค่า Role ตัวพิมพ์เล็กเพื่อความปลอดภัย
+        if (currentUser.role !== "collector" && currentUser.role !== "admin") {
             router.push("/map");
         }
     }, [currentUser, router]);
@@ -115,8 +118,8 @@ export default function CollectorHistoryDetailPage() {
         async function fetchSample() {
             if (!currentUser) return;
             if (
-                currentUser.role !== "COLLECTOR" &&
-                currentUser.role !== "ADMIN"
+                currentUser.role !== "collector" &&
+                currentUser.role !== "admin"
             )
                 return;
             if (!params.id) return;
@@ -154,7 +157,7 @@ export default function CollectorHistoryDetailPage() {
         };
     }, [currentUser, params.id]);
 
-    // โหลด locations เมื่อเข้า edit mode
+    // โหลด locations เมื่อเข้าเข้าสู่ Edit Mode
     useEffect(() => {
         if (!isEditing || locations.length > 0) return;
         fetch("/api/locations")
@@ -162,19 +165,16 @@ export default function CollectorHistoryDetailPage() {
             .then((data) => {
                 if (Array.isArray(data))
                     setLocations(
-                        data.map(
-                            (l: LocationOption & { samples?: unknown[] }) => ({
-                                id: l.id,
-                                name: l.name,
-                                agency: l.agency,
-                            }),
-                        ),
+                        data.map((l: any) => ({
+                            id: l.id,
+                            name: l.name,
+                            agency: l.organization,
+                        })),
                     );
             })
             .catch(console.error);
     }, [isEditing]);
 
-    // ปิด dropdown เมื่อคลิกข้างนอก
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (
@@ -191,7 +191,6 @@ export default function CollectorHistoryDetailPage() {
 
     function toLocalDatetimeInput(iso: string) {
         const d = new Date(iso);
-        // แปลงเป็นเวลาท้องถิ่นสำหรับ input[type=datetime-local]
         return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
             .toISOString()
             .slice(0, 16);
@@ -199,11 +198,14 @@ export default function CollectorHistoryDetailPage() {
 
     function startEdit() {
         if (!sample) return;
-        const locName = sample.location.name;
+        const locName = sample.location.stationName;
         setEditData({
             collectionTime: toLocalDatetimeInput(sample.collectionTime),
-            locationId: sample.location.id,
-            oxygen: sample.oxygen !== null ? String(sample.oxygen) : "",
+            locationId: String(sample.location.id),
+            oxygen:
+                sample.dissolvedOxygen !== null
+                    ? String(sample.dissolvedOxygen)
+                    : "",
         });
         setLocationSearch(locName);
         setIsEditing(true);
@@ -248,21 +250,18 @@ export default function CollectorHistoryDetailPage() {
             l.agency?.toLowerCase().includes(locationSearch.toLowerCase()),
     );
 
-    const selectedLocationName =
-        locations.find((l) => l.id === editData.locationId)?.name ??
-        locationSearch;
     const isLocationValid =
-        // ตรงกับ location ในรายการ
         locations.some(
-            (l) => l.id === editData.locationId && l.name === locationSearch,
+            (l) =>
+                String(l.id) === editData.locationId &&
+                l.name === locationSearch,
         ) ||
-        // locations ยังโหลดไม่เสร็จแต่ locationId ยังเป็นค่าเดิมจาก sample
         (locations.length === 0 && editData.locationId !== "");
 
     const standardsEvaluation = useMemo(() => {
         if (!sample) return [];
         return Object.entries(
-            evaluateAllStandards(sample.phosphate, sample.ammonia),
+            evaluateAllStandards(sample.phosphateValue, sample.ammoniaValue), // 👈 ซิงค์ตามชื่อฟิลด์แปรผลสีตัวล่าสุด
         ).map(([type, passed]) => ({
             type,
             label:
@@ -314,6 +313,9 @@ export default function CollectorHistoryDetailPage() {
     }
 
     const valueColor = getValueColor(sample.status);
+    const collectorFullName =
+        `${sample.collector.firstName || ""} ${sample.collector.lastName || ""}`.trim() ||
+        sample.collector.lineProfileName;
 
     return (
         <div className="min-h-dvh w-full bg-surface-muted pb-10 transition-colors duration-300">
@@ -328,7 +330,7 @@ export default function CollectorHistoryDetailPage() {
                             ย้อนกลับ
                         </button>
 
-                        {currentUser?.role === "ADMIN" && (
+                        {currentUser?.role === "admin" && ( // 🔒 ตรวจสอบสิทธิ์ตัวพิมพ์เล็ก
                             <div className="flex items-center gap-2">
                                 {isEditing ? (
                                     <>
@@ -364,7 +366,7 @@ export default function CollectorHistoryDetailPage() {
                         )}
                     </div>
 
-                    {/* Location — editable */}
+                    {/* Location Block */}
                     <div className="rounded-2xl bg-surface-subtle border border-border px-4 py-3">
                         {isEditing ? (
                             <div ref={locationDropdownRef} className="relative">
@@ -381,7 +383,6 @@ export default function CollectorHistoryDetailPage() {
                                     onChange={(e) => {
                                         setLocationSearch(e.target.value);
                                         setLocationDropdownOpen(true);
-                                        // ล้าง locationId ถ้าผู้ใช้แก้ข้อความ
                                         setEditData((prev) => ({
                                             ...prev,
                                             locationId: "",
@@ -414,7 +415,9 @@ export default function CollectorHistoryDetailPage() {
                                                     onClick={() => {
                                                         setEditData((prev) => ({
                                                             ...prev,
-                                                            locationId: loc.id,
+                                                            locationId: String(
+                                                                loc.id,
+                                                            ),
                                                         }));
                                                         setLocationSearch(
                                                             loc.name,
@@ -423,7 +426,7 @@ export default function CollectorHistoryDetailPage() {
                                                             false,
                                                         );
                                                     }}
-                                                    className={`w-full text-left px-4 py-2.5 text-xs hover:bg-surface-subtle transition-colors cursor-pointer ${editData.locationId === loc.id ? "text-primary font-black" : "text-text-primary font-bold"}`}
+                                                    className={`w-full text-left px-4 py-2.5 text-xs hover:bg-surface-subtle transition-colors cursor-pointer ${editData.locationId === String(loc.id) ? "text-primary font-black" : "text-text-primary font-bold"}`}
                                                 >
                                                     <span className="block">
                                                         {loc.name}
@@ -448,7 +451,7 @@ export default function CollectorHistoryDetailPage() {
                                             ประวัติผู้เก็บตัวอย่าง
                                         </p>
                                         <h1 className="text-sm sm:text-base font-black text-text-primary truncate">
-                                            {sample.location.name}
+                                            {sample.location.stationName}
                                         </h1>
                                     </div>
                                 </div>
@@ -458,7 +461,6 @@ export default function CollectorHistoryDetailPage() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                        {/* collectionTime — editable */}
                         <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
                             <Calendar
                                 size={13}
@@ -485,19 +487,20 @@ export default function CollectorHistoryDetailPage() {
                         <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
                             <User size={13} className="text-primary" />
                             <span className="font-bold truncate">
-                                {sample.collector.name}
+                                {collectorFullName}
                             </span>
                         </div>
                     </div>
                 </div>
 
+                {/* Image Section */}
                 <div className="bg-surface rounded-3xl shadow-sm border border-border overflow-hidden p-2">
                     <div className="relative">
                         {(() => {
                             const src =
                                 imageView === "original"
-                                    ? sample.imageUrl
-                                    : sample.imagePlotUrl;
+                                    ? sample.rawImageUrl
+                                    : sample.analyzedPlotUrl;
                             return src ? (
                                 <img
                                     src={src}
@@ -537,11 +540,6 @@ export default function CollectorHistoryDetailPage() {
                                 )
                             }
                             className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-full shadow-lg text-white cursor-pointer transition-all active:scale-90"
-                            title={
-                                imageView === "original"
-                                    ? "ดูภาพพลอตสี"
-                                    : "ดูภาพต้นฉบับ"
-                            }
                         >
                             {imageView === "original" ? (
                                 <Microscope size={13} />
@@ -557,6 +555,7 @@ export default function CollectorHistoryDetailPage() {
                     </div>
                 </div>
 
+                {/* Overall Analysis */}
                 <div className="bg-surface rounded-3xl shadow-sm border border-border p-5">
                     <div className="flex items-center gap-2 mb-4">
                         <div className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center">
@@ -576,6 +575,7 @@ export default function CollectorHistoryDetailPage() {
                     </div>
                 </div>
 
+                {/* Chemical Values Card */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-surface rounded-2xl p-5 shadow-sm border border-border flex flex-col justify-between min-h-32">
                         <div className="flex items-center gap-1.5 mb-3">
@@ -593,7 +593,7 @@ export default function CollectorHistoryDetailPage() {
                             <div
                                 className={`text-2xl sm:text-3xl font-black ${valueColor}`}
                             >
-                                {sample.phosphate.toFixed(3)}
+                                {sample.phosphateValue.toFixed(3)}
                             </div>
                             <span className="font-mono text-[9px] font-bold text-text-muted">
                                 mg/L
@@ -617,7 +617,7 @@ export default function CollectorHistoryDetailPage() {
                             <div
                                 className={`text-2xl sm:text-3xl font-black ${valueColor}`}
                             >
-                                {sample.ammonia.toFixed(3)}
+                                {sample.ammoniaValue.toFixed(3)}
                             </div>
                             <span className="font-mono text-[9px] font-bold text-text-muted">
                                 mg/L
@@ -626,6 +626,7 @@ export default function CollectorHistoryDetailPage() {
                     </div>
                 </div>
 
+                {/* Meteorological Inputs */}
                 <div className="bg-surface rounded-3xl shadow-sm border border-border p-5">
                     <div className="flex items-center gap-2 mb-4">
                         <div className="w-6 h-6 bg-primary-light text-primary rounded-xl flex items-center justify-center border border-primary/10">
@@ -658,15 +659,15 @@ export default function CollectorHistoryDetailPage() {
                                 />
                             ) : (
                                 <span
-                                    className={`text-sm font-black ${sample.oxygen === null ? "text-text-muted" : "text-text-primary"}`}
+                                    className={`text-sm font-black ${sample.dissolvedOxygen === null ? "text-text-muted" : "text-text-primary"}`}
                                 >
-                                    {sample.oxygen === null
+                                    {sample.dissolvedOxygen === null
                                         ? "ไม่ได้ระบุ"
-                                        : sample.oxygen.toFixed(2)}
+                                        : sample.dissolvedOxygen.toFixed(2)}
                                 </span>
                             )}
                             <span className="font-mono text-[9px] font-bold text-text-muted">
-                                mL/L
+                                mg/L
                             </span>
                         </div>
 
@@ -676,13 +677,13 @@ export default function CollectorHistoryDetailPage() {
                                     <Thermometer
                                         size={12}
                                         className="text-primary"
-                                    />
+                                    />{" "}
                                     Temperature
                                 </div>
                                 <p className="text-sm font-black text-text-primary mt-2">
-                                    {sample.temperature === null
+                                    {sample.airTemperature === null
                                         ? "-"
-                                        : `${sample.temperature.toFixed(1)} C`}
+                                        : `${sample.airTemperature.toFixed(1)} °C`}
                                 </p>
                             </div>
                             <div className="bg-surface-subtle border border-border rounded-2xl p-4">
@@ -690,28 +691,28 @@ export default function CollectorHistoryDetailPage() {
                                     <CloudRain
                                         size={12}
                                         className="text-primary"
-                                    />
+                                    />{" "}
                                     Rain
                                 </div>
                                 <p className="text-sm font-black text-text-primary mt-2">
-                                    {sample.rainVolume === null
+                                    {sample.rainAccumulation === null
                                         ? "-"
-                                        : `${sample.rainVolume.toFixed(1)} mm`}
+                                        : `${sample.rainAccumulation.toFixed(1)} mm`}
                                 </p>
                             </div>
                             <div className="bg-surface-subtle border border-border rounded-2xl p-4">
                                 <div className="flex items-center gap-2 text-[9px] text-text-muted font-black uppercase tracking-wider">
-                                    <Waves size={12} className="text-primary" />
+                                    <Waves size={12} className="text-primary" />{" "}
                                     Weather
                                 </div>
                                 <p
                                     className="text-xs font-black text-text-primary mt-2 truncate"
                                     title={formatWeatherCondition(
-                                        sample.weatherCondition,
+                                        sample.weatherCondCode,
                                     )}
                                 >
                                     {formatWeatherCondition(
-                                        sample.weatherCondition,
+                                        sample.weatherCondCode,
                                     )}
                                 </p>
                             </div>
@@ -719,9 +720,10 @@ export default function CollectorHistoryDetailPage() {
                     </div>
                 </div>
 
+                {/* Standards Evaluation */}
                 <div className="bg-surface rounded-3xl shadow-sm border border-border p-5">
                     <h3 className="text-xs font-bold text-text-secondary mb-4 flex items-center gap-2">
-                        <ShieldCheck size={15} className="text-primary" />
+                        <ShieldCheck size={15} className="text-primary" />{" "}
                         การประเมินเทียบเกณฑ์มาตรฐานคุณภาพน้ำทะเล
                     </h3>
                     <div className="grid grid-cols-1 gap-2.5">
@@ -751,8 +753,8 @@ export default function CollectorHistoryDetailPage() {
                                 <span
                                     className={`font-mono text-[9px] font-black px-2 py-0.5 rounded-lg border flex-shrink-0 ${
                                         std.passed
-                                            ? "bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-800/30"
-                                            : "bg-red-100/70 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200/50 dark:border-red-800/30"
+                                            ? "bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50"
+                                            : "bg-red-100/70 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200/50"
                                     }`}
                                 >
                                     {std.passed ? "ปลอดภัย" : "ไม่ผ่าน"}

@@ -6,9 +6,9 @@ import { promises as fs } from "fs";
 
 export async function GET(request: NextRequest) {
     try {
-        // 1. ดึงข้อมูลตัวอย่างน้ำทั้งหมดที่ยังไม่โดน Soft Delete (ไม่ดึงตาราง collector เพื่อประหยัดทรัพยากร)
+        // ดึงข้อมูลตัวอย่างน้ำทั้งหมดที่ยังไม่โดนลบ (isDeleted: false) ตามผังระบบใหม่ของบอส
         const samples = await prisma.waterSample.findMany({
-            where: { isDelete: false },
+            where: { isDeleted: false }, 
             include: {
                 location: true,
             },
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet("Water Quality Report");
 
-        // 2. กำหนดโครงสร้างคอลัมน์ที่จำเป็นเท่านั้น (ตัด Metadata และชื่อคนเก็บออก)
+        // กำหนดโครงสร้างคอลัมน์รายงานสากล
         worksheet.columns = [
             { header: "No.", key: "no", width: 8 },
             { header: "Collection Time", key: "cTime", width: 20 },
@@ -28,17 +28,17 @@ export async function GET(request: NextRequest) {
             { header: "Longitude", key: "lon", width: 12 },
             { header: "Ammonia (mg/L)", key: "ammonia", width: 16 },
             { header: "Phosphate (mg/L)", key: "phosphate", width: 16 },
-            { header: "Dissolved Oxygen (mL/L)", key: "oxygen", width: 22 },
+            { header: "Dissolved Oxygen (mg/L)", key: "oxygen", width: 24 },
             { header: "Temperature (°C)", key: "temp", width: 16 },
             { header: "Rain Volume (mm)", key: "rain", width: 16 },
             { header: "Water Status", key: "status", width: 14 },
-            { header: "Visual Image", key: "image", width: 22 }, 
+            { header: "Visual Image", key: "image", width: 22 },
             { header: "AI Plot Detection", key: "imagePlot", width: 22 },
         ];
 
         worksheet.getRow(1).font = { bold: true };
 
-        // 3. วนลูปสร้างแถวข้อมูลหลัก
+        // 3. วนลูปสร้างแถวข้อมูลและฝังไฟล์ภาพไบนารีลงตาราง Excel
         let index = 1;
         for (const sample of samples) {
             const row = worksheet.addRow({
@@ -47,24 +47,23 @@ export async function GET(request: NextRequest) {
                     .toISOString()
                     .replace("T", " ")
                     .substring(0, 16),
-                locName: sample.location?.name || "N/A",
-                agency: sample.location?.agency || "N/A",
-                lat: sample.location?.lat || null,
-                lon: sample.location?.lon || null,
-                ammonia: sample.ammonia,
-                phosphate: sample.phosphate,
-                oxygen: sample.oxygen || "N/A",
-                temp: sample.temperature || "N/A",
-                rain: sample.rainVolume || "N/A",
+                locName: sample.location?.stationName || "N/A",
+                agency: sample.location?.governingAgency || "N/A",
+                lat: sample.location?.latitude || null, 
+                lon: sample.location?.longitude || null, 
+                ammonia: sample.ammoniaValue, 
+                phosphate: sample.phosphateValue,
+                oxygen: sample.dissolvedOxygen || "N/A", 
+                temp: sample.airTemperature || "N/A",
+                rain: sample.rainAccumulation || "N/A",
                 status: sample.status,
-                image: sample.imageUrl || "N/A",
-                imagePlot: sample.imagePlotUrl || "N/A",
+                image: sample.rawImageUrl ? "" : "N/A", 
+                imagePlot: sample.analyzedPlotUrl ? "" : "N/A", 
             });
 
-            // กำหนดความสูงของแถวให้แสดงผลรูปภาพได้สวยงาม ไม่บดบังตัวอักษร
-            row.height = 75;
+            row.height = 75; // ตั้งความสูงแถวให้สอดรับความสูงภาพ
 
-            // ฟังก์ชันวาดไฟล์ภาพไบนารีฝังลงตารางโดยตรงจาก Local Disk
+            // ฟังก์ชันวาดไฟล์ภาพฝังลงในช่องเซลล์ของตัว Excel
             const embedImageToCell = async (
                 imagePath: string | null,
                 colIndex: number,
@@ -81,7 +80,7 @@ export async function GET(request: NextRequest) {
                             cleanPath,
                         );
 
-                        // ตรวจสอบชัวร์ๆ ว่ามีไฟล์ภาพอยู่จริงบนเครื่องก่อนอ่านไฟล์
+                        // ตรวจสอบเช็กไฟล์ภาพบนตัวเครื่องเซิร์ฟเวอร์ก่อนหยิบมาอ่าน
                         await fs.access(fullPath);
                         const imageBuffer = await fs.readFile(fullPath);
 
@@ -90,7 +89,7 @@ export async function GET(request: NextRequest) {
                             extension: "jpeg",
                         });
 
-                        // ฝังรูปภาพลงในเซลล์ที่ระบุ
+                        // ฝังรูปภาพลงตามดัชนีพิกัดคอลัมน์ (0-indexed)
                         worksheet.addImage(imageId, {
                             tl: { col: colIndex, row: row.number - 1 },
                             ext: { width: 150, height: 95 },
@@ -102,13 +101,12 @@ export async function GET(request: NextRequest) {
                 }
             };
 
-            //  ปรับปรุงดัชนีคอลัมน์ (0-indexed) ให้ตรงตามตารางที่ลดความกว้างลงมา
             // คอลัมน์ที่ 12 คือ M (Visual Image), คอลัมน์ที่ 13 คือ N (AI Plot Detection)
-            await embedImageToCell(sample.imageUrl, 12);
-            await embedImageToCell(sample.imagePlotUrl, 13);
+            await embedImageToCell(sample.rawImageUrl, 12); // ปรับเป็นชื่อฟิลด์ใหม่ตัวแปรแรก
+            await embedImageToCell(sample.analyzedPlotUrl, 13); // ปรับเป็นชื่อฟิลด์ใหม่ตัวแปรพล็อตวิเคราะห์ค่าสี
         }
 
-        // 4. ส่งก้อน Buffer กลับออกไปให้หน้าบ้านดาวน์โหลดทันที
+        // 4. คอมไพล์ก้อน Buffer และตอบกลับให้บราว์เซอร์หน้าบ้านกดโหลดทันที
         const buffer = await workbook.xlsx.writeBuffer();
 
         return new Response(buffer, {
@@ -121,7 +119,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error("Export API Error:", error);
         return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการสร้างไฟล์ Excel" },
+            { error: "เกิดข้อผิดพลาดในการสร้างไฟล์ Excel รายงานผลน้ำ" },
             { status: 500 },
         );
     }

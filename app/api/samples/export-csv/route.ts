@@ -1,15 +1,16 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
     try {
-        // ดึงข้อมูลตัวอย่างน้ำเฉพาะรายการที่ยังไม่โดน Soft Delete
+        // ดึงข้อมูลตัวอย่างน้ำเฉพาะรายการที่ยังไม่โดน Soft Delete (isDeleted: false) ตาม Schema ใหม่ของบอส
         const samples = await prisma.waterSample.findMany({
-            where: { isDelete: false },
+            where: { isDeleted: false },
             include: { location: true },
             orderBy: { collectionTime: "desc" },
         });
 
-        // 1. กำหนดหัวตาราง CSV (Headers)
+        // กำหนดหัวตาราง CSV (Headers) ปรับหน่วย Dissolved Oxygen ให้ตรงสากล
         const headers = [
             "No.",
             "Collection Time",
@@ -19,13 +20,13 @@ export async function GET() {
             "Longitude",
             "Ammonia (mg/L)",
             "Phosphate (mg/L)",
-            "Dissolved Oxygen (mL/L)",
+            "Dissolved Oxygen (mg/L)",
             "Temperature (C)",
             "Rain Volume (mm)",
             "Water Status",
         ];
 
-        // 2. ประกอบร่างเนื้อหาข้อความตาราง CSV โดยใส่ BOM (\uFEFF) นำหน้าเพื่อกันภาษาไทยเป็นตัวต่างดาว
+        // ประกอบร่างเนื้อหาข้อความตาราง CSV โดยใส่ BOM (\uFEFF) นำหน้าเพื่อกันภาษาไทยเป็นตัวต่างดาวใน Excel
         let csvContent = "\uFEFF" + headers.join(",") + "\n";
 
         let index = 1;
@@ -36,21 +37,21 @@ export async function GET() {
                     .toISOString()
                     .replace("T", " ")
                     .substring(0, 16),
-                `"${s.location?.name || "N/A"}"`,
-                `"${s.location?.agency || "N/A"}"`,
-                s.location?.lat || "",
-                s.location?.lon || "",
-                s.ammonia,
-                s.phosphate,
-                s.oxygen || "N/A",
-                s.temperature || "N/A",
-                s.rainVolume || "N/A",
+                `"${s.location?.stationName || "N/A"}"`,
+                `"${s.location?.governingAgency || "N/A"}"`, 
+                s.location?.latitude || "", 
+                s.location?.longitude || "", 
+                s.ammoniaValue, 
+                s.phosphateValue, 
+                s.dissolvedOxygen || "N/A", 
+                s.airTemperature || "N/A", 
+                s.rainAccumulation || "N/A",
                 s.status,
             ];
             csvContent += row.join(",") + "\n";
         });
 
-        // 3. ส่งข้อมูลออกไปในรูปแบบของ Text / CSV File
+        // ส่งข้อมูลออกไปในรูปแบบของ Text / CSV File ครบถ้วนเสถียร
         return new Response(csvContent, {
             headers: {
                 "Content-Type": "text/csv; charset=utf-8",
@@ -59,5 +60,9 @@ export async function GET() {
         });
     } catch (error) {
         console.error("Export CSV API Error:", error);
+        return NextResponse.json(
+            { error: "เกิดข้อผิดพลาดในการสร้างไฟล์รายงาน CSV" },
+            { status: 500 },
+        );
     }
 }
