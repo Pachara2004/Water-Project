@@ -15,7 +15,7 @@ export default function LiffProvider({
     const currentUser = useAppStore((state) => state.currentUser);
     const setUser = useAppStore((state) => state.setUser);
 
-    // Onboarding States: แยกตัวแปรออกจากกันชัดเจน ป้องกันบั๊กทับซ้อน
+    // Onboarding States: ปล่อยหน้า UI เก็บตัวแปรเดียวเหมือนเดิมเพื่อให้กรอกง่าย
     const [fullName, setFullName] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
     const [submitting, setSubmitting] = useState(false);
@@ -27,7 +27,8 @@ export default function LiffProvider({
             console.warn(
                 "NEXT_PUBLIC_LIFF_ID is not set. Authenticating mock user...",
             );
-            fetch("/api/auth", {
+            // ปรับเส้นทางไปหาพาธจริงตามที่คุยกันไว้ครับบอส
+            fetch("/api/auth/session", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -36,12 +37,14 @@ export default function LiffProvider({
                 }),
             })
                 .then((res) => res.json())
-                .then((userData) => {
-                    setUser({
-                        ...userData,
-                        role: "ADMIN",
-                        phone: null, // ตั้งไว้เป็น null เพื่อทดสอบแผง Onboarding Guard
-                    });
+                .then((resData) => {
+                    if (resData.success) {
+                        setUser({
+                            ...resData.user,
+                            role: "admin", // เปลี่ยนเป็นพิมพ์เล็กตามระบบใหม่
+                            phoneNumber: null, // ตั้งไว้เป็น null เพื่อทดสอบแผง Onboarding Guard
+                        });
+                    }
                     setLiffLoaded(true);
                 })
                 .catch((err) => {
@@ -59,7 +62,7 @@ export default function LiffProvider({
                 }
 
                 const profile = await liff.getProfile();
-                const response = await fetch("/api/auth", {
+                const response = await fetch("/api/auth/session", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -71,8 +74,10 @@ export default function LiffProvider({
                 if (!response.ok)
                     throw new Error("Failed to authenticate with backend");
 
-                const userData = await response.json();
-                setUser(userData);
+                const resData = await response.json();
+                if (resData.success) {
+                    setUser(resData.user); // บันทึกข้อมูล { id, lineUniqueId, role, phoneNumber, ... } ลง Store
+                }
                 setLiffLoaded(true);
             })
             .catch((err) => {
@@ -82,12 +87,12 @@ export default function LiffProvider({
             });
     }, [setUser]);
 
-    // ตั้งชื่อฟังก์ชันใหม่ให้ครอบคลุมการลงทะเบียนภาพรวม
     const handleOnboardingSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) return;
 
-        if (!fullName.trim()) {
+        const trimmedName = fullName.trim();
+        if (!trimmedName) {
             setFormError("กรุณากรอกชื่อ-นามสกุลจริงของคุณ");
             return;
         }
@@ -99,17 +104,24 @@ export default function LiffProvider({
             return;
         }
 
+        // 🧠 กลไกแตกคำ: แยกข้อความชื่อ-นามสกุลออกจากกันด้วยช่องว่าง (Space) เพื่อให้ตรงล็อกตามโครงสร้าง DB ใหม่
+        const nameParts = trimmedName.split(/\s+/);
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(" ") || ""; // เผื่อนามสกุลพิมพ์ยาวหรือเว้นวรรคซ้อน
+
         setSubmitting(true);
         setFormError(null);
 
         try {
-            const res = await fetch("/api/auth/phone", {
-                method: "POST",
+            // 🚀 ยิงคำขออัปเดตไปที่สเตปถัดไป: API จัดเก็บประวัติข้อมูลส่วนตัวผู้ใช้ใหม่
+            const res = await fetch("/api/auth/onboarding", {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     userId: currentUser.id,
-                    name: fullName, // ส่งชื่อไปอัปเดตคู่กับเบอร์โทรตามหลักฐานข้อมูล
-                    phone: phoneNumber,
+                    firstName,
+                    lastName,
+                    phoneNumber,
                 }),
             });
 
@@ -120,8 +132,10 @@ export default function LiffProvider({
                 );
             }
 
-            const updatedUser = await res.json();
-            setUser(updatedUser);
+            const resData = await res.json();
+            if (resData.success) {
+                setUser(resData.user); // อัปเดตข้อมูลผู้ใช้ในระบบ Zustand Store ล่าสุดเพื่อให้แผง Guard สลายตัวออกไป
+            }
         } catch (err: unknown) {
             const errMsg =
                 err instanceof Error
@@ -133,61 +147,28 @@ export default function LiffProvider({
         }
     };
 
-    if (!liffLoaded) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-surface-muted">
-                <div className="flex flex-col items-center">
-                    <div className="h-9 w-9 declare-spin rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                    <p className="mt-4 text-primary font-black text-xs uppercase tracking-widest">
-                        Connecting LINE
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    if (liffError) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center p-4 bg-surface-muted">
-                <div className="rounded-2xl bg-surface border border-border/60 p-6 text-center shadow-lg max-w-sm w-full">
-                    <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <p className="font-black text-text-primary text-sm">
-                        เกิดข้อผิดพลาดในการโหลดระบบ
-                    </p>
-                    <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">
-                        {liffError}
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    // 🔐 Onboarding Guard Overlay Panel (UI ใหม่หรูหรา นิ่ง คลีน สไตล์ซอฟต์แวร์องค์กร)
-    if (currentUser && !currentUser.phone) {
+    // 🔐 ดักจับแผง Onboarding Guard พึ่งพาตัวแปรชื่อฟิลด์ตามโครงสร้าง Expressive ล่าสุด
+    if (currentUser && !currentUser.phoneNumber) {
         return (
             <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-surface-muted/60 backdrop-blur-xl p-4 sm:p-6 transition-all">
                 <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 shadow-xl flex flex-col justify-between">
-                    {/* Header Description */}
                     <div className="text-center space-y-2.5">
                         <div className="w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 shadow-xs mb-4">
                             <User size={22} strokeWidth={2.5} />
                         </div>
-
                         <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">
                             ลงทะเบียนเข้าใช้งานครั้งแรก
                         </h1>
                         <p className="text-xs text-text-secondary leading-relaxed max-w-[92%] mx-auto">
                             กรุณาระบุข้อมูลส่วนบุคคลของท่าน
-                            เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำ
+                            เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำชายฝั่ง
                         </p>
                     </div>
 
-                    {/* Form Action */}
                     <form
                         onSubmit={handleOnboardingSubmit}
                         className="mt-6 space-y-4"
                     >
-                        {/* Field 1: ชื่อ-นามสกุล */}
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">
                                 ชื่อ - นามสกุลจริง
@@ -209,7 +190,6 @@ export default function LiffProvider({
                             </div>
                         </div>
 
-                        {/* Field 2: เบอร์โทรศัพท์ */}
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">
                                 เบอร์โทรศัพท์มือถือ (10 หลัก)
@@ -237,7 +217,6 @@ export default function LiffProvider({
                             </div>
                         </div>
 
-                        {/* Error Indicator */}
                         {formError && (
                             <div className="text-[10px] text-red-500 font-extrabold px-1 pt-1 flex items-start gap-2 animate-fade-in leading-normal">
                                 <ShieldAlert
@@ -248,7 +227,6 @@ export default function LiffProvider({
                             </div>
                         )}
 
-                        {/* Action Submit Button */}
                         <div className="pt-3">
                             <button
                                 type="submit"
