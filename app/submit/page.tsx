@@ -54,7 +54,7 @@ function SubmitContent() {
     const [results, setResults] = useState<{
         phosphate: number;
         ammonia: number;
-        status: "SAFE" | "WARNING" | "DANGER";
+        status: "safe" | "warning" | "danger"; // 🔒 อัปเดต Enum โหมดพิมพ์เล็ก
         imageUrl: string;
     } | null>(null);
     const [saved, setSaved] = useState(false);
@@ -134,10 +134,10 @@ function SubmitContent() {
         }
     }, [currentLocationId, allLocations]);
 
-    // Role Gate
+    // 🔒 Security Role Gate — อัปเกรดเปรียบเทียบสิทธิ์พิมพ์เล็กชุดล่าสุดของบอส
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "COLLECTOR" && currentUser.role !== "ADMIN") {
+        if (currentUser.role !== "collector" && currentUser.role !== "admin") {
             router.push("/map");
         }
     }, [currentUser, router]);
@@ -166,7 +166,6 @@ function SubmitContent() {
                         lng: coords.longitude,
                     });
 
-                    // Sort all locations by distance from photo location to recommend
                     const sorted = [...allLocations].sort((a, b) => {
                         const distA = calculateDistance(
                             coords.latitude,
@@ -207,10 +206,8 @@ function SubmitContent() {
                 canvas.width = img.width;
                 canvas.height = img.height;
 
-                // 1. วาดรูปต้นฉบับลงไปก่อน
                 ctx.drawImage(img, 0, 0);
 
-                // 2. ดึงพิกัดจากคีย์ "bounding box"
                 const box = aiData["bounding box"];
                 if (box && box.length === 4) {
                     const x_min = box[0];
@@ -221,12 +218,10 @@ function SubmitContent() {
                     const width = x_max - x_min;
                     const height = y_max - y_min;
 
-                    // วาดกล่องเขียว (ปรับความหนาตามความละเอียดภาพ)
                     ctx.strokeStyle = "#28a745";
                     ctx.lineWidth = Math.max(4, img.width * 0.005);
                     ctx.strokeRect(x_min, y_min, width, height);
 
-                    // 3. เขียนข้อความกำกับเหนือกล่อง
                     const chemicalName = aiData.ammonia
                         ? "Ammonia"
                         : "Phosphate";
@@ -241,7 +236,6 @@ function SubmitContent() {
                     const textWidth = ctx.measureText(labelText).width;
                     const labelHeight = fontSize * 1.4;
 
-                    // วาดพื้นหลังป้ายชื่อ
                     ctx.fillStyle = "#28a745";
                     ctx.fillRect(
                         x_min - 2,
@@ -250,7 +244,6 @@ function SubmitContent() {
                         labelHeight,
                     );
 
-                    // เขียนตัวหนังสือสีขาว
                     ctx.fillStyle = "white";
                     ctx.fillText(
                         labelText,
@@ -259,7 +252,6 @@ function SubmitContent() {
                     );
                 }
 
-                // 4. แปลงร่างกลับเป็นไฟล์ File Object
                 canvas.toBlob((blob) => {
                     if (blob) {
                         const plottedFile = new File(
@@ -293,22 +285,19 @@ function SubmitContent() {
 
             const data = await res.json();
 
-            // 1. เพิ่มโค้ดประมวลผลแยกคีย์สารเคมีให้ตรงตามที่ AI พ่นมา
             const isAmmonia = data.ammonia === true;
             const targetPhosphate = isAmmonia ? 0 : data.concentrated;
             const targetAmmonia = isAmmonia ? data.concentrated : 0;
 
-            // 2. ⚡ สั่งให้พลอตรูปภาพอัตโนมัติเบื้องหลัง
             const plottedResult = await generateAiImagePlot(imageFile, data);
             if (plottedResult) {
-                setImagePlotFile(plottedResult); // เก็บลง State
+                setImagePlotFile(plottedResult);
             }
 
-            // 3. ปรับการเซ็ตค่าผลลัพธ์
             setResults({
                 phosphate: targetPhosphate,
                 ammonia: targetAmmonia,
-                status: data.status || "SAFE",
+                status: data.status ? data.status.toLowerCase() : "safe", // 🔒 เซ็ตโมดูลพิมพ์เล็ก
                 imageUrl: data.imageUrl || "",
             });
             setStep("results");
@@ -318,8 +307,7 @@ function SubmitContent() {
         }
     };
 
-    // แทนที่ฟังก์ชัน handleSave เดิมในคอมโพเนนต์ SubmitContent ของบอสครับ
-    // /src/app/submit/page.tsx (ฟังก์ชัน handleSave ด้านใน SubmitContent)
+    // 📌 แก้ไขบล็อก handleSave ภายใน src/app/submit/page.tsx ของบอสครับ
     const handleSave = async () => {
         // เช็กความปลอดภัยเบื้องต้นก่อนกดเซฟ
         if (!results || !currentLocationId || !currentUser || !imageFile)
@@ -335,7 +323,6 @@ function SubmitContent() {
 
             formData.append("locationId", currentLocationId);
 
-            // 🎯 แก้ไขจุดนี้: ป้องกันอาการอ่านค่า undefined ด้วยการเช็กดักไว้ก่อนและแปลงค่าอย่างปลอดภัย
             const pVal =
                 results.phosphate !== undefined && results.phosphate !== null
                     ? results.phosphate
@@ -348,23 +335,27 @@ function SubmitContent() {
             formData.append("phosphateVal", pVal.toString());
             formData.append("ammoniaVal", aVal.toString());
 
-            formData.append("status", results.status || "SAFE");
-            formData.append("collectedBy", currentUser.id);
+            formData.append("status", results.status || "safe");
+            formData.append("collectedBy", currentUser.id.toString());
             formData.append(
                 "collectionTime",
                 new Date(collectionTime).toISOString(),
             );
             if (oxygen) formData.append("oxygen", oxygen);
 
+            // 🚀 ⚡ จุดแก้ไขหลัก: แนบตั๋วยืนยันตน x-user-id และ x-user-role เข้าไปในกลุ่ม Headers
             const res = await fetch("/api/samples", {
                 method: "POST",
-                body: formData,
+                headers: {
+                    "x-user-id": currentUser.id.toString(),
+                    "x-user-role": currentUser.role.toLowerCase(), // ซิงค์ส่งตัวพิมพ์เล็ก
+                },
+                body: formData, // ปล่อย FormData วิ่งคู่ขนานไปกับ Headers ได้เลยครับ
             });
 
             if (res.ok) {
                 setSaved(true);
             } else {
-                // ถ้าฝั่ง Server ตอบกลับมาเป็น 500 จะหลุดมาฟ้องตรงนี้
                 const errData = await res.json();
                 console.error("Server save error details:", errData);
             }
@@ -373,7 +364,6 @@ function SubmitContent() {
         }
     };
 
-    // Evaluate against all 6 standards
     const getStandardsEvaluation = (phosphate: number, ammonia: number) => {
         const evalResults = evaluateAllStandards(phosphate, ammonia);
         return Object.entries(evalResults).map(([type, passed]) => ({
@@ -387,11 +377,7 @@ function SubmitContent() {
     };
 
     return (
-        <div
-            className="min-h-dvh w-full bg-surface-muted pb-10
-                    relative transition-colors duration-300"
-        >
-            {/* Centred content wrapper — page bg fills full-width, content stays readable */}
+        <div className="min-h-dvh w-full bg-surface-muted pb-10 relative transition-colors duration-300">
             <div className="w-full max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="bg-surface px-5 sm:px-8 lg:px-12 pt-12 pb-6 mb-6 sm:mb-8 border-b border-border transition-colors duration-300 max-w-2xl mx-auto w-full rounded-b-3xl">
@@ -403,7 +389,6 @@ function SubmitContent() {
                         ย้อนกลับ
                     </button>
 
-                    {/* Section Label Badge */}
                     <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-1 mb-2.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-secondary font-bold">
@@ -446,7 +431,6 @@ function SubmitContent() {
                         </div>
                     ) : (
                         <div className="mt-4 space-y-3">
-                            {/* Search box */}
                             <div className="relative">
                                 <input
                                     type="text"
@@ -459,7 +443,6 @@ function SubmitContent() {
                                 />
                             </div>
 
-                            {/* Search results */}
                             {searchQuery.trim() ? (
                                 <div className="flex flex-col gap-1.5">
                                     <p className="text-[9px] font-bold text-text-muted uppercase tracking-wide px-1 font-mono">
@@ -509,7 +492,6 @@ function SubmitContent() {
                                     )}
                                 </div>
                             ) : (
-                                /* Recommended locations - Horizontal scrolling row of chips (Glassmorphism allowed here) */
                                 <div>
                                     {nearestLocations.length > 0 ? (
                                         <>
@@ -569,7 +551,6 @@ function SubmitContent() {
                                     </h2>
                                 </div>
 
-                                {/* Upload zone - High Contrast & clean corners */}
                                 <div
                                     onClick={() =>
                                         fileInputRef.current?.click()
@@ -588,7 +569,6 @@ function SubmitContent() {
                                         />
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full gap-3 px-6">
-                                            {/* Visual Target cyan-neon corners */}
                                             <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-primary rounded-tl-sm" />
                                             <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-primary rounded-tr-sm" />
                                             <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-primary rounded-bl-sm" />
@@ -626,7 +606,6 @@ function SubmitContent() {
                                     />
                                 </div>
 
-                                {/* Collection Time Field */}
                                 <div className="mt-5 space-y-2">
                                     <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">
                                         เวลาที่เก็บตัวอย่างน้ำจริง (Collection
@@ -642,13 +621,11 @@ function SubmitContent() {
                                         className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs focus:border-primary outline-none min-h-[44px]"
                                     />
                                     <p className="text-[8px] text-text-muted leading-relaxed">
-                                        *ระบุเวลาจริงที่ลงพื้นที่เก็บตัวอย่าง
-                                        เพื่อดึงข้อมูลสภาพอากาศ TMD
-                                        ย้อนหลังได้ถูกต้อง
+                                        *ระบุเวลาจริงที่ลงพื้นที่
+                                        เพื่อดึงข้อมูลสภาพอากาศย้อนหลังได้ถูกต้อง
                                     </p>
                                 </div>
 
-                                {/* Analyze button - Premium Gradient */}
                                 <button
                                     onClick={handleAnalyze}
                                     disabled={
@@ -663,7 +640,7 @@ function SubmitContent() {
                                             <Loader2
                                                 size={16}
                                                 className="animate-spin"
-                                            />
+                                            />{" "}
                                             กำลังค้นพิกัดแนะนำ...
                                         </>
                                     ) : (
@@ -687,7 +664,7 @@ function SubmitContent() {
                         </div>
                     )}
 
-                    {/* Step 2: Analyzing (Sci-fi Scanning Box) */}
+                    {/* Step 2: Analyzing */}
                     {step === "analyzing" && (
                         <div className="bg-surface rounded-3xl shadow-md border border-border overflow-hidden p-6 transition-all duration-300">
                             <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-inner mb-6">
@@ -698,12 +675,8 @@ function SubmitContent() {
                                         className="w-full h-full object-contain bg-surface-subtle opacity-40 filter blur-[0.5px]"
                                     />
                                 )}
-                                {/* Scanning Laser Line (pure CSS) */}
                                 <div className="animate-laser" />
-                                {/* High-tech Scanning Grid Overlay */}
                                 <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
-
-                                {/* Active targets corners */}
                                 <div className="absolute top-4 left-4 w-3.5 h-3.5 border-t border-l border-primary" />
                                 <div className="absolute top-4 right-4 w-3.5 h-3.5 border-t border-r border-primary" />
                                 <div className="absolute bottom-4 left-4 w-3.5 h-3.5 border-b border-l border-primary" />
@@ -738,7 +711,6 @@ function SubmitContent() {
                     {/* Step 3: Results */}
                     {step === "results" && results && (
                         <div className="space-y-4 animate-fade-in">
-                            {/* Uploaded Image Preview */}
                             {imagePreview && (
                                 <div className="bg-surface rounded-3xl shadow-md border border-border overflow-hidden p-2 transition-all duration-300">
                                     <img
@@ -755,7 +727,6 @@ function SubmitContent() {
                                 </div>
                             )}
 
-                            {/* Overall Status */}
                             <div className="bg-surface rounded-3xl shadow-md border border-border p-5 transition-all duration-300">
                                 <div className="flex items-center gap-2 mb-4">
                                     <div className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center">
@@ -765,7 +736,6 @@ function SubmitContent() {
                                         Overall Analysis Results
                                     </h2>
                                 </div>
-
                                 <div className="bg-surface-subtle border border-border rounded-2xl p-5 text-center">
                                     <span className="font-mono text-[9px] font-bold text-text-muted uppercase tracking-wider mb-2.5 block">
                                         สถานะคุณภาพน้ำโดยรวม
@@ -779,9 +749,7 @@ function SubmitContent() {
                                 </div>
                             </div>
 
-                            {/* Chemical Values */}
                             <div className="grid grid-cols-2 gap-4">
-                                {/* Phosphate */}
                                 <div className="bg-surface rounded-2xl p-5 shadow-md border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
                                     <div className="flex items-center gap-1.5 mb-3">
                                         <div className="bg-primary-light p-1.5 rounded-xl border border-primary/10">
@@ -807,7 +775,7 @@ function SubmitContent() {
                                                 return getParameterStatus(
                                                     results.phosphate,
                                                     std.phosphateMax,
-                                                ) === "SAFE"
+                                                ) === "safe"
                                                     ? "text-emerald-600 dark:text-emerald-400"
                                                     : "text-red-600 dark:text-red-400";
                                             })()}`}
@@ -822,7 +790,6 @@ function SubmitContent() {
                                     </div>
                                 </div>
 
-                                {/* Ammonia */}
                                 <div className="bg-surface rounded-2xl p-5 shadow-md border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
                                     <div className="flex items-center gap-1.5 mb-3">
                                         <div className="bg-purple-50 dark:bg-purple-950/20 p-1.5 rounded-xl border border-purple-100/10">
@@ -848,7 +815,7 @@ function SubmitContent() {
                                                 return getParameterStatus(
                                                     results.ammonia,
                                                     std.ammoniaMax,
-                                                ) === "SAFE"
+                                                ) === "safe"
                                                     ? "text-emerald-600 dark:text-emerald-400"
                                                     : "text-red-600 dark:text-red-400";
                                             })()}`}
@@ -862,7 +829,6 @@ function SubmitContent() {
                                 </div>
                             </div>
 
-                            {/* Optional Dissolved Oxygen (DO) Input Card */}
                             <div className="bg-surface rounded-3xl shadow-md border border-border p-5 transition-all duration-300">
                                 <div className="flex items-center gap-2 mb-4">
                                     <div className="w-6 h-6 bg-primary-light text-primary rounded-xl flex items-center justify-center border border-primary/10">
@@ -872,7 +838,6 @@ function SubmitContent() {
                                         Optional Meteorological Inputs
                                     </h2>
                                 </div>
-
                                 <div className="space-y-3">
                                     <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">
                                         ปริมาณออกซิเจนละลายน้ำ (Dissolved Oxygen
@@ -892,24 +857,21 @@ function SubmitContent() {
                                             className="w-full px-5 py-3.5 pr-12 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[48px]"
                                         />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-[9px] font-bold text-text-muted">
-                                            mL/L
+                                            mg/L
                                         </span>
                                     </div>
                                     <p className="text-[8px] text-text-muted leading-relaxed">
-                                        *ข้อมูลออกซิเจนละลายน้ำนี้เป็นแบบระบุเลือกได้
-                                        (Non-blocking)
-                                        เพื่อใช้เป็นตัวแปรพยากรณ์โครงสร้างคณิตศาสตร์ระบบในภายหลัง
+                                        *ข้อมูลออกซิเจนละลายน้ำเพื่อใช้เป็นตัวแปรพยากรณ์ระบบในภายหลัง
                                     </p>
                                 </div>
                             </div>
 
-                            {/* Standards Evaluation - 6 Types (Solid flat panels for maximum GPU speed) */}
                             <div className="bg-surface rounded-2xl shadow-md border border-border p-5 transition-all duration-200">
                                 <h3 className="text-xs font-bold text-text-secondary mb-4 flex items-center gap-2">
                                     <ShieldCheck
                                         size={15}
                                         className="text-primary"
-                                    />
+                                    />{" "}
                                     การประเมินเทียบเกณฑ์มาตรฐานคุณภาพน้ำทะเล
                                 </h3>
                                 <div className="grid grid-cols-1 gap-2.5">
@@ -942,8 +904,8 @@ function SubmitContent() {
                                             <span
                                                 className={`font-mono text-[9px] font-black px-2 py-0.5 rounded-lg border flex-shrink-0 ${
                                                     std.passed
-                                                        ? "bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-800/30"
-                                                        : "bg-red-100/70 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200/50 dark:border-red-800/30"
+                                                        ? "bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50"
+                                                        : "bg-red-100/70 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200/50"
                                                 }`}
                                             >
                                                 {std.passed
@@ -955,13 +917,12 @@ function SubmitContent() {
                                 </div>
                             </div>
 
-                            {/* Save button */}
                             {!saved ? (
                                 <button
                                     onClick={handleSave}
                                     className="w-full py-4 min-h-[48px] bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 shadow-md cursor-pointer mt-2"
                                 >
-                                    <CheckCircle2 size={16} />
+                                    <CheckCircle2 size={16} />{" "}
                                     บันทึกผลการตรวจสอบลงระบบ
                                 </button>
                             ) : (
@@ -974,7 +935,7 @@ function SubmitContent() {
                                         บันทึกข้อมูลสำเร็จ!
                                     </p>
                                     <p className="text-[10px] text-text-secondary mt-1.5 max-w-[85%] mx-auto leading-relaxed">
-                                        ผลการตรวจวัดถูกจัดเก็บเข้าสู่ระบบคลาวด์หลักและอัปเดตตำแหน่งพิกัดแผนที่แล้ว
+                                        ผลการตรวจวัดถูกจัดเก็บเข้าสู่ระบบคลาวด์และอัปเดตแผนที่เรียบร้อย
                                     </p>
                                     <button
                                         onClick={() => router.push("/map")}

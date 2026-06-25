@@ -11,7 +11,7 @@ async function getAuthenticatedUser(request: NextRequest) {
     const role = request.headers.get("x-user-role");
 
     if (!id || !role) return null;
-    return { id: Number(id), role }; // แปลงเป็น number ตามระบบ Int ออโต้
+    return { id: Number(id), role: role.toLowerCase() }; // 🛡️ บังคับแปลงเป็นพิมพ์เล็กเพื่อความปลอดภัยสากล
 }
 
 // 📌 GET /api/samples — ดึงรายการตัวอย่างน้ำทั้งหมดตามเงื่อนไขตัวกรอง
@@ -30,7 +30,15 @@ export async function GET(request: NextRequest) {
             where,
             include: {
                 location: true,
-                collector: true,
+                collector: {
+                    select: {
+                        id: true,
+                        lineProfileName: true,
+                        firstName: true,
+                        lastName: true,
+                        phoneNumber: true,
+                    },
+                },
             },
             orderBy: { collectionTime: "desc" },
         });
@@ -48,7 +56,7 @@ export async function GET(request: NextRequest) {
 // 📌 POST /api/samples — บันทึกตัวอย่างน้ำ (🔒 เฉพาะ admin และ collector)
 export async function POST(request: NextRequest) {
     try {
-        // 🛡️ SECURITY STEP 1: ตรวจสอบสิทธิ์ผู้ใช้งานผ่านระบบ Headers
+        // 🛡️ SECURITY STEP 1: ตรวจสอบสิทธิ์ผู้ใช้งานผ่านระบบ Headers (ซิงค์พิมพ์เล็กเรียบร้อย)
         const user = await getAuthenticatedUser(request);
         if (!user) {
             return NextResponse.json(
@@ -192,7 +200,7 @@ export async function POST(request: NextRequest) {
                 weatherCondCode: weather?.weatherCondition
                     ? Number(weather.weatherCondition)
                     : null,
-                status: status as WaterStatus, // แมปตรงพิมพ์เล็ก 'safe' | 'warning' | 'danger'
+                status: status.toLowerCase() as WaterStatus, // แมปตรงพิมพ์เล็ก 'safe' | 'warning' | 'danger'
                 rawImageUrl: dbImageUrl,
                 analyzedPlotUrl: dbImagePlotUrl, // 👈 บันทึกพาธภาพแปรผลวิเคราะห์
                 isDeleted: false,

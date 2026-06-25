@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import { createLocationIcon } from "../LocationPin";
 import BottomSheet, { BottomSheetLocation } from "./BottomSheet";
 import FilterBar from "./OfficerFilterBar";
-import StatusFilterBar from "./StatusFilterBar"; // <-- 1. เพิ่ม Import Component ใหม่
+import StatusFilterBar from "./StatusFilterBar";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useMap } from "react-leaflet";
@@ -20,7 +20,7 @@ interface LocationData {
     createdAt: string;
     latestSample: {
         id: number;
-        status: "SAFE" | "WARNING" | "DANGER";
+        status: "safe" | "warning" | "danger"; // 🔒 ปรับตาม Enum พิมพ์เล็กสากลล่าสุด
         phosphateVal: number | null;
         ammoniaVal: number | null;
         collectedAt: string;
@@ -64,9 +64,8 @@ export default function MapView({
     pickedPosition,
 }: MapViewProps) {
     const [locations, setLocations] = useState<LocationData[]>([]);
-    // <-- 2. แยก State เป็น 2 ตัว สำหรับหน่วยงาน และ คุณภาพน้ำ
     const [agencyFilter, setAgencyFilter] = useState("ALL");
-    const [statusFilter, setStatusFilter] = useState("ALL");
+    const [statusFilter, setStatusFilter] = useState("ALL"); // ค่า 'ALL' หรือพิมพ์เล็ก 'safe' | 'warning' | 'danger'
 
     const [selectedLocation, setSelectedLocation] =
         useState<BottomSheetLocation | null>(null);
@@ -110,18 +109,19 @@ export default function MapView({
     const fetchLocations = useCallback(async () => {
         try {
             setLoading(true);
-            // <-- 3. อัปเดตเงื่อนไขดึง API และกรองข้อมูล
             const params = agencyFilter !== "ALL" ? `?org=${agencyFilter}` : "";
             const res = await fetch(`/api/locations${params}`);
             let data = await res.json();
 
             if (!Array.isArray(data)) data = [];
 
-            // กรองสถานะคุณภาพน้ำ (ถ้าไม่ได้เลือก ALL)
+            // 🎯 จุดแก้ไขหลัก: แปลงฟิลเตอร์สเตตัสเปรียบเทียบเป็นตัวพิมพ์เล็กให้ตรงเซสชันคลังข้อมูลล่าสุด
             if (statusFilter !== "ALL") {
+                const targetStatus = statusFilter.toLowerCase();
                 data = data.filter(
                     (loc: LocationData) =>
-                        loc.latestSample?.status === statusFilter,
+                        loc.latestSample?.status?.toLowerCase() ===
+                        targetStatus,
                 );
             }
 
@@ -131,7 +131,7 @@ export default function MapView({
         } finally {
             setLoading(false);
         }
-    }, [agencyFilter, statusFilter]); // <-- อัปเดต Dependency ตรงนี้
+    }, [agencyFilter, statusFilter]);
 
     useEffect(() => {
         if (mode === "explorer") {
@@ -161,7 +161,7 @@ export default function MapView({
 
     return (
         <div className="relative w-full h-full">
-            {/* <-- 4. สร้าง Container หุ้ม Filter ทั้ง 2 ตัว ให้อยู่มุมซ้ายบนเหมือนเดิม */}
+            {/* Filter Container */}
             {mode === "explorer" && (
                 <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 lg:left-6 z-[600] flex items-center gap-3">
                     <FilterBar
