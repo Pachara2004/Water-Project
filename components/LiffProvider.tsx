@@ -15,7 +15,7 @@ export default function LiffProvider({
     const currentUser = useAppStore((state) => state.currentUser);
     const setUser = useAppStore((state) => state.setUser);
 
-    // Onboarding States: ปล่อยหน้า UI เก็บตัวแปรเดียวเหมือนเดิมเพื่อให้กรอกง่าย
+    // Onboarding States
     const [fullName, setFullName] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
     const [submitting, setSubmitting] = useState(false);
@@ -23,12 +23,13 @@ export default function LiffProvider({
 
     useEffect(() => {
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+
+        // ─── ท่อนพัฒนา/MOCK SYSTEM ───
         if (!liffId) {
             console.warn(
                 "NEXT_PUBLIC_LIFF_ID is not set. Authenticating mock user...",
             );
-            // ปรับเส้นทางไปหาพาธจริงตามที่คุยกันไว้ครับบอส
-            fetch("/api/auth/session", {
+            fetch("/api/auth", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -38,22 +39,22 @@ export default function LiffProvider({
             })
                 .then((res) => res.json())
                 .then((resData) => {
-                    if (resData.success) {
-                        setUser({
-                            ...resData.user,
-                            role: "admin", // เปลี่ยนเป็นพิมพ์เล็กตามระบบใหม่
-                            phoneNumber: null, // ตั้งไว้เป็น null เพื่อทดสอบแผง Onboarding Guard
-                        });
-                    }
+                    setUser({
+                        ...resData,
+                        role: "admin",
+                        phoneNumber: null, // บังคับเป็น null เผื่อให้บอสทดสอบแผงหน้ากาก Onboarding
+                    });
                     setLiffLoaded(true);
                 })
                 .catch((err) => {
                     console.error("Failed to mock authenticate:", err);
                     setLiffError("ไม่สามารถจำลองการยืนยันตัวตนกับฐานข้อมูลได้");
+                    setLiffLoaded(true);
                 });
             return;
         }
 
+        // ─── ท่อนเชื่อมต่อ LINE LIFF PRODUCTION REAL SYSTEM ───
         liff.init({ liffId })
             .then(async () => {
                 if (!liff.isLoggedIn()) {
@@ -75,10 +76,8 @@ export default function LiffProvider({
                     throw new Error("Failed to authenticate with backend");
 
                 const resData = await response.json();
-                if (resData.success) {
-                    setUser(resData.user); // บันทึกข้อมูล { id, lineUniqueId, role, phoneNumber, ... } ลง Store
-                }
-                setLiffLoaded(true);
+                setUser(resData); // ยัดข้อมูล { id, lineUniqueId, role, phoneNumber } ลง Zustand ตรง ๆ
+                setLiffLoaded(true); // ปลดล็อกหน้าจอ Connecting LINE
             })
             .catch((err) => {
                 console.error("LIFF init error", err);
@@ -106,7 +105,7 @@ export default function LiffProvider({
 
         const nameParts = trimmedName.split(/\s+/);
         const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(" ") || ""; // เผื่อนามสกุลพิมพ์ยาวหรือเว้นวรรคซ้อน
+        const lastName = nameParts.slice(1).join(" ") || "";
 
         setSubmitting(true);
         setFormError(null);
@@ -132,7 +131,7 @@ export default function LiffProvider({
 
             const resData = await res.json();
             if (resData.success) {
-                setUser(resData.user); // อัปเดตข้อมูลผู้ใช้ในระบบ Zustand Store ล่าสุดเพื่อให้แผง Guard สลายตัวออกไป
+                setUser(resData.user); // อัปเดตทับข้อมูลเก่าในคลังเพื่อให้หน้ากากจางหายไป
             }
         } catch (err: unknown) {
             const errMsg =
@@ -145,10 +144,42 @@ export default function LiffProvider({
         }
     };
 
+    // ถ้ากระบวนการโหลดตั๋วสิทธิ์ LINE LIFF ยังไม่เสร็จสิ้น บล็อกหน้าจอห้ามผ่านเด็ดขาด
+    if (!liffLoaded) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-surface-muted">
+                <div className="flex flex-col items-center">
+                    <div className="h-9 w-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                    <p className="mt-4 text-primary font-black text-xs uppercase tracking-widest animate-pulse">
+                        Connecting LINE...
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // หากระบบเซิร์ฟเวอร์แครช ดีดหน้าแจ้งเตือนภัยความปลอดภัย
+    if (liffError) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center p-4 bg-surface-muted">
+                <div className="rounded-2xl bg-surface border border-border/60 p-6 text-center shadow-lg max-w-sm w-full">
+                    <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <p className="font-black text-text-primary text-sm">
+                        เกิดข้อผิดพลาดในการโหลดระบบ
+                    </p>
+                    <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">
+                        {liffError}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // แผง Onboarding Guard ดักจับบังคับกรอกข้อมูลส่วนบุคคลจริง (สมบูรณ์ ไร้รอยต่อ)
     if (currentUser && !currentUser.phoneNumber) {
         return (
             <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-surface-muted/60 backdrop-blur-xl p-4 sm:p-6 transition-all">
-                <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 shadow-xl flex flex-col justify-between">
+                <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 shadow-xl flex flex-col justify-between animate-fade-in">
                     <div className="text-center space-y-2.5">
                         <div className="w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 shadow-xs mb-4">
                             <User size={22} strokeWidth={2.5} />
@@ -215,7 +246,7 @@ export default function LiffProvider({
                         </div>
 
                         {formError && (
-                            <div className="text-[10px] text-red-500 font-extrabold px-1 pt-1 flex items-start gap-2 animate-fade-in leading-normal">
+                            <div className="text-[10px] text-red-500 font-extrabold px-1 pt-1 flex items-start gap-2 leading-normal">
                                 <ShieldAlert
                                     size={12}
                                     className="shrink-0 mt-0.5"
