@@ -129,7 +129,7 @@ export default function Navbar() {
                     <div className="flex items-center justify-center gap-3 px-1.5 py-1 min-h-[40px] w-full">
                         <div className="flex flex-col leading-none">
                             <span className="font-black text-sm text-text-primary tracking-tight whitespace-nowrap">
-                                WaterQuality
+                                Water Quality
                             </span>
                         </div>
                     </div>
@@ -145,7 +145,7 @@ export default function Navbar() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`group flex items-center h-11 rounded-xl font-bold text-xs transition-all duration-200 active:scale-[0.98] overflow-hidden w-full px-4 gap-3.5 relative ${
+                                    className={`group flex items-center h-11 rounded-xl font-semibold text-xs transition-all duration-200 active:scale-[0.98] overflow-hidden w-full px-4 gap-3.5 relative ${
                                         isActive
                                             ? "bg-primary text-white shadow-sm"
                                             : "text-text-secondary hover:bg-surface-subtle hover:text-text-primary"
@@ -174,11 +174,11 @@ export default function Navbar() {
                                 <User size={16} strokeWidth={2.5} />
                             </div>
                             <div className="flex flex-col min-w-0 ml-3 leading-tight">
-                                <span className="text-xs font-black text-text-primary truncate">
+                                <span className="text-xs font-semibold text-text-primary truncate">
                                     {currentUser.firstName ||
                                         currentUser.lineProfileName}
                                 </span>
-                                <span className="text-[9px] text-text-muted font-bold tracking-wider uppercase mt-0.5 truncate">
+                                <span className="text-[9px] text-text-muted font-semibold uppercase tracking-wider mt-0.5 truncate">
                                     {currentUser.role}
                                 </span>
                             </div>

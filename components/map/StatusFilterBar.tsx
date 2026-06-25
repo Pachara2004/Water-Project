@@ -52,13 +52,12 @@ export default function StatusFilterBar({
                     <Droplets size={18} className="text-blue-500" />
                 </div>
                 <div className="flex flex-col items-start leading-none">
-                    <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
+                    <span className="text-[9px] text-text-muted font-semibold uppercase tracking-wider">
                         คุณภาพน้ำ
                     </span>
-                    <span className="font-bold text-text-primary text-xs mt-1.5 flex items-center">
-                        {/* 🛠️ เติมคลาสขนาดและรูปทรงกลมของจุดไข่ปลาให้แสดงผลได้ถูกต้องสวยงาม */}
+                    <span className="font-semibold text-text-primary text-xs flex items-center">
                         <span
-                            className={`inline-block mr-2 ${currentOption.dotClass}`}
+                            className={`inline-block ${currentOption.dotClass}`}
                         />
                         {currentOption.label}
                     </span>
@@ -84,7 +83,7 @@ export default function StatusFilterBar({
                                         onChange(option.value);
                                         setIsOpen(false);
                                     }}
-                                    className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2.5 cursor-pointer
+                                    className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-2.5 cursor-pointer
                     ${
                         isSelected
                             ? "bg-primary/10 text-primary"
@@ -96,7 +95,11 @@ export default function StatusFilterBar({
                       ${option.dotClass} 
                       ${isSelected ? "scale-110 opacity-100" : "scale-90 opacity-60"}`}
                                     />
-                                    <span>{option.label}</span>
+                                    <span
+                                        className="font-semibold"
+                                    >
+                                        {option.label}
+                                    </span>
                                 </button>
                             );
                         })}
