@@ -8,16 +8,16 @@ import { Camera, FileText, FlaskConical, MapPin, Calendar, Beaker, ImageOff} fro
 import StatusBadge from "@/components/map/StatusBadge";
 
 interface CollectorSample {
-    id: number; // 🔢 อัปเกรดเป็นเลข Int ออโต้ตามผังหลังบ้าน
-    locationId: number; // 🔢 อัปเกรดเป็นเลข Int ออโต้ตามผังหลังบ้าน
-    status: "safe" | "warning" | "danger"; // 🔒 เปลี่ยนตาม Enum พิมพ์เล็กสากลล่าสุด
+    id: number;
+    locationId: number;
+    status: "safe" | "warning" | "danger";
     collectedAt: string | Date;
-    collectedBy: number; // 🔢 อัปเกรดเป็นเลข Int ออโต้ตามผังหลังบ้าน
+    collectedBy: number;
     imageUrl?: string | null;
     imagePlotUrl?: string | null;
     phosphateVal?: number | null;
     ammoniaVal?: number | null;
-    isDeleted: boolean; // 👈 แก้ชื่อตัวแปร Expressive ล่าสุด
+    isDeleted: boolean;
     updatedBy?: number | null;
     location?: {
         id: number;
@@ -38,7 +38,7 @@ export default function CollectorDashboard() {
 
     useEffect(() => {
         if (!currentUser) return;
-        // 🔒 ดักจับสิทธิ์ระบบพิมพ์เล็กสมบูรณ์แบบ
+        // ดักจับสิทธิ์ระบบพิมพ์เล็กสมบูรณ์แบบ
         if (currentUser.role !== "collector" && currentUser.role !== "admin") {
             router.push("/map");
             return;
@@ -54,17 +54,17 @@ export default function CollectorDashboard() {
                         status: s.status,
                         collectedAt: s.collectionTime,
                         collectedBy: s.collectorId,
-                        imageUrl: s.rawImageUrl, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
-                        imagePlotUrl: s.analyzedPlotUrl, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
-                        isDeleted: s.isDeleted, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
-                        updatedBy: s.lastModifiedBy, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
-                        phosphateVal: s.phosphateValue, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
-                        ammoniaVal: s.ammoniaValue, // 👈 แมปตรงกับชื่อตัวแปรฐานข้อมูลใหม่
+                        imageUrl: s.rawImageUrl,
+                        imagePlotUrl: s.analyzedPlotUrl,
+                        isDeleted: s.isDeleted,
+                        updatedBy: s.lastModifiedBy,
+                        phosphateVal: s.phosphateValue,
+                        ammoniaVal: s.ammoniaValue,
                         location: s.location
                             ? {
                                   id: s.locationId,
-                                  name: s.location.stationName, // 👈 แมปตรงตามฟิลด์ใหม่
-                                  organization: s.location.governingAgency, // 👈 แมปตรงตามฟิลด์ใหม่
+                                  name: s.location.stationName,
+                                  organization: s.location.governingAgency,
                               }
                             : null,
                     }));
@@ -88,10 +88,7 @@ export default function CollectorDashboard() {
                 <div className="w-48 h-5 bg-surface-subtle shimmer rounded-md mt-10" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {[1, 2, 3].map((n) => (
-                        <div
-                            key={n}
-                            className="w-full h-28 rounded-2xl bg-surface border border-border/60 flex p-5 gap-4"
-                        >
+                        <div key={n} className="w-full h-28 rounded-2xl bg-surface border border-border/60 flex p-5 gap-4">
                             <div className="w-16 h-16 rounded-xl bg-surface-subtle shimmer flex-shrink-0" />
                             <div className="flex-1 space-y-3 mt-1">
                                 <div className="w-1/2 h-3 bg-surface-subtle rounded" />
@@ -111,13 +108,9 @@ export default function CollectorDashboard() {
                     <div className="space-y-1.5">
                         <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary flex items-center gap-2">
                             ศูนย์ข้อมูล
-                            <span className="text-primary font-black">
-                                ผู้เก็บตัวอย่างน้ำ
-                            </span>
+                            <span className="text-primary font-black">ผู้เก็บตัวอย่างน้ำ</span>
                         </h1>
-                        <p className="text-text-secondary text-xs sm:text-sm">
-                            ระบบรายงานและสืบค้นผลวิเคราะห์สารเคมีในน้ำทะเลชายฝั่ง
-                        </p>
+                        <p className="text-text-secondary text-xs sm:text-sm">ระบบรายงานและสืบค้นผลวิเคราะห์สารเคมีในน้ำทะเลชายฝั่ง</p>
                     </div>
 
                     <button
@@ -133,17 +126,13 @@ export default function CollectorDashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 px-1">
                     <div className="inline-flex items-center gap-2">
                         <FileText size={15} className="text-primary" />
-                        <h2 className="font-mono text-[10px] sm:text-xs uppercase tracking-[0.2em] text-text-secondary font-black">
-                            Submission History
-                        </h2>
+                        <h2 className="font-mono text-[10px] sm:text-xs uppercase tracking-[0.2em] text-text-secondary font-black">Submission History</h2>
                     </div>
 
                     {/* iOS-Style Toggle */}
                     <div className="inline-flex items-center gap-3 bg-surface border border-border/50 px-4 py-1.5 rounded-md shadow-xs shrink-0 w-max">
-                        <span className="text-xs font-bold text-text-secondary">
-                            ดูเฉพาะข้อมูลของฉัน
-                        </span>
-                        <button
+                        <span className="text-xs font-bold text-text-secondary">ดูเฉพาะข้อมูลของฉัน</span>
+                        <button title="button"
                             type="button"
                             onClick={() => setShowOnlyMine(!showOnlyMine)}
                             className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out outline-none ${
@@ -152,9 +141,7 @@ export default function CollectorDashboard() {
                         >
                             <span
                                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out mt-0.5 ${
-                                    showOnlyMine
-                                        ? "translate-x-4.5"
-                                        : "translate-x-0.5"
+                                    showOnlyMine ? "translate-x-4.5" : "translate-x-0.5"
                                 }`}
                             />
                         </button>
@@ -163,13 +150,7 @@ export default function CollectorDashboard() {
 
                 {/* Content Core Render */}
                 {(() => {
-                    const displayedSamples = (
-                        showOnlyMine
-                            ? samples.filter(
-                                  (s) => s.collectedBy === currentUser?.id,
-                              )
-                            : samples
-                    ).filter((s) => !s.isDeleted); // 👈 เปลี่ยนเป็นตัวแปรใหม่
+                    const displayedSamples = (showOnlyMine ? samples.filter((s) => s.collectedBy === currentUser?.id) : samples).filter((s) => !s.isDeleted); // 👈 เปลี่ยนเป็นตัวแปรใหม่
 
                     if (displayedSamples.length === 0) {
                         return (
@@ -177,14 +158,8 @@ export default function CollectorDashboard() {
                                 <div className="w-12 h-12 bg-surface-subtle rounded-xl flex items-center justify-center mb-4 border border-border/60 text-text-muted">
                                     <FileText size={20} />
                                 </div>
-                                <p className="text-text-primary font-black mb-1.5 text-sm sm:text-base">
-                                    {showOnlyMine
-                                        ? "คุณยังไม่มีประวัติการส่งข้อมูล"
-                                        : "ยังไม่มีประวัติการส่งข้อมูลในระบบ"}
-                                </p>
-                                <p className="text-xs text-text-secondary mb-6 max-w-sm leading-relaxed">
-                                    เริ่มต้นส่งภาพชุดทดสอบคุณภาพน้ำเพื่อบันทึกและประมวลผลค่าน้ำในพื้นที่ของท่าน
-                                </p>
+                                <p className="text-text-primary font-black mb-1.5 text-sm sm:text-base">{showOnlyMine ? "คุณยังไม่มีประวัติการส่งข้อมูล" : "ยังไม่มีประวัติการส่งข้อมูลในระบบ"}</p>
+                                <p className="text-xs text-text-secondary mb-6 max-w-sm leading-relaxed">เริ่มต้นส่งภาพชุดทดสอบคุณภาพน้ำเพื่อบันทึกและประมวลผลค่าน้ำในพื้นที่ของท่าน</p>
                                 <button
                                     onClick={() => router.push("/submit")}
                                     className="px-5 py-2.5 min-h-[42px] bg-primary text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2"
@@ -204,83 +179,50 @@ export default function CollectorDashboard() {
                                 return (
                                     <div
                                         key={sample.id}
-                                        onClick={() =>
-                                            router.push(
-                                                `/collector/history/${sample.id}`,
-                                            )
-                                        }
+                                        onClick={() => router.push(`/collector/history/${sample.id}`)}
                                         className="bg-surface rounded-2xl p-4 border border-border/50 shadow-xs hover:shadow-md flex flex-col justify-between transition-all duration-200 cursor-pointer group hover:border-border-strong relative"
                                     >
                                         {/* Top Row: Meta and Badges */}
                                         <div className="flex gap-4 items-start w-full">
                                             {/* Thumbnail Section */}
-                                            {sample.imageUrl &&
-                                            !hasImageError ? (
+                                            {sample.imageUrl && !hasImageError ? (
                                                 <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-subtle border border-border/60 flex-shrink-0 relative bg-neutral-100">
                                                     <img
                                                         src={sample.imageUrl}
                                                         alt="sample data"
-                                                        onError={() =>
-                                                            handleImageError(
-                                                                sample.id,
-                                                            )
-                                                        }
+                                                        onError={() => handleImageError(sample.id)}
                                                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
                                                     />
                                                 </div>
-                                            ) : sample.imageUrl &&
-                                              hasImageError ? (
+                                            ) : sample.imageUrl && hasImageError ? (
                                                 <div
                                                     className="w-16 h-16 border border-border/60 rounded-xl flex flex-col items-center justify-center gap-0.5 animate-fade-in text-text-muted"
                                                     title="ไม่สามารถโหลดรูปภาพได้"
                                                 >
-                                                    <ImageOff
-                                                        size={16}
-                                                        strokeWidth={2.5}
-                                                    />
-                                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-80">
-                                                        Error
-                                                    </span>
+                                                    <ImageOff size={16} strokeWidth={2.5} />
+                                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Error</span>
                                                 </div>
                                             ) : (
                                                 <div className="w-16 h-16 bg-surface-subtle rounded-xl flex items-center justify-center border border-border/60 flex-shrink-0 text-primary">
-                                                    <FlaskConical
-                                                        size={18}
-                                                        strokeWidth={2.5}
-                                                    />
+                                                    <FlaskConical size={18} strokeWidth={2.5} />
                                                 </div>
                                             )}
 
                                             {/* Content Data Stack */}
                                             <div className="flex-1 min-w-0 space-y-1">
                                                 <div className="flex items-center gap-1.5 text-xs font-extrabold text-text-primary truncate">
-                                                    <MapPin
-                                                        size={13}
-                                                        className="text-primary shrink-0"
-                                                    />
-                                                    <span className="truncate">
-                                                        {sample.location
-                                                            ?.name ||
-                                                            "ไม่ทราบสถานที่"}
-                                                    </span>
+                                                    <MapPin size={13} className="text-primary shrink-0" />
+                                                    <span className="truncate">{sample.location?.name || "ไม่ทราบสถานที่"}</span>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold">
-                                                    <Calendar
-                                                        size={11}
-                                                        className="shrink-0"
-                                                    />
+                                                    <Calendar size={11} className="shrink-0" />
                                                     <span>
-                                                        {new Date(
-                                                            sample.collectedAt,
-                                                        ).toLocaleDateString(
-                                                            "th-TH",
-                                                            {
-                                                                day: "numeric",
-                                                                month: "short",
-                                                                year: "2-digit",
-                                                            },
-                                                        )}
+                                                        {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                            day: "numeric",
+                                                            month: "short",
+                                                            year: "2-digit",
+                                                        })}
                                                     </span>
                                                 </div>
                                             </div>
@@ -290,41 +232,16 @@ export default function CollectorDashboard() {
                                         <div className="mt-4 pt-3.5 border-t border-border/40 flex items-center justify-between gap-2">
                                             <div className="flex items-center gap-3 text-[11px] font-bold text-text-secondary">
                                                 <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md">
-                                                    <Beaker
-                                                        size={11}
-                                                        className="text-blue-500"
-                                                    />
-                                                    <span>
-                                                        P:{" "}
-                                                        {sample.phosphateVal !==
-                                                            null &&
-                                                        sample.phosphateVal !==
-                                                            undefined
-                                                            ? `${sample.phosphateVal} mg/L`
-                                                            : "-"}
-                                                    </span>
+                                                    <Beaker size={11} className="text-blue-500" />
+                                                    <span>P: {sample.phosphateVal !== null && sample.phosphateVal !== undefined ? `${sample.phosphateVal} mg/L` : "-"}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md">
-                                                    <Beaker
-                                                        size={11}
-                                                        className="text-amber-500"
-                                                    />
-                                                    <span>
-                                                        N:{" "}
-                                                        {sample.ammoniaVal !==
-                                                            null &&
-                                                        sample.ammoniaVal !==
-                                                            undefined
-                                                            ? `${sample.ammoniaVal} mg/L`
-                                                            : "-"}
-                                                    </span>
+                                                    <Beaker size={11} className="text-amber-500" />
+                                                    <span>N: {sample.ammoniaVal !== null && sample.ammoniaVal !== undefined ? `${sample.ammoniaVal} mg/L` : "-"}</span>
                                                 </div>
                                             </div>
 
-                                            <StatusBadge
-                                                status={sample.status}
-                                                size="sm"
-                                            />
+                                            <StatusBadge status={sample.status} size="sm" />
                                         </div>
                                     </div>
                                 );

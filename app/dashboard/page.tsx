@@ -7,19 +7,19 @@ import AnalyticsCharts, { SampleItem } from "@/components/AnalyticsCharts";
 import ExportButtons from "@/components/dashboard/ExportButtons";
 
 interface ApiSampleResponse {
-    id: number; 
-    locationId: number; 
-    status: "safe" | "warning" | "danger" | string; 
+    id: number;
+    locationId: number;
+    status: "safe" | "warning" | "danger" | string;
     collectionTime: string;
-    collectorId: number; 
-    rawImageUrl?: string | null; 
-    analyzedPlotUrl?: string | null; 
-    isDeleted: boolean; 
+    collectorId: number;
+    rawImageUrl?: string | null;
+    analyzedPlotUrl?: string | null;
+    isDeleted: boolean;
     phosphateValue?: number | null;
     ammoniaValue?: number | null;
     location?: {
         name: string;
-        organization: string; 
+        organization: string;
     } | null;
 }
 
@@ -33,13 +33,9 @@ export default function ExecutiveDashboard() {
     useEffect(() => {
         if (!currentUser) return;
 
-        // 🔒 ตรวจจับระดับสิทธิ์ระบบพิมพ์เล็กสากล
+        // ตรวจจับระดับสิทธิ์ระบบพิมพ์เล็กสากล
         const userRole = currentUser.role?.toLowerCase();
-        if (
-            userRole !== "officer" &&
-            userRole !== "admin" &&
-            userRole !== "collector"
-        ) {
+        if (userRole !== "officer" && userRole !== "admin" && userRole !== "collector") {
             router.push("/map");
             return;
         }
@@ -65,9 +61,7 @@ export default function ExecutiveDashboard() {
                     const mapped = data.map((s: ApiSampleResponse) => ({
                         id: String(s.id),
                         locationId: String(s.locationId),
-                        status: s.status
-                            ? (s.status.toUpperCase() as any)
-                            : "SAFE",
+                        status: s.status ? (s.status.toUpperCase() as any) : "SAFE",
                         collectedAt: s.collectionTime,
                         collectedBy: s.collectorId,
                         imageUrl: s.rawImageUrl,
@@ -98,9 +92,7 @@ export default function ExecutiveDashboard() {
 
         const userRole = currentUser.role?.toLowerCase();
         if (viewMode === "MINE" || userRole === "collector") {
-            return samples.filter(
-                (sample: any) => sample.collectedBy === currentUser.id,
-            );
+            return samples.filter((sample: any) => sample.collectedBy === currentUser.id);
         }
 
         return samples;
@@ -112,10 +104,7 @@ export default function ExecutiveDashboard() {
                 <div className="w-full h-52 rounded-3xl shimmer border border-border" />
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                     {[1, 2, 3, 4].map((n) => (
-                        <div
-                            key={n}
-                            className="w-full h-24 rounded-2xl bg-surface shimmer border border-border"
-                        />
+                        <div key={n} className="w-full h-24 rounded-2xl bg-surface shimmer border border-border" />
                     ))}
                 </div>
                 <div className="w-full h-64 rounded-3xl shimmer border border-border" />
@@ -126,9 +115,7 @@ export default function ExecutiveDashboard() {
     // แมปบทบาทผู้ใช้ให้แสดงผลคำกำกับบนปุ่มได้เสถียรทั้งพิมพ์เล็กพิมพ์ใหญ่
     const isUserAdmin = currentUser?.role?.toUpperCase() === "ADMIN";
     const isUserCollector = currentUser?.role?.toUpperCase() === "COLLECTOR";
-    const isUserExecutive =
-        currentUser?.role?.toUpperCase() === "EXECUTIVE" ||
-        currentUser?.role?.toUpperCase() === "OFFICER";
+    const isUserExecutive = currentUser?.role?.toUpperCase() === "EXECUTIVE" || currentUser?.role?.toUpperCase() === "OFFICER";
 
     return (
         <div className="min-h-screen w-full bg-surface-muted pb-16 transition-colors duration-300">
@@ -136,15 +123,9 @@ export default function ExecutiveDashboard() {
                 <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                     <div className="space-y-1.5">
                         <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary flex items-center gap-2">
-                            ระบบวิเคราะห์และติดตาม{" "}
-                            <span className="text-primary font-black">
-                                คุณภาพน้ำทะเล
-                            </span>
+                            ระบบวิเคราะห์และติดตาม <span className="text-primary font-black">คุณภาพน้ำทะเล</span>
                         </h1>
-                        <p className="text-text-secondary text-xs sm:text-sm">
-                            ศูนย์ข้อมูลคุณภาพสารเคมีแบบเรียลไทม์
-                            และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม{" "}
-                        </p>
+                        <p className="text-text-secondary text-xs sm:text-sm">ศูนย์ข้อมูลคุณภาพสารเคมีแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม </p>
                     </div>
                     <ExportButtons />
                 </div>
@@ -155,9 +136,7 @@ export default function ExecutiveDashboard() {
                             <button
                                 onClick={() => setViewMode("ALL")}
                                 className={`px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                                    viewMode === "ALL"
-                                        ? "bg-primary text-white shadow-sm"
-                                        : "text-text-secondary hover:text-text-primary"
+                                    viewMode === "ALL" ? "bg-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
                                 }`}
                             >
                                 ภาพรวมทั้งหมด
@@ -165,9 +144,7 @@ export default function ExecutiveDashboard() {
                             <button
                                 onClick={() => setViewMode("MINE")}
                                 className={`px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                                    viewMode === "MINE"
-                                        ? "bg-primary text-white shadow-sm"
-                                        : "text-text-secondary hover:text-text-primary"
+                                    viewMode === "MINE" ? "bg-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
                                 }`}
                             >
                                 ข้อมูลของฉัน
@@ -176,16 +153,8 @@ export default function ExecutiveDashboard() {
                     </div>
                 )}
 
-                {isUserCollector && (
-                    <div className="px-5 sm:px-8 mb-2 text-xs text-text-secondary text-right">
-                        แสดงเฉพาะข้อมูลการจัดเก็บของคุณ
-                    </div>
-                )}
-                {isUserExecutive && (
-                    <div className="px-5 sm:px-8 mb-2 text-xs text-text-secondary text-right">
-                        แสดงภาพรวมข้อมูลทั้งหมดในระบบ
-                    </div>
-                )}
+                {isUserCollector && <div className="px-5 sm:px-8 mb-2 text-xs text-text-secondary text-right">แสดงเฉพาะข้อมูลการจัดเก็บของคุณ</div>}
+                {isUserExecutive && <div className="px-5 sm:px-8 mb-2 text-xs text-text-secondary text-right">แสดงภาพรวมข้อมูลทั้งหมดในระบบ</div>}
 
                 <div className="px-5 sm:px-8 mt-4 sm:mt-5">
                     <AnalyticsCharts samples={filteredSamples} />

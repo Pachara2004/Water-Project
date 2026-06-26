@@ -3,13 +3,13 @@ import { create } from "zustand";
 export type UserRole = "admin" | "officer" | "collector" | "guest";
 
 export interface CurrentUser {
-    id: number; 
-    lineUniqueId: string; 
-    lineProfileName: string; 
-    firstName: string | null; 
+    id: number;
+    lineUniqueId: string;
+    lineProfileName: string;
+    firstName: string | null;
     lastName: string | null;
-    phoneNumber: string | null; 
-    role: UserRole; 
+    phoneNumber: string | null;
+    role: UserRole;
 }
 
 interface AppState {
@@ -28,9 +28,7 @@ export const useAppStore = create<AppState>((set) => ({
     // สลับบทบาทผู้ใช้งานชั่วคราว (ใช้ในหน้าจัดการสมาชิกของ Admin)
     setRole: (role) =>
         set((state) => ({
-            currentUser: state.currentUser
-                ? { ...state.currentUser, role }
-                : null,
+            currentUser: state.currentUser ? { ...state.currentUser, role } : null,
         })),
 
     // เซ็ตข้อมูลและอัปโหลด Payload ลงสู่สถานะคลังสโตร์หลัก

@@ -33,18 +33,15 @@ export async function GET() {
         samples.forEach((s) => {
             const row = [
                 index++,
-                s.collectionTime
-                    .toISOString()
-                    .replace("T", " ")
-                    .substring(0, 16),
+                s.collectionTime.toISOString().replace("T", " ").substring(0, 16),
                 `"${s.location?.stationName || "N/A"}"`,
-                `"${s.location?.governingAgency || "N/A"}"`, 
-                s.location?.latitude || "", 
-                s.location?.longitude || "", 
-                s.ammoniaValue, 
-                s.phosphateValue, 
-                s.dissolvedOxygen || "N/A", 
-                s.airTemperature || "N/A", 
+                `"${s.location?.governingAgency || "N/A"}"`,
+                s.location?.latitude || "",
+                s.location?.longitude || "",
+                s.ammoniaValue,
+                s.phosphateValue,
+                s.dissolvedOxygen || "N/A",
+                s.airTemperature || "N/A",
                 s.rainAccumulation || "N/A",
                 s.status,
             ];
@@ -60,9 +57,6 @@ export async function GET() {
         });
     } catch (error) {
         console.error("Export CSV API Error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการสร้างไฟล์รายงาน CSV" },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการสร้างไฟล์รายงาน CSV" }, { status: 500 });
     }
 }

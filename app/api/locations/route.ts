@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// 🔒 ฟังก์ชันภายในช่วยแกะอ่านค่าบทบาทและ ID จาก Custom Headers หน้าบ้าน
+// ฟังก์ชันภายในช่วยแกะอ่านค่าบทบาทและ ID จาก Custom Headers หน้าบ้าน
 async function getAuthenticatedUser(request: NextRequest) {
     const id = request.headers.get("x-user-id");
     const role = request.headers.get("x-user-role");
@@ -10,17 +10,14 @@ async function getAuthenticatedUser(request: NextRequest) {
     return { id: Number(id), role }; // แปลง ID บอสกลับเป็นเลข Int ตามระบบใหม่
 }
 
-// 📌 GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุด 10 ชุด
+// GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุด 10 ชุด
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const orgFilter = searchParams.get("org");
 
         // แมปตัวแปรเงื่อนไขตามฟิลด์ใหม่ governingAgency
-        const where =
-            orgFilter && orgFilter !== "ALL"
-                ? { governingAgency: orgFilter }
-                : {};
+        const where = orgFilter && orgFilter !== "ALL" ? { governingAgency: orgFilter } : {};
 
         const locations = await prisma.location.findMany({
             where,
@@ -32,20 +29,20 @@ export async function GET(request: NextRequest) {
                     select: {
                         id: true,
                         status: true,
-                        phosphateValue: true, // 👈 เปลี่ยนเป็น Value
-                        ammoniaValue: true, // 👈 เปลี่ยนเป็น Value
+                        phosphateValue: true,
+                        ammoniaValue: true,
                         collectionTime: true,
-                        dissolvedOxygen: true, // 👈 เปลี่ยนเป็น dissolvedOxygen
-                        airTemperature: true, // 👈 อัปเดตตามฟิลด์ลมฟ้าอากาศใหม่
+                        dissolvedOxygen: true,
+                        airTemperature: true,
                         rainAccumulation: true,
                         weatherCondCode: true,
                         collector: {
                             select: {
                                 id: true,
                                 lineProfileName: true,
-                                firstName: true, // 👈 ดึงชื่อจริง-นามสกุลจริงออกหน้าแสดงผล
+                                firstName: true,
                                 lastName: true,
-                                phoneNumber: true, // 👈 ดึงเบอร์จริง
+                                phoneNumber: true,
                             },
                         },
                     },
@@ -53,7 +50,7 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        // 🔄 Transform ปรับโครงสร้างข้อมูลส่งคืนกลับไปให้หน้าบ้านจับแสดงผลบนแผนที่
+        // Transform ปรับโครงสร้างข้อมูลส่งคืนกลับไปให้หน้าบ้านจับแสดงผลบนแผนที่
         const result = locations.map((loc) => {
             const mappedSamples = loc.samples.map((s) => ({
                 id: s.id,
@@ -69,9 +66,7 @@ export async function GET(request: NextRequest) {
                     ? {
                           id: s.collector.id,
                           displayName: s.collector.lineProfileName,
-                          fullName:
-                              `${s.collector.firstName || ""} ${s.collector.lastName || ""}`.trim() ||
-                              "เจ้าหน้าที่ภาคสนาม",
+                          fullName: `${s.collector.firstName || ""} ${s.collector.lastName || ""}`.trim() || "เจ้าหน้าที่ภาคสนาม",
                           phone: s.collector.phoneNumber,
                       }
                     : null,
@@ -79,8 +74,8 @@ export async function GET(request: NextRequest) {
 
             return {
                 id: loc.id,
-                name: loc.stationName, // 👈 ปรับตามฟิลด์ Expressive ล่าสุด
-                organization: loc.governingAgency, // 👈 ปรับตามฟิลด์ Expressive ล่าสุด
+                name: loc.stationName,
+                organization: loc.governingAgency,
                 lat: loc.latitude,
                 lng: loc.longitude,
                 latestSample: mappedSamples[0] || null,
@@ -90,26 +85,20 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(result);
     } catch (error) {
-        console.error("❌ GET /api/locations error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการดึงข้อมูลสถานีชายฝั่ง" },
-            { status: 500 },
-        );
+        console.error("GET /api/locations error:", error);
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลสถานีชายฝั่ง" }, { status: 500 });
     }
 }
 
-// 📌 POST /api/locations — เพิ่มสถานีจุดตรวจพิกัดใหม่ (🔒 admin เท่านั้น)
+// POST /api/locations — เพิ่มสถานีจุดตรวจพิกัดใหม่
 export async function POST(request: NextRequest) {
     try {
         const user = await getAuthenticatedUser(request);
         if (!user) {
-            return NextResponse.json(
-                { error: "Unauthorized: กรุณาเข้าสู่ระบบก่อนทำรายการ" },
-                { status: 401 },
-            );
+            return NextResponse.json({ error: "Unauthorized: กรุณาเข้าสู่ระบบก่อนทำรายการ" }, { status: 401 });
         }
 
-        // 🔒 อิงสิทธิ์ชื่อพิมพ์เล็กตามที่ Seed ลงตารางไว้
+        // อิงสิทธิ์ชื่อพิมพ์เล็กตามที่ Seed ลงตารางไว้
         if (user.role !== "admin") {
             return NextResponse.json(
                 {
@@ -123,10 +112,7 @@ export async function POST(request: NextRequest) {
         const { name, organization, lat, lng } = body;
 
         if (!name || !organization || lat === undefined || lng === undefined) {
-            return NextResponse.json(
-                { error: "กรุณากรอกข้อมูลจำเพาะสถานีให้ครบถ้วน" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "กรุณากรอกข้อมูลจำเพาะสถานีให้ครบถ้วน" }, { status: 400 });
         }
 
         const location = await prisma.location.create({
@@ -149,15 +135,12 @@ export async function POST(request: NextRequest) {
             { status: 201 },
         );
     } catch (error) {
-        console.error("❌ POST /api/locations error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการบันทึกข้อมูลพิกัดสถานี" },
-            { status: 500 },
-        );
+        console.error("POST /api/locations error:", error);
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการบันทึกข้อมูลพิกัดสถานี" }, { status: 500 });
     }
 }
 
-// 📌 PUT /api/locations — ปรับปรุงแก้ไขข้อมูลพิกัดสถานีเดิม (🔒 admin เท่านั้น)
+// PUT /api/locations — ปรับปรุงแก้ไขข้อมูลพิกัดสถานีเดิม
 export async function PUT(request: NextRequest) {
     try {
         const user = await getAuthenticatedUser(request);
@@ -174,16 +157,12 @@ export async function PUT(request: NextRequest) {
         const { id, name, organization, lat, lng } = body;
 
         if (!id) {
-            return NextResponse.json(
-                { error: "กรุณาระบุรหัส ID สถานีที่ต้องการแก้ไข" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "กรุณาระบุรหัส ID สถานีที่ต้องการแก้ไข" }, { status: 400 });
         }
 
         const updateData: any = {};
         if (name !== undefined) updateData.stationName = name;
-        if (organization !== undefined)
-            updateData.governingAgency = organization;
+        if (organization !== undefined) updateData.governingAgency = organization;
         if (lat !== undefined) updateData.latitude = parseFloat(lat);
         if (lng !== undefined) updateData.longitude = parseFloat(lng);
 
@@ -200,15 +179,12 @@ export async function PUT(request: NextRequest) {
             lng: location.longitude,
         });
     } catch (error) {
-        console.error("❌ PUT /api/locations error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการแก้ไขข้อมูลโครงสร้างสถานี" },
-            { status: 500 },
-        );
+        console.error("PUT /api/locations error:", error);
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการแก้ไขข้อมูลโครงสร้างสถานี" }, { status: 500 });
     }
 }
 
-// 📌 DELETE /api/locations — ลบสถานีพิกัดออกจากระบบ (🔒 admin เท่านั้น)
+// DELETE /api/locations — ลบสถานีพิกัดออกจากระบบ
 export async function DELETE(request: NextRequest) {
     try {
         const user = await getAuthenticatedUser(request);
@@ -225,10 +201,7 @@ export async function DELETE(request: NextRequest) {
         const id = searchParams.get("id");
 
         if (!id) {
-            return NextResponse.json(
-                { error: "กรุณาระบุรหัส ID จุดตรวจที่ต้องการถอดถอน" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "กรุณาระบุรหัส ID จุดตรวจที่ต้องการถอดถอน" }, { status: 400 });
         }
 
         const targetId = Number(id);
@@ -241,10 +214,7 @@ export async function DELETE(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("❌ DELETE /api/locations error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการลบข้อมูลสถานีวิจัยออกจากเซิร์ฟเวอร์" },
-            { status: 500 },
-        );
+        console.error("DELETE /api/locations error:", error);
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการลบข้อมูลสถานีวิจัยออกจากเซิร์ฟเวอร์" }, { status: 500 });
     }
 }

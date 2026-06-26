@@ -6,13 +6,7 @@
  */
 
 // 🔑 1. กำหนดประเภทสิทธิ์พิกัดใช้งานจริงโดยตรง (เนื่องจากใน Schema ปัจจุบันไม่ได้ประกาศ Enum ตัวนี้ไว้)
-export type LocationType =
-    | "CONSERVATION"
-    | "CORAL_REEF"
-    | "AQUACULTURE"
-    | "RECREATION"
-    | "INDUSTRY"
-    | "COMMUNITY";
+export type LocationType = "CONSERVATION" | "CORAL_REEF" | "AQUACULTURE" | "RECREATION" | "INDUSTRY" | "COMMUNITY";
 
 export interface StandardThresholds {
     phosphateMax: number;
@@ -44,10 +38,7 @@ export type StatusType = "safe" | "warning" | "danger";
  * Determine the status for a single parameter against its maximum threshold
  * 🧠 ปรับคำนวณจุด Warning: หากค่าน้ำเกิน 70% ของเกณฑ์สูงสุด ให้ขึ้นสถานะเฝ้าระวังทันที
  */
-export function getParameterStatus(
-    value: number | null | undefined,
-    max: number,
-): StatusType {
+export function getParameterStatus(value: number | null | undefined, max: number): StatusType {
     if (value === null || value === undefined) return "safe";
 
     if (value > max) return "danger";
@@ -64,17 +55,10 @@ export interface EvaluationResult {
 /**
  * Determine overall water quality status based on location type
  */
-export function evaluateSample(
-    phosphate: number | null | undefined,
-    ammonia: number | null | undefined,
-    locationType: LocationType = "COMMUNITY",
-): EvaluationResult {
+export function evaluateSample(phosphate: number | null | undefined, ammonia: number | null | undefined, locationType: LocationType = "COMMUNITY"): EvaluationResult {
     const standards = LOCATION_STANDARDS[locationType];
 
-    const phosphateStatus = getParameterStatus(
-        phosphate,
-        standards.phosphateMax,
-    );
+    const phosphateStatus = getParameterStatus(phosphate, standards.phosphateMax);
     const ammoniaStatus = getParameterStatus(ammonia, standards.ammoniaMax);
 
     // 🔄 ลอจิกรวบยอดหาความเสี่ยงสูงสุด
@@ -95,19 +79,14 @@ export function evaluateSample(
 /**
  * Evaluate sample against ALL standards to see which it passes
  */
-export function evaluateAllStandards(
-    phosphate: number | null | undefined,
-    ammonia: number | null | undefined,
-): Record<LocationType, boolean> {
+export function evaluateAllStandards(phosphate: number | null | undefined, ammonia: number | null | undefined): Record<LocationType, boolean> {
     const results = {} as Record<LocationType, boolean>;
 
     for (const [type, std] of Object.entries(LOCATION_STANDARDS)) {
         const locType = type as LocationType;
         // ผ่านเกณฑ์ของสิทธิ์โซนนั้น ๆ หมายความว่าค่าน้ำต้องไม่หลุดไปอยู่ในระดับอันตราย (danger)
-        const po4Passed =
-            getParameterStatus(phosphate, std.phosphateMax) !== "danger";
-        const nh3Passed =
-            getParameterStatus(ammonia, std.ammoniaMax) !== "danger";
+        const po4Passed = getParameterStatus(phosphate, std.phosphateMax) !== "danger";
+        const nh3Passed = getParameterStatus(ammonia, std.ammoniaMax) !== "danger";
         results[locType] = po4Passed && nh3Passed;
     }
 

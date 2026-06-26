@@ -5,11 +5,7 @@ import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { Phone, UserPen, ShieldAlert, User, CheckCircle2 } from "lucide-react";
 
-export default function LiffProvider({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function LiffProvider({ children }: { children: React.ReactNode }) {
     const [liffLoaded, setLiffLoaded] = useState(false);
     const [liffError, setLiffError] = useState<string | null>(null);
     const currentUser = useAppStore((state) => state.currentUser);
@@ -26,9 +22,7 @@ export default function LiffProvider({
 
         // ─── ท่อนพัฒนา/MOCK SYSTEM ───
         if (!liffId) {
-            console.warn(
-                "NEXT_PUBLIC_LIFF_ID is not set. Authenticating mock user...",
-            );
+            console.warn("NEXT_PUBLIC_LIFF_ID is not set. Authenticating mock user...");
             fetch("/api/auth", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -72,8 +66,7 @@ export default function LiffProvider({
                     }),
                 });
 
-                if (!response.ok)
-                    throw new Error("Failed to authenticate with backend");
+                if (!response.ok) throw new Error("Failed to authenticate with backend");
 
                 const resData = await response.json();
                 setUser(resData); // ยัดข้อมูล { id, lineUniqueId, role, phoneNumber } ลง Zustand ตรง ๆ
@@ -97,9 +90,7 @@ export default function LiffProvider({
         }
 
         if (!/^[0-9]{10}$/.test(phoneNumber)) {
-            setFormError(
-                "กรุณากรอกเบอร์โทรศัพท์มือถือให้ครบ 10 หลัก (เช่น 0812345678)",
-            );
+            setFormError("กรุณากรอกเบอร์โทรศัพท์มือถือให้ครบ 10 หลัก (เช่น 0812345678)");
             return;
         }
 
@@ -124,9 +115,7 @@ export default function LiffProvider({
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(
-                    errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-                );
+                throw new Error(errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
             }
 
             const resData = await res.json();
@@ -134,10 +123,7 @@ export default function LiffProvider({
                 setUser(resData.user); // อัปเดตทับข้อมูลเก่าในคลังเพื่อให้หน้ากากจางหายไป
             }
         } catch (err: unknown) {
-            const errMsg =
-                err instanceof Error
-                    ? err.message
-                    : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
+            const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
             setFormError(errMsg);
         } finally {
             setSubmitting(false);
@@ -150,9 +136,7 @@ export default function LiffProvider({
             <div className="flex h-screen w-full items-center justify-center bg-surface-muted">
                 <div className="flex flex-col items-center">
                     <div className="h-9 w-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                    <p className="mt-4 text-primary font-black text-xs uppercase tracking-widest animate-pulse">
-                        Connecting LINE...
-                    </p>
+                    <p className="mt-4 text-primary font-black text-xs uppercase tracking-widest animate-pulse">Connecting LINE...</p>
                 </div>
             </div>
         );
@@ -164,12 +148,8 @@ export default function LiffProvider({
             <div className="flex h-screen w-full items-center justify-center p-4 bg-surface-muted">
                 <div className="rounded-2xl bg-surface border border-border/60 p-6 text-center shadow-lg max-w-sm w-full">
                     <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <p className="font-black text-text-primary text-sm">
-                        เกิดข้อผิดพลาดในการโหลดระบบ
-                    </p>
-                    <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">
-                        {liffError}
-                    </p>
+                    <p className="font-black text-text-primary text-sm">เกิดข้อผิดพลาดในการโหลดระบบ</p>
+                    <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">{liffError}</p>
                 </div>
             </div>
         );
@@ -184,73 +164,45 @@ export default function LiffProvider({
                         <div className="w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 shadow-xs mb-4">
                             <User size={22} strokeWidth={2.5} />
                         </div>
-                        <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">
-                            ลงทะเบียนเข้าใช้งานครั้งแรก
-                        </h1>
+                        <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">ลงทะเบียนเข้าใช้งานครั้งแรก</h1>
                         <p className="text-xs text-text-secondary leading-relaxed max-w-[92%] mx-auto">
-                            กรุณาระบุข้อมูลส่วนบุคคลของท่าน
-                            เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำชายฝั่ง
+                            กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำชายฝั่ง
                         </p>
                     </div>
 
-                    <form
-                        onSubmit={handleOnboardingSubmit}
-                        className="mt-6 space-y-4"
-                    >
+                    <form onSubmit={handleOnboardingSubmit} className="mt-6 space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">
-                                ชื่อ - นามสกุลจริง
-                            </label>
+                            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">ชื่อ - นามสกุลจริง</label>
                             <div className="relative">
                                 <input
                                     type="text"
                                     value={fullName}
-                                    onChange={(e) =>
-                                        setFullName(e.target.value)
-                                    }
+                                    onChange={(e) => setFullName(e.target.value)}
                                     placeholder="เช่น นายสมชาย ใจดี"
                                     className="w-full pl-11 pr-4 bg-surface-subtle border border-border/80 text-text-primary rounded-xl text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-bold"
                                 />
-                                <UserPen
-                                    size={14}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80"
-                                />
+                                <UserPen size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80" />
                             </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">
-                                เบอร์โทรศัพท์มือถือ (10 หลัก)
-                            </label>
+                            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">เบอร์โทรศัพท์มือถือ (10 หลัก)</label>
                             <div className="relative">
                                 <input
                                     type="tel"
                                     maxLength={10}
                                     value={phoneNumber}
-                                    onChange={(e) =>
-                                        setPhoneNumber(
-                                            e.target.value.replace(
-                                                /[^0-9]/g,
-                                                "",
-                                            ),
-                                        )
-                                    }
+                                    onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ""))}
                                     placeholder="เช่น 0812345678"
                                     className="w-full pl-11 pr-4 bg-surface-subtle border border-border/80 text-text-primary rounded-xl text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-mono font-bold"
                                 />
-                                <Phone
-                                    size={14}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80"
-                                />
+                                <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80" />
                             </div>
                         </div>
 
                         {formError && (
                             <div className="text-[10px] text-red-500 font-extrabold px-1 pt-1 flex items-start gap-2 leading-normal">
-                                <ShieldAlert
-                                    size={12}
-                                    className="shrink-0 mt-0.5"
-                                />
+                                <ShieldAlert size={12} className="shrink-0 mt-0.5" />
                                 <span>{formError}</span>
                             </div>
                         )}
@@ -258,11 +210,7 @@ export default function LiffProvider({
                         <div className="pt-3">
                             <button
                                 type="submit"
-                                disabled={
-                                    submitting ||
-                                    !fullName.trim() ||
-                                    phoneNumber.length < 10
-                                }
+                                disabled={submitting || !fullName.trim() || phoneNumber.length < 10}
                                 className="w-full h-11 bg-primary hover:bg-primary/95 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                             >
                                 {submitting ? (

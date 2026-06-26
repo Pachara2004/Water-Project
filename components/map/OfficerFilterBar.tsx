@@ -17,9 +17,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const [options, setOptions] = useState<Option[]>([
-        { value: "ALL", label: "ทั้งหมด" },
-    ]);
+    const [options, setOptions] = useState<Option[]>([{ value: "ALL", label: "ทั้งหมด" }]);
 
     useEffect(() => {
         async function fetchAgencies() {
@@ -27,25 +25,14 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 const response = await fetch("/api/locations");
                 if (!response.ok) throw new Error("Failed to fetch locations");
                 const data = await response.json();
-                const uniqueAgencies = Array.from(
-                    new Set(
-                        data
-                            .map((loc: any) => loc.organization)
-                            .filter(Boolean),
-                    ),
-                ) as string[];
+                const uniqueAgencies = Array.from(new Set(data.map((loc: any) => loc.organization).filter(Boolean))) as string[];
 
-                const dynamicOptions: Option[] = uniqueAgencies.map(
-                    (agency) => ({
-                        value: agency,
-                        label: agency,
-                    }),
-                );
+                const dynamicOptions: Option[] = uniqueAgencies.map((agency) => ({
+                    value: agency,
+                    label: agency,
+                }));
 
-                setOptions([
-                    { value: "ALL", label: "ทั้งหมด" },
-                    ...dynamicOptions,
-                ]);
+                setOptions([{ value: "ALL", label: "ทั้งหมด" }, ...dynamicOptions]);
             } catch (error) {
                 console.error("Error fetching agencies:", error);
             }
@@ -53,21 +40,16 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
         fetchAgencies();
     }, []);
 
-    const currentLabel =
-        options.find((o) => o.value === value)?.label || "ทั้งหมด";
+    const currentLabel = options.find((o) => o.value === value)?.label || "ทั้งหมด";
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(event.target as Node)
-            ) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
-        return () =>
-            document.removeEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     return (
@@ -81,19 +63,10 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                     <Filter size={18} className="text-blue-500" />
                 </div>
                 <div className="flex flex-col items-start leading-none">
-                    <span
-                        className="text-[9px] text-text-muted font-semibold uppercase tracking-wider"
-                    >
-                        หน่วยงาน
-                    </span>
-                    <span className="font-semibold text-text-primary text-xs mt-0.5">
-                        {currentLabel}
-                    </span>
+                    <span className="text-[9px] text-text-muted font-semibold uppercase tracking-wider">หน่วยงาน</span>
+                    <span className="font-semibold text-text-primary text-xs mt-0.5">{currentLabel}</span>
                 </div>
-                <ChevronDown
-                    size={14}
-                    className={`text-text-muted ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
-                />
+                <ChevronDown size={14} className={`text-text-muted ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
             </button>
 
             {isOpen && (
@@ -107,14 +80,10 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                                     setIsOpen(false);
                                 }}
                                 className={`w-full px-4 py-3 rounded-xl text-center text-xs font-semibold transition-all duration-200 items-left flex cursor-pointer${
-                                    value === option.value
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-text-secondary hover:bg-surface-subtle"
+                                    value === option.value ? "bg-primary/10 text-primary" : "text-text-secondary hover:bg-surface-subtle"
                                 }`}
                             >
-                                <div
-                                    className={`transition-all ${value === option.value ? "bg-primary scale-100" : "bg-transparent scale-0"}`}
-                                />
+                                <div className={`transition-all ${value === option.value ? "bg-primary scale-100" : "bg-transparent scale-0"}`} />
                                 <span className="font-semibold">{option.label}</span>
                             </button>
                         ))}

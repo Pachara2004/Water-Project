@@ -12,11 +12,7 @@ export async function GET(request: NextRequest) {
 
         // ค้นหาแบบกวาดครอบคลุมทั้ง ชื่อจริง, นามสกุลจริง หรือชื่อไลน์โปรไฟล์
         if (search) {
-            where.OR = [
-                { firstName: { contains: search } },
-                { lastName: { contains: search } },
-                { lineProfileName: { contains: search } },
-            ];
+            where.OR = [{ firstName: { contains: search } }, { lastName: { contains: search } }, { lineProfileName: { contains: search } }];
         }
 
         // กรองผ่านความสัมพันธ์ตารางสิทธิ์ระบบ
@@ -35,8 +31,8 @@ export async function GET(request: NextRequest) {
                 firstName: true,
                 lastName: true,
                 phoneNumber: true,
-                registeredAt: true, 
-                lastActiveAt: true, 
+                registeredAt: true,
+                lastActiveAt: true,
                 systemRole: {
                     select: {
                         roleName: true,
@@ -51,9 +47,7 @@ export async function GET(request: NextRequest) {
         const formattedUsers = users.map((u) => ({
             id: u.id,
             lineProfileName: u.lineProfileName,
-            fullName:
-                `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
-                "ยังไม่ลงทะเบียนข้อมูล",
+            fullName: `${u.firstName || ""} ${u.lastName || ""}`.trim() || "ยังไม่ลงทะเบียนข้อมูล",
             phoneNumber: u.phoneNumber || "N/A",
             role: u.systemRole.roleName, // ดึงชื่อสิทธิ์ข้อความออกมาตรง ๆ เช่น "guest", "collector"
             registeredAt: u.registeredAt,
@@ -64,10 +58,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(formattedUsers);
     } catch (error) {
         console.error("GET /api/users error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการดึงข้อมูลบัญชีผู้ใช้งาน" },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลบัญชีผู้ใช้งาน" }, { status: 500 });
     }
 }
 
@@ -76,10 +67,7 @@ export async function PATCH(request: NextRequest) {
         const { userId, role } = await request.json();
 
         if (!userId || !role) {
-            return NextResponse.json(
-                { error: "กรุณาระบุ userId และบทบาทสิทธิ์ที่ต้องการแต่งตั้ง" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "กรุณาระบุ userId และบทบาทสิทธิ์ที่ต้องการแต่งตั้ง" }, { status: 400 });
         }
 
         // ชุดบทบาทความปลอดภัยพิมพ์เล็กตามระบบใหม่เอี่ยมของบอส
@@ -101,10 +89,7 @@ export async function PATCH(request: NextRequest) {
         });
 
         if (!targetRoleRecord) {
-            return NextResponse.json(
-                { error: "ไม่พบกลุ่มบทบาทสิทธิ์นี้ในฐานข้อมูลระบบ" },
-                { status: 404 },
-            );
+            return NextResponse.json({ error: "ไม่พบกลุ่มบทบาทสิทธิ์นี้ในฐานข้อมูลระบบ" }, { status: 404 });
         }
 
         // ทำการโยกย้ายผูกไอดีสิทธิ์ชุดใหม่เข้าหาตัวผู้ใช้งาน (แปลง ID เป็น Number)

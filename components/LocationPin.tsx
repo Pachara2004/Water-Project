@@ -16,10 +16,7 @@
 import L from "leaflet";
 
 // 🔒 ปรับเปลี่ยนคีย์สเตตัสให้เป็นตัวพิมพ์เล็กตรงตามผังระบบล่าสุดของบอสครับ
-const STATUS_COLORS: Record<
-    string,
-    { fill: string; stroke: string; inner: string }
-> = {
+const STATUS_COLORS: Record<string, { fill: string; stroke: string; inner: string }> = {
     safe: { fill: "#22C55E", stroke: "#16A34A", inner: "#DCFCE7" },
     warning: { fill: "#F59E0B", stroke: "#D97706", inner: "#FEF3C7" },
     danger: { fill: "#EF4444", stroke: "#DC2626", inner: "#FEE2E2" },
@@ -52,19 +49,13 @@ function buildPinSvg(colors: typeof DEFAULT_COLOR, innerShape: string): string {
 // Inner shapes by organization
 const INNER_SHAPES: Record<string, string> = {
     FISHERY: '<circle cx="18" cy="16" r="3.5" fill="currentColor"/>',
-    POLLUTION:
-        '<rect x="14.5" y="12.5" width="7" height="7" rx="1.5" fill="currentColor" transform="rotate(45 18 16)"/>',
+    POLLUTION: '<rect x="14.5" y="12.5" width="7" height="7" rx="1.5" fill="currentColor" transform="rotate(45 18 16)"/>',
     OTHER: '<rect x="14.5" y="12.5" width="7" height="7" rx="1.5" fill="currentColor"/>',
 };
 
-export function createLocationIcon(
-    organization: string,
-    status: string | null,
-): L.DivIcon {
+export function createLocationIcon(organization: string, status: string | null): L.DivIcon {
     const colors = getStatusColors(status);
-    const innerShape = (
-        INNER_SHAPES[organization] || INNER_SHAPES.OTHER
-    ).replace("currentColor", colors.fill);
+    const innerShape = (INNER_SHAPES[organization] || INNER_SHAPES.OTHER).replace("currentColor", colors.fill);
 
     const svg = buildPinSvg(colors, innerShape);
 
