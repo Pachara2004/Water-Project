@@ -4,9 +4,7 @@ import { useState } from "react";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 
 export default function ExportButtons() {
-    const [isExporting, setIsExporting] = useState<"csv" | "excel" | null>(
-        null,
-    );
+    const [isExporting, setIsExporting] = useState<"csv" | "excel" | null>(null);
 
     // 1. ฟังก์ชันส่งออกเป็นไฟล์ CSV
     const handleExportCSV = async () => {
@@ -20,10 +18,7 @@ export default function ExportButtons() {
 
             const link = document.createElement("a");
             link.href = url;
-            link.setAttribute(
-                "download",
-                `Water_Quality_Report_${Date.now()}.csv`,
-            );
+            link.setAttribute("download", `Water_Quality_Report_${Date.now()}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -49,10 +44,7 @@ export default function ExportButtons() {
 
             const link = document.createElement("a");
             link.href = url;
-            link.setAttribute(
-                "download",
-                `Water_Quality_With_Images_${Date.now()}.xlsx`,
-            );
+            link.setAttribute("download", `Water_Quality_With_Images_${Date.now()}.xlsx`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -73,11 +65,7 @@ export default function ExportButtons() {
                 disabled={isExporting !== null}
                 className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer shadow-sm min-h-[40px]"
             >
-                {isExporting === "csv" ? (
-                    <Loader2 size={14} className="animate-spin text-primary" />
-                ) : (
-                    <FileText size={14} className="text-orange-500" />
-                )}
+                {isExporting === "csv" ? <Loader2 size={14} className="animate-spin text-primary" /> : <FileText size={14} className="text-orange-500" />}
                 ส่งออกไฟล์ CSV (.csv)
             </button>
 
@@ -87,11 +75,7 @@ export default function ExportButtons() {
                 disabled={isExporting !== null}
                 className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer shadow-sm min-h-[40px]"
             >
-                {isExporting === "excel" ? (
-                    <Loader2 size={14} className="animate-spin text-primary" />
-                ) : (
-                    <FileSpreadsheet size={14} className="text-emerald-500" />
-                )}
+                {isExporting === "excel" ? <Loader2 size={14} className="animate-spin text-primary" /> : <FileSpreadsheet size={14} className="text-emerald-500" />}
                 ส่งออกไฟล์ Excel (.xlsx)
             </button>
         </div>

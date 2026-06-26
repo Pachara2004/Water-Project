@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     try {
         // ดึงข้อมูลตัวอย่างน้ำทั้งหมดที่ยังไม่โดนลบ (isDeleted: false) ตามผังระบบใหม่ของบอส
         const samples = await prisma.waterSample.findMany({
-            where: { isDeleted: false }, 
+            where: { isDeleted: false },
             include: {
                 location: true,
             },
@@ -43,42 +43,31 @@ export async function GET(request: NextRequest) {
         for (const sample of samples) {
             const row = worksheet.addRow({
                 no: index++,
-                cTime: sample.collectionTime
-                    .toISOString()
-                    .replace("T", " ")
-                    .substring(0, 16),
+                cTime: sample.collectionTime.toISOString().replace("T", " ").substring(0, 16),
                 locName: sample.location?.stationName || "N/A",
                 agency: sample.location?.governingAgency || "N/A",
-                lat: sample.location?.latitude || null, 
-                lon: sample.location?.longitude || null, 
-                ammonia: sample.ammoniaValue, 
+                lat: sample.location?.latitude || null,
+                lon: sample.location?.longitude || null,
+                ammonia: sample.ammoniaValue,
                 phosphate: sample.phosphateValue,
-                oxygen: sample.dissolvedOxygen || "N/A", 
+                oxygen: sample.dissolvedOxygen || "N/A",
                 temp: sample.airTemperature || "N/A",
                 rain: sample.rainAccumulation || "N/A",
                 status: sample.status,
-                image: sample.rawImageUrl ? "" : "N/A", 
-                imagePlot: sample.analyzedPlotUrl ? "" : "N/A", 
+                image: sample.rawImageUrl ? "" : "N/A",
+                imagePlot: sample.analyzedPlotUrl ? "" : "N/A",
             });
 
             row.height = 75; // ตั้งความสูงแถวให้สอดรับความสูงภาพ
 
             // ฟังก์ชันวาดไฟล์ภาพฝังลงในช่องเซลล์ของตัว Excel
-            const embedImageToCell = async (
-                imagePath: string | null,
-                colIndex: number,
-            ) => {
+            const embedImageToCell = async (imagePath: string | null, colIndex: number) => {
                 if (!imagePath || imagePath === "N/A") return;
 
                 try {
                     if (imagePath.startsWith("/uploads/")) {
                         const cleanPath = imagePath.replace("/uploads/", "");
-                        const fullPath = path.join(
-                            process.cwd(),
-                            "public",
-                            "uploads",
-                            cleanPath,
-                        );
+                        const fullPath = path.join(process.cwd(), "public", "uploads", cleanPath);
 
                         // ตรวจสอบเช็กไฟล์ภาพบนตัวเครื่องเซิร์ฟเวอร์ก่อนหยิบมาอ่าน
                         await fs.access(fullPath);
@@ -111,16 +100,12 @@ export async function GET(request: NextRequest) {
 
         return new Response(buffer, {
             headers: {
-                "Content-Type":
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "Content-Disposition": `attachment; filename=Water_Quality_Report_${Date.now()}.xlsx`,
             },
         });
     } catch (error) {
         console.error("Export API Error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการสร้างไฟล์ Excel รายงานผลน้ำ" },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการสร้างไฟล์ Excel รายงานผลน้ำ" }, { status: 500 });
     }
 }

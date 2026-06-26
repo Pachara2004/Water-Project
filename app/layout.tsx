@@ -6,8 +6,7 @@ import LiffProvider from "@/components/LiffProvider";
 // สเปก Metadata ยึดอยู่ฝั่ง Server Component ได้อย่างถูกต้อง ไร้ปัญหา Error
 export const metadata: Metadata = {
     title: "ระบบตรวจสอบคุณภาพน้ำ | Water Quality Monitoring",
-    description:
-        "ระบบตรวจสอบและบันทึกข้อมูลคุณภาพน้ำทะเลชายฝั่ง ผ่าน LINE LIFF",
+    description: "ระบบตรวจสอบและบันทึกข้อมูลคุณภาพน้ำทะเลชายฝั่ง ผ่าน LINE LIFF",
     keywords: "คุณภาพน้ำ, water quality, ตรวจสอบน้ำ, LINE LIFF, ประมง",
 };
 
@@ -45,9 +44,7 @@ export default function RootLayout({
             <body>
                 {/* LiffProvider และ Navbar ซึ่งเป็น Client Component ด้านในจะสามารถทำงานได้ตามปกติ */}
                 <LiffProvider>
-                    <main className="min-h-screen min-h-[100dvh] lg:pl-50 pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0">
-                        {children}
-                    </main>
+                    <main className="min-h-screen min-h-[100dvh] lg:pl-50 pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
                     <Navbar />
                 </LiffProvider>
             </body>

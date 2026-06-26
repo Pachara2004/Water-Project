@@ -27,11 +27,7 @@ interface LocationData {
     } | null;
 }
 
-function MapEvents({
-    onMapClick,
-}: {
-    onMapClick?: (lat: number, lng: number) => void;
-}) {
+function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
     useMapEvents({
         click(e) {
             if (onMapClick) {
@@ -58,34 +54,23 @@ interface MapViewProps {
     pickedPosition?: { lat: number; lng: number } | null;
 }
 
-export default function MapView({
-    mode = "explorer",
-    onLocationPick,
-    pickedPosition,
-}: MapViewProps) {
+export default function MapView({ mode = "explorer", onLocationPick, pickedPosition }: MapViewProps) {
     const [locations, setLocations] = useState<LocationData[]>([]);
     const [agencyFilter, setAgencyFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL"); // ค่า 'ALL' หรือพิมพ์เล็ก 'safe' | 'warning' | 'danger'
 
-    const [selectedLocation, setSelectedLocation] =
-        useState<BottomSheetLocation | null>(null);
+    const [selectedLocation, setSelectedLocation] = useState<BottomSheetLocation | null>(null);
     const [loading, setLoading] = useState(true);
     const [userPos, setUserPos] = useState<[number, number] | null>(null);
 
     const leafletMapRef = useRef<L.Map | null>(null);
 
-    const [mapKey] = useState(
-        () => `map-${mode}-${Math.random().toString(36).slice(2)}`,
-    );
+    const [mapKey] = useState(() => `map-${mode}-${Math.random().toString(36).slice(2)}`);
 
     // Center map on selected location
     useEffect(() => {
         if (selectedLocation && leafletMapRef.current) {
-            leafletMapRef.current.flyTo(
-                [selectedLocation.lat, selectedLocation.lng],
-                14,
-                { duration: 1 },
-            );
+            leafletMapRef.current.flyTo([selectedLocation.lat, selectedLocation.lng], 14, { duration: 1 });
         }
     }, [selectedLocation]);
 
@@ -118,11 +103,7 @@ export default function MapView({
             // 🎯 จุดแก้ไขหลัก: แปลงฟิลเตอร์สเตตัสเปรียบเทียบเป็นตัวพิมพ์เล็กให้ตรงเซสชันคลังข้อมูลล่าสุด
             if (statusFilter !== "ALL") {
                 const targetStatus = statusFilter.toLowerCase();
-                data = data.filter(
-                    (loc: LocationData) =>
-                        loc.latestSample?.status?.toLowerCase() ===
-                        targetStatus,
-                );
+                data = data.filter((loc: LocationData) => loc.latestSample?.status?.toLowerCase() === targetStatus);
             }
 
             setLocations(data);
@@ -148,9 +129,7 @@ export default function MapView({
             if (currentMap) {
                 const container = currentMap.getContainer();
                 if (container) {
-                    (
-                        container as unknown as { _leaflet_id: number | null }
-                    )._leaflet_id = null;
+                    (container as unknown as { _leaflet_id: number | null })._leaflet_id = null;
                 }
             }
         };
@@ -164,14 +143,8 @@ export default function MapView({
             {/* Filter Container */}
             {mode === "explorer" && (
                 <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 lg:left-6 z-[600] flex items-center gap-3">
-                    <FilterBar
-                        value={agencyFilter}
-                        onChange={setAgencyFilter}
-                    />
-                    <StatusFilterBar
-                        value={statusFilter}
-                        onChange={setStatusFilter}
-                    />
+                    <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
+                    <StatusFilterBar value={statusFilter} onChange={setStatusFilter} />
                 </div>
             )}
 
@@ -182,29 +155,15 @@ export default function MapView({
                 </div>
             )}
 
-            <MapContainer
-                key={mapKey}
-                ref={leafletMapRef}
-                center={center}
-                zoom={zoom}
-                className="w-full h-full"
-                zoomControl={false}
-                attributionControl={false}
-            >
-                <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                />
+            <MapContainer key={mapKey} ref={leafletMapRef} center={center} zoom={zoom} className="w-full h-full" zoomControl={false} attributionControl={false}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
 
                 {mode === "explorer" &&
                     locations.map((loc) => (
                         <Marker
                             key={loc.id}
                             position={[loc.lat, loc.lng]}
-                            icon={createLocationIcon(
-                                loc.organization,
-                                loc.latestSample?.status || null,
-                            )}
+                            icon={createLocationIcon(loc.organization, loc.latestSample?.status || null)}
                             eventHandlers={{
                                 click: () => setSelectedLocation(loc),
                             }}
@@ -213,19 +172,13 @@ export default function MapView({
 
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
 
-                {mode === "picker" && pickedPosition && (
-                    <Marker
-                        position={[pickedPosition.lat, pickedPosition.lng]}
-                        icon={createLocationIcon("OTHER", null)}
-                    />
-                )}
+                {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon("OTHER", null)} />}
 
                 {userPos && (
                     <Marker
                         position={userPos}
                         icon={L.divIcon({
-                            className:
-                                "bg-transparent text-2xl flex items-center justify-center",
+                            className: "bg-transparent text-2xl flex items-center justify-center",
                             html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md animate-pulse"></div>',
                             iconSize: [24, 24],
                             iconAnchor: [12, 12],
@@ -246,12 +199,7 @@ export default function MapView({
                 </button>
             )}
 
-            {mode === "explorer" && (
-                <BottomSheet
-                    location={selectedLocation}
-                    onClose={() => setSelectedLocation(null)}
-                />
-            )}
+            {mode === "explorer" && <BottomSheet location={selectedLocation} onClose={() => setSelectedLocation(null)} />}
         </div>
     );
 }

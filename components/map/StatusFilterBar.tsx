@@ -16,30 +16,21 @@ const options = [
     { value: "danger", label: "อันตราย", dotClass: "bg-red-500" },
 ];
 
-export default function StatusFilterBar({
-    value,
-    onChange,
-}: StatusFilterBarProps) {
+export default function StatusFilterBar({ value, onChange }: StatusFilterBarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // ดักจับจับคู่ Option (ครอบคลุมเผื่อกรณีมีพิมพ์ใหญ่หลุดเข้ามาด้วยการใช้ toLowerCase)
-    const currentOption =
-        options.find((o) => o.value.toLowerCase() === value.toLowerCase()) ||
-        options[0];
+    const currentOption = options.find((o) => o.value.toLowerCase() === value.toLowerCase()) || options[0];
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(event.target as Node)
-            ) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
-        return () =>
-            document.removeEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     return (
@@ -52,29 +43,20 @@ export default function StatusFilterBar({
                     <Droplets size={18} className="text-blue-500" />
                 </div>
                 <div className="flex flex-col items-start leading-none">
-                    <span className="text-[9px] text-text-muted font-semibold uppercase tracking-wider">
-                        คุณภาพน้ำ
-                    </span>
+                    <span className="text-[9px] text-text-muted font-semibold uppercase tracking-wider">คุณภาพน้ำ</span>
                     <span className="font-semibold text-text-primary text-xs flex items-center">
-                        <span
-                            className={`inline-block ${currentOption.dotClass}`}
-                        />
+                        <span className={`inline-block ${currentOption.dotClass}`} />
                         {currentOption.label}
                     </span>
                 </div>
-                <ChevronDown
-                    size={14}
-                    className={`text-text-muted ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
-                />
+                <ChevronDown size={14} className={`text-text-muted ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
             </button>
 
             {isOpen && (
                 <div className="absolute top-[calc(100%+8px)] left-0 min-w-[140px] bg-surface rounded-2xl overflow-hidden shadow-xl border border-border animate-slide-down origin-top z-[700]">
                     <div className="p-1.5 flex flex-col gap-0.5">
                         {options.map((option) => {
-                            const isSelected =
-                                value.toLowerCase() ===
-                                option.value.toLowerCase();
+                            const isSelected = value.toLowerCase() === option.value.toLowerCase();
 
                             return (
                                 <button
@@ -84,22 +66,14 @@ export default function StatusFilterBar({
                                         setIsOpen(false);
                                     }}
                                     className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-2.5 cursor-pointer
-                    ${
-                        isSelected
-                            ? "bg-primary/10 text-primary"
-                            : "text-text-secondary hover:bg-surface-subtle"
-                    }`}
+                    ${isSelected ? "bg-primary/10 text-primary" : "text-text-secondary hover:bg-surface-subtle"}`}
                                 >
                                     <span
                                         className={` flex-shrink-0 transition-all 
                       ${option.dotClass} 
                       ${isSelected ? "scale-110 opacity-100" : "scale-90 opacity-60"}`}
                                     />
-                                    <span
-                                        className="font-semibold"
-                                    >
-                                        {option.label}
-                                    </span>
+                                    <span className="font-semibold">{option.label}</span>
                                 </button>
                             );
                         })}

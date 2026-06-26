@@ -7,16 +7,13 @@ export async function POST(request: NextRequest) {
         const { lineUid, name } = body; // หน้าบ้านส่ง lineUid และ name มาจาก LINE LIFF
 
         if (!lineUid || !name) {
-            return NextResponse.json(
-                { error: "กรุณาระบุ lineUid และ name ของโปรไฟล์ให้ครบถ้วน" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "กรุณาระบุ lineUid และ name ของโปรไฟล์ให้ครบถ้วน" }, { status: 400 });
         }
 
         // ค้นหาผู้ใช้งานในฐานข้อมูลโดยแมปเข้าฟิลด์ lineUniqueId และดึง relation 'systemRole'
         let user = await prisma.user.findUnique({
             where: { lineUniqueId: lineUid },
-            include: { systemRole: true }, 
+            include: { systemRole: true },
         });
 
         if (!user) {
@@ -36,37 +33,33 @@ export async function POST(request: NextRequest) {
             user = await prisma.user.create({
                 data: {
                     lineUniqueId: lineUid,
-                    lineProfileName: name, 
-                    roleId: guestRole.id, 
+                    lineProfileName: name,
+                    roleId: guestRole.id,
                 },
-                include: { systemRole: true }, 
+                include: { systemRole: true },
             });
         } else {
-            
             user = await prisma.user.update({
                 where: { lineUniqueId: lineUid },
                 data: {
                     lineProfileName: name,
                 },
-                include: { systemRole: true }, 
+                include: { systemRole: true },
             });
         }
 
         // ส่งก้อน payload สรุปผลกลับไปให้หน้าบ้านจัดเซฟลง Zustand Store
         return NextResponse.json({
-            id: user.id, 
-            lineUniqueId: user.lineUniqueId, 
+            id: user.id,
+            lineUniqueId: user.lineUniqueId,
             lineProfileName: user.lineProfileName,
-            firstName: user.firstName, 
-            lastName: user.lastName, 
-            phoneNumber: user.phoneNumber, 
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phoneNumber: user.phoneNumber,
             role: user.systemRole.roleName,
         });
     } catch (error) {
         console.error("POST /api/auth error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดภายในระบบเซิร์ฟเวอร์หลังบ้าน" },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดภายในระบบเซิร์ฟเวอร์หลังบ้าน" }, { status: 500 });
     }
 }

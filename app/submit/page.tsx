@@ -3,28 +3,8 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import {
-    getParameterStatus,
-    LOCATION_STANDARDS,
-    evaluateAllStandards,
-    LOCATION_TYPE_LABELS,
-} from "@/lib/standards";
-import {
-    FlaskConical,
-    Loader2,
-    CheckCircle2,
-    MapPin,
-    ArrowLeft,
-    ImagePlus,
-    Sparkles,
-    ShieldCheck,
-    ShieldX,
-    Camera,
-    Clock,
-    Database,
-    ChevronRight,
-    Search,
-} from "lucide-react";
+import { getParameterStatus, LOCATION_STANDARDS, evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
+import { FlaskConical, Loader2, CheckCircle2, MapPin, ArrowLeft, ImagePlus, Sparkles, ShieldCheck, ShieldX, Camera, Clock, Database, ChevronRight, Search } from "lucide-react";
 
 interface LocationItem {
     id: number;
@@ -37,22 +17,9 @@ interface LocationItem {
 
 /* ─── ThresholdBar ─────────────────────────────────────────── */
 
-function ThresholdBar({
-    value,
-    max,
-    status,
-}: {
-    value: number;
-    max: number;
-    status: "safe" | "warning" | "danger";
-}) {
+function ThresholdBar({ value, max, status }: { value: number; max: number; status: "safe" | "warning" | "danger" }) {
     const pct = Math.min((value / max) * 100, 100);
-    const fillColor =
-        status === "safe"
-            ? "#1D9E75"
-            : status === "warning"
-              ? "#EF9F27"
-              : "#E24B4A";
+    const fillColor = status === "safe" ? "#1D9E75" : status === "warning" ? "#EF9F27" : "#E24B4A";
     return (
         <div className="mt-2">
             <div
@@ -74,9 +41,7 @@ function ThresholdBar({
             </div>
             <div className="flex justify-between mt-1">
                 <span className="font-mono text-[9px] text-text-muted">0</span>
-                <span className="font-mono text-[9px] text-text-muted">
-                    max {max}
-                </span>
+                <span className="font-mono text-[9px] text-text-muted">max {max}</span>
             </div>
         </div>
     );
@@ -84,15 +49,8 @@ function ThresholdBar({
 
 /* ─── StepDot ──────────────────────────────────────────────── */
 
-function StepDot({
-    n,
-    state,
-}: {
-    n: number;
-    state: "done" | "active" | "idle";
-}) {
-    const base =
-        "w-5 h-5 rounded-full text-[10px] font-mono font-medium flex items-center justify-center flex-shrink-0";
+function StepDot({ n, state }: { n: number; state: "done" | "active" | "idle" }) {
+    const base = "w-5 h-5 rounded-full text-[10px] font-mono font-medium flex items-center justify-center flex-shrink-0";
     if (state === "done")
         return (
             <div className={`${base} bg-teal-600 text-white`}>
@@ -101,18 +59,12 @@ function StepDot({
         );
     if (state === "active")
         return (
-            <div
-                className={`${base} border border-teal-600 text-teal-700 dark:text-teal-400`}
-                style={{ background: "var(--color-background-info,#eff6ff)" }}
-            >
+            <div className={`${base} border border-teal-600 text-teal-700 dark:text-teal-400`} style={{ background: "var(--color-background-info,#eff6ff)" }}>
                 {n}
             </div>
         );
     return (
-        <div
-            className={`${base} border border-border text-text-muted`}
-            style={{ background: "var(--color-background-secondary,#f9fafb)" }}
-        >
+        <div className={`${base} border border-border text-text-muted`} style={{ background: "var(--color-background-secondary,#f9fafb)" }}>
             {n}
         </div>
     );
@@ -120,19 +72,11 @@ function StepDot({
 
 /* ─── SectionHead ──────────────────────────────────────────── */
 
-function SectionHead({
-    icon,
-    label,
-}: {
-    icon: React.ReactNode;
-    label: string;
-}) {
+function SectionHead({ icon, label }: { icon: React.ReactNode; label: string }) {
     return (
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <span className="text-text-muted">{icon}</span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
-                {label}
-            </span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">{label}</span>
         </div>
     );
 }
@@ -148,14 +92,10 @@ function SubmitContent() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const locationIdParam = searchParams.get("locationId");
-    const [currentLocationId, setCurrentLocationId] = useState<string | null>(
-        locationIdParam,
-    );
+    const [currentLocationId, setCurrentLocationId] = useState<string | null>(locationIdParam);
     const [locationName, setLocationName] = useState("");
     const [locationType, setLocationType] = useState("COMMUNITY");
-    const [step, setStep] = useState<"upload" | "analyzing" | "results">(
-        "upload",
-    );
+    const [step, setStep] = useState<"upload" | "analyzing" | "results">("upload");
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [results, setResults] = useState<{
@@ -166,22 +106,16 @@ function SubmitContent() {
     } | null>(null);
     const [saved, setSaved] = useState(false);
     const [isRecommending, setIsRecommending] = useState(false);
-    const [nearestLocations, setNearestLocations] = useState<LocationItem[]>(
-        [],
-    );
+    const [nearestLocations, setNearestLocations] = useState<LocationItem[]>([]);
     const [allLocations, setAllLocations] = useState<LocationItem[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [collectionTime, setCollectionTime] = useState<string>(() => {
         const now = new Date();
-        return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-            .toISOString()
-            .slice(0, 16);
+        return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     });
     const [oxygen, setOxygen] = useState("");
 
-    const sessionId = useRef(
-        `${new Date().getFullYear().toString().slice(2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 999)).padStart(3, "0")}`,
-    );
+    const sessionId = useRef(`${new Date().getFullYear().toString().slice(2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 999)).padStart(3, "0")}`);
 
     /* ── effects ── */
 
@@ -200,19 +134,7 @@ function SubmitContent() {
             async (pos) => {
                 const { calculateDistance } = await import("@/lib/exif");
                 const sorted = [...allLocations].sort(
-                    (a, b) =>
-                        calculateDistance(
-                            pos.coords.latitude,
-                            pos.coords.longitude,
-                            a.lat,
-                            a.lng,
-                        ) -
-                        calculateDistance(
-                            pos.coords.latitude,
-                            pos.coords.longitude,
-                            b.lat,
-                            b.lng,
-                        ),
+                    (a, b) => calculateDistance(pos.coords.latitude, pos.coords.longitude, a.lat, a.lng) - calculateDistance(pos.coords.latitude, pos.coords.longitude, b.lat, b.lng),
                 );
                 setNearestLocations(sorted.slice(0, 5));
             },
@@ -223,9 +145,7 @@ function SubmitContent() {
 
     useEffect(() => {
         if (!currentLocationId || !allLocations.length) return;
-        const loc = allLocations.find(
-            (l) => l.id.toString() === currentLocationId,
-        );
+        const loc = allLocations.find((l) => l.id.toString() === currentLocationId);
         if (loc) {
             const t = setTimeout(() => {
                 setLocationName(loc.name);
@@ -237,15 +157,12 @@ function SubmitContent() {
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "collector" && currentUser.role !== "admin")
-            router.push("/map");
+        if (currentUser.role !== "collector" && currentUser.role !== "admin") router.push("/map");
     }, [currentUser, router]);
 
     /* ── handlers ── */
 
-    const handleImageSelect = async (
-        e: React.ChangeEvent<HTMLInputElement>,
-    ) => {
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         setImageFile(file);
@@ -254,24 +171,11 @@ function SubmitContent() {
         reader.readAsDataURL(file);
         setIsRecommending(true);
         try {
-            const { getExifLocation, calculateDistance } =
-                await import("@/lib/exif");
+            const { getExifLocation, calculateDistance } = await import("@/lib/exif");
             const coords = await getExifLocation(file);
             if (coords && allLocations.length) {
                 const sorted = [...allLocations].sort(
-                    (a, b) =>
-                        calculateDistance(
-                            coords.latitude,
-                            coords.longitude,
-                            a.lat,
-                            a.lng,
-                        ) -
-                        calculateDistance(
-                            coords.latitude,
-                            coords.longitude,
-                            b.lat,
-                            b.lng,
-                        ),
+                    (a, b) => calculateDistance(coords.latitude, coords.longitude, a.lat, a.lng) - calculateDistance(coords.latitude, coords.longitude, b.lat, b.lng),
                 );
                 setNearestLocations(sorted.slice(0, 5));
             }
@@ -282,10 +186,7 @@ function SubmitContent() {
         }
     };
 
-    const generateAiImagePlot = (
-        file: File,
-        aiData: any,
-    ): Promise<File | null> =>
+    const generateAiImagePlot = (file: File, aiData: any): Promise<File | null> =>
         new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
@@ -354,8 +255,7 @@ function SubmitContent() {
     };
 
     const handleSave = async () => {
-        if (!results || !currentLocationId || !currentUser || !imageFile)
-            return;
+        if (!results || !currentLocationId || !currentUser || !imageFile) return;
         try {
             const fd = new FormData();
             fd.append("image", imageFile);
@@ -383,20 +283,13 @@ function SubmitContent() {
     };
 
     const getStandardsEvaluation = (phosphate: number, ammonia: number) =>
-        Object.entries(evaluateAllStandards(phosphate, ammonia)).map(
-            ([type, passed]) => ({
-                type,
-                label:
-                    LOCATION_TYPE_LABELS[
-                        type as keyof typeof LOCATION_TYPE_LABELS
-                    ] || type,
-                passed: passed as boolean,
-            }),
-        );
+        Object.entries(evaluateAllStandards(phosphate, ammonia)).map(([type, passed]) => ({
+            type,
+            label: LOCATION_TYPE_LABELS[type as keyof typeof LOCATION_TYPE_LABELS] || type,
+            passed: passed as boolean,
+        }));
 
-    const getLocStd = () =>
-        LOCATION_STANDARDS[locationType as keyof typeof LOCATION_STANDARDS] ||
-        LOCATION_STANDARDS["COMMUNITY"];
+    const getLocStd = () => LOCATION_STANDARDS[locationType as keyof typeof LOCATION_STANDARDS] || LOCATION_STANDARDS["COMMUNITY"];
     const currentStep = step === "upload" ? 1 : step === "analyzing" ? 2 : 3;
 
     /* ─────────────────────────────────────────────────────────
@@ -412,27 +305,10 @@ function SubmitContent() {
                 { n: 3, label: "บันทึก" },
             ].map(({ n, label }, i) => (
                 <div key={n} className="flex items-center gap-1.5">
-                    {i > 0 && (
-                        <div
-                            className={`h-px w-6 ${currentStep > i ? "bg-teal-500" : "bg-border"}`}
-                        />
-                    )}
+                    {i > 0 && <div className={`h-px w-6 ${currentStep > i ? "bg-teal-500" : "bg-border"}`} />}
                     <div className="flex items-center gap-1.5">
-                        <StepDot
-                            n={n}
-                            state={
-                                currentStep > n
-                                    ? "done"
-                                    : currentStep === n
-                                      ? "active"
-                                      : "idle"
-                            }
-                        />
-                        <span
-                            className={`text-[11px] font-medium ${currentStep >= n ? "text-text-primary" : "text-text-muted"}`}
-                        >
-                            {label}
-                        </span>
+                        <StepDot n={n} state={currentStep > n ? "done" : currentStep === n ? "active" : "idle"} />
+                        <span className={`text-[11px] font-medium ${currentStep >= n ? "text-text-primary" : "text-text-muted"}`}>{label}</span>
                     </div>
                 </div>
             ))}
@@ -443,9 +319,7 @@ function SubmitContent() {
     const DesktopSidebar = () => (
         <aside className="hidden md:flex flex-col border-r border-border bg-surface min-h-full w-[200px] flex-shrink-0">
             <div className="px-4 py-4 border-b border-border">
-                <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-3">
-                    Session info
-                </p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-3">Session info</p>
                 {[
                     { key: "Session", val: `#${sessionId.current}` },
                     { key: "Station", val: locationName || "—" },
@@ -459,12 +333,7 @@ function SubmitContent() {
                     },
                     {
                         key: "Analysis",
-                        val:
-                            step === "results"
-                                ? "Complete"
-                                : step === "analyzing"
-                                  ? "Running…"
-                                  : "Pending",
+                        val: step === "results" ? "Complete" : step === "analyzing" ? "Running…" : "Pending",
                         ok: step === "results",
                     },
                     ...(results
@@ -484,18 +353,9 @@ function SubmitContent() {
                           ]
                         : []),
                 ].map(({ key, val, ok }) => (
-                    <div
-                        key={key}
-                        className="flex justify-between items-center py-1"
-                    >
-                        <span className="font-mono text-[10px] text-text-muted">
-                            {key}
-                        </span>
-                        <span
-                            className={`text-[10px] font-medium text-right max-w-[110px] leading-tight ${(ok as boolean) ? "text-teal-600 dark:text-teal-400" : "text-text-primary"}`}
-                        >
-                            {val}
-                        </span>
+                    <div key={key} className="flex justify-between items-center py-1">
+                        <span className="font-mono text-[10px] text-text-muted">{key}</span>
+                        <span className={`text-[10px] font-medium text-right max-w-[110px] leading-tight ${(ok as boolean) ? "text-teal-600 dark:text-teal-400" : "text-text-primary"}`}>{val}</span>
                     </div>
                 ))}
                 {locationName && step === "upload" && (
@@ -512,9 +372,7 @@ function SubmitContent() {
                 )}
             </div>
             <div className="px-4 py-4 flex-1">
-                <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-3">
-                    Workflow
-                </p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-3">Workflow</p>
                 {[
                     {
                         n: 1,
@@ -528,29 +386,11 @@ function SubmitContent() {
                     },
                     { n: 3, title: "Review & save", desc: "Log to database" },
                 ].map(({ n, title, desc }) => (
-                    <div
-                        key={n}
-                        className="flex items-start gap-2.5 py-2.5 border-b border-border last:border-0"
-                    >
-                        <StepDot
-                            n={n}
-                            state={
-                                currentStep > n
-                                    ? "done"
-                                    : currentStep === n
-                                      ? "active"
-                                      : "idle"
-                            }
-                        />
+                    <div key={n} className="flex items-start gap-2.5 py-2.5 border-b border-border last:border-0">
+                        <StepDot n={n} state={currentStep > n ? "done" : currentStep === n ? "active" : "idle"} />
                         <div>
-                            <p
-                                className={`text-[11px] font-medium leading-tight ${currentStep >= n ? "text-text-primary" : "text-text-muted"}`}
-                            >
-                                {title}
-                            </p>
-                            <p className="text-[10px] text-text-muted mt-0.5 leading-tight">
-                                {desc}
-                            </p>
+                            <p className={`text-[11px] font-medium leading-tight ${currentStep >= n ? "text-text-primary" : "text-text-muted"}`}>{title}</p>
+                            <p className="text-[10px] text-text-muted mt-0.5 leading-tight">{desc}</p>
                         </div>
                     </div>
                 ))}
@@ -561,16 +401,10 @@ function SubmitContent() {
     /* ── Location picker (shared mobile + desktop) ─────────── */
     const LocationPicker = () => (
         <section className="rounded-xl bg-surface overflow-hidden border border-border">
-            <SectionHead
-                icon={<MapPin size={13} />}
-                label="เลือกสถานีจุดเก็บตัวอย่างน้ำ"
-            />
+            <SectionHead icon={<MapPin size={13} />} label="เลือกสถานีจุดเก็บตัวอย่างน้ำ" />
             <div className="p-4 space-y-3">
                 <div className="relative">
-                    <Search
-                        size={13}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
-                    />
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                     <input
                         type="text"
                         value={searchQuery}
@@ -584,9 +418,7 @@ function SubmitContent() {
                 {locationName && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-500/30">
                         <span className="h-1.5 w-1.5 rounded-full bg-teal-500 flex-shrink-0" />
-                        <span className="text-xs font-medium text-teal-800 dark:text-teal-200 truncate flex-1">
-                            {locationName}
-                        </span>
+                        <span className="text-xs font-medium text-teal-800 dark:text-teal-200 truncate flex-1">{locationName}</span>
                         <button
                             onClick={() => {
                                 setCurrentLocationId(null);
@@ -602,15 +434,9 @@ function SubmitContent() {
 
                 {searchQuery.trim() ? (
                     <div className="space-y-1">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted px-1">
-                            ผลการค้นหา
-                        </p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted px-1">ผลการค้นหา</p>
                         {allLocations
-                            .filter((l) =>
-                                l.name
-                                    .toLowerCase()
-                                    .includes(searchQuery.toLowerCase()),
-                            )
+                            .filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase()))
                             .slice(0, 6)
                             .map((loc) => (
                                 <button
@@ -621,65 +447,39 @@ function SubmitContent() {
                                     }}
                                     className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-lg border text-left transition-colors group min-h-[44px] ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
                                 >
-                                    <MapPin
-                                        size={12}
-                                        className="text-text-muted group-hover:text-teal-600 flex-shrink-0"
-                                    />
-                                    <span className="text-xs font-medium text-text-primary truncate">
-                                        {loc.name}
-                                    </span>
-                                    <ChevronRight
-                                        size={12}
-                                        className="ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
-                                    />
+                                    <MapPin size={12} className="text-text-muted group-hover:text-teal-600 flex-shrink-0" />
+                                    <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
+                                    <ChevronRight size={12} className="ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </button>
                             ))}
-                        {!allLocations.filter((l) =>
-                            l.name
-                                .toLowerCase()
-                                .includes(searchQuery.toLowerCase()),
-                        ).length && (
-                            <p className="text-xs text-text-muted text-center py-4">
-                                ไม่พบสถานีที่ตรงกับคำค้นหา
-                            </p>
+                        {!allLocations.filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase())).length && (
+                            <p className="text-xs text-text-muted text-center py-4">ไม่พบสถานีที่ตรงกับคำค้นหา</p>
                         )}
                     </div>
                 ) : nearestLocations.length > 0 ? (
                     <div className="space-y-1">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted px-1">
-                            สถานีใกล้เคียง
-                        </p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted px-1">สถานีใกล้เคียง</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {nearestLocations.map((loc) => (
                                 <button
                                     key={loc.id}
-                                    onClick={() =>
-                                        setCurrentLocationId(loc.id.toString())
-                                    }
+                                    onClick={() => setCurrentLocationId(loc.id.toString())}
                                     className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-left transition-colors min-h-[44px] ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
                                 >
-                                    <span
-                                        className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${currentLocationId === loc.id.toString() ? "bg-teal-500" : "bg-text-muted"}`}
-                                    />
-                                    <span className="text-xs font-medium text-text-primary truncate">
-                                        {loc.name}
-                                    </span>
+                                    <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${currentLocationId === loc.id.toString() ? "bg-teal-500" : "bg-text-muted"}`} />
+                                    <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 text-xs text-text-muted py-2">
-                        <Loader2
-                            size={12}
-                            className="animate-spin text-teal-600"
-                        />
+                        <Loader2 size={12} className="animate-spin text-teal-600" />
                         กำลังค้นหาสถานีใกล้เคียง…
                     </div>
                 )}
             </div>
         </section>
-        
     );
 
     /* ── Image zone ───────────────────────────────────────── */
@@ -688,9 +488,7 @@ function SubmitContent() {
             <SectionHead icon={<Camera size={13} />} label="ภาพตัวอย่าง" />
             <div className="p-4">
                 <div
-                    onClick={() =>
-                        step === "upload" && fileInputRef.current?.click()
-                    }
+                    onClick={() => step === "upload" && fileInputRef.current?.click()}
                     className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
                         ${
                             step === "analyzing"
@@ -702,71 +500,30 @@ function SubmitContent() {
                 >
                     {step === "analyzing" ? (
                         <>
-                            {imagePreview && (
-                                <img
-                                    src={imagePreview}
-                                    alt="Sample"
-                                    className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0"
-                                />
-                            )}
+                            {imagePreview && <img src={imagePreview} alt="Sample" className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
                             <div className="animate-laser" />
                             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
-                            {[
-                                "top-3 left-3 border-t border-l",
-                                "top-3 right-3 border-t border-r",
-                                "bottom-3 left-3 border-b border-l",
-                                "bottom-3 right-3 border-b border-r",
-                            ].map((c, i) => (
-                                <div
-                                    key={i}
-                                    className={`absolute ${c} border-teal-500 w-4 h-4`}
-                                />
+                            {["top-3 left-3 border-t border-l", "top-3 right-3 border-t border-r", "bottom-3 left-3 border-b border-l", "bottom-3 right-3 border-b border-r"].map((c, i) => (
+                                <div key={i} className={`absolute ${c} border-teal-500 w-4 h-4`} />
                             ))}
                         </>
-                    ) : (step === "results" || step === "upload") &&
-                      (imagePreview ||
-                          (step === "results" && imagePlotFile)) ? (
-                        <img
-                            src={
-                                step === "results" && imagePlotFile
-                                    ? URL.createObjectURL(imagePlotFile)
-                                    : imagePreview!
-                            }
-                            alt="Sample"
-                            className="w-full h-full object-contain"
-                        />
+                    ) : (step === "results" || step === "upload") && (imagePreview || (step === "results" && imagePlotFile)) ? (
+                        <img src={step === "results" && imagePlotFile ? URL.createObjectURL(imagePlotFile) : imagePreview!} alt="Sample" className="w-full h-full object-contain" />
                     ) : (
                         <div className="flex flex-col items-center gap-3 px-8 text-center py-8">
                             <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center border border-border group-hover:scale-105 transition-transform">
-                                <ImagePlus
-                                    size={24}
-                                    className="text-slate-700 dark:text-slate-500"
-                                />
+                                <ImagePlus size={24} className="text-slate-700 dark:text-slate-500" />
                             </div>
                             <div>
-                                <p className="text-xs font-medium text-text-primary">
-                                    แตะเพื่อถ่ายหรือเลือกภาพ
-                                </p>
-                                <p className="text-[10px] text-text-muted mt-1">
-                                    ให้แผ่น ColorChecker อยู่ในกรอบและชัดเจน
-                                </p>
+                                <p className="text-xs font-medium text-text-primary">แตะเพื่อถ่ายหรือเลือกภาพ</p>
+                                <p className="text-[10px] text-text-muted mt-1">ให้แผ่น ColorChecker อยู่ในกรอบและชัดเจน</p>
                             </div>
                         </div>
                     )}
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleImageSelect}
-                        className="hidden"
-                    />
+                    <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} className="hidden" />
                 </div>
                 {step === "upload" && imagePreview && (
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mt-2 text-[10px] text-text-muted underline underline-offset-2"
-                    >
+                    <button onClick={() => fileInputRef.current?.click()} className="mt-2 text-[10px] text-text-muted underline underline-offset-2">
                         เปลี่ยนภาพ
                     </button>
                 )}
@@ -777,15 +534,10 @@ function SubmitContent() {
     /* ── Metadata fields ──────────────────────────────────── */
     const MetadataFields = () => (
         <section className="rounded-xl bg-surface overflow-hidden border border-border">
-            <SectionHead
-                icon={<Clock size={13} />}
-                label="ข้อมูลการเก็บตัวอย่าง"
-            />
+            <SectionHead icon={<Clock size={13} />} label="ข้อมูลการเก็บตัวอย่าง" />
             <div className="p-4 space-y-4">
                 <div>
-                    <label className="font-mono text-[9px] uppercase tracking-widest text-text-muted block mb-1.5">
-                        เวลาที่เก็บตัวอย่าง
-                    </label>
+                    <label className="font-mono text-[9px] uppercase tracking-widest text-text-muted block mb-1.5">เวลาที่เก็บตัวอย่าง</label>
                     <input
                         type="datetime-local"
                         value={collectionTime}
@@ -793,14 +545,10 @@ function SubmitContent() {
                         onChange={(e) => setCollectionTime(e.target.value)}
                         className="w-full px-3 py-2.5 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs focus:border-teal-500 focus:outline-none transition-colors min-h-[44px]"
                     />
-                    <p className="text-[9px] text-text-muted mt-1">
-                        ใช้สำหรับดึงข้อมูลสภาพอากาศย้อนหลัง
-                    </p>
+                    <p className="text-[9px] text-text-muted mt-1">ใช้สำหรับดึงข้อมูลสภาพอากาศย้อนหลัง</p>
                 </div>
                 <div>
-                    <label className="font-mono text-[9px] uppercase tracking-widest text-text-muted block mb-1.5">
-                        ออกซิเจนละลายน้ำ — ไม่จำเป็น
-                    </label>
+                    <label className="font-mono text-[9px] uppercase tracking-widest text-text-muted block mb-1.5">ออกซิเจนละลายน้ำ — ไม่จำเป็น</label>
                     <div className="relative">
                         <input
                             type="number"
@@ -812,9 +560,7 @@ function SubmitContent() {
                             placeholder="เช่น 6.5"
                             className="w-full px-3 py-2.5 pr-12 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs focus:border-teal-500 focus:outline-none transition-colors placeholder:text-text-muted/50 min-h-[44px]"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[9px] text-text-muted">
-                            mg/L
-                        </span>
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[9px] text-text-muted">mg/L</span>
                     </div>
                 </div>
             </div>
@@ -830,8 +576,7 @@ function SubmitContent() {
         >
             {isRecommending ? (
                 <>
-                    <Loader2 size={15} className="animate-spin" />{" "}
-                    กำลังตรวจจับตำแหน่ง…
+                    <Loader2 size={15} className="animate-spin" /> กำลังตรวจจับตำแหน่ง…
                 </>
             ) : !currentLocationId && imageFile ? (
                 <>
@@ -850,22 +595,15 @@ function SubmitContent() {
         <div className="flex items-center gap-3 px-4 py-4 rounded-xl border border-border bg-surface">
             <div className="relative w-10 h-10 flex-shrink-0">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200/50 flex items-center justify-center">
-                    <FlaskConical
-                        size={18}
-                        className="text-teal-700 dark:text-teal-400"
-                    />
+                    <FlaskConical size={18} className="text-teal-700 dark:text-teal-400" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-teal-600 flex items-center justify-center animate-pulse">
                     <Sparkles size={9} className="text-white" />
                 </div>
             </div>
             <div>
-                <p className="text-xs font-semibold text-text-primary">
-                    กำลังเทียบสีและคำนวณค่า…
-                </p>
-                <p className="text-[10px] text-text-secondary mt-0.5 leading-relaxed">
-                    เปรียบเทียบกับมาตรฐานคุณภาพน้ำชายฝั่ง
-                </p>
+                <p className="text-xs font-semibold text-text-primary">กำลังเทียบสีและคำนวณค่า…</p>
+                <p className="text-[10px] text-text-secondary mt-0.5 leading-relaxed">เปรียบเทียบกับมาตรฐานคุณภาพน้ำชายฝั่ง</p>
             </div>
         </div>
     );
@@ -873,8 +611,7 @@ function SubmitContent() {
     /* ── Results panel ────────────────────────────────────── */
     const ResultsPanel = () => {
         if (!results) return null;
-        const paramSt = (val: number, max: number) =>
-            getParameterStatus(val, max) as "safe" | "warning" | "danger";
+        const paramSt = (val: number, max: number) => getParameterStatus(val, max) as "safe" | "warning" | "danger";
         const std = getLocStd();
 
         return (
@@ -889,22 +626,13 @@ function SubmitContent() {
                               : "bg-red-50 dark:bg-red-950/20 border-red-500/30 text-red-800 dark:text-red-200"
                     }`}
                 >
-                    <span
-                        className={`h-2 w-2 rounded-full flex-shrink-0 ${results.status === "safe" ? "bg-teal-500" : results.status === "warning" ? "bg-amber-500" : "bg-red-500"}`}
-                    />
+                    <span className={`h-2 w-2 rounded-full flex-shrink-0 ${results.status === "safe" ? "bg-teal-500" : results.status === "warning" ? "bg-amber-500" : "bg-red-500"}`} />
                     <div>
                         <p className="font-semibold">
-                            {results.status === "safe"
-                                ? "คุณภาพน้ำอยู่ในเกณฑ์ปลอดภัย"
-                                : results.status === "warning"
-                                  ? "ตรวจพบค่าสูง — ต้องตรวจสอบเพิ่มเติม"
-                                  : "ค่าเกินมาตรฐานความปลอดภัย"}
+                            {results.status === "safe" ? "คุณภาพน้ำอยู่ในเกณฑ์ปลอดภัย" : results.status === "warning" ? "ตรวจพบค่าสูง — ต้องตรวจสอบเพิ่มเติม" : "ค่าเกินมาตรฐานความปลอดภัย"}
                         </p>
                         <p className="text-[10px] mt-0.5 font-normal opacity-80">
-                            สถานะรวม:{" "}
-                            <span className="font-mono uppercase">
-                                {results.status}
-                            </span>
+                            สถานะรวม: <span className="font-mono uppercase">{results.status}</span>
                         </p>
                     </div>
                 </div>
@@ -937,61 +665,35 @@ function SubmitContent() {
                             ] as const
                         ).map(({ label, sub, val, max }) => {
                             // คำนวณ Status
-                            const paramStatus = getParameterStatus(val, max) as
-                                | "safe"
-                                | "warning"
-                                | "danger";
+                            const paramStatus = getParameterStatus(val, max) as "safe" | "warning" | "danger";
 
                             // คำนวณหา % ที่เกินเกณฑ์มาตรฐาน (เช่น ค่าวัดได้ 2.5 แต่ Max ยอมรับได้ 0.95)
-                            const percentageOfMax =
-                                max > 0 ? (val / max) * 100 : 0;
+                            const percentageOfMax = max > 0 ? (val / max) * 100 : 0;
                             const isExceeded = val > max;
-                            const exceededPercentage = isExceeded
-                                ? Math.round(((val - max) / max) * 100)
-                                : 0;
+                            const exceededPercentage = isExceeded ? Math.round(((val - max) / max) * 100) : 0;
 
                             return (
-                                <div
-                                    key={label}
-                                    className="px-6 py-4 flex flex-col gap-2 hover:bg-muted/5 transition-colors"
-                                >
+                                <div key={label} className="px-6 py-4 flex flex-col gap-2 hover:bg-muted/5 transition-colors">
                                     {/* บรรทัดบน: ชื่อสาร (ซ้าย) & ค่าวัดได้ (ขวา) */}
                                     <div className="flex justify-between items-baseline">
                                         <div className="font-medium text-text-primary">
-                                            <span className="font-mono text-base uppercase">
-                                                {label}
-                                            </span>{" "}
-                                            <span className="text-xs text-text-muted">
-                                                ({sub})
-                                            </span>
+                                            <span className="font-mono text-base uppercase">{label}</span> <span className="text-xs text-text-muted">({sub})</span>
                                         </div>
                                         <div className="font-mono text-sm font-semibold text-text-primary">
-                                            {val.toFixed(3)}{" "}
-                                            <span className="text-[10px] text-text-muted font-normal ml-0.5">
-                                                mg/L
-                                            </span>
+                                            {val.toFixed(3)} <span className="text-[10px] text-text-muted font-normal ml-0.5">mg/L</span>
                                         </div>
                                     </div>
 
                                     {/* บรรทัดกลาง: แถบหลอดแก้วระดับความยาวเต็มแถว */}
                                     <div className="w-full">
-                                        <ThresholdBar
-                                            value={val}
-                                            max={max}
-                                            status={paramStatus}
-                                        />
+                                        <ThresholdBar value={val} max={max} status={paramStatus} />
                                         <div className="flex-1 text-center font-sans">
                                             {isExceeded && (
                                                 <span className="text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded">
-                                                    เกินเกณฑ์มาตรฐาน{" "}
-                                                    {exceededPercentage}%
+                                                    เกินเกณฑ์มาตรฐาน {exceededPercentage}%
                                                 </span>
                                             )}
-                                            {!isExceeded && (
-                                                <span className="text-teal-600 dark:text-teal-400">
-                                                    ปกติ
-                                                </span>
-                                            )}
+                                            {!isExceeded && <span className="text-teal-600 dark:text-teal-400">ปกติ</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -1002,15 +704,9 @@ function SubmitContent() {
 
                 {/* standards */}
                 <section className="rounded-xl border border-border bg-surface overflow-hidden">
-                    <SectionHead
-                        icon={<ShieldCheck size={13} />}
-                        label="Standards compliance"
-                    />
+                    <SectionHead icon={<ShieldCheck size={13} />} label="Standards compliance" />
                     <div className="p-4 space-y-2">
-                        {getStandardsEvaluation(
-                            results.phosphate,
-                            results.ammonia,
-                        ).map((std) => (
+                        {getStandardsEvaluation(results.phosphate, results.ammonia).map((std) => (
                             <div
                                 key={std.type}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium border ${
@@ -1019,21 +715,9 @@ function SubmitContent() {
                                         : "bg-red-50/60 dark:bg-red-950/15 text-red-800 dark:text-red-200 border-red-500/20"
                                 }`}
                             >
-                                {std.passed ? (
-                                    <ShieldCheck
-                                        size={13}
-                                        className="text-teal-600 flex-shrink-0"
-                                    />
-                                ) : (
-                                    <ShieldX
-                                        size={13}
-                                        className="text-red-500 flex-shrink-0"
-                                    />
-                                )}
+                                {std.passed ? <ShieldCheck size={13} className="text-teal-600 flex-shrink-0" /> : <ShieldX size={13} className="text-red-500 flex-shrink-0" />}
                                 <span className="flex-1">{std.label}</span>
-                                <span className="font-mono text-[9px] uppercase tracking-wider">
-                                    {std.passed ? "Pass" : "Fail"}
-                                </span>
+                                <span className="font-mono text-[9px] uppercase tracking-wider">{std.passed ? "Pass" : "Fail"}</span>
                             </div>
                         ))}
                     </div>
@@ -1053,20 +737,10 @@ function SubmitContent() {
             </button>
         ) : (
             <div className="rounded-xl border border-teal-500/30 bg-teal-50/50 dark:bg-teal-950/20 p-6 text-center">
-                <CheckCircle2
-                    size={28}
-                    className="text-teal-600 mx-auto mb-2"
-                />
-                <p className="text-sm font-semibold text-teal-800 dark:text-teal-200">
-                    บันทึกสำเร็จ
-                </p>
-                <p className="text-[10px] text-text-secondary mt-1.5 max-w-xs mx-auto leading-relaxed">
-                    ข้อมูลถูกจัดเก็บและอัปเดตแผนที่เรียบร้อยแล้ว
-                </p>
-                <button
-                    onClick={() => router.push("/map")}
-                    className="mt-4 px-6 py-2.5 min-h-[44px] bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold transition-colors"
-                >
+                <CheckCircle2 size={28} className="text-teal-600 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-teal-800 dark:text-teal-200">บันทึกสำเร็จ</p>
+                <p className="text-[10px] text-text-secondary mt-1.5 max-w-xs mx-auto leading-relaxed">ข้อมูลถูกจัดเก็บและอัปเดตแผนที่เรียบร้อยแล้ว</p>
+                <button onClick={() => router.push("/map")} className="mt-4 px-6 py-2.5 min-h-[44px] bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold transition-colors">
                     กลับสู่แผนที่
                 </button>
             </div>
@@ -1082,20 +756,13 @@ function SubmitContent() {
 
             {/* ── Top bar ── */}
             <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-                <button
-                    onClick={() => router.back()}
-                    className="flex items-center gap-1.5 text-[11px] text-text-secondary hover:text-text-primary transition-colors min-h-[44px] pr-3"
-                >
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-[11px] text-text-secondary hover:text-text-primary transition-colors min-h-[44px] pr-3">
                     <ArrowLeft size={14} />
                     <span className="hidden sm:inline">Back</span>
                 </button>
                 <div className="text-center">
-                    <h1 className="text-sm font-semibold text-text-primary">
-                        ส่งตัวอย่างน้ำ
-                    </h1>
-                    <p className="text-[10px] text-text-muted hidden sm:block">
-                        SESSION #{sessionId.current}
-                    </p>
+                    <h1 className="text-sm font-semibold text-text-primary">ส่งตัวอย่างน้ำ</h1>
+                    <p className="text-[10px] text-text-muted hidden sm:block">SESSION #{sessionId.current}</p>
                 </div>
                 <div className="w-10" /> {/* spacer */}
             </div>
@@ -1105,10 +772,7 @@ function SubmitContent() {
 
             {/* ── Page subtitle (mobile only) ── */}
             <div className="px-4 pt-4 pb-1 md:hidden">
-                <p className="text-xs text-text-secondary">
-                    การติดตามคุณภาพน้ำชายฝั่ง —
-                    อัปโหลดภาพชุดทดสอบเพื่อวิเคราะห์ด้วย AI
-                </p>
+                <p className="text-xs text-text-secondary">การติดตามคุณภาพน้ำชายฝั่ง — อัปโหลดภาพชุดทดสอบเพื่อวิเคราะห์ด้วย AI</p>
             </div>
 
             {/* ══════════════ MOBILE LAYOUT (< md) ══════════════ */}
@@ -1141,13 +805,8 @@ function SubmitContent() {
                 <div className="bg-surface border border-border rounded-xl overflow-hidden">
                     {/* page title bar */}
                     <div className="px-6 py-4 border-b border-border">
-                        <h2 className="text-base font-semibold text-text-primary">
-                            ส่งตัวอย่างน้ำ
-                        </h2>
-                        <p className="text-xs text-text-secondary mt-0.5">
-                            การติดตามคุณภาพน้ำชายฝั่ง —
-                            อัปโหลดภาพชุดทดสอบน้ำเพื่อการวิเคราะห์ด้วย AI
-                        </p>
+                        <h2 className="text-base font-semibold text-text-primary">ส่งตัวอย่างน้ำ</h2>
+                        <p className="text-xs text-text-secondary mt-0.5">การติดตามคุณภาพน้ำชายฝั่ง — อัปโหลดภาพชุดทดสอบน้ำเพื่อการวิเคราะห์ด้วย AI</p>
                     </div>
 
                     {/* 3-column grid */}
@@ -1165,9 +824,7 @@ function SubmitContent() {
                                     </>
                                 )}
                                 {step === "analyzing" && <AnalyzingStatus />}
-                                {step === "results" && results && (
-                                    <SaveSection />
-                                )}
+                                {step === "results" && results && <SaveSection />}
                             </div>
                         </div>
 
@@ -1189,24 +846,14 @@ function SubmitContent() {
                                     <div className="text-center space-y-3">
                                         <div className="relative w-12 h-12 mx-auto">
                                             <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200/50 flex items-center justify-center">
-                                                <FlaskConical
-                                                    size={20}
-                                                    className="text-teal-700 dark:text-teal-400"
-                                                />
+                                                <FlaskConical size={20} className="text-teal-700 dark:text-teal-400" />
                                             </div>
                                             <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center animate-pulse">
-                                                <Sparkles
-                                                    size={10}
-                                                    className="text-white"
-                                                />
+                                                <Sparkles size={10} className="text-white" />
                                             </div>
                                         </div>
-                                        <p className="text-xs font-semibold text-text-primary">
-                                            กำลังเทียบสีและคำนวณค่า…
-                                        </p>
-                                        <p className="text-[10px] text-text-secondary max-w-[180px] leading-relaxed">
-                                            เปรียบเทียบกับมาตรฐานคุณภาพน้ำชายฝั่ง
-                                        </p>
+                                        <p className="text-xs font-semibold text-text-primary">กำลังเทียบสีและคำนวณค่า…</p>
+                                        <p className="text-[10px] text-text-secondary max-w-[180px] leading-relaxed">เปรียบเทียบกับมาตรฐานคุณภาพน้ำชายฝั่ง</p>
                                     </div>
                                 </div>
                             )}

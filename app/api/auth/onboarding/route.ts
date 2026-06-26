@@ -6,7 +6,7 @@ export async function PUT(request: NextRequest) {
         const body = await request.json();
         const { userId, firstName, lastName, phoneNumber } = body;
 
-        // 🛡️ Validation ตรวจสอบข้อมูลให้รัดกุมก่อนบันทึก
+        // Validation ตรวจสอบข้อมูลให้รัดกุมก่อนบันทึก
         if (!userId || !firstName || !lastName || !phoneNumber) {
             return NextResponse.json(
                 {
@@ -16,20 +16,17 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        // 🔍 1. ค้นหาผู้ใช้งานในระบบ (แปลง ID เป็น Number เผื่อหน้าบ้านส่งมาเป็นสตริง)
+        // ค้นหาผู้ใช้งานในระบบ (แปลง ID เป็น Number เผื่อหน้าบ้านส่งมาเป็นสตริง)
         const existingUser = await prisma.user.findUnique({
             where: { id: Number(userId) },
             include: { systemRole: true },
         });
 
         if (!existingUser) {
-            return NextResponse.json(
-                { error: "ไม่พบข้อมูลบัญชีผู้ใช้งานนี้ในระบบ" },
-                { status: 404 },
-            );
+            return NextResponse.json({ error: "ไม่พบข้อมูลบัญชีผู้ใช้งานนี้ในระบบ" }, { status: 404 });
         }
 
-        // 📝 2. อัปเดตข้อมูลส่วนตัวจริงลงฟิลด์ Expressive Snake Case ล่าสุด
+        // อัปเดตข้อมูลส่วนตัวจริงลงฟิลด์ Expressive Snake Case ล่าสุด
         const updatedUser = await prisma.user.update({
             where: { id: Number(userId) },
             data: {
@@ -42,7 +39,7 @@ export async function PUT(request: NextRequest) {
             },
         });
 
-        // 🚀 3. ส่งข้อมูล payload ชุดที่ถูกต้องกลับไปเคลียร์หน้ากาก Onboarding Guard
+        // ส่งข้อมูล payload ชุดที่ถูกต้องกลับไปเคลียร์หน้ากาก Onboarding Guard
         return NextResponse.json({
             success: true,
             user: {
@@ -55,12 +52,12 @@ export async function PUT(request: NextRequest) {
                 role: updatedUser.systemRole.roleName, // ยังคงเป็น "guest" เพื่อรอแอดมินอนุมัติสิทธิ์ส่งผลน้ำ
             },
         });
-    } catch (error: any) {
-        console.error("❌ PUT /api/auth/onboarding error:", error);
+    } catch (error) {
+        console.error("PUT /api/auth/onboarding error:", error);
         return NextResponse.json(
             {
                 error: "เกิดข้อผิดพลาดในการบันทึกข้อมูลส่วนตัวลงฐานข้อมูล",
-                details: error?.message,
+                details: (error as Error).message,
             },
             { status: 500 },
         );

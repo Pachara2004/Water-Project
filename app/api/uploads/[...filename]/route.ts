@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ filename: string[] }> },
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ filename: string[] }> }) {
     try {
         const { filename } = await params;
         const fileRoute = filename.join("/");
@@ -15,10 +12,7 @@ export async function GET(
         // SECURITY GUARD: ดักจับและป้องกันช่องโหว่ Path Traversal
         // ถ้าพาธที่คำนวณได้ไม่ได้เริ่มต้นด้วยโฟลเดอร์ baseUploadDir แปลว่ามีคนพยายามพิมพ์ย้อนโฟลเดอร์ แครชทิ้งทันที!
         if (!filepath.startsWith(baseUploadDir)) {
-            return NextResponse.json(
-                { error: "Access Denied: สิทธิ์การเข้าถึงไฟล์ไม่ถูกต้อง" },
-                { status: 403 },
-            );
+            return NextResponse.json({ error: "Access Denied: สิทธิ์การเข้าถึงไฟล์ไม่ถูกต้อง" }, { status: 403 });
         }
 
         // ตรวจสอบว่าไฟล์รูปภาพนั้นมีอยู่จริงบน Disk ไหมก่อนสั่งอ่านไฟล์
@@ -40,9 +34,6 @@ export async function GET(
         });
     } catch (error) {
         console.error("Serve Image Error:", error);
-        return NextResponse.json(
-            { error: "ไม่พบไฟล์รูปภาพที่ระบุในเซิร์ฟเวอร์" },
-            { status: 404 },
-        );
+        return NextResponse.json({ error: "ไม่พบไฟล์รูปภาพที่ระบุในเซิร์ฟเวอร์" }, { status: 404 });
     }
 }

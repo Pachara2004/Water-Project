@@ -70,10 +70,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(formattedSamples);
     } catch (error) {
         console.error("GET /api/samples error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" }, { status: 500 });
     }
 }
 
@@ -83,17 +80,11 @@ export async function POST(request: NextRequest) {
         // SECURITY STEP 1: ตรวจสอบสิทธิ์ผู้ใช้งานผ่านระบบ Headers (ซิงค์พิมพ์เล็กเรียบร้อย)
         const user = await getAuthenticatedUser(request);
         if (!user) {
-            return NextResponse.json(
-                { error: "Unauthorized: กรุณาเข้าสู่ระบบก่อนทำรายการ" },
-                { status: 401 },
-            );
+            return NextResponse.json({ error: "Unauthorized: กรุณาเข้าสู่ระบบก่อนทำรายการ" }, { status: 401 });
         }
 
         if (user.role !== "admin" && user.role !== "collector") {
-            return NextResponse.json(
-                { error: "Forbidden: บัญชีของคุณไม่มีสิทธิ์ส่งผลตรวจน้ำ" },
-                { status: 403 },
-            );
+            return NextResponse.json({ error: "Forbidden: บัญชีของคุณไม่มีสิทธิ์ส่งผลตรวจน้ำ" }, { status: 403 });
         }
 
         const formData = await request.formData();
@@ -110,10 +101,7 @@ export async function POST(request: NextRequest) {
         const imagePlotFile = formData.get("imagePlot") as File | null;
 
         if (!locationId || !status || !collectedBy || !collectionTime) {
-            return NextResponse.json(
-                { error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" }, { status: 400 });
         }
 
         // SECURITY STEP 2: ป้องกันการส่งข้อมูลสวมรอยข้ามชื่อเจ้าหน้าที่ท่านอื่น
@@ -131,10 +119,7 @@ export async function POST(request: NextRequest) {
             where: { id: Number(locationId) },
         });
         if (!location) {
-            return NextResponse.json(
-                { error: "ไม่พบสถานีจุดตรวจที่ระบุในระบบ" },
-                { status: 404 },
-            );
+            return NextResponse.json({ error: "ไม่พบสถานีจุดตรวจที่ระบุในระบบ" }, { status: 404 });
         }
 
         const uploadDir = path.join(process.cwd(), "public", "uploads");
@@ -156,18 +141,12 @@ export async function POST(request: NextRequest) {
                 );
             }
             if (imageFile.size > maxFileSize) {
-                return NextResponse.json(
-                    { error: "ขนาดไฟล์ภาพต้นฉบับต้องไม่เกิน 5MB" },
-                    { status: 400 },
-                );
+                return NextResponse.json({ error: "ขนาดไฟล์ภาพต้นฉบับต้องไม่เกิน 5MB" }, { status: 400 });
             }
 
             const ext = imageFile.name.split(".").pop() || "jpg";
             const filename = `raw-${crypto.randomUUID()}.${ext}`;
-            await writeFile(
-                path.join(uploadDir, filename),
-                Buffer.from(await imageFile.arrayBuffer()),
-            );
+            await writeFile(path.join(uploadDir, filename), Buffer.from(await imageFile.arrayBuffer()));
             dbImageUrl = `/uploads/${filename}`;
         }
 
@@ -183,29 +162,19 @@ export async function POST(request: NextRequest) {
                 );
             }
             if (imagePlotFile.size > maxFileSize) {
-                return NextResponse.json(
-                    { error: "ขนาดไฟล์ภาพผลวิเคราะห์ต้องไม่เกิน 5MB" },
-                    { status: 400 },
-                );
+                return NextResponse.json({ error: "ขนาดไฟล์ภาพผลวิเคราะห์ต้องไม่เกิน 5MB" }, { status: 400 });
             }
 
             const ext = imagePlotFile.name.split(".").pop() || "jpg";
             const filename = `plot-${crypto.randomUUID()}.${ext}`;
-            await writeFile(
-                path.join(uploadDir, filename),
-                Buffer.from(await imagePlotFile.arrayBuffer()),
-            );
+            await writeFile(path.join(uploadDir, filename), Buffer.from(await imagePlotFile.arrayBuffer()));
             dbImagePlotUrl = `/uploads/${filename}`;
         }
 
         const parsedCollectionTime = new Date(collectionTime);
         let weather = null;
         try {
-            weather = await getTmdHourlyWeather(
-                location.latitude,
-                location.longitude,
-                parsedCollectionTime,
-            );
+            weather = await getTmdHourlyWeather(location.latitude, location.longitude, parsedCollectionTime);
         } catch (weatherErr) {
             console.error("TMD Weather API Error (Non-blocking):", weatherErr);
         }
@@ -221,9 +190,7 @@ export async function POST(request: NextRequest) {
                 dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
                 airTemperature: weather?.temperature ?? null,
                 rainAccumulation: weather?.rainVolume ?? null,
-                weatherCondCode: weather?.weatherCondition
-                    ? Number(weather.weatherCondition)
-                    : null,
+                weatherCondCode: weather?.weatherCondition ? Number(weather.weatherCondition) : null,
                 status: status.toLowerCase() as WaterStatus,
                 rawImageUrl: dbImageUrl,
                 analyzedPlotUrl: dbImagePlotUrl,

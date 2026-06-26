@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> },
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
         const sampleId = Number(id);
@@ -53,20 +50,11 @@ export async function PUT(
         const createdSample = await prisma.waterSample.create({
             data: {
                 collectorId: oldSample.collectorId,
-                locationId: locationId
-                    ? Number(locationId)
-                    : oldSample.locationId,
-                collectionTime: collectionTime
-                    ? new Date(collectionTime)
-                    : oldSample.collectionTime,
+                locationId: locationId ? Number(locationId) : oldSample.locationId,
+                collectionTime: collectionTime ? new Date(collectionTime) : oldSample.collectionTime,
                 ammoniaValue: oldSample.ammoniaValue,
                 phosphateValue: oldSample.phosphateValue,
-                dissolvedOxygen:
-                    oxygen !== undefined
-                        ? oxygen === null || oxygen === ""
-                            ? null
-                            : parseFloat(oxygen)
-                        : oldSample.dissolvedOxygen,
+                dissolvedOxygen: oxygen !== undefined ? (oxygen === null || oxygen === "" ? null : parseFloat(oxygen)) : oldSample.dissolvedOxygen,
                 airTemperature: oldSample.airTemperature,
                 rainAccumulation: oldSample.rainAccumulation,
                 weatherCondCode: oldSample.weatherCondCode,
@@ -82,17 +70,11 @@ export async function PUT(
         return NextResponse.json(createdSample);
     } catch (error) {
         console.error("PUT /api/samples/[id] error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการปรับปรุงและบันทึกประวัติข้อมูลน้ำ" },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการปรับปรุงและบันทึกประวัติข้อมูลน้ำ" }, { status: 500 });
     }
 }
 
-export async function GET(
-    _request: Request,
-    { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
         const sampleId = Number(id);
@@ -104,8 +86,8 @@ export async function GET(
                 collectorId: true,
                 locationId: true,
                 collectionTime: true,
-                uploadedActiveAt: true, 
-                ammoniaValue: true, 
+                uploadedActiveAt: true,
+                ammoniaValue: true,
                 phosphateValue: true,
                 dissolvedOxygen: true,
                 airTemperature: true,
@@ -113,12 +95,12 @@ export async function GET(
                 weatherCondCode: true,
                 status: true,
                 rawImageUrl: true,
-                analyzedPlotUrl: true, 
+                analyzedPlotUrl: true,
                 location: {
                     select: {
                         id: true,
                         stationName: true,
-                        governingAgency: true, 
+                        governingAgency: true,
                         latitude: true,
                         longitude: true,
                     },
@@ -126,7 +108,7 @@ export async function GET(
                 collector: {
                     select: {
                         id: true,
-                        lineProfileName: true, 
+                        lineProfileName: true,
                         firstName: true,
                         lastName: true,
                     },
@@ -146,9 +128,6 @@ export async function GET(
         return NextResponse.json(sample);
     } catch (error) {
         console.error("GET /api/samples/[id] error:", error);
-        return NextResponse.json(
-            { error: "เกิดข้อผิดพลาดในการดึงข้อมูลรายละเอียดผลตรวจน้ำ" },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลรายละเอียดผลตรวจน้ำ" }, { status: 500 });
     }
 }

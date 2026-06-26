@@ -8,9 +8,7 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
         <div className="flex items-center justify-center h-full bg-surface-muted">
             <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-text-muted font-bold">
-                    กำลังโหลดแผนที่...
-                </span>
+                <span className="text-sm text-text-muted font-bold">กำลังโหลดแผนที่...</span>
             </div>
         </div>
     ),

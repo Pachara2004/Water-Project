@@ -13,26 +13,18 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData();
         const imageFile = formData.get("image") as File | null;
 
-        // 1. Validation ตรวจสอบไฟล์อัปโหลด
+        // Validation ตรวจสอบไฟล์อัปโหลด
         if (!imageFile) {
-            return NextResponse.json(
-                { error: "กรุณาอัปโหลดรูปภาพ" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "กรุณาอัปโหลดรูปภาพ" }, { status: 400 });
         }
 
         if (!imageFile.type.startsWith("image/")) {
-            return NextResponse.json(
-                { error: "ไฟล์ที่อัพโหลดไม่ใช่รูปภาพ" },
-                { status: 400 },
-            );
+            return NextResponse.json({ error: "ไฟล์ที่อัพโหลดไม่ใช่รูปภาพ" }, { status: 400 });
         }
 
-        console.log(
-            `Received image: ${imageFile.name}, size: ${imageFile.size} bytes`,
-        );
+        console.log(`Received image: ${imageFile.name}, size: ${imageFile.size} bytes`);
 
-        // 2. บันทึกรูปภาพต้นฉบับลงโฟลเดอร์ public/uploads
+        // บันทึกรูปภาพต้นฉบับลงโฟลเดอร์ public/uploads
         const uploadsDir = path.join(process.cwd(), "public", "uploads");
         if (!existsSync(uploadsDir)) {
             await mkdir(uploadsDir, { recursive: true });
@@ -46,13 +38,11 @@ export async function POST(request: NextRequest) {
 
         console.log(`Image saved to: ${filepath}`);
 
-        // 3. ส่วนติดต่อประมวลผลข้อมูลร่วมกับ API ของบอส
+        // ส่วนติดต่อประมวลผลข้อมูลร่วมกับ API ของบอส
         // บอสสามารถนำตัวแปรหรือฟังก์ชัน fetch เชื่อมหา Server โมเดลนอกมาแทนบล็อก Mock ด้านล่างนี้ได้เลยครับ
 
         // จำลองการดีเลย์ของโครงข่ายเวลาคุยกับ API นอก
-        await new Promise((resolve) =>
-            setTimeout(resolve, 1500 + Math.random() * 1500),
-        );
+        await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1500));
 
         // ตัวอย่างก้อน Object ที่ได้กลับมาจาก API ภายนอกจริง (มีคีย์เว้นวรรค "bounding box")
         const apiResult = {
@@ -62,11 +52,11 @@ export async function POST(request: NextRequest) {
             phosphate: false,
             confidence: 10,
             "bounding box": [
-               500, // x_min
+                500, // x_min
                 700, // x_max
                 150, // y_min
                 550, // y_max
-            ]
+            ],
         };
 
         // บังคับสลับประเภทคีย์สารเคมีให้แมปปิ้งเข้าสู่ตารางฐานข้อมูลหลัก
@@ -79,27 +69,21 @@ export async function POST(request: NextRequest) {
         const evalResult = evaluateSample(targetPhosphate, targetAmmonia);
         const status = evalResult.overallStatus;
 
-        console.log(
-            `API Processing Complete: PO4=${targetPhosphate}, NH3=${targetAmmonia}, Status=${status}`,
-        );
+        console.log(`API Processing Complete: PO4=${targetPhosphate}, NH3=${targetAmmonia}, Status=${status}`);
 
-        // 4. ส่งผลลัพธ์กระจายทุกคีย์ (Spread Operator) กลับไปให้ Frontend ทั้งหมด
+        // ส่งผลลัพธ์กระจายทุกคีย์ (Spread Operator) กลับไปให้ Frontend ทั้งหมด
         return NextResponse.json({
             phosphate: targetPhosphate,
             ammonia: targetAmmonia,
             status: status,
             imageUrl: `/uploads/${filename}`,
 
-            // ⚡ จุดเด่น: แตกกระจายก้อนพิกัด "bounding box" ส่งแนบไปพร้อมกันทันที
             ...apiResult,
         });
     } catch (error) {
         console.error("POST /api/analyze error:", error);
 
-        const errorMessage =
-            error instanceof Error
-                ? error.message
-                : "เกิดข้อผิดพลาดในการวิเคราะห์ภาพ";
+        const errorMessage = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการวิเคราะห์ภาพ";
 
         return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
