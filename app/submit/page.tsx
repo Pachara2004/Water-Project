@@ -280,24 +280,27 @@ function SubmitContent() {
             fd.append("phosphateVal", (results.phosphate ?? 0).toString());
             fd.append("ammoniaVal", (results.ammonia ?? 0).toString());
             fd.append("status", results.status || "safe");
-            fd.append("collectedBy", currentUser.id.toString());
             fd.append("collectionTime", new Date(collectionTime).toISOString());
             if (oxygen) fd.append("oxygen", oxygen);
+
+            // สลัดฟิลด์ collectedBy ที่เคยส่งจากหน้าบ้านออกไปได้เลยครับ เพราะหลังบ้านจะแกะ ID จากตั๋วแทน
+
+            // เรียกยิงบันทึกข้อมูลผลน้ำโดยแนบ Token ความปลอดภัยส่งตามไปล็อกกลอน
             const res = await fetch("/api/samples", {
                 method: "POST",
                 headers: {
-                    "x-user-id": currentUser.id.toString(),
-                    "x-user-role": currentUser.role.toLowerCase(),
+                    // เปลี่ยนจาก Custom Headers ปลอมแปลงง่าย มาใช้ LINE Access Token ม้วนเดียวจบ
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: fd,
             });
+
             if (res.ok) setSaved(true);
             else console.error("Save error:", await res.json());
         } catch (err) {
             console.error("Save failed:", err);
         }
     };
-
     const getStandardsEvaluation = (phosphate: number, ammonia: number) =>
         Object.entries(evaluateAllStandards(phosphate, ammonia)).map(([type, passed]) => ({
             type,
