@@ -1,28 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ตระบบสแกนสิทธิ์ส่วนกลาง
 
+// PUT /api/samples/[id] — อัปเดตและบันทึกประวัติข้อมูลน้ำ (เฉพาะ admin)
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    // 🔥 SECURITY STEP 1: ล็อกกลอนขั้นสูงสุด อนุญาตให้เฉพาะระดับสิทธิ์ "admin" ทำรายการผ่าน Token เท่านั้น
+    const auth = await verifyAuth(request, ["admin"]);
+    if (!auth.isValid) {
+        return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+    }
+
     try {
         const { id } = await params;
         const sampleId = Number(id);
 
         const body = await request.json();
-        const { collectionTime, locationId, oxygen, adminId } = body;
+        // 🔒 ปลอดภัยขึ้น: สลัดฟิลด์ adminId ที่ส่งมาจากหน้าบ้านทิ้งไปได้เลย ใช้ auth.user จาก LINE แทน
+        const { collectionTime, locationId, oxygen } = body;
 
-        // ตรวจสอบสิทธิ์ผู้ดูแลระบบสูงสุด
-        const admin = await prisma.user.findUnique({
-            where: { id: Number(adminId) },
-            include: { systemRole: true },
-        });
-
-        if (!admin || admin.systemRole.roleName !== "admin") {
-            return NextResponse.json(
-                {
-                    error: "สิทธิ์การเข้าถึงระบบไม่ถูกต้อง เฉพาะผู้ดูแลระบบเท่านั้น",
-                },
-                { status: 403 },
-            );
-        }
+        // ดึงแอดมินตัวจริงที่แกะได้จาก Token ปลอดภัยชัวร์ 100%
+        const secureAdmin = auth.user!;
 
         // ค้นหา Record เดิมที่ต้องการปรับปรุงโครงสร้าง
         const oldSample = await prisma.waterSample.findUnique({
@@ -42,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             where: { id: sampleId },
             data: {
                 isDeleted: true,
-                lastModifiedBy: admin.id,
+                lastModifiedBy: secureAdmin.id, // 🔒 ใช้ ID จริงจาก Token
             },
         });
 
@@ -63,7 +60,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 analyzedPlotUrl: oldSample.analyzedPlotUrl,
                 imageExpiresAt: oldSample.imageExpiresAt,
                 isDeleted: false,
-                lastModifiedBy: admin.id,
+                lastModifiedBy: secureAdmin.id, // 🔒 ใช้ ID จริงจาก Token
             },
         });
 
@@ -74,7 +71,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+// GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำรายชิ้น (เฉพาะเจ้าหน้าที่และผู้บริหาร)
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    // 🔥 SECURITY STEP 2: ป้องกันการสุ่ม ID ส่องข้อมูลดิบรายชิ้น บล็อกให้เฉพาะเจ้าหน้าที่ในระบบเท่านั้นเข้าถึงได้
+    const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
+    if (!auth.isValid) {
+        return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+    }
+
     try {
         const { id } = await params;
         const sampleId = Number(id);

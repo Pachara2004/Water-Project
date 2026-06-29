@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { ArrowLeft, ShieldAlert, Users, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, Search } from "lucide-react";
 
@@ -84,7 +85,13 @@ export default function AdminUsersPage() {
         try {
             const params = new URLSearchParams();
             if (keyword) params.set("search", keyword);
-            const res = await fetch(`/api/users?${params.toString()}`);
+
+            const res = await fetch(`/api/users?${params.toString()}`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
+            });
             const data = await res.json();
             setUsers(Array.isArray(data) ? data : []);
         } catch (e) {
@@ -113,7 +120,10 @@ export default function AdminUsersPage() {
         try {
             const res = await fetch("/api/users", {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
                 body: JSON.stringify({ userId, role }),
             });
             if (res.ok) {
@@ -345,6 +355,7 @@ export default function AdminUsersPage() {
 
                                     {/* Queue action strip — อนุมัติเป็นเลขสิทธิ์แบบพิมพ์เล็ก */}
                                     {/* Queue action strip — อนุมัติสิทธิ์ตามความต้องการจริงของผู้ใช้ */}
+                                    {/* Queue action strip — อนุมัติสิทธิ์ตามความต้องการจริงของผู้ใช้ */}
                                     {tab === "queue" && user.pendingRequestId && user.requestedRole && (
                                         <div className="px-4 sm:px-5 pb-4 flex gap-2 border-t border-border/50 pt-3">
                                             <button
@@ -352,7 +363,11 @@ export default function AdminUsersPage() {
                                                     setUpdating(user.id);
                                                     const res = await fetch("/api/users", {
                                                         method: "PATCH",
-                                                        headers: { "Content-Type": "application/json" },
+                                                        headers: {
+                                                            "Content-Type": "application/json",
+                                                            // 🔥 ปรับเติม Token ยืนยันสิทธิ์ในการ Approve ตั๋วคำร้อง
+                                                            Authorization: `Bearer ${liff.getAccessToken()}`,
+                                                        },
                                                         body: JSON.stringify({
                                                             userId: user.id,
                                                             role: user.requestedRole,
@@ -378,7 +393,11 @@ export default function AdminUsersPage() {
                                                     setUpdating(user.id);
                                                     const res = await fetch("/api/users", {
                                                         method: "PATCH",
-                                                        headers: { "Content-Type": "application/json" },
+                                                        headers: {
+                                                            "Content-Type": "application/json",
+                                                            // 🔥 ปรับเติม Token ยืนยันสิทธิ์ในการ Reject ปฏิเสธตั๋วคำร้อง
+                                                            Authorization: `Bearer ${liff.getAccessToken()}`,
+                                                        },
                                                         body: JSON.stringify({
                                                             userId: user.id,
                                                             action: "reject",

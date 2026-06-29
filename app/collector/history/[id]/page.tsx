@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import liff from "@line/liff";
 import StatusBadge from "@/components/map/StatusBadge";
 import { evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
 import { ArrowLeft, Calendar, Camera, CheckCircle2, CloudRain, FlaskConical, MapPin, Microscope, Pencil, ShieldCheck, ShieldX, Thermometer, User, Waves, X } from "lucide-react";
@@ -105,7 +106,13 @@ export default function CollectorHistoryDetailPage() {
                 setLoading(true);
                 setError(null);
 
-                const response = await fetch(`/api/samples/${params.id}`);
+                // บรรทัดที่ 91 เดิม
+                const response = await fetch(`/api/samples/${params.id}`, {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${liff.getAccessToken()}`,
+                    },
+                });
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -133,7 +140,14 @@ export default function CollectorHistoryDetailPage() {
     // โหลด locations เมื่อเข้าเข้าสู่ Edit Mode
     useEffect(() => {
         if (!isEditing || locations.length > 0) return;
-        fetch("/api/locations")
+
+        // 🚀 อัปเกรดการดึงพิกัดสถานีสำหรับทำ Dropdown ให้ปลอดภัยยิ่งขึ้น
+        fetch("/api/locations", {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${liff.getAccessToken()}`,
+            },
+        })
             .then((r) => r.json())
             .then((data) => {
                 if (Array.isArray(data))
@@ -146,7 +160,7 @@ export default function CollectorHistoryDetailPage() {
                     );
             })
             .catch(console.error);
-    }, [isEditing]);
+    }, [isEditing, locations.length]);
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
@@ -186,12 +200,15 @@ export default function CollectorHistoryDetailPage() {
         try {
             const res = await fetch(`/api/samples/${sample.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
                 body: JSON.stringify({
                     collectionTime: editData.collectionTime,
                     locationId: editData.locationId,
                     oxygen: editData.oxygen === "" ? null : editData.oxygen,
-                    adminId: currentUser.id,
+                    // หมายเหตุ: บอสสามารถถอด adminId ออกได้เลยครับ เพราะหลังบ้านจะแกะ ID จริงจากตั๋ว LINE แทนเพื่อความปลอดภัย
                 }),
             });
             const data = await res.json();

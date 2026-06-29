@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { getOrganizationLabel } from "@/lib/standards";
 import { MapPin, Building2, Save, ShieldAlert, Plus, Pencil, Trash2, X, Check, ArrowLeft, RefreshCw, Layers } from "lucide-react";
@@ -106,6 +107,7 @@ export default function AdminLocationsPage() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
                     name: name.trim(),
@@ -139,6 +141,7 @@ export default function AdminLocationsPage() {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
                     id: editingLoc.id,
@@ -163,6 +166,9 @@ export default function AdminLocationsPage() {
         try {
             const res = await fetch(`/api/locations?id=${id}`, {
                 method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
             });
             if (res.ok) {
                 setDeletingId(null);

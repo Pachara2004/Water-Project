@@ -4,12 +4,26 @@ import { prisma } from "@/lib/prisma";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { lineUid, name } = body;
+        // เปลี่ยนจากรับ lineUid ตรง ๆ เป็นรับ accessToken ที่ได้จาก liff.getAccessToken()
+        const { accessToken, name } = body;
 
-        if (!lineUid || !name) {
-            return NextResponse.json({ error: "กรุณาระบุ lineUid และ name ให้ครบถ้วน" }, { status: 400 });
+        if (!accessToken || !name) {
+            return NextResponse.json({ error: "กรุณาระบุ accessToken และ name ให้ครบถ้วน" }, { status: 400 });
         }
 
+        // ยิงไปเอาโปรไฟล์จริงจาก LINE API โดยใช้ Access Token ที่หน้าบ้านส่งมา
+        const lineProfileRes = await fetch("https://api.line.me/v2/profile", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (!lineProfileRes.ok) {
+            return NextResponse.json({ error: "โทเคน LINE ไม่ถูกต้องหรือหมดอายุแล้ว" }, { status: 401 });
+        }
+
+        const profileData = await lineProfileRes.json();
+        const lineUid = profileData.userId; 
+
+        // --- โลจิกจัดการฐานข้อมูลตารางผู้ใช้ของบอสตามเดิม ---
         let user = await prisma.user.findUnique({
             where: { lineUniqueId: lineUid },
             include: { systemRole: true },

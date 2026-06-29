@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
+import liff from "@line/liff";
 import { useRouter } from "next/navigation";
 import { Camera, FileText, FlaskConical, MapPin, Calendar, Beaker, ImageOff} from "lucide-react"; /* prettier-ignore */
 
@@ -44,8 +45,18 @@ export default function CollectorDashboard() {
             return;
         }
 
-        fetch("/api/samples")
-            .then((res) => res.json())
+        // 🚀 อัปเกรดการดึงข้อมูลโดยแนบ Token ความปลอดภัยส่งตามไปด้วย
+        fetch("/api/samples", {
+            method: "GET",
+            headers: {
+                // 🔥 แนบ LINE Access Token ไปในก้อน headers
+                Authorization: `Bearer ${liff.getAccessToken()}`,
+            },
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error("ไม่สามารถโหลดข้อมูลประวัติผลน้ำได้");
+                return res.json();
+            })
             .then((data) => {
                 if (Array.isArray(data)) {
                     const mapped = data.map((s: any) => ({
@@ -63,8 +74,8 @@ export default function CollectorDashboard() {
                         location: s.location
                             ? {
                                   id: s.locationId,
-                                  name: s.location.stationName,
-                                  organization: s.location.governingAgency,
+                                  name: s.location.name,
+                                  organization: s.location.organization,
                               }
                             : null,
                     }));

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import liff from "@line/liff";
 
 export default function ExportButtons() {
     const [isExporting, setIsExporting] = useState<"csv" | "excel" | null>(null);
@@ -10,7 +11,12 @@ export default function ExportButtons() {
     const handleExportCSV = async () => {
         setIsExporting("csv");
         try {
-            const res = await fetch("/api/samples/export-csv");
+            const res = await fetch("/api/samples/export-csv", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
+            });
             if (!res.ok) throw new Error("Failed to export CSV file");
 
             const blob = await res.blob();
@@ -35,8 +41,13 @@ export default function ExportButtons() {
     const handleExportExcel = async () => {
         setIsExporting("excel");
         try {
-            // เรียกยิง API ส่งออกตรงๆ หลังบ้านส่งก้อนไฟล์สำเร็จรูปมาให้แล้ว
-            const res = await fetch("/api/samples/export");
+            // เรียกยิง API ส่งออกตรงๆ พร้อมแนบสิทธิ์ความปลอดภัยใน headers
+            const res = await fetch("/api/samples/export", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
+            });
             if (!res.ok) throw new Error("Failed to export Excel file");
 
             const blob = await res.blob();

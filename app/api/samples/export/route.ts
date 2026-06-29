@@ -3,8 +3,15 @@ import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
 import path from "path";
 import { promises as fs } from "fs";
+import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ต Guard กลางมาควบคุมสิทธิ์
 
 export async function GET(request: NextRequest) {
+    // 🔥 SECURITY GUARD: ล็อกกลอนขั้นสูง อนุญาตเฉพาะสิทธิ์ "officer" และ "admin" เท่านั้นที่ส่งออกรายงานได้
+    const auth = await verifyAuth(request, ["officer", "admin"]);
+    if (!auth.isValid) {
+        return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+    }
+
     try {
         // ดึงข้อมูลตัวอย่างน้ำทั้งหมดที่ยังไม่โดนลบ (isDeleted: false) ตามผังระบบใหม่ของบอส
         const samples = await prisma.waterSample.findMany({
@@ -91,8 +98,8 @@ export async function GET(request: NextRequest) {
             };
 
             // คอลัมน์ที่ 12 คือ M (Visual Image), คอลัมน์ที่ 13 คือ N (AI Plot Detection)
-            await embedImageToCell(sample.rawImageUrl, 12); // ปรับเป็นชื่อฟิลด์ใหม่ตัวแปรแรก
-            await embedImageToCell(sample.analyzedPlotUrl, 13); // ปรับเป็นชื่อฟิลด์ใหม่ตัวแปรพล็อตวิเคราะห์ค่าสี
+            await embedImageToCell(sample.rawImageUrl, 12);
+            await embedImageToCell(sample.analyzedPlotUrl, 13);
         }
 
         // 4. คอมไพล์ก้อน Buffer และตอบกลับให้บราว์เซอร์หน้าบ้านกดโหลดทันที

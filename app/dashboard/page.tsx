@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
+import liff from "@line/liff";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts, { SampleItem } from "@/components/AnalyticsCharts";
 import ExportButtons from "@/components/dashboard/ExportButtons";
@@ -46,12 +47,17 @@ export default function ExecutiveDashboard() {
             setViewMode("ALL");
         }
 
+        // SECURITY FIX: สลัดพารามิเตอร์ ?collectedBy= ออกไปเพื่อปิดช่องโหว่การสุ่มเดาไอดีข้ามสิทธิ์
+        // ปล่อยให้หลังบ้านใช้ตั๋ว Token ตรวจสอบความเป็นเจ้าของประวัติเอง
         let apiUrl = "/api/samples";
-        if (userRole === "collector") {
-            apiUrl += `?collectedBy=${currentUser.id}`;
-        }
 
-        fetch(apiUrl)
+        fetch(apiUrl, {
+            method: "GET",
+            headers: {
+                // แนบ LINE Access Token ส่งไปพิสูจน์ยืนยันสิทธิ์สูงสุดของแอดมิน/ผู้บริหาร
+                Authorization: `Bearer ${liff.getAccessToken()}`,
+            },
+        })
             .then((res) => {
                 if (!res.ok) throw new Error("Network response was not ok");
                 return res.json();

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ต Guard กลางเข้ามาสลักนิรภัย
 
 export async function GET(request: NextRequest) {
+    // SECURITY GUARD: อนุญาตให้เฉพาะระดับสิทธิ์ 'admin' เท่านั้นที่เปิดดูรายชื่อและคำร้องขอสิทธิ์ทั้งหมดได้
+    const auth = await verifyAuth(request, ["admin"]);
+    if (!auth.isValid) {
+        return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+    }
+
     try {
         const { searchParams } = new URL(request.url);
         const search = searchParams.get("search")?.trim() ?? "";
@@ -49,7 +56,7 @@ export async function GET(request: NextRequest) {
                 id: u.id,
                 lineProfileName: u.lineProfileName,
                 fullName: `${u.firstName || ""} ${u.lastName || ""}`.trim() || "ยังไม่ลงทะเบียนข้อมูล",
-                phoneNumber: u.phoneNumber || null, // ปรับให้สอดคล้องกับ Interface หน้าบ้าน
+                phoneNumber: u.phoneNumber || null,
                 role: u.systemRole.roleName,
                 registeredAt: u.registeredAt.toISOString(),
                 lastActiveAt: u.lastActiveAt.toISOString(),
@@ -67,6 +74,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+    // SECURITY GUARD: ป้องกันขั้นสูงสุด ล็อกให้เฉพาะ 'admin' ตัวจริงเท่านั้นที่อนุมัติหรือปฏิเสธคำร้องขอเปลี่ยนสิทธิ์ได้
+    const auth = await verifyAuth(request, ["admin"]);
+    if (!auth.isValid) {
+        return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+    }
+
     try {
         const { userId, role, action, requestId } = await request.json();
 

@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth-guard";
 
-// ฟังก์ชันภายในช่วยแกะอ่านค่าบทบาทและ ID จาก Custom Headers หน้าบ้าน
-async function getAuthenticatedUser(request: NextRequest) {
-    const id = request.headers.get("x-user-id");
-    const role = request.headers.get("x-user-role");
-
-    if (!id || !role) return null;
-    return { id: Number(id), role }; // แปลง ID บอสกลับเป็นเลข Int ตามระบบใหม่
-}
-
-// GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุด 10 ชุด
+// GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุด 10 ชุด (Public - คนทั่วไปเข้าดูแผนที่ได้)
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const orgFilter = searchParams.get("org");
 
-        // แมปตัวแปรเงื่อนไขตามฟิลด์ใหม่ governingAgency
         const where = orgFilter && orgFilter !== "ALL" ? { governingAgency: orgFilter } : {};
 
         const locations = await prisma.location.findMany({
             where,
             include: {
                 samples: {
-                    where: { isDeleted: false }, // กรองเฉพาะรายการที่ยังไม่โดน Soft Delete
+                    where: { isDeleted: false },
                     orderBy: { collectionTime: "desc" },
                     take: 10,
                     select: {
@@ -50,7 +41,6 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        // Transform ปรับโครงสร้างข้อมูลส่งคืนกลับไปให้หน้าบ้านจับแสดงผลบนแผนที่
         const result = locations.map((loc) => {
             const mappedSamples = loc.samples.map((s) => ({
                 id: s.id,
@@ -90,22 +80,13 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST /api/locations — เพิ่มสถานีจุดตรวจพิกัดใหม่
+// POST /api/locations — เพิ่มสถานีจุดตรวจพิกัดใหม่ (เฉพาะ admin)
 export async function POST(request: NextRequest) {
     try {
-        const user = await getAuthenticatedUser(request);
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized: กรุณาเข้าสู่ระบบก่อนทำรายการ" }, { status: 401 });
-        }
-
-        // อิงสิทธิ์ชื่อพิมพ์เล็กตามที่ Seed ลงตารางไว้
-        if (user.role !== "admin") {
-            return NextResponse.json(
-                {
-                    error: "Forbidden: เฉพาะผู้ดูแลระบบสูงสุดเท่านั้นที่มีสิทธิ์เพิ่มสถานี",
-                },
-                { status: 403 },
-            );
+        // ใส่สลักนิรภัย: แกะโทเคนดักจับ ตรวจสอบและอนุญาตให้เฉพาะ "admin" เท่านั้นที่วิ่งผ่านเข้ามาได้
+        const auth = await verifyAuth(request, ["admin"]);
+        if (!auth.isValid) {
+            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
         const body = await request.json();
@@ -140,17 +121,13 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// PUT /api/locations — ปรับปรุงแก้ไขข้อมูลพิกัดสถานีเดิม
+// PUT /api/locations — ปรับปรุงแก้ไขข้อมูลพิกัดสถานีเดิม (เฉพาะ admin)
 export async function PUT(request: NextRequest) {
     try {
-        const user = await getAuthenticatedUser(request);
-        if (!user || user.role !== "admin") {
-            return NextResponse.json(
-                {
-                    error: "Forbidden: บัญชีของคุณไม่มีสิทธิ์แก้ไขข้อมูลจุดตรวจ",
-                },
-                { status: 403 },
-            );
+        // ใส่สลักนิรภัย: ตรวจสอบและอนุญาตให้เฉพาะสิทธิ์ "admin" ทำรายการผ่าน Token เท่านั้น
+        const auth = await verifyAuth(request, ["admin"]);
+        if (!auth.isValid) {
+            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
         const body = await request.json();
@@ -167,7 +144,7 @@ export async function PUT(request: NextRequest) {
         if (lng !== undefined) updateData.longitude = parseFloat(lng);
 
         const location = await prisma.location.update({
-            where: { id: Number(id) }, // 🔢 บังคับเป็นเลข Int ป้องกันข้อหา Type Mismatch
+            where: { id: Number(id) },
             data: updateData,
         });
 
@@ -184,17 +161,13 @@ export async function PUT(request: NextRequest) {
     }
 }
 
-// DELETE /api/locations — ลบสถานีพิกัดออกจากระบบ
+// DELETE /api/locations — ลบสถานีพิกัดออกจากระบบ (เฉพาะ admin)
 export async function DELETE(request: NextRequest) {
     try {
-        const user = await getAuthenticatedUser(request);
-        if (!user || user.role !== "admin") {
-            return NextResponse.json(
-                {
-                    error: "Forbidden: บัญชีของคุณไม่มีสิทธิ์ลบข้อมูลสถานีวิจัย",
-                },
-                { status: 403 },
-            );
+        // ใส่สลักนิรภัย: ตรวจสอบตั๋วโทเคนของ LINE และอนุญาตเฉพาะ "admin" เท่านั้น
+        const auth = await verifyAuth(request, ["admin"]);
+        if (!auth.isValid) {
+            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
         const { searchParams } = new URL(request.url);
@@ -206,7 +179,6 @@ export async function DELETE(request: NextRequest) {
 
         const targetId = Number(id);
 
-        // ลบข้อมูลประวัติน้ำทะเลชายฝั่งที่ผูกสัมพันธ์กับจุดตรวจนี้ก่อนเพื่อไม่ให้เกิด FK Constraints Lock
         await prisma.waterSample.deleteMany({
             where: { locationId: targetId },
         });
