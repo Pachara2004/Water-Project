@@ -16,6 +16,8 @@ interface UserItem {
     registeredAt: string;
     lastActiveAt: string;
     samplesCount: number;
+    pendingRequestId: number | null;
+    requestedRole: Role | null;
 }
 
 const ROLE_CONFIG: Record<Role, { label: string; color: string; dot: string }> = {
@@ -145,7 +147,7 @@ export default function AdminUsersPage() {
         );
     }
 
-    const queue = users.filter((u) => u.role === "guest"); // รอการอนุมัติคือกลุ่มผู้ใช้เริ่มต้น 'guest'
+    const queue = users.filter((u) => u.pendingRequestId !== null);
     const filtered = tab === "queue" ? queue : users;
 
     return (
@@ -342,23 +344,57 @@ export default function AdminUsersPage() {
                                     </div>
 
                                     {/* Queue action strip — อนุมัติเป็นเลขสิทธิ์แบบพิมพ์เล็ก */}
-                                    {tab === "queue" && user.role === "guest" && (
+                                    {/* Queue action strip — อนุมัติสิทธิ์ตามความต้องการจริงของผู้ใช้ */}
+                                    {tab === "queue" && user.pendingRequestId && user.requestedRole && (
                                         <div className="px-4 sm:px-5 pb-4 flex gap-2 border-t border-border/50 pt-3">
                                             <button
-                                                onClick={() => handleRoleChange(user.id, "collector")}
+                                                onClick={async () => {
+                                                    setUpdating(user.id);
+                                                    const res = await fetch("/api/users", {
+                                                        method: "PATCH",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            userId: user.id,
+                                                            role: user.requestedRole,
+                                                            requestId: user.pendingRequestId,
+                                                        }),
+                                                    });
+                                                    if (res.ok) {
+                                                        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: user.requestedRole!, pendingRequestId: null, requestedRole: null } : u)));
+                                                        setToast({ name: displayName, role: user.requestedRole! });
+                                                        setTimeout(() => setToast(null), 3000);
+                                                    }
+                                                    setUpdating(null);
+                                                }}
                                                 disabled={!!updating}
                                                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-primary hover:bg-navy-dark text-white text-xs font-bold rounded-xl transition-all disabled:opacity-40 cursor-pointer active:scale-[0.97]"
                                             >
                                                 <CheckCircle2 size={13} />
-                                                อนุมัติเป็น Collector
+                                                อนุมัติเป็น {ROLE_CONFIG[user.requestedRole].label}
                                             </button>
+
                                             <button
-                                                onClick={() => handleRoleChange(user.id, "guest")}
-                                                disabled={true}
-                                                className="flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[40px] bg-surface-subtle border border-border text-text-muted text-xs font-bold rounded-xl opacity-40 cursor-not-allowed"
+                                                onClick={async () => {
+                                                    setUpdating(user.id);
+                                                    const res = await fetch("/api/users", {
+                                                        method: "PATCH",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            userId: user.id,
+                                                            action: "reject",
+                                                            requestId: user.pendingRequestId,
+                                                        }),
+                                                    });
+                                                    if (res.ok) {
+                                                        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, pendingRequestId: null, requestedRole: null } : u)));
+                                                    }
+                                                    setUpdating(null);
+                                                }}
+                                                disabled={!!updating}
+                                                className="flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[40px] bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 transition-all cursor-pointer"
                                             >
                                                 <XCircle size={13} />
-                                                ปฏิเสธ
+                                                ปฏิเสธคำขอ
                                             </button>
                                         </div>
                                     )}
