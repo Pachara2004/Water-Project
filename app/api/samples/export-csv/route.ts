@@ -1,7 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server"; // 🔄 เพิ่ม NextRequest เข้ามาพ่วงร่วมกับระบบสแกนสิทธิ์
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ตระบบสแกนสิทธิ์ส่วนกลางมาใช้งานคุมความปลอดภัย
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    // 🔥 SECURITY GUARD: ปิดช่องโหว่การแอบสูบสถิติ ล็อกให้เฉพาะ "officer" และ "admin" ผ่าน Token เท่านั้น
+    const auth = await verifyAuth(request, ["officer", "admin"]);
+    if (!auth.isValid) {
+        return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+    }
+
     try {
         // ดึงข้อมูลตัวอย่างน้ำเฉพาะรายการที่ยังไม่โดน Soft Delete (isDeleted: false) ตาม Schema ใหม่ของบอส
         const samples = await prisma.waterSample.findMany({
