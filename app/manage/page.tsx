@@ -113,9 +113,13 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
         try {
             const res = await fetch("/api/auth/onboarding", {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    // 🔥 เพิ่มกลอนล็อกแนบ LINE Access Token ส่งไปยืนยันตัวตนจริงกับหลังบ้านครับบอส!
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
                 body: JSON.stringify({
-                    userId: currentUser.id,
+                    // 🔒 ปลอดภัยสูงสุด: ถอดไอดี userId ออกไปได้เลยครับ เพราะหลังบ้านจะแกะจากตั๋ว Token แทนแล้ว
                     firstName,
                     lastName,
                     phoneNumber: phone.trim().replace(/[-\s]/g, ""),
