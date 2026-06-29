@@ -63,7 +63,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        lineUid: profile.userId,
+                        accessToken: liff.getAccessToken(),
                         name: profile.displayName,
                     }),
                 });
@@ -98,6 +98,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
     };
 
     // 2️⃣ จัดการเมื่อกดปุ่มส่งในหน้าเลือก Role: ยิง API ม้วนเดียวจบ
+    // 2️⃣ จัดการเมื่อกดปุ่มส่งในหน้าเลือก Role
     const handleFinalSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) return;
@@ -114,15 +115,19 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         setFormError(null);
 
         try {
+            // บรรทัดที่ 117 ที่เกิดปัญหา
             const res = await fetch("/api/auth/onboarding", {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    // 🔥 เพิ่มบรรทัดนี้เข้าไปเพื่อให้หน้าบ้านแนบตั๋ว Token ของ LINE ส่งไปปลดล็อกหลังบ้านครับบอส!
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
                 body: JSON.stringify({
-                    userId: currentUser.id,
                     firstName,
                     lastName,
                     phoneNumber,
-                    requestedRoleName: selectedRole, // ส่งชื่อบทบาทที่เลือกไปด้วย
+                    requestedRoleName: selectedRole,
                 }),
             });
 
@@ -133,7 +138,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
             const resData = await res.json();
             if (resData.success) {
-                setUser(resData.user); // อัปเดตข้อมูลทับ (Role จะยังคงเป็น "guest" ตามที่ API คืนมา)
+                setUser(resData.user);
             }
         } catch (err: unknown) {
             const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";

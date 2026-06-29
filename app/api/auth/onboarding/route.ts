@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
+import { verifyAuth } from "@/lib/auth-guard";
 export async function PUT(request: NextRequest) {
+    // สกัดสิทธิ์ดักจับโทเคน: อนุญาตให้ทุกบทบาทที่ล็อกอินผ่าน LINE LIFF ถูกต้องเข้าทำรายการได้
+    const auth = await verifyAuth(request);
+    if (!auth.isValid) {
+        return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+    }
+
     try {
         const body = await request.json();
-        const { userId, firstName, lastName, phoneNumber, requestedRoleName } = body;
+        const { firstName, lastName, phoneNumber, requestedRoleName } = body;
 
-        if (!userId || !firstName || !lastName || !phoneNumber || !requestedRoleName) {
+        // ปรับการตรวจสอบข้อมูล: ไม่ต้องพึ่งพา userId จากหน้าบ้านแล้ว ใช้จาก Token จริงแทน
+        if (!firstName || !lastName || !phoneNumber || !requestedRoleName) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลส่วนตัวและเลือกสิทธิ์ให้ครบถ้วน" }, { status: 400 });
         }
 
+        // ดึงไอดีผู้ใช้งานตรง ๆ จากผลลัพธ์ถอดรหัส Token ของ LINE ที่ปลอดภัย
+        const secureUserId = auth.user!.id;
+
         const existingUser = await prisma.user.findUnique({
-            where: { id: Number(userId) },
+            where: { id: secureUserId },
         });
 
         if (!existingUser) {
@@ -20,7 +30,7 @@ export async function PUT(request: NextRequest) {
 
         // 1. อัปเดตข้อมูลส่วนตัว (สิทธิ์ในตาราง user ยังเป็น guest ตามเดิม)
         const updatedUser = await prisma.user.update({
-            where: { id: Number(userId) },
+            where: { id: secureUserId },
             data: {
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
@@ -31,7 +41,7 @@ export async function PUT(request: NextRequest) {
 
         // 2. ค้นหา Role ปลายทางที่ต้องการร้องขอ
         const targetRole = await prisma.role.findUnique({
-            where: { roleName: requestedRoleName },
+            where: { roleName: requestedRoleName.toLowerCase() }, // มั่นใจว่าเป็นพิมพ์เล็ก
         });
 
         if (!targetRole) {

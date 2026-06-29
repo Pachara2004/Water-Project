@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
+import liff from "@line/liff";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { getParameterStatus, LOCATION_STANDARDS, evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
@@ -234,13 +235,27 @@ function SubmitContent() {
         try {
             const fd = new FormData();
             fd.append("image", imageFile);
-            const data = await fetch("/api/analyze", {
+
+            // ดึงคำสั่งจาก fetch มาใส่ตัวแปรตรง ๆ พร้อมแนบสิทธิ์ความปลอดภัยใน headers
+            const res = await fetch("/api/analyze", {
                 method: "POST",
+                headers: {
+                    // แนบ LINE Access Token ไปในโครงสร้าง Bearer Token ม้วนเดียวจบ
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
                 body: fd,
-            }).then((r) => r.json());
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || "ไม่สามารถเปิดระบบวิเคราะห์ภาพได้");
+            }
+
+            const data = await res.json();
             const isAmmonia = data.ammonia === true;
             const plotted = await generateAiImagePlot(imageFile, data);
             if (plotted) setImagePlotFile(plotted);
+
             setResults({
                 phosphate: isAmmonia ? 0 : data.concentrated,
                 ammonia: isAmmonia ? data.concentrated : 0,
@@ -250,6 +265,7 @@ function SubmitContent() {
             setStep("results");
         } catch (err) {
             console.error("Analysis failed:", err);
+            // บอสสามารถเลือกเก็บข้อผิดพลาดไปแจ้งเตือนบน UI (เช่น setFormError) ได้ตามต้องการครับ
             setStep("upload");
         }
     };
