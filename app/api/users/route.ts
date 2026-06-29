@@ -7,19 +7,14 @@ export async function GET(request: NextRequest) {
         const search = searchParams.get("search")?.trim() ?? "";
         const role = searchParams.get("role")?.trim() ?? "";
 
-        // สร้างเงื่อนไขตัวกรองแบบไดนามิกให้ตรงตาม Schema ใหม่
         const where: any = {};
 
-        // ค้นหาแบบกวาดครอบคลุมทั้ง ชื่อจริง, นามสกุลจริง หรือชื่อไลน์โปรไฟล์
         if (search) {
             where.OR = [{ firstName: { contains: search } }, { lastName: { contains: search } }, { lineProfileName: { contains: search } }];
         }
 
-        // กรองผ่านความสัมพันธ์ตารางสิทธิ์ระบบ
         if (role && role !== "ALL") {
-            where.systemRole = {
-                roleName: role.toLowerCase(),
-            };
+            where.systemRole = { roleName: role.toLowerCase() };
         }
 
         const users = await prisma.user.findMany({
@@ -33,27 +28,36 @@ export async function GET(request: NextRequest) {
                 phoneNumber: true,
                 registeredAt: true,
                 lastActiveAt: true,
-                systemRole: {
+                systemRole: { select: { roleName: true } },
+                _count: { select: { samples: true } },
+                roleRequests: {
+                    where: { status: "pending" },
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
                     select: {
-                        roleName: true,
+                        id: true,
+                        requestedRole: { select: { roleName: true } },
                     },
                 },
-                _count: { select: { samples: true } },
             },
             orderBy: { registeredAt: "desc" },
         });
 
-        // ปรับโครงสร้างเพื่อส่งก้อน Payload คืนกลับไปให้ตารางหน้าบ้านเข้าใจได้ง่าย
-        const formattedUsers = users.map((u) => ({
-            id: u.id,
-            lineProfileName: u.lineProfileName,
-            fullName: `${u.firstName || ""} ${u.lastName || ""}`.trim() || "ยังไม่ลงทะเบียนข้อมูล",
-            phoneNumber: u.phoneNumber || "N/A",
-            role: u.systemRole.roleName, // ดึงชื่อสิทธิ์ข้อความออกมาตรง ๆ เช่น "guest", "collector"
-            registeredAt: u.registeredAt,
-            lastActiveAt: u.lastActiveAt,
-            samplesCount: u._count.samples,
-        }));
+        const formattedUsers = users.map((u) => {
+            const pendingRequest = u.roleRequests[0];
+            return {
+                id: u.id,
+                lineProfileName: u.lineProfileName,
+                fullName: `${u.firstName || ""} ${u.lastName || ""}`.trim() || "ยังไม่ลงทะเบียนข้อมูล",
+                phoneNumber: u.phoneNumber || null, // ปรับให้สอดคล้องกับ Interface หน้าบ้าน
+                role: u.systemRole.roleName,
+                registeredAt: u.registeredAt.toISOString(),
+                lastActiveAt: u.lastActiveAt.toISOString(),
+                samplesCount: u._count.samples,
+                pendingRequestId: pendingRequest ? pendingRequest.id : null,
+                requestedRole: pendingRequest ? pendingRequest.requestedRole.roleName : null,
+            };
+        });
 
         return NextResponse.json(formattedUsers);
     } catch (error) {
@@ -64,66 +68,70 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
     try {
-        const { userId, role } = await request.json();
+        const { userId, role, action, requestId } = await request.json();
 
-        if (!userId || !role) {
-            return NextResponse.json({ error: "กรุณาระบุ userId และบทบาทสิทธิ์ที่ต้องการแต่งตั้ง" }, { status: 400 });
+        if (!userId) {
+            return NextResponse.json({ error: "กรุณาระบุ userId" }, { status: 400 });
         }
 
-        // ชุดบทบาทความปลอดภัยพิมพ์เล็กตามระบบใหม่เอี่ยมของบอส
-        const validRoles = ["admin", "officer", "collector", "guest"];
+        // กรณีแอดมินกดปุ่ม "ปฏิเสธ" (Reject) คำร้องขอ
+        if (action === "reject" && requestId) {
+            await prisma.roleRequest.update({
+                where: { id: Number(requestId) },
+                data: { status: "rejected" },
+            });
+            return NextResponse.json({ success: true, message: "ปฏิเสธคำร้องขอสิทธิ์เรียบร้อยแล้ว" });
+        }
+
+        // --- กรณีอนุมัติหรือเปลี่ยนสิทธิ์ปกติ ---
+        if (!role) return NextResponse.json({ error: "กรุณาระบุบทบาทสิทธิ์ที่ต้องการแต่งตั้ง" }, { status: 400 });
         const targetRole = role.toLowerCase();
 
-        if (!validRoles.includes(targetRole)) {
-            return NextResponse.json(
-                {
-                    error: "บทบาทสิทธิ์ที่ระบุไม่ถูกต้องตามโครงสร้างระบบรักษาความปลอดภัย",
-                },
-                { status: 400 },
-            );
-        }
-
-        // ค้นหาไอดีสิทธิ์จากตาราง Role
         const targetRoleRecord = await prisma.role.findUnique({
             where: { roleName: targetRole },
         });
 
         if (!targetRoleRecord) {
-            return NextResponse.json({ error: "ไม่พบกลุ่มบทบาทสิทธิ์นี้ในฐานข้อมูลระบบ" }, { status: 404 });
+            return NextResponse.json({ error: "ไม่พบกลุ่มบทบาทสิทธิ์นี้ในระบบ" }, { status: 404 });
         }
 
-        // ทำการโยกย้ายผูกไอดีสิทธิ์ชุดใหม่เข้าหาตัวผู้ใช้งาน (แปลง ID เป็น Number)
-        const updatedUser = await prisma.user.update({
-            where: { id: Number(userId) },
-            data: { roleId: targetRoleRecord.id },
-            select: {
-                id: true,
-                lineProfileName: true,
-                firstName: true,
-                lastName: true,
-                systemRole: {
-                    select: {
-                        roleName: true,
-                    },
+        // ใช้ Transaction ควบคุม: อัปเดตสิทธิ์ User + ปิดตั๋วคำร้องขอ (ถ้ามี)
+        const updatedUser = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.update({
+                where: { id: Number(userId) },
+                data: { roleId: targetRoleRecord.id },
+                select: {
+                    id: true,
+                    lineProfileName: true,
+                    firstName: true,
+                    systemRole: { select: { roleName: true } },
                 },
-            },
+            });
+
+            // ถ้าเป็นการอนุมัติจากตั๋วคำร้อง ให้เปลี่ยนสถานะเป็น approved
+            if (requestId) {
+                await tx.roleRequest.update({
+                    where: { id: Number(requestId) },
+                    data: { status: "approved" },
+                });
+            } else {
+                // ถ้าแอดมินเปลี่ยนสิทธิ์จาก Dropdown ตรงๆ ให้ปิดตั๋ว pending เก่าของคนนี้ทั้งหมดไปด้วย
+                await tx.roleRequest.updateMany({
+                    where: { userId: Number(userId), status: "pending" },
+                    data: { status: "approved" },
+                });
+            }
+
+            return user;
         });
 
         return NextResponse.json({
             success: true,
-            message: `แต่งตั้งสิทธิ์ให้คุณ ${updatedUser.firstName || updatedUser.lineProfileName} เป็น ${updatedUser.systemRole.roleName} สำเร็จ`,
-            user: {
-                id: updatedUser.id,
-                role: updatedUser.systemRole.roleName,
-            },
+            message: `แต่งตั้งสิทธิ์เรียบร้อยแล้ว`,
+            user: { id: updatedUser.id, role: updatedUser.systemRole.roleName },
         });
     } catch (error) {
         console.error("PATCH /api/users error:", error);
-        return NextResponse.json(
-            {
-                error: "เกิดข้อผิดพลาดในการบันทึกเปลี่ยนสิทธิ์สมาชิกลงฐานข้อมูล",
-            },
-            { status: 500 },
-        );
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดในการบันทึกเปลี่ยนสิทธิ์สมาชิก" }, { status: 500 });
     }
 }

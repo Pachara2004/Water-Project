@@ -4,13 +4,12 @@ import { prisma } from "@/lib/prisma";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { lineUid, name } = body; // หน้าบ้านส่ง lineUid และ name มาจาก LINE LIFF
+        const { lineUid, name } = body;
 
         if (!lineUid || !name) {
-            return NextResponse.json({ error: "กรุณาระบุ lineUid และ name ของโปรไฟล์ให้ครบถ้วน" }, { status: 400 });
+            return NextResponse.json({ error: "กรุณาระบุ lineUid และ name ให้ครบถ้วน" }, { status: 400 });
         }
 
-        // ค้นหาผู้ใช้งานในฐานข้อมูลโดยแมปเข้าฟิลด์ lineUniqueId และดึง relation 'systemRole'
         let user = await prisma.user.findUnique({
             where: { lineUniqueId: lineUid },
             include: { systemRole: true },
@@ -22,12 +21,7 @@ export async function POST(request: NextRequest) {
             });
 
             if (!guestRole) {
-                return NextResponse.json(
-                    {
-                        error: "ระบบไม่พบกลุ่มสิทธิ์ 'guest' กรุณารัน Seed ฐานข้อมูลก่อนทำรายการ",
-                    },
-                    { status: 500 },
-                );
+                return NextResponse.json({ error: "ไม่พบกลุ่มสิทธิ์ 'guest' ในระบบ" }, { status: 500 });
             }
 
             user = await prisma.user.create({
@@ -41,14 +35,11 @@ export async function POST(request: NextRequest) {
         } else {
             user = await prisma.user.update({
                 where: { lineUniqueId: lineUid },
-                data: {
-                    lineProfileName: name,
-                },
+                data: { lineProfileName: name },
                 include: { systemRole: true },
             });
         }
 
-        // ส่งก้อน payload สรุปผลกลับไปให้หน้าบ้านจัดเซฟลง Zustand Store
         return NextResponse.json({
             id: user.id,
             lineUniqueId: user.lineUniqueId,
@@ -60,6 +51,6 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         console.error("POST /api/auth error:", error);
-        return NextResponse.json({ error: "เกิดข้อผิดพลาดภายในระบบเซิร์ฟเวอร์หลังบ้าน" }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

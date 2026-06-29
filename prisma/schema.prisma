@@ -16,7 +16,9 @@ enum WaterStatus {
 model Role {
   id          Int      @id @default(autoincrement()) 
   roleName    String   @unique @map("role_name")  
-  users       User[]
+  
+  users        User[]
+  roleRequests RoleRequest[] 
 
   @@map("roles")
 }
@@ -28,15 +30,33 @@ model User {
   firstName       String?       @map("first_name") 
   lastName        String?       @map("last_name") 
   phoneNumber     String?       @map("phone_number")   
+  
   roleId          Int           @map("role_id")
   systemRole      Role          @relation(fields: [roleId], references: [id])
   
   samples         WaterSample[]
+  roleRequests    RoleRequest[] 
   
   registeredAt    DateTime      @default(now()) @map("registered_at") 
   lastActiveAt    DateTime      @updatedAt @map("last_active_at")    
 
   @@map("users")
+}
+
+model RoleRequest {
+  id              Int          @id @default(autoincrement())
+  userId          Int          @map("user_id")
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  requestedRoleId Int          @map("requested_role_id")
+
+  requestedRole   Role         @relation(fields: [requestedRoleId], references: [id])
+  status          String       @default("pending") @map("status")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@map("role_requests")
 }
 
 model Location {
