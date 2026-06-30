@@ -106,7 +106,6 @@ export default function CollectorHistoryDetailPage() {
                 setLoading(true);
                 setError(null);
 
-                // บรรทัดที่ 91 เดิม
                 const response = await fetch(`/api/samples/${params.id}`, {
                     method: "GET",
                     headers: {
@@ -141,7 +140,6 @@ export default function CollectorHistoryDetailPage() {
     useEffect(() => {
         if (!isEditing || locations.length > 0) return;
 
-        // 🚀 อัปเกรดการดึงพิกัดสถานีสำหรับทำ Dropdown ให้ปลอดภัยยิ่งขึ้น
         fetch("/api/locations", {
             method: "GET",
             headers: {
@@ -208,7 +206,6 @@ export default function CollectorHistoryDetailPage() {
                     collectionTime: editData.collectionTime,
                     locationId: editData.locationId,
                     oxygen: editData.oxygen === "" ? null : editData.oxygen,
-                    // หมายเหตุ: บอสสามารถถอด adminId ออกได้เลยครับ เพราะหลังบ้านจะแกะ ID จริงจากตั๋ว LINE แทนเพื่อความปลอดภัย
                 }),
             });
             const data = await res.json();

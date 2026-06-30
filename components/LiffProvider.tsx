@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { Phone, UserPen, ShieldAlert, User, CheckCircle2, ChevronRight, Send, ArrowLeft } from "lucide-react";
+import { Phone, UserPen, ShieldAlert, User, CheckCircle2, Send, ArrowLeft } from "lucide-react";
 
 export default function LiffProvider({ children }: { children: React.ReactNode }) {
     const [liffLoaded, setLiffLoaded] = useState(false);
@@ -81,7 +81,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             });
     }, [setUser]);
 
-    // 1️⃣ จัดการเมื่อกดปุ่มหน้าแรก: ตรวจสอบความถูกต้องเฉย ๆ แล้วเปลี่ยนหน้า (ยังไม่ยิง API)
+    // จัดการเมื่อกดปุ่มหน้าแรก: ตรวจสอบความถูกต้องเฉย ๆ แล้วเปลี่ยนหน้า (ยังไม่ยิง API)
     const handleNextStep = (e: React.FormEvent) => {
         e.preventDefault();
         const trimmedName = fullName.trim();
@@ -97,8 +97,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         setStep(2); // ย้ายไปหน้าเลือก Role ทันที
     };
 
-    // 2️⃣ จัดการเมื่อกดปุ่มส่งในหน้าเลือก Role: ยิง API ม้วนเดียวจบ
-    // 2️⃣ จัดการเมื่อกดปุ่มส่งในหน้าเลือก Role
+    // จัดการเมื่อกดปุ่มส่งในหน้าเลือก Role: ยิง API ม้วนเดียวจบ
     const handleFinalSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) return;
@@ -120,7 +119,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    // 🔥 เพิ่มบรรทัดนี้เข้าไปเพื่อให้หน้าบ้านแนบตั๋ว Token ของ LINE ส่งไปปลดล็อกหลังบ้านครับบอส!
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({

@@ -32,7 +32,7 @@ export async function getTmdHourlyWeather(lat: number, lon: number, collectionTi
         const bottomLeft = `${latMin.toFixed(4)},${lonMin.toFixed(4)}`;
         const topRight = `${latMax.toFixed(4)},${lonMax.toFixed(4)}`;
 
-        console.log(`🌦️ Querying TMD Area Box Weather API at (${lat.toFixed(4)}, ${lon.toFixed(4)}) on ${starttime}...`);
+        console.log(`Querying TMD Area Box Weather API at (${lat.toFixed(4)}, ${lon.toFixed(4)}) on ${starttime}...`);
 
         const queryParams = new URLSearchParams({
             domain: "2",
@@ -57,7 +57,7 @@ export async function getTmdHourlyWeather(lat: number, lon: number, collectionTi
         const xRemaining = response.headers.get("X-RateLimit-Remaining");
         const xDpLimit = response.headers.get("X-Datapoint-Limit");
         const xDpRemaining = response.headers.get("X-Datapoint-Remaining");
-        console.log(`⏱️ TMD RateLimit Status — RequestLimit: ${xLimit}, Remaining: ${xRemaining} | DatapointsLimit: ${xDpLimit}, Remaining: ${xDpRemaining}`);
+        console.log(`TMD RateLimit Status — RequestLimit: ${xLimit}, Remaining: ${xRemaining} | DatapointsLimit: ${xDpLimit}, Remaining: ${xDpRemaining}`);
 
         if (response.ok) {
             const json = await response.json();
@@ -85,24 +85,24 @@ export async function getTmdHourlyWeather(lat: number, lon: number, collectionTi
                 const rainVolume = typeof closestForecast.rain === "number" ? closestForecast.rain : 0.0;
                 const weatherCondition = typeof closestForecast.cond === "number" ? closestForecast.cond : 1;
 
-                console.log(`✅ TMD Weather Success: Temp=${temperature}°C, Rain=${rainVolume}mm, CondCode=${weatherCondition}`);
+                console.log(`TMD Weather Success: Temp=${temperature}°C, Rain=${rainVolume}mm, CondCode=${weatherCondition}`);
                 return { temperature, rainVolume, weatherCondition };
             } else {
-                console.warn("⚠️ No grid cell returned inside the bounding box range. Falling back to mock...");
+                console.warn("No grid cell returned inside the bounding box range. Falling back to mock...");
             }
         } else if (response.status === 429) {
-            console.warn("⚠️ TMD Weather API returned 429 Too Many Requests (Rate Limited). Falling back to mock...");
+            console.warn("TMD Weather API returned 429 Too Many Requests (Rate Limited). Falling back to mock...");
         } else {
-            console.warn(`⚠️ TMD Weather API returned status ${response.status}. Falling back to mock failover...`);
+            console.warn(`TMD Weather API returned status ${response.status}. Falling back to mock failover...`);
         }
     } catch (err) {
-        console.error("❌ Failed to fetch TMD weather data:", err);
+        console.error("Failed to fetch TMD weather data:", err);
     }
-    // ⬆️ เอาวงเล็บปีกกา '}' ที่เกินมาตรงนี้ออกให้แล้วครับ
+    // อาวงเล็บปีกกา '}' ที่เกินมาตรงนี้ออกให้แล้วครับ
 
-    // 🧪 SECURE GEOGRAPHICAL MOCK FAILOVER
+    // SECURE GEOGRAPHICAL MOCK FAILOVER
     // Provides highly realistic parameters mimicking typical Thai coastal meteorological behavior
-    console.log(`🧪 TMD Token missing/API down — Utilizing premium weather failover...`);
+    console.log(`TMD Token missing/API down — Utilizing premium weather failover...`);
 
     // Simulate temperature between 27°C and 34°C depending on time of day
     const isNight = hour < 6 || hour > 18;
@@ -130,6 +130,6 @@ export async function getTmdHourlyWeather(lat: number, lon: number, collectionTi
         weatherCondition = Math.random() > 0.6 ? 2 : 1; // 1 = Clear, 2 = Partly Cloudy
     }
 
-    console.log(`🎯 Mock Weather Failover result: Temp=${temperature}°C, Rain=${rainVolume}mm, CondCode=${weatherCondition}`);
+    console.log(`Mock Weather Failover result: Temp=${temperature}°C, Rain=${rainVolume}mm, CondCode=${weatherCondition}`);
     return { temperature, rainVolume, weatherCondition };
 }

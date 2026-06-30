@@ -15,7 +15,7 @@
 
 import L from "leaflet";
 
-// 🔒 ปรับเปลี่ยนคีย์สเตตัสให้เป็นตัวพิมพ์เล็กตรงตามผังระบบล่าสุดของบอสครับ
+// ปรับเปลี่ยนคีย์สเตตัสให้เป็นตัวพิมพ์เล็กตรงตามผังระบบล่าสุดของบอสครับ
 const STATUS_COLORS: Record<string, { fill: string; stroke: string; inner: string }> = {
     safe: { fill: "#22C55E", stroke: "#16A34A", inner: "#DCFCE7" },
     warning: { fill: "#F59E0B", stroke: "#D97706", inner: "#FEF3C7" },
@@ -27,7 +27,7 @@ const DEFAULT_COLOR = { fill: "#94A3B8", stroke: "#64748B", inner: "#F1F5F9" };
 function getStatusColors(status: string | null) {
     if (!status) return DEFAULT_COLOR;
 
-    // 🛡️ ป้องกันเหนียวด้วยการสั่ง .toLowerCase() เคลียร์ค่าพิมพ์เล็กพิมพ์ใหญ่ก่อนวิ่งเข้า Map วัตถุ
+    // ป้องกันเหนียวด้วยการสั่ง .toLowerCase() เคลียร์ค่าพิมพ์เล็กพิมพ์ใหญ่ก่อนวิ่งเข้า Map วัตถุ
     const lowerStatus = status.toLowerCase();
     return STATUS_COLORS[lowerStatus] || DEFAULT_COLOR;
 }

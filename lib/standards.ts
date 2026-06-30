@@ -5,7 +5,7 @@
  * Reference: กรมควบคุมมลพิษ (Pollution Control Department)
  */
 
-// 🔑 1. กำหนดประเภทสิทธิ์พิกัดใช้งานจริงโดยตรง (เนื่องจากใน Schema ปัจจุบันไม่ได้ประกาศ Enum ตัวนี้ไว้)
+// 1. กำหนดประเภทสิทธิ์พิกัดใช้งานจริงโดยตรง (เนื่องจากใน Schema ปัจจุบันไม่ได้ประกาศ Enum ตัวนี้ไว้)
 export type LocationType = "CONSERVATION" | "CORAL_REEF" | "AQUACULTURE" | "RECREATION" | "INDUSTRY" | "COMMUNITY";
 
 export interface StandardThresholds {
@@ -31,18 +31,18 @@ export const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
     COMMUNITY: "สำหรับเขตชุมชน",
 };
 
-// 🔒 2. สลับเปลี่ยนค่าสถานะไทป์ให้เป็นตัวพิมพ์เล็กตามระบบสากลใหม่ของบอส
+// 2. สลับเปลี่ยนค่าสถานะไทป์ให้เป็นตัวพิมพ์เล็กตามระบบสากลใหม่ของบอส
 export type StatusType = "safe" | "warning" | "danger";
 
 /**
  * Determine the status for a single parameter against its maximum threshold
- * 🧠 ปรับคำนวณจุด Warning: หากค่าน้ำเกิน 70% ของเกณฑ์สูงสุด ให้ขึ้นสถานะเฝ้าระวังทันที
+ * ปรับคำนวณจุด Warning: หากค่าน้ำเกิน 70% ของเกณฑ์สูงสุด ให้ขึ้นสถานะเฝ้าระวังทันที
  */
 export function getParameterStatus(value: number | null | undefined, max: number): StatusType {
     if (value === null || value === undefined) return "safe";
 
     if (value > max) return "danger";
-    if (value >= max * 0.7) return "warning"; // ⚡ จุดเฝ้าระวัง (70% ของขีดจำกัดสูงสุด)
+    if (value >= max * 0.7) return "warning";
     return "safe";
 }
 
@@ -61,7 +61,7 @@ export function evaluateSample(phosphate: number | null | undefined, ammonia: nu
     const phosphateStatus = getParameterStatus(phosphate, standards.phosphateMax);
     const ammoniaStatus = getParameterStatus(ammonia, standards.ammoniaMax);
 
-    // 🔄 ลอจิกรวบยอดหาความเสี่ยงสูงสุด
+    // ลอจิกรวบยอดหาความเสี่ยงสูงสุด
     let overallStatus: StatusType = "safe";
     if (phosphateStatus === "danger" || ammoniaStatus === "danger") {
         overallStatus = "danger";

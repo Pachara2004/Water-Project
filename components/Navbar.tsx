@@ -45,7 +45,7 @@ export default function Navbar() {
 
     return (
         <>
-            {/* ── Mobile / Tablet: docked bottom bar ─────────────────────── */}
+            {/* ── Mobile / Tablet: docked bottom bar */}
             <nav className="lg:hidden fixed bottom-0 left-0 w-full z-[950] bg-white transition-all duration-300" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
                 <div className="flex items-center justify-around h-18 px-4 w-full mx-auto">
                     {navItems.map((item) => {

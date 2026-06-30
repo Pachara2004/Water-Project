@@ -39,17 +39,14 @@ export default function CollectorDashboard() {
 
     useEffect(() => {
         if (!currentUser) return;
-        // ดักจับสิทธิ์ระบบพิมพ์เล็กสมบูรณ์แบบ
         if (currentUser.role !== "collector" && currentUser.role !== "admin") {
             router.push("/map");
             return;
         }
 
-        // 🚀 อัปเกรดการดึงข้อมูลโดยแนบ Token ความปลอดภัยส่งตามไปด้วย
         fetch("/api/samples", {
             method: "GET",
             headers: {
-                // 🔥 แนบ LINE Access Token ไปในก้อน headers
                 Authorization: `Bearer ${liff.getAccessToken()}`,
             },
         })
