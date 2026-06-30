@@ -22,7 +22,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-    currentUser: null, // สถานะเริ่มต้นเป็นโมฆะจนกว่าเซสชันจาก LINE LIFF จะถูกตรวจสอบสำเร็จ
+    currentUser: null,
     theme: "light",
 
     // สลับบทบาทผู้ใช้งานชั่วคราว (ใช้ในหน้าจัดการสมาชิกของ Admin)

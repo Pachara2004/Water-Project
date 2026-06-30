@@ -16,10 +16,6 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
 
 export default function MapPage() {
     return (
-        /*
-      On mobile/tablet: fills viewport minus the bottom navbar pill (~72px).
-      On desktop (lg:): ซ้ายขยับหลบ Sidebar ตัวใหม่ที่กว้าง 50 (200px) พอดีเป๊ะ
-    */
         <div className="fixed inset-x-0 top-0 bottom-[calc(72px+env(safe-area-inset-bottom))] lg:left-50 lg:bottom-0 lg:right-0">
             <div className="w-full h-full">
                 <MapView mode="explorer" />
