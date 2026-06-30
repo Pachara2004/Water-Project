@@ -38,14 +38,6 @@ export default function Navbar() {
             });
         }
 
-        if (currentUser.role === "guest" || currentUser.role === "officer") {
-            items.push({
-                href: "/upgrade",
-                label: "อัปเกรดสิทธิ์",
-                icon: Sparkles,
-            });
-        }
-
         return items;
     };
 

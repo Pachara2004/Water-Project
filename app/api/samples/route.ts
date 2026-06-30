@@ -4,7 +4,25 @@ import { getTmdHourlyWeather } from "@/lib/tmd";
 import { WaterStatus } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import crypto from "crypto"; // 🛡️ นำเข้าโมดูลสากลเพื่อใช้สลักคีย์เอกลักษณ์ UUID
 import { verifyAuth } from "@/lib/auth-guard";
+
+/**
+ * 🔒 FILENAME SANITIZER WITH DATE STAMP
+ * หน้าที่: สกัดวันที่ปัจจุบัน (YYYYMMDD) + คลีนชื่อไฟล์ขยะแยกตัวเป็น UUID ตัวเล็ก ปลอดภัยบน Linux 100%
+ */
+function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw"): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const dateStamp = `${year}${month}${day}`; // ผลลัพธ์: "20260630"
+
+    const ext = originalName.split(".").pop()?.toLowerCase() || "jpg";
+    const cleanExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg"; // บังคับอักขระตัวพิมพ์เล็ก
+
+    return `${prefix}-${dateStamp}-${crypto.randomUUID()}.${cleanExt}`; // ประกอบร่างฟอร์แมตสะอาดสูงสุด
+}
 
 // GET /api/samples — ดึงประวัติข้อมูลผลตรวจน้ำ (ปัจจุบันเปิดเป็น Public ให้ทุกคนเข้าถึงเพื่อเรนเดอร์กราฟชาร์ตได้)
 export async function GET(request: NextRequest) {
@@ -99,10 +117,9 @@ export async function POST(request: NextRequest) {
         }
 
         // SECURITY STEP 2: คัดลอก ID ผู้ส่งผลน้ำโดยตรงจาก Token ของ LINE (auth.user.id)
-        // สกัดปัญหาช่องโหว่เดิมที่เคยรับค่า collectedBy สุ่มเสี่ยงจากหน้าบ้าน ป้องกันการปลอมแปลงตัวตนแบบเบ็ดขาด
         const secureCollectorId = auth.user!.id;
 
-        // ค้นหาสถานีพิกัดจุดตรวจ
+        // 🛡️ ขยับด่านตรวจขึ้นบน: ค้นหาดักเช็กสถานีจุดตรวจพิกัดก่อนการขยับไปบันทึกรูปภาพลงดิสก์
         const location = await prisma.location.findUnique({
             where: { id: Number(locationId) },
         });
@@ -116,7 +133,7 @@ export async function POST(request: NextRequest) {
         const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
         const maxFileSize = 5 * 1024 * 1024;
 
-        // SECURITY STEP 3: Safe File Upload รูปภาพต้นฉบับ
+        // SECURITY STEP 3: Safe File Upload รูปภาพต้นฉบับปกติ (ล้างชื่อใส่กลอน YYYYMMDD)
         let dbImageUrl: string | null = null;
         if (imageFile && imageFile.size > 0) {
             if (!allowedImageTypes.includes(imageFile.type)) {
@@ -126,12 +143,12 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: "ขนาดไฟล์ภาพต้นฉบับต้องไม่เกิน 5MB" }, { status: 400 });
             }
 
-            const ext = imageFile.name.split(".").pop() || "jpg";
-            const filename = `raw-${crypto.randomUUID()}.${ext}`;
+            const filename = sanitizeAndGenerateFilename(imageFile.name, "raw");
             await writeFile(path.join(uploadDir, filename), Buffer.from(await imageFile.arrayBuffer()));
             dbImageUrl = `/uploads/${filename}`;
         }
 
+        // 🔥 ปลดคอมเมนต์ออกแล้ว เพื่อเซฟรูป Plot ลงดิสก์จริงไว้ศึกษาโครงสร้างระบบ
         // SECURITY STEP 4: Safe File Upload รูปผลพล็อตสีวิเคราะห์ค่า
         let dbImagePlotUrl: string | null = null;
         if (imagePlotFile && imagePlotFile.size > 0) {
@@ -142,8 +159,8 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: "ขนาดไฟล์ภาพผลวิเคราะห์ต้องไม่เกิน 5MB" }, { status: 400 });
             }
 
-            const ext = imagePlotFile.name.split(".").pop() || "jpg";
-            const filename = `plot-${crypto.randomUUID()}.${ext}`;
+            // ✨ เรียกใช้ฟังก์ชันจัดการชื่อไฟล์พ่วงวันที่ให้คลีนระดับสากลเหมือนกัน
+            const filename = sanitizeAndGenerateFilename(imagePlotFile.name, "plot");
             await writeFile(path.join(uploadDir, filename), Buffer.from(await imagePlotFile.arrayBuffer()));
             dbImagePlotUrl = `/uploads/${filename}`;
         }
@@ -170,7 +187,7 @@ export async function POST(request: NextRequest) {
                 weatherCondCode: weather?.weatherCondition ? Number(weather.weatherCondition) : null,
                 status: status.toLowerCase() as WaterStatus,
                 rawImageUrl: dbImageUrl,
-                analyzedPlotUrl: dbImagePlotUrl,
+                analyzedPlotUrl: dbImagePlotUrl, // 👈 กลับมาผูกตัวแปรชี้พิกัดลง Database ตามเดิมเพื่อเก็บสถิติ
                 isDeleted: false,
             },
         });
