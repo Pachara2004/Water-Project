@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import liff from "@line/liff";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import Swal from "sweetalert2";
 import { getParameterStatus, LOCATION_STANDARDS, evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
 import { FlaskConical, Loader2, CheckCircle2, MapPin, ArrowLeft, ImagePlus, Sparkles, ShieldCheck, ShieldX, Camera, Clock, Database, ChevronRight, Search } from "lucide-react";
 
@@ -162,10 +163,54 @@ function SubmitContent() {
     }, [currentUser, router]);
 
     /* ── handlers ── */
+    const Toast = Swal.mixin({
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 2500,
+        timerProgressBar: true,
+        background: "var(--color-surface, #ffffff)",
+        color: "var(--color-text-primary, #000000)",
+    });
 
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        // 🛑 ดักจับนิรภัยตั้งแต่ตอนกดเลือกรูปภาพหน้าบ้าน
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+        // 1. ดักขนาดไฟล์เกิน (ใช้ Alert Modal เพื่อความชัดเจน)
+        if (file.size > MAX_FILE_SIZE) {
+            Toast.fire({
+                icon: "error",
+                title: "ขนาดไฟล์ใหญ่เกินกำหนด!",
+                text: "รูปภาพผลน้ำต้องมีขนาดไม่เกิน 5MB กรุณาถ่ายภาพใหม่หรือลดความละเอียดของกล้องลงครับบอส",
+                confirmButtonText: "รับทราบ",
+                confirmButtonColor: "#0f766e",
+                background: "var(--color-surface, #ffffff)",
+                color: "var(--color-text-primary, #000000)",
+            });
+            e.target.value = "";
+            return;
+        }
+
+        // 2. ดักประเภทไฟล์แปลกปลอม
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            Swal.fire({
+                icon: "error",
+                title: "รูปแบบไฟล์ไม่ถูกต้อง!",
+                text: "ระบบอนุญาตเฉพาะไฟล์รูปภาพสากล (.jpg, .jpeg, .png, .webp) เท่านั้นครับบอส",
+                confirmButtonText: "เข้าใจแล้ว",
+                confirmButtonColor: "#0f766e",
+                background: "var(--color-surface, #ffffff)",
+                color: "var(--color-text-primary, #000000)",
+            });
+            e.target.value = "";
+            return;
+        }
+
         setImageFile(file);
         const reader = new FileReader();
         reader.onloadend = () => setImagePreview(reader.result as string);
@@ -231,16 +276,15 @@ function SubmitContent() {
 
     const handleAnalyze = async () => {
         if (!imageFile) return;
+
         setStep("analyzing");
         try {
             const fd = new FormData();
             fd.append("image", imageFile);
 
-            // ดึงคำสั่งจาก fetch มาใส่ตัวแปรตรง ๆ พร้อมแนบสิทธิ์ความปลอดภัยใน headers
             const res = await fetch("/api/analyze", {
                 method: "POST",
                 headers: {
-                    // แนบ LINE Access Token ไปในโครงสร้าง Bearer Token ม้วนเดียวจบ
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: fd,
@@ -253,6 +297,8 @@ function SubmitContent() {
 
             const data = await res.json();
             const isAmmonia = data.ammonia === true;
+
+            // วาดเส้นตารางพรีวิวบนหน้าจอตามปกติ
             const plotted = await generateAiImagePlot(imageFile, data);
             if (plotted) setImagePlotFile(plotted);
 
@@ -260,12 +306,12 @@ function SubmitContent() {
                 phosphate: isAmmonia ? 0 : data.concentrated,
                 ammonia: isAmmonia ? data.concentrated : 0,
                 status: data.status?.toLowerCase() ?? "safe",
-                imageUrl: data.imageUrl || "",
+                imageUrl: "", 
             });
             setStep("results");
-        } catch (err) {
+        } catch (err: any) {
             console.error("Analysis failed:", err);
-            // บอสสามารถเลือกเก็บข้อผิดพลาดไปแจ้งเตือนบน UI (เช่น setFormError) ได้ตามต้องการครับ
+            alert(err.message || "เกิดข้อผิดพลาดในการวิเคราะห์ภาพ");
             setStep("upload");
         }
     };
@@ -274,6 +320,7 @@ function SubmitContent() {
         if (!results || !currentLocationId || !currentUser || !imageFile) return;
         try {
             const fd = new FormData();
+
             fd.append("image", imageFile);
             if (imagePlotFile) fd.append("imagePlot", imagePlotFile);
             fd.append("locationId", currentLocationId);
@@ -283,20 +330,20 @@ function SubmitContent() {
             fd.append("collectionTime", new Date(collectionTime).toISOString());
             if (oxygen) fd.append("oxygen", oxygen);
 
-            // สลัดฟิลด์ collectedBy ที่เคยส่งจากหน้าบ้านออกไปได้เลยครับ เพราะหลังบ้านจะแกะ ID จากตั๋วแทน
-
-            // เรียกยิงบันทึกข้อมูลผลน้ำโดยแนบ Token ความปลอดภัยส่งตามไปล็อกกลอน
             const res = await fetch("/api/samples", {
                 method: "POST",
                 headers: {
-                    // เปลี่ยนจาก Custom Headers ปลอมแปลงง่าย มาใช้ LINE Access Token ม้วนเดียวจบ
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: fd,
             });
 
-            if (res.ok) setSaved(true);
-            else console.error("Save error:", await res.json());
+            if (res.ok) {
+                setSaved(true);
+            } else {
+                const errData = await res.json();
+                alert(errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+            }
         } catch (err) {
             console.error("Save failed:", err);
         }
