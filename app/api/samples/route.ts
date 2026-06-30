@@ -4,12 +4,12 @@ import { getTmdHourlyWeather } from "@/lib/tmd";
 import { WaterStatus } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { verifyAuth } from "@/lib/auth-guard"; 
+import { verifyAuth } from "@/lib/auth-guard";
 
 // GET /api/samples — ดึงประวัติข้อมูลผลตรวจน้ำ (ปัจจุบันเปิดเป็น Public ให้ทุกคนเข้าถึงเพื่อเรนเดอร์กราฟชาร์ตได้)
 export async function GET(request: NextRequest) {
     try {
-        /* 💡 หมายเหตุ: หากในอนาคตบอสต้องการจำกัดให้ดูข้อมูลได้เฉพาะกลุ่มเจ้าหน้าที่ สามารถปลดคอมเมนต์ 3 บรรทัดนี้ได้เลยครับ:
+        /* หมายเหตุ: หากในอนาคตบอสต้องการจำกัดให้ดูข้อมูลได้เฉพาะกลุ่มเจ้าหน้าที่ สามารถปลดคอมเมนต์ 3 บรรทัดนี้ได้เลยครับ:
         const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
         if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         */
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
             location: s.location
                 ? {
                       id: s.location.id,
-                      name: s.location.stationName, 
+                      name: s.location.stationName,
                       organization: s.location.governingAgency,
                       lat: s.location.latitude,
                       lng: s.location.longitude,
@@ -67,8 +67,14 @@ export async function GET(request: NextRequest) {
     }
 }
 
+const antiSpam = new Map<string, number>();
+
 // POST /api/samples — บันทึกตัวอย่างข้อมูลน้ำเข้าฐานข้อมูล
 export async function POST(request: NextRequest) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    if (antiSpam.has(ip) && Date.now() - antiSpam.get(ip)! < 3000) return NextResponse.json({ error: "อย่ากดซ้ำ" }, { status: 429 });
+    antiSpam.set(ip, Date.now());
+
     try {
         // SECURITY STEP 1: ตรวจสอบและสกัดสิทธิ์จาก LINE Token: อนุญาตเฉพาะ collector และ admin เท่านั้น
         const auth = await verifyAuth(request, ["collector", "admin"]);
@@ -92,7 +98,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" }, { status: 400 });
         }
 
-        // 🔒 SECURITY STEP 2: คัดลอก ID ผู้ส่งผลน้ำโดยตรงจาก Token ของ LINE (auth.user.id)
+        // SECURITY STEP 2: คัดลอก ID ผู้ส่งผลน้ำโดยตรงจาก Token ของ LINE (auth.user.id)
         // สกัดปัญหาช่องโหว่เดิมที่เคยรับค่า collectedBy สุ่มเสี่ยงจากหน้าบ้าน ป้องกันการปลอมแปลงตัวตนแบบเบ็ดขาด
         const secureCollectorId = auth.user!.id;
 
@@ -154,7 +160,7 @@ export async function POST(request: NextRequest) {
         const sample = await prisma.waterSample.create({
             data: {
                 locationId: Number(locationId),
-                collectorId: secureCollectorId, 
+                collectorId: secureCollectorId,
                 collectionTime: parsedCollectionTime,
                 ammoniaValue: parseFloat(ammoniaVal || "0"),
                 phosphateValue: parseFloat(phosphateVal || "0"),

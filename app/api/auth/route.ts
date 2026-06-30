@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const antiSpam = new Map<string, number>();
+
 export async function POST(request: NextRequest) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    if (antiSpam.has(ip) && Date.now() - antiSpam.get(ip)! < 3000) return NextResponse.json({ error: "อย่ากดซ้ำ" }, { status: 429 });
+    antiSpam.set(ip, Date.now());
+
     try {
         const body = await request.json();
         // เปลี่ยนจากรับ lineUid ตรง ๆ เป็นรับ accessToken ที่ได้จาก liff.getAccessToken()
@@ -21,7 +27,7 @@ export async function POST(request: NextRequest) {
         }
 
         const profileData = await lineProfileRes.json();
-        const lineUid = profileData.userId; 
+        const lineUid = profileData.userId;
 
         // --- โลจิกจัดการฐานข้อมูลตารางผู้ใช้ของบอสตามเดิม ---
         let user = await prisma.user.findUnique({
