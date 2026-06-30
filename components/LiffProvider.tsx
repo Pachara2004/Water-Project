@@ -153,7 +153,9 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             <div className="flex h-screen w-full items-center justify-center bg-surface-muted">
                 <div className="flex flex-col items-center">
                     <div className="h-9 w-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                    <p className="mt-4 text-primary font-black text-xs uppercase tracking-widest animate-pulse">Connecting LINE...</p>
+                    <p className="mt-4 text-primary font-bold  text-md uppercase tracking-widest animate-pulse">
+                        กำลังเชื่อมต่อ <span className="text-green-500">LINE</span>
+                    </p>
                 </div>
             </div>
         );
