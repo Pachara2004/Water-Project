@@ -1,39 +1,89 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
+import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { existsSync } from "fs";
+import crypto from "crypto"; // 🛡️ เรียกใช้งาน crypto สำหรับเจน UUID สากล
+import { verifyAuth } from "@/lib/auth-guard";
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ filename: string[] }> }) {
+/**
+ * 🔒 FILENAME SANITIZER WITH DATE STAMP
+ * หน้าที่: สกัดวันที่ปัจจุบัน (YYYYMMDD) + คลีนชื่อไฟล์ขยะแตกตัวเป็น UUID ตัวเล็ก ปลอดภัยบน Linux 100%
+ */
+function sanitizeAndGenerateFilename(originalName: string, prefix: string = "upload"): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const dateStamp = `${year}${month}${day}`; // ผลลัพธ์ช่วงนี้: "20260630"
+
+    const ext = originalName.split(".").pop()?.toLowerCase() || "jpg";
+    const cleanExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext) ? ext : "jpg"; // คุมนามสกุลตัวพิมพ์เล็ก
+
+    return `${prefix}-${dateStamp}-${crypto.randomUUID()}.${cleanExt}`; // จัดฟอร์แมตสวยงาม
+}
+
+// จำกัดประเภทไฟล์รูปภาพที่อนุญาต (Whitelist approach)
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+// จำกัดขนาดไฟล์สูงสุด (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+export async function POST(request: NextRequest) {
     try {
-        const { filename } = await params;
-        const fileRoute = filename.join("/");
-        const baseUploadDir = path.join(process.cwd(), "public", "uploads");
-        const filepath = path.resolve(baseUploadDir, fileRoute);
-
-        // SECURITY GUARD: ดักจับและป้องกันช่องโหว่ Path Traversal
-        // ถ้าพาธที่คำนวณได้ไม่ได้เริ่มต้นด้วยโฟลเดอร์ baseUploadDir แปลว่ามีคนพยายามพิมพ์ย้อนโฟลเดอร์ แครชทิ้งทันที!
-        if (!filepath.startsWith(baseUploadDir)) {
-            return NextResponse.json({ error: "Access Denied: สิทธิ์การเข้าถึงไฟล์ไม่ถูกต้อง" }, { status: 403 });
+        // SECURITY STEP 1: ตรวจสิทธิ์ Token LINE (อนุญาตเฉพาะเจ้าหน้าที่ในระบบเท่านั้น)
+        const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
+        if (!auth.isValid) {
+            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
-        // ตรวจสอบว่าไฟล์รูปภาพนั้นมีอยู่จริงบน Disk ไหมก่อนสั่งอ่านไฟล์
-        await fs.access(filepath);
-        const fileBuffer = await fs.readFile(filepath);
+        const formData = await request.formData();
+        const file = formData.get("file") as File | null;
 
-        // ค้นหา Content-Type ให้สอดคล้องกับนามสกุลไฟล์รองรับ WEBP เพิ่มเติม
-        const ext = path.extname(filepath).toLowerCase();
-        let contentType = "image/jpeg";
-        if (ext === ".png") contentType = "image/png";
-        if (ext === ".gif") contentType = "image/gif";
-        if (ext === ".webp") contentType = "image/webp";
+        // VALIDATION STEP 1: ตรวจสอบว่าส่งไฟล์มาจริงไหม
+        if (!file || file.size === 0) {
+            return NextResponse.json({ error: "ไม่พบไฟล์ที่ต้องการอัปโหลด" }, { status: 400 });
+        }
 
-        return new Response(fileBuffer, {
-            headers: {
-                "Content-Type": contentType,
-                "Cache-Control": "public, max-age=31536000, immutable", // แคชรูปไว้ในบราวเซอร์ยาวๆ เพื่อประสิทธิภาพสูงสุด
+        // VALIDATION STEP 2: จำกัดขนาดไฟล์ (Size Limitation)
+        if (file.size > MAX_FILE_SIZE) {
+            return NextResponse.json({ error: "ขนาดไฟล์ใหญ่เกินกำหนด (ห้ามเกิน 5MB)" }, { status: 400 });
+        }
+
+        // VALIDATION STEP 3: ตรวจสอบประเภทไฟล์ (Type Mime Validation)
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            return NextResponse.json({ error: "รูปแบบไฟล์ไม่ถูกต้อง อนุญาตเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP, GIF) เท่านั้น" }, { status: 400 });
+        }
+
+        // เตรียมโฟลเดอร์ปลายทาง (public/uploads)
+        const uploadDir = path.join(process.cwd(), "public", "uploads");
+        if (!existsSync(uploadDir)) {
+            await mkdir(uploadDir, { recursive: true });
+        }
+
+        // ✨ CLEAN FILENAME STEP: เรียกฟังก์ชันจัดระเบียบชื่อไฟล์พ่วงวันที่: upload-YYYYMMDD-UUID.ext
+        const cleanFilename = sanitizeAndGenerateFilename(file.name, "upload");
+        const filepath = path.join(uploadDir, cleanFilename);
+
+        // บันทึกไฟล์ลงบน Disk เซิร์ฟเวอร์
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await writeFile(filepath, buffer);
+
+        console.log(`[Upload Service] File successfully saved: ${cleanFilename} by User ID: ${auth.user?.id}`);
+
+        // ตอบกลับพิกัด URL คลีนๆ ให้ฝั่งหน้าบ้านเอาไปประยุกต์ใช้งานต่อได้ทันที
+        return NextResponse.json(
+            {
+                success: true,
+                message: "อัปโหลดไฟล์สำเร็จ",
+                filename: cleanFilename,
+                url: `/uploads/${cleanFilename}`,
+                size: file.size,
+                mimeType: file.type,
             },
-        });
+            { status: 201 },
+        );
     } catch (error) {
-        console.error("Serve Image Error:", error);
-        return NextResponse.json({ error: "ไม่พบไฟล์รูปภาพที่ระบุในเซิร์ฟเวอร์" }, { status: 404 });
+        console.error("Upload API Error:", error);
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดภายในระบบจัดเก็บไฟล์" }, { status: 500 });
     }
 }
