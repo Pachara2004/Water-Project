@@ -80,8 +80,14 @@ export async function GET(request: NextRequest) {
     }
 }
 
+const antiSpam = new Map<string, number>();
+
 // POST /api/locations — เพิ่มสถานีจุดตรวจพิกัดใหม่ (เฉพาะ admin)
 export async function POST(request: NextRequest) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    if (antiSpam.has(ip) && Date.now() - antiSpam.get(ip)! < 3000) return NextResponse.json({ error: "อย่ากดซ้ำ" }, { status: 429 });
+    antiSpam.set(ip, Date.now());
+
     try {
         // ใส่สลักนิรภัย: แกะโทเคนดักจับ ตรวจสอบและอนุญาตให้เฉพาะ "admin" เท่านั้นที่วิ่งผ่านเข้ามาได้
         const auth = await verifyAuth(request, ["admin"]);
