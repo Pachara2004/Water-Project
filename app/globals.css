@@ -63,11 +63,13 @@
   --color-navy-dark: #0A3156;
   --color-navy-light: #1E60A8;
   --color-bg-gray: #F8FAFC;
+  --color-bg: #EFF7F9;
+
   --color-card-white: #FFFFFF;
 
-  --color-primary: #0F4C81;
+  --color-primary: #06647F;
   --color-primary-light: #F1F5F9;
-  --color-secondary: #0A3156;
+  --color-secondary: #5FA7BB;
 
   /* Semantic Standards */
   --color-safe: #10B981;
@@ -79,7 +81,7 @@
   --color-surface-muted: #FAFAFA;
   --color-surface-subtle: #F1F5F9;
 
-  --color-text-primary: #0F172A;
+  --color-text-primary: #112A33;
   --color-text-secondary: #475569;
   --color-text-muted: #64748B;
 
@@ -173,7 +175,7 @@ body {
 
 /* Glassmorphism Accents */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.8);
+  background: "#EFF7F9";
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.4);

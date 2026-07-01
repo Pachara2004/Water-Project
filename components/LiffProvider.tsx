@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { Phone, UserPen, ShieldAlert, User, CheckCircle2, Send, ArrowLeft } from "lucide-react";
+import { Phone, UserPen, ShieldAlert, User, Send, ArrowLeft } from "lucide-react";
 
 export default function LiffProvider({ children }: { children: React.ReactNode }) {
     const [liffLoaded, setLiffLoaded] = useState(false);
@@ -174,38 +174,38 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
     // แผง Onboarding Guard ดักจับบังคับทำรายการ
     if (currentUser && !currentUser.phoneNumber) {
         return (
-            <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-surface-muted/60 backdrop-blur-xl p-4 sm:p-6 transition-all">
-                <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 shadow-xl flex flex-col justify-between animate-fade-in">
+            <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6 transition-all">
+                <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 inset-shadow-sm shadow-sm flex flex-col justify-between animate-fade-in">
                     {/* STEP 1: หน้าฟอร์มข้อมูลส่วนบุคคลตามรูปภาพต้นฉบับ */}
                     {step === 1 && (
                         <>
                             <div className="text-center space-y-2.5">
-                                <div className="w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 shadow-xs mb-4">
-                                    <User size={22} strokeWidth={2.5} />
+                                <div className="w-14 h-14  text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 inset-shadow-sm shadow-sm mb-4">
+                                    <User size={36} strokeWidth={3} />
                                 </div>
-                                <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">ลงทะเบียนเข้าใช้งานครั้งแรก</h1>
-                                <p className="text-xs text-text-secondary leading-relaxed max-w-[92%] mx-auto">
+                                <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">ลงทะเบียนเข้าใช้งานครั้งแรก</h1>
+                                <p className="text-xs text-text-primary leading-relaxed max-w-[92%] mx-auto">
                                     กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำชายฝั่ง
                                 </p>
                             </div>
 
                             <form onSubmit={handleNextStep} className="mt-6 space-y-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">ชื่อ - นามสกุลจริง</label>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-semibold text-primary uppercase tracking-wider block">ชื่อ - นามสกุลจริง</label>
                                     <div className="relative">
                                         <input
                                             type="text"
                                             value={fullName}
                                             onChange={(e) => setFullName(e.target.value)}
                                             placeholder="เช่น นายสมชาย ใจดี"
-                                            className="w-full pl-11 pr-4 bg-surface-subtle border border-border/80 text-text-primary rounded-xl text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-bold"
+                                            className="w-full pl-11 pr-4 border border-border text-text-primary rounded-md text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-semibold"
                                         />
                                         <UserPen size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80" />
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">เบอร์โทรศัพท์มือถือ (10 หลัก)</label>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-semibold text-primary uppercase tracking-wider block">เบอร์โทรศัพท์มือถือ</label>
                                     <div className="relative">
                                         <input
                                             type="tel"
@@ -213,7 +213,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                             value={phoneNumber}
                                             onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ""))}
                                             placeholder="เช่น 0812345678"
-                                            className="w-full pl-11 pr-4 bg-surface-subtle border border-border/80 text-text-primary rounded-xl text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-mono font-bold"
+                                            className="w-full pl-11 pr-4 border border-border text-text-primary rounded-md text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-mono font-semibold"
                                         />
                                         <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80" />
                                     </div>
@@ -226,14 +226,13 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                     </div>
                                 )}
 
-                                <div className="pt-3">
+                                <div className="pt-3 justify-center flex">
                                     <button
                                         type="submit"
                                         disabled={!fullName.trim() || phoneNumber.length < 10}
-                                        className="w-full h-11 bg-primary hover:bg-primary/95 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        className="w-70 h-11 bg-primary hover:bg-[#054E62] text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
-                                        <CheckCircle2 size={13} />
-                                        <span>ยืนยันข้อมูลและเข้าใช้งาน</span>
+                                        <span>ดำเนินการต่อ</span>
                                     </button>
                                 </div>
                             </form>
@@ -243,66 +242,52 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                     {/* STEP 2: หน้าเลือก ROLE ที่ต้องการร้องขอสิทธิ์เพิ่มเข้ามาใหม่ */}
                     {step === 2 && (
                         <>
-                            <div className="space-y-2.5">
-                                <button
-                                    onClick={() => {
-                                        setStep(1);
-                                        setFormError(null);
-                                    }}
-                                    className="flex items-center gap-1.5 text-text-muted hover:text-primary transition-all text-xs font-bold mb-2 cursor-pointer"
-                                >
-                                    <ArrowLeft size={14} /> แก้ไขข้อมูลส่วนตัว
-                                </button>
-                                <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">เลือกตำแหน่งที่ต้องการขอสิทธิ์</h1>
-                                <p className="text-xs text-text-secondary leading-relaxed">
-                                    โปรดเลือกสิทธิ์ที่ท่านต้องการใช้งานในระบบ คำร้องขอนี้จะได้รับการตรวจสอบและอนุมัติโดยเจ้าหน้าที่ดูแลระบบ (Admin)
-                                </p>
-                            </div>
-
                             <form onSubmit={handleFinalSubmit} className="mt-6 space-y-4">
                                 <div className="space-y-2.5">
-                                    <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">สิทธิ์ที่เปิดให้ร่วมลงทะเบียน</label>
-
-                                    {/* บล็อกเลือกสิทธิ์: เจ้าหน้าที่ภาคสนาม (Collector) */}
-                                    <div
-                                        onClick={() => setSelectedRole("collector")}
-                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                            selectedRole === "collector" ? "bg-primary/5 border-primary shadow-xs" : "bg-surface-subtle border-border/80 hover:border-border-hover"
-                                        }`}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div
-                                                className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${selectedRole === "collector" ? "border-primary" : "border-text-muted"}`}
-                                            >
-                                                {selectedRole === "collector" && <div className="w-2 h-2 rounded-full bg-primary" />}
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-black text-text-primary">เจ้าหน้าที่ภาคสนาม (Collector)</p>
-                                                <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
-                                                    สิทธิ์สำหรับผู้จัดเก็บข้อมูล, ตรวจวัดค่าสารเคมีชายฝั่ง และทำการอัปโหลดผลน้ำเข้าสู่ฐานข้อมูล
-                                                </p>
+                                    <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">เลือกตำแหน่งที่ต้องการขอสิทธิ์</h1>
+                                    <p className="text-xs text-black">โปรดเลือกสิทธิ์ที่ท่านต้องการใช้งานในระบบ คำร้องขอนี้จะได้รับการตรวจสอบและอนุมัติโดยเจ้าหน้าที่ดูแลระบบ</p>
+                                    <div className="space-y-3 mt-2">
+                                        {/* บล็อกเลือกสิทธิ์: เจ้าหน้าที่ภาคสนาม (Collector) */}
+                                        <div
+                                            onClick={() => setSelectedRole("collector")}
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                                selectedRole === "collector" ? "bg-secondary/5 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${selectedRole === "collector" ? "border-primary" : "border-text-muted"}`}
+                                                >
+                                                    {selectedRole === "collector" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-text-primary">เจ้าหน้าที่ภาคสนาม (Collector)</p>
+                                                    <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
+                                                        สิทธิ์สำหรับผู้จัดเก็บข้อมูล, ตรวจวัดค่าสารเคมี และทำการอัปโหลดผลน้ำเข้าสู่ฐานข้อมูล
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* บล็อกเลือกสิทธิ์: เจ้าหน้าที่บริหาร/สารสนเทศ (Officer) */}
-                                    <div
-                                        onClick={() => setSelectedRole("officer")}
-                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                            selectedRole === "officer" ? "bg-primary/5 border-primary shadow-xs" : "bg-surface-subtle border-border/80 hover:border-border-hover"
-                                        }`}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div
-                                                className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${selectedRole === "officer" ? "border-primary" : "border-text-muted"}`}
-                                            >
-                                                {selectedRole === "officer" && <div className="w-2 h-2 rounded-full bg-primary" />}
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-black text-text-primary">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
-                                                <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
-                                                    สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยชายฝั่ง
-                                                </p>
+                                        {/* บล็อกเลือกสิทธิ์: เจ้าหน้าที่บริหาร/สารสนเทศ (Officer) */}
+                                        <div
+                                            onClick={() => setSelectedRole("officer")}
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                                selectedRole === "officer" ? "bg-secondary/5 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${selectedRole === "officer" ? "border-primary" : "border-text-muted"}`}
+                                                >
+                                                    {selectedRole === "officer" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-text-primary">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
+                                                    <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
+                                                        สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยของคุณภาพน้ำ
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -315,24 +300,37 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                     </div>
                                 )}
 
-                                <div className="pt-3">
-                                    <button
-                                        type="submit"
-                                        disabled={submitting || !selectedRole}
-                                        className="w-full h-11 bg-primary hover:bg-primary/95 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                                    >
-                                        {submitting ? (
-                                            <>
-                                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                <span>กำลังบันทึกและส่งคำขอสิทธิ์...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Send size={13} />
-                                                <span>ส่งคำร้องขอเข้าใช้งานระบบ</span>
-                                            </>
-                                        )}
-                                    </button>
+                                <div className="pt-3 grid grid-cols-2 gap-3">
+                                    <div className="space-y-2.5 ">
+                                        <button
+                                            onClick={() => {
+                                                setStep(1);
+                                                setFormError(null);
+                                            }}
+                                            className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-primary font-semibold rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        >
+                                            <ArrowLeft size={14} /> ย้อนกลับ
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <button
+                                            type="submit"
+                                            disabled={submitting || !selectedRole}
+                                            className="w-full h-11 bg-primary hover:bg-[#054E62] text-white font-semibold rounded-xl text-xs uppercase tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        >
+                                            {submitting ? (
+                                                <>
+                                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    <span>กำลังบันทึกและส่งคำขอสิทธิ์...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Send size={13} />
+                                                    <span>ส่งคำร้องขอเข้าระบบ</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </>

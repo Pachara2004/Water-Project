@@ -60,13 +60,13 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 className="bg-surface flex items-center gap-4 px-6 py-3 rounded-xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
             >
                 <div>
-                    <Filter size={18} className="text-blue-500" />
+                    <Filter size={18} className="text-secondary" />
                 </div>
                 <div className="flex flex-col items-start leading-none">
-                    <span className="text-[9px] text-text-muted font-semibold uppercase tracking-wider">หน่วยงาน</span>
-                    <span className="font-semibold text-text-primary text-xs mt-0.5">{currentLabel}</span>
+                    <span className="text-[9px] text-primary font-semibold uppercase tracking-wider">หน่วยงาน</span>
+                    <span className="font-semibold text-black text-xs mt-0.5">{currentLabel}</span>
                 </div>
-                <ChevronDown size={14} className={`text-text-muted ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
+                <ChevronDown size={14} className={`text-primary ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
             </button>
 
             {isOpen && (

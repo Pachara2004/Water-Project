@@ -1,6 +1,6 @@
 "use client";
 
-import { X, MapPin, Building2, Calendar, FlaskConical, ShieldCheck, ShieldX, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { X, MapPin, Calendar, FlaskConical, ShieldCheck, ShieldX, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import StatusBadge from "./StatusBadge";
@@ -69,9 +69,9 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const contentRef = useRef<HTMLDivElement>(null);
 
     const HEIGHTS = {
-        collapsed: 88,
-        half: typeof window !== "undefined" ? window.innerHeight * 0.45 : 300,
-        full: typeof window !== "undefined" ? window.innerHeight * 0.85 : 600,
+        collapsed: 120,
+        half: typeof window !== "undefined" ? window.innerHeight * 0.50 : 300,
+        full: typeof window !== "undefined" ? window.innerHeight * 0.90 : 700,
     };
 
     const getSnapHeight = (snap: "collapsed" | "half" | "full"): number => HEIGHTS[snap];
@@ -171,12 +171,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         const role = currentUser?.role;
 
         // 1. GENERAL/PUBLIC users or not logged in: Hide collector details completely
-        if (!currentUser || role === "GENERAL") {
+        if (!currentUser || role === "guest") {
             return null;
         }
 
         // 2. ADMIN: Full Name + Contact Number
-        if (role === "ADMIN") {
+        if (role === "admin") {
             return (
                 <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
                     <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">ผู้บันทึกข้อมูล (ADMIN ACCESS)</span>
@@ -187,7 +187,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         }
 
         // 3. COLLECTOR: Own Phone/Name only, other collectors anonymized
-        if (role === "COLLECTOR") {
+        if (role === "collector") {
             const isSelf = colId === currentUser.id;
             if (isSelf) {
                 return (
@@ -210,7 +210,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         }
 
         // 4. EXECUTIVE: Anonymized name, hide phone
-        if (role === "EXECUTIVE") {
+        if (role === "officer") {
             const anonymizedName = colName.length > 0 ? `${colName[0]}***` : "***";
             return (
                 <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
@@ -271,15 +271,14 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const renderContent = () => (
         <div className="flex-1">
             {/* Location header */}
-            <div className="flex items-start gap-4 mb-6">
-                <div className="p-3 bg-primary-light text-primary border border-primary/10 rounded-2xl flex-shrink-0">
-                    <MapPin size={20} />
+            <div className="flex items-start gap-3 mb-6">
+                <div className="p-2 bg-primary text-white border border-primary/10 rounded-2xl shrink-0">
+                    <MapPin size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-black text-text-primary text-base sm:text-lg leading-tight truncate">{location.name}</h3>
-                    <div className="flex items-center gap-2 mt-2 text-text-secondary text-xs">
-                        <Building2 size={12} className="text-text-muted" />
-                        <span className="font-bold">{getOrganizationLabel(location.organization)}</span>
+                    <h3 className="font-semibold text-text-primary text-base sm:text-lg leading-tight truncate">{location.name}</h3>
+                    <div className="flex items-center gap-2 mt-1 text-text-secondary text-xs">
+                        <span className="font-semibold">{getOrganizationLabel(location.organization)}</span>
                     </div>
                 </div>
             </div>
@@ -469,13 +468,13 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             ) : (
                 <div className="text-center py-8">
                     <div className="w-14 h-14 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mx-auto mb-3">
-                        <FlaskConical size={24} className="text-text-muted" />
+                        <FlaskConical size={14} className="text-text-muted" />
                     </div>
                     <p className="text-xs font-bold text-text-muted">ยังไม่พบประวัติผลการวิเคราะห์ในพิกัดนี้</p>
                 </div>
             )}
 
-            {currentUser && (currentUser.role === "ADMIN" || currentUser.role === "COLLECTOR") && (
+            {currentUser && (currentUser.role === "admin" || currentUser.role === "collector") && (
                 <div className="mt-8">
                     <button
                         onClick={() => router.push(`/submit?locationId=${location.id}`)}
@@ -497,7 +496,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             {/* ── Mobile: bottom sheet ──────────────────────────────────────── */}
             <div
                 ref={sheetRef}
-                className="sm:hidden fixed left-0 right-0 z-[1000] bg-surface rounded-t-[32px] border-t border-border shadow-2xl flex flex-col"
+                className="sm:hidden fixed left-0 right-0 z-1000 bg-surface rounded-t-4xl border-t border-border shadow-2xl flex flex-col"
                 style={{
                     bottom: `calc(72px + env(safe-area-inset-bottom))`,
                     height: `${getSnapHeight(sheetHeight)}px`,
@@ -511,20 +510,21 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
             >
                 {/* Handle + Close */}
-                <div className="bottom-sheet-header flex items-center justify-between px-6 pt-4 pb-3 flex-shrink-0 select-none" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
-                    <div className="w-8" />
-                    <div
-                        className="bottom-sheet-handle w-12 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing rounded-full hover:bg-border/20 transition-colors"
-                        onMouseDown={handleDragStart}
-                        onTouchStart={handleDragStart}
-                    >
-                        <div className="w-10 h-1.5 rounded-full bg-border transition-all" />
+                <div className="bottom-sheet-header flex items-center justify-between px-7 pt-4 pb-3 shrink-0 select-none" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
+                    <div className="flex-1 flex items-center justify-center">
+                        <div
+                            className="bottom-sheet-handle h-7 text-primary flex items-center justify-center cursor-grab active:cursor-grabbing rounded-full hover:bg-primary transition-colors"
+                            onMouseDown={handleDragStart}
+                            onTouchStart={handleDragStart}
+                        >
+                            <div className="w-20 h-1 rounded-full bg-secondary transition-all" />
+                        </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 rounded-full bg-surface-subtle hover:bg-surface-muted flex items-center justify-center border border-border transition-colors active:scale-90 cursor-pointer"
+                        className="w-8 h-8m flex items-center justify-center transition-colors active:scale-90 cursor-pointer"
                     >
-                        <X size={14} className="text-text-secondary" />
+                        <X size={24} className="text-primary" />
                     </button>
                 </div>
                 <div
@@ -540,14 +540,14 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
             {/* ── Tablet / Desktop: right-side panel ───────────────────────── */}
             <div
-                className="hidden sm:flex fixed top-0 right-0 h-full z-[1000]
-                      w-[400px] lg:w-[440px]
+                className="hidden sm:flex fixed top-0 right-0 h-full z-1000
+                      w-100 lg:w-110
                       bg-surface border-l border-border shadow-2xl
                       flex-col animate-slide-in-right transition-colors duration-300"
                 style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
             >
                 {/* Panel header */}
-                <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0 border-b border-border">
+                <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0 border-b border-border">
                     <span className="text-xs font-black text-text-muted uppercase tracking-widest">ข้อมูลสถานี</span>
                     <button
                         title="Close Panel"
