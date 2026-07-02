@@ -57,7 +57,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
         <div className="relative" ref={dropdownRef}>
         <button
             onClick={() => setIsOpen(!isOpen)}
-            className="bg-surface flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer w-40 shrink-0"
+            className="bg-surface flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer w-45 shrink-0"
         >
             {/* ใส่ shrink-0 ให้ไอคอน เพื่อไม่ให้มันโดนบีบ */}
             <div className="shrink-0">
