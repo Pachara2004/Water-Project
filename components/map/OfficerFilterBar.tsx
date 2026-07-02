@@ -55,41 +55,48 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
     return (
         // เปลี่ยนจาก fixed เป็น relative เพื่อให้จัดเรียงคู่กับปุ่มสถานะได้
         <div className="relative" ref={dropdownRef}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="bg-surface flex items-center gap-4 px-6 py-3 rounded-xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer"
-            >
-                <div>
-                    <Filter size={18} className="text-secondary" />
-                </div>
-                <div className="flex flex-col items-start leading-none">
-                    <span className="text-[9px] text-primary font-semibold uppercase tracking-wider">หน่วยงาน</span>
-                    <span className="font-semibold text-black text-xs mt-0.5">{currentLabel}</span>
-                </div>
-                <ChevronDown size={14} className={`text-primary ml-1 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
-            </button>
+        <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="bg-surface flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-[0.97] cursor-pointer w-40 shrink-0"
+        >
+            {/* ใส่ shrink-0 ให้ไอคอน เพื่อไม่ให้มันโดนบีบ */}
+            <div className="shrink-0">
+                <Filter size={16} className="text-secondary" />
+            </div>
+            
+            {/* ใส่ min-w-0 เพื่อให้ flex child สามารถตัดคำ truncate ได้ */}
+            <div className="flex flex-col items-start leading-none min-w-0 flex-1">
+                <span className="text-[9px] text-primary font-semibold uppercase tracking-wider">หน่วยงาน</span>
+                {/* ใช้ truncate และ w-full เพื่อตัดข้อความเป็น ... ถ้ามันยาวเกินปุ่ม */}
+                <span className="font-semibold text-black text-xs mt-0.5 truncate w-full text-left">
+                    {currentLabel}
+                </span>
+            </div>
 
-            {isOpen && (
-                <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-surface rounded-2xl overflow-hidden animate-slide-down origin-top">
-                    <div className="p-1.5">
-                        {options.map((option) => (
-                            <button
-                                key={option.value}
-                                onClick={() => {
-                                    onChange(option.value);
-                                    setIsOpen(false);
-                                }}
-                                className={`w-full px-4 py-3 rounded-xl text-center text-xs font-semibold transition-all duration-200 items-left flex cursor-pointer${
-                                    value === option.value ? "bg-primary/10 text-primary" : "text-text-secondary hover:bg-surface-subtle"
-                                }`}
-                            >
-                                <div className={`transition-all ${value === option.value ? "bg-primary scale-100" : "bg-transparent scale-0"}`} />
-                                <span className="font-semibold">{option.label}</span>
-                            </button>
-                        ))}
-                    </div>
+            <ChevronDown size={14} className={`text-primary ml-auto shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+
+        {/* ส่วน Dropdown */}
+        {isOpen && (
+            <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-surface rounded-2xl shadow-xl border border-border overflow-hidden animate-slide-down origin-top z-700">
+                <div className="p-1.5 flex flex-col gap-0.5">
+                    {options.map((option) => (
+                        <button
+                            key={option.value}
+                            onClick={() => {
+                                onChange(option.value);
+                                setIsOpen(false);
+                            }}
+                            className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center cursor-pointer ${
+                                value === option.value ? "bg-primary/10 text-primary" : "text-black hover:bg-surface-subtle"
+                            }`}
+                        >
+                            <span className="font-semibold truncate text-left w-full">{option.label}</span>
+                        </button>
+                    ))}
                 </div>
-            )}
-        </div>
+            </div>
+        )}
+    </div>
     );
 }

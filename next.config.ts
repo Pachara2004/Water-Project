@@ -1,17 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Allow any image source for development
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
-  },
-  // Empty turbopack config to satisfy Next.js 16
-  turbopack: {},
+    // นำมาไว้ระดับนอกสุด ตรงตามที่ Next.js แจ้งเตือน
+    // @ts-ignore
+    allowedDevOrigins: ["desktops-issued-kids-collectors.trycloudflare.com"],
+
+    images: {
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "**",
+            },
+        ],
+    },
+    turbopack: {},
 };
 
 export default nextConfig;

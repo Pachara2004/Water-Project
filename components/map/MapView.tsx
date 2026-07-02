@@ -20,7 +20,7 @@ interface LocationData {
     createdAt: string;
     latestSample: {
         id: number;
-        status: "safe" | "warning" | "danger"; // 🔒 ปรับตาม Enum พิมพ์เล็กสากลล่าสุด
+        status: "safe" | "warning" | "danger";
         phosphateVal: number | null;
         ammoniaVal: number | null;
         collectedAt: string;
@@ -57,7 +57,7 @@ interface MapViewProps {
 export default function MapView({ mode = "explorer", onLocationPick, pickedPosition }: MapViewProps) {
     const [locations, setLocations] = useState<LocationData[]>([]);
     const [agencyFilter, setAgencyFilter] = useState("ALL");
-    const [statusFilter, setStatusFilter] = useState("ALL"); // ค่า 'ALL' หรือพิมพ์เล็ก 'safe' | 'warning' | 'danger'
+    const [statusFilter, setStatusFilter] = useState("ALL");
 
     const [selectedLocation, setSelectedLocation] = useState<BottomSheetLocation | null>(null);
     const [loading, setLoading] = useState(true);
@@ -141,15 +141,16 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     return (
         <div className="relative w-full h-full">
             {/* Filter Container */}
+            {/* Filter Container */}
             {mode === "explorer" && (
-                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 lg:left-6 z-[600] flex items-center gap-3">
+                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-3 break-all">
                     <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
                     <StatusFilterBar value={statusFilter} onChange={setStatusFilter} />
                 </div>
             )}
 
             {loading && mode === "explorer" && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[600] bg-surface/95 backdrop-blur-md px-4 py-2.5 rounded-full shadow-lg text-[10px] font-bold text-text-secondary flex items-center gap-2 border border-border transition-all duration-300">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-600 bg-surface/95 backdrop-blur-md px-4 py-2.5 rounded-full shadow-lg text-[10px] font-bold text-text-secondary flex items-center gap-2 border border-border transition-all duration-300">
                     <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     กำลังประมวลผลแผนที่...
                 </div>
@@ -193,7 +194,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 <button
                     title="Locate Me"
                     onClick={handleLocateMe}
-                    className="absolute bottom-6 right-4 lg:bottom-8 lg:right-6 z-[600] bg-surface p-3.5 rounded-full shadow-lg border border-border text-primary hover:bg-surface-subtle transition-all duration-300 active:scale-95 cursor-pointer"
+                    className="absolute bottom-6 right-4 lg:bottom-8 lg:right-6 z-600 bg-surface p-3.5 rounded-full shadow-lg border border-border text-primary hover:bg-surface-subtle transition-all duration-300 active:scale-95 cursor-pointer"
                 >
                     <Navigation size={18} className="fill-primary" />
                 </button>
