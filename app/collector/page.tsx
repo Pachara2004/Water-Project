@@ -113,12 +113,11 @@ export default function CollectorDashboard() {
         <div className="min-h-screen w-full bg-surface-muted pb-16 transition-colors duration-300">
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6 pt-6 sm:pt-10">
                 <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                    <div className="space-y-1.5">
-                        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary flex items-center gap-2">
-                            ศูนย์ข้อมูล
-                            <span className="text-primary font-black">ผู้เก็บตัวอย่างน้ำ</span>
+                    <div className="">
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary flex items-center">
+                            ศูนย์ข้อมูล<span className="text-primary font-bold">ผู้เก็บตัวอย่างน้ำ</span>
                         </h1>
-                        <p className="text-text-secondary text-xs sm:text-sm">ระบบรายงานและสืบค้นผลวิเคราะห์สารเคมีในน้ำทะเลชายฝั่ง</p>
+                        <p className="text-black text-xs sm:text-sm">ระบบรายงานและสืบค้นผลวิเคราะห์สารเคมีในน้ำทะเลชายฝั่ง</p>
                     </div>
 
                     <button
@@ -126,24 +125,24 @@ export default function CollectorDashboard() {
                         className="w-full sm:w-auto py-3 px-6 min-h-[48px] bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2.5 shadow-sm active:scale-[0.98] transition-all cursor-pointer text-sm shrink-0"
                     >
                         <Camera size={16} strokeWidth={2.5} />
-                        <span>ส่งผลตัวอย่างใหม่</span>
+                        <span>ส่งตรวจคุณภาพน้ำ</span>
                     </button>
                 </div>
 
                 {/* Filtering Title Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 px-1">
+                <div className="flex flex-col-2 sm:flex-row sm:items-center justify-between sm:justify-between gap-3 pt-4 px-1">
                     <div className="inline-flex items-center gap-2">
                         <FileText size={15} className="text-primary" />
-                        <h2 className="font-mono text-[10px] sm:text-xs uppercase tracking-[0.2em] text-text-secondary font-black">Submission History</h2>
+                        <h2 className="text-xs sm:text-xs uppercase text-text-secondary font-semibold">ประวัติการส่งตรวจคุณภาพน้ำ</h2>
                     </div>
 
-                    {/* iOS-Style Toggle */}
-                    <div className="inline-flex items-center gap-3 bg-surface border border-border/50 px-4 py-1.5 rounded-md shadow-xs shrink-0 w-max">
-                        <span className="text-xs font-bold text-text-secondary">ดูเฉพาะข้อมูลของฉัน</span>
-                        <button title="button"
+                    <div className="inline-flex items-center gap-1 bg-surface border border-border/50 px-3 py-1.5 rounded-md shadow-xs shrink-0 w-max">
+                        <span className="text-xs font-semibold text-black">ข้อมูลของฉัน</span>
+                        <button
+                            title="button"
                             type="button"
                             onClick={() => setShowOnlyMine(!showOnlyMine)}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out outline-none ${
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out outline-none ${
                                 showOnlyMine ? "bg-primary" : "bg-border"
                             }`}
                         >
@@ -166,7 +165,7 @@ export default function CollectorDashboard() {
                                 <div className="w-12 h-12 bg-surface-subtle rounded-xl flex items-center justify-center mb-4 border border-border/60 text-text-muted">
                                     <FileText size={20} />
                                 </div>
-                                <p className="text-text-primary font-black mb-1.5 text-sm sm:text-base">{showOnlyMine ? "คุณยังไม่มีประวัติการส่งข้อมูล" : "ยังไม่มีประวัติการส่งข้อมูลในระบบ"}</p>
+                                <p className="text-text-primary font-bold mb-1.5 text-sm sm:text-base">{showOnlyMine ? "คุณยังไม่มีประวัติการส่งข้อมูล" : "ยังไม่มีประวัติการส่งข้อมูลในระบบ"}</p>
                                 <p className="text-xs text-text-secondary mb-6 max-w-sm leading-relaxed">เริ่มต้นส่งภาพชุดทดสอบคุณภาพน้ำเพื่อบันทึกและประมวลผลค่าน้ำในพื้นที่ของท่าน</p>
                                 <button
                                     onClick={() => router.push("/submit")}

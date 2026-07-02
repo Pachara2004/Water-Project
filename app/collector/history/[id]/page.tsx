@@ -533,24 +533,24 @@ export default function CollectorHistoryDetailPage() {
                 </div>
 
                 {/* Standards Evaluation */}
-                <div className="bg-surface rounded-3xl shadow-sm border border-border p-5">
-                    <h3 className="text-xs font-bold text-text-secondary mb-4 flex items-center gap-2">
+                <div className="bg-surface rounded-xl border border-border p-5">
+                    <h3 className="text-sm font-semibold text-text-secondary mb-4 flex items-center gap-2">
                         <ShieldCheck size={15} className="text-primary" /> การประเมินเทียบเกณฑ์มาตรฐานคุณภาพน้ำทะเล
                     </h3>
                     <div className="grid grid-cols-1 gap-2.5">
                         {standardsEvaluation.map((std) => (
                             <div
                                 key={std.type}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold border transition-all ${
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium border transition-all ${
                                     std.passed
-                                        ? "bg-emerald-50/40 dark:bg-emerald-950/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/20 shadow-sm"
-                                        : "bg-red-50/40 dark:bg-red-950/15 text-red-800 dark:text-red-300 border-red-500/20 shadow-sm"
+                                        ? "bg-emerald-50/40 dark:bg-emerald-950/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/20"
+                                        : "bg-red-50/40 dark:bg-red-950/15 text-red-800 dark:text-red-300 border-red-500/20"
                                 }`}
                             >
-                                {std.passed ? <ShieldCheck size={15} className="text-emerald-500 flex-shrink-0" /> : <ShieldX size={15} className="text-red-500 flex-shrink-0" />}
+                                {std.passed ? <ShieldCheck size={15} className="text-emerald-500 shrink-0" /> : <ShieldX size={15} className="text-red-500 flex-shrink-0" />}
                                 <span className="flex-1 truncate">{std.label}</span>
                                 <span
-                                    className={`font-mono text-[9px] font-black px-2 py-0.5 rounded-lg border flex-shrink-0 ${
+                                    className={`text-xs font-medium px-2 py-0.5 rounded-md border shrink-0 ${
                                         std.passed
                                             ? "bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50"
                                             : "bg-red-100/70 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200/50"

@@ -178,17 +178,17 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         // 2. ADMIN: Full Name + Contact Number
         if (role === "admin") {
             return (
-                <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
-                    <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">ผู้บันทึกข้อมูล (ADMIN ACCESS)</span>
-                    <p className="text-xs font-bold text-text-primary mt-1">{colName}</p>
-                    <p className="text-xs font-semibold text-primary font-mono">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
+                <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col  mt-4">
+                    <span className="text-xs font-medium text-text-muted uppercase tracking-wider block">ผู้บันทึกข้อมูล</span>
+                    <p className="text-base font-bold text-text-primary">{colName}</p>
+                    <p className="text-base font-bold text-primary">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
                 </div>
             );
         }
 
         // 3. COLLECTOR: Own Phone/Name only, other collectors anonymized
         if (role === "collector") {
-            const isSelf = colId === currentUser.id;
+            const isSelf = String(colId) === String(currentUser.id);
             if (isSelf) {
                 return (
                     <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
@@ -271,11 +271,11 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const renderContent = () => (
         <div className="flex-1">
             {/* Location header */}
-            <div className="flex items-start gap-3 mb-6">
+            <div className="flex items-start gap-3 mb-4">
                 <div className="p-2 bg-primary text-white border border-primary/10 rounded-2xl shrink-0">
                     <MapPin size={24} />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1">
                     <h3 className="font-semibold text-text-primary text-base sm:text-lg leading-tight truncate">{location.name}</h3>
                     <div className="flex items-center gap-2 mt-1 text-text-secondary text-xs">
                         <span className="font-semibold">{getOrganizationLabel(location.organization)}</span>
@@ -286,10 +286,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             {latest ? (
                 <div className="space-y-5">
                     {/* Status + Date */}
-                    <div className="bg-surface-subtle border border-border rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">ผลวิเคราะห์ล่าสุด</span>
-                            <StatusBadge status={latest.status as "SAFE" | "WARNING" | "DANGER"} size="sm" />
+                    <div className="bg-surface border border-border rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider">ผลวิเคราะห์ล่าสุด</span>
+                            <StatusBadge status={latest.status as "safe" | "warning" | "danger"} size="sm" />
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-text-muted">
                             <Calendar size={12} />
@@ -301,8 +301,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     {renderCollectorInfo()}
 
                     {/* Chemical values */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-surface rounded-xl p-6 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="bg-primary-light p-1.5 rounded-lg border border-primary/10">
                                     <FlaskConical size={12} className="text-primary" />
@@ -322,7 +322,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             )}
                         </div>
 
-                        <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
+                        <div className="bg-surface rounded-xl p-6 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="bg-primary-light p-1.5 rounded-lg border border-primary/10">
                                     <FlaskConical size={12} className="text-primary" />
@@ -490,13 +490,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
     return (
         <>
-            {/* Backdrop removed - show map throughout */}
             <div className="hidden" onClick={onClose} />
 
             {/* ── Mobile: bottom sheet ──────────────────────────────────────── */}
             <div
                 ref={sheetRef}
-                className="sm:hidden fixed left-0 right-0 z-1000 bg-surface rounded-t-4xl border-t border-border shadow-2xl flex flex-col"
+                className="sm:hidden fixed left-0 right-0 z-1000 bg-surface rounded-t-3xl border border-border flex flex-col"
                 style={{
                     bottom: `calc(72px + env(safe-area-inset-bottom))`,
                     height: `${getSnapHeight(sheetHeight)}px`,

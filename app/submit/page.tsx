@@ -178,7 +178,7 @@ function SubmitContent() {
         if (!file) return;
 
         // 🛑 ดักจับนิรภัยตั้งแต่ตอนกดเลือกรูปภาพหน้าบ้าน
-        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
         const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
         // 1. ดักขนาดไฟล์เกิน (ใช้ Alert Modal เพื่อความชัดเจน)
@@ -586,7 +586,7 @@ function SubmitContent() {
                             </div>
                         </div>
                     )}
-                    <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} className="hidden" />
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />{" "}
                 </div>
                 {step === "upload" && imagePreview && (
                     <button onClick={() => fileInputRef.current?.click()} className="mt-2 text-[10px] text-text-muted underline underline-offset-2">
@@ -692,7 +692,7 @@ function SubmitContent() {
                               : "bg-red-50 dark:bg-red-950/20 border-red-500/30 text-red-800 dark:text-red-200"
                     }`}
                 >
-                    <span className={`h-2 w-2 rounded-full flex-shrink-0 ${results.status === "safe" ? "bg-teal-500" : results.status === "warning" ? "bg-amber-500" : "bg-red-500"}`} />
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${results.status === "safe" ? "bg-teal-500" : results.status === "warning" ? "bg-amber-500" : "bg-red-500"}`} />
                     <div>
                         <p className="font-semibold">
                             {results.status === "safe" ? "คุณภาพน้ำอยู่ในเกณฑ์ปลอดภัย" : results.status === "warning" ? "ตรวจพบค่าสูง — ต้องตรวจสอบเพิ่มเติม" : "ค่าเกินมาตรฐานความปลอดภัย"}
