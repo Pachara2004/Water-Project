@@ -128,8 +128,8 @@ export default function ExecutiveDashboard() {
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6 pt-6 sm:pt-10">
                 <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                     <div className="space-y-1.5">
-                        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary flex items-center gap-2">
-                            ระบบวิเคราะห์และติดตาม <span className="text-primary font-black">คุณภาพน้ำทะเล</span>
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary items-center">
+                            ระบบวิเคราะห์และติดตาม<span className="text-primary font-bold">คุณภาพน้ำทะเล</span>
                         </h1>
                         <p className="text-text-secondary text-xs sm:text-sm">ศูนย์ข้อมูลคุณภาพสารเคมีแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม </p>
                     </div>

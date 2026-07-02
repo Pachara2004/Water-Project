@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         await mkdir(uploadDir, { recursive: true });
 
         const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
-        const maxFileSize = 5 * 1024 * 1024;
+        const maxFileSize = 10 * 1024 * 1024;
 
         // SECURITY STEP 3: Safe File Upload รูปภาพต้นฉบับปกติ (ล้างชื่อใส่กลอน YYYYMMDD)
         let dbImageUrl: string | null = null;

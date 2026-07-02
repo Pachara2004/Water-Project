@@ -149,12 +149,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 </div>
             )}
 
-            {loading && mode === "explorer" && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-600 bg-surface/95 backdrop-blur-md px-4 py-2.5 rounded-full shadow-lg text-[10px] font-bold text-text-secondary flex items-center gap-2 border border-border transition-all duration-300">
-                    <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    กำลังประมวลผลแผนที่...
-                </div>
-            )}
+            
 
             <MapContainer key={mapKey} ref={leafletMapRef} center={center} zoom={zoom} className="w-full h-full" zoomControl={false} attributionControl={false}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
