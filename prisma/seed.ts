@@ -1,5 +1,5 @@
 /**
- * prisma/seed.ts — Database seed สำหรับโครงสร้างล่าสุดที่มีระบบคำร้องขอเปลี่ยน Role
+ * prisma/seed.ts — Database seed สำหรับโครงสร้างใหม่รองรับการขยายชนิดสารเคมี (EAV Pattern)
  * ─────────────────────────────────────────────────────────
  * รัน: npx prisma db seed
  */
@@ -9,12 +9,14 @@ import { PrismaClient, WaterStatus } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log("🌱 Starting database seeding based on new schema...");
+    console.log("🌱 Starting database seeding based on new EAV schema...");
 
     // 1. Clean existing data (ลบตามลำดับจากตารางลูกไปตารางแม่เพื่อเลี่ยง Foreign Key Constraints)
     console.log("🧹 Cleaning existing data...");
-    await prisma.roleRequest.deleteMany(); // เคลียร์ตารางคำร้องขอก่อน
+    await prisma.roleRequest.deleteMany();
+    await prisma.waterSampleMeasurement.deleteMany(); // ลบรายการบันทึกผลสารก่อน
     await prisma.waterSample.deleteMany();
+    await prisma.parameter.deleteMany(); // ลบตารางมาสเตอร์สารเคมี
     await prisma.location.deleteMany();
     await prisma.user.deleteMany();
     await prisma.role.deleteMany();
@@ -26,7 +28,25 @@ async function main() {
     const roleCollector = await prisma.role.create({ data: { roleName: "collector" } });
     const roleGuest = await prisma.role.create({ data: { roleName: "guest" } });
 
-    // ─── 3. USERS SEEDING (สร้างผู้ใช้จำลอง) ───
+    // ─── 3. PARAMETERS SEEDING (สร้างมาสเตอร์สารเคมีเริ่มต้น) ───
+    console.log("🧪 Creating parameter master data...");
+    const paramAmmonia = await prisma.parameter.create({
+        data: {
+            name: "ammonia",
+            unit: "mg/L",
+            description: "สารแอมโมเนียในน้ำ",
+        },
+    });
+
+    const paramPhosphate = await prisma.parameter.create({
+        data: {
+            name: "phosphate",
+            unit: "mg/L",
+            description: "สารฟอสเฟตในน้ำ",
+        },
+    });
+
+    // ─── 4. USERS SEEDING (สร้างผู้ใช้จำลอง) ───
     console.log("👤 Creating users...");
 
     // admin
@@ -53,7 +73,7 @@ async function main() {
         },
     });
 
-    // ROLE: collector (กลุ่มเจ้าหน้าที่ภาคสนามที่มีสิทธิ์ในระบบแล้ว)
+    // ROLE: collector
     const collectors = await Promise.all([
         prisma.user.create({
             data: {
@@ -87,7 +107,7 @@ async function main() {
         }),
     ]);
 
-    // ROLE: guest (ผู้ใช้ที่บทบาทเริ่มต้นเป็น guest และรอแอดมินอนุมัติสิทธิ์เปลี่ยน Role)
+    // ROLE: guest
     const guests = await Promise.all([
         prisma.user.create({
             data: {
@@ -151,37 +171,19 @@ async function main() {
         }),
     ]);
 
-    // ─── 4. ROLE REQUESTS SEEDING (จำลองการยื่นคำร้องขอเปลี่ยนสิทธิ์) ───
+    // ─── 5. ROLE REQUESTS SEEDING (คำร้องขอเปลี่ยนสิทธิ์) ───
     console.log("📝 Generating sample role requests from guests...");
-
-    // นายประยุทธ์ (guests[0]) ขอเป็น officer
     await prisma.roleRequest.create({
-        data: {
-            userId: guests[0].id,
-            requestedRoleId: roleOfficer.id,
-            status: "pending",
-        },
+        data: { userId: guests[0].id, requestedRoleId: roleOfficer.id, status: "pending" },
+    });
+    await prisma.roleRequest.create({
+        data: { userId: guests[1].id, requestedRoleId: roleCollector.id, status: "pending" },
+    });
+    await prisma.roleRequest.create({
+        data: { userId: guests[2].id, requestedRoleId: roleCollector.id, status: "pending" },
     });
 
-    // นางสาวสุดา (guests[1]) ขอเป็น collector
-    await prisma.roleRequest.create({
-        data: {
-            userId: guests[1].id,
-            requestedRoleId: roleCollector.id,
-            status: "pending",
-        },
-    });
-
-    // นายธนกร (guests[2]) ขอเป็น collector
-    await prisma.roleRequest.create({
-        data: {
-            userId: guests[2].id,
-            requestedRoleId: roleCollector.id,
-            status: "pending",
-        },
-    });
-
-    // ─── 5. LOCATIONS MONITORING STATIONS ───────────────────────────
+    // ─── 6. LOCATIONS MONITORING STATIONS ───
     console.log("📍 Creating coastal monitoring stations...");
     const locationsPayload = [
         { stationName: "ปากแม่น้ำบางปะกง", governingAgency: "กรมประมง", latitude: 13.4543, longitude: 100.9823 },
@@ -211,8 +213,8 @@ async function main() {
         insertedLocations.push(createdLoc);
     }
 
-    // ─── 6. WATER SAMPLES (250 ตัวอย่างย้อนหลัง) ──────────────────────
-    console.log("🧪 Generating 250 water samples over last 180 days...");
+    // ─── 7. WATER SAMPLES WITH PARAMETER MEASUREMENTS (250 ตัวอย่างย้อนหลัง) ───
+    console.log("🧪 Generating 250 water samples with EAV measurements over last 180 days...");
     const samplesCount = 250;
 
     for (let i = 0; i < samplesCount; i++) {
@@ -222,7 +224,6 @@ async function main() {
         sampleDate.setDate(sampleDate.getDate() - daysAgo);
         sampleDate.setHours(sampleDate.getHours() - hourAgo);
 
-        // ดึงไอดีจากอาเรย์ collectors ที่สร้างไว้จริง (ลดความเสี่ยง ID ไม่ตรง)
         const randomCollectorObj = collectors[i % collectors.length];
         const randomLocation = insertedLocations[Math.floor(Math.random() * insertedLocations.length)];
 
@@ -241,14 +242,15 @@ async function main() {
             weatherCode = 1;
         }
 
-        const ammonia =
+        // คำนวณหาค่าแอมโมเนียและฟอสเฟตจำลองตามสภาพน้ำ
+        const ammoniaValue =
             computedStatus === WaterStatus.danger
                 ? parseFloat((1.5 + Math.random() * 2).toFixed(2))
                 : computedStatus === WaterStatus.warning
                   ? parseFloat((0.5 + Math.random() * 1).toFixed(2))
                   : parseFloat((Math.random() * 0.4).toFixed(2));
 
-        const phosphate =
+        const phosphateValue =
             computedStatus === WaterStatus.danger
                 ? parseFloat((0.8 + Math.random() * 1.5).toFixed(2))
                 : computedStatus === WaterStatus.warning
@@ -258,13 +260,12 @@ async function main() {
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
         const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
 
+        // บันทึกลงตาราง WaterSample พร้อมแตกข้อมูลลง WaterSampleMeasurement ไปพร้อมกัน
         await prisma.waterSample.create({
             data: {
-                collectorId: randomCollectorObj.id, // ใช้ ID ตรงๆ จาก Object ที่ถูกสร้างจริง
+                collectorId: randomCollectorObj.id,
                 locationId: randomLocation.id,
                 collectionTime: sampleDate,
-                ammoniaValue: ammonia,
-                phosphateValue: phosphate,
                 dissolvedOxygen: doValue,
                 airTemperature: tempValue,
                 rainAccumulation: rainVol,
@@ -272,14 +273,23 @@ async function main() {
                 status: computedStatus,
                 rawImageUrl: Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null,
                 analyzedPlotUrl: Math.random() > 0.5 ? `/uploads/mock-plot.jpg` : null,
+
+                // ใช้ Nested Write สั่งเพิ่มข้อมูลผลสแกนรายสารพ่วงไปด้วยทันที
+                measurements: {
+                    create: [
+                        { parameterId: paramAmmonia.id, value: ammoniaValue },
+                        { parameterId: paramPhosphate.id, value: phosphateValue },
+                    ],
+                },
             },
         });
     }
 
     console.log("\n✅ Seeding completed successfully!");
     console.log(` 🔑 Roles created : admin, officer, collector, guest`);
+    console.log(` 🧪 Parameters defined : ammonia, phosphate`);
     console.log(` 📝 Role Requests : Generated pending requests for dashboard testing.`);
-    console.log(` 👥 Generated 250 history records into table WaterSample.`);
+    console.log(` 👥 Generated 250 history records into tables WaterSample & WaterSampleMeasurement.`);
 }
 
 main()

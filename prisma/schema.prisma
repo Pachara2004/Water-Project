@@ -14,57 +14,56 @@ enum WaterStatus {
 }
 
 model Role {
-  id          Int      @id @default(autoincrement()) 
-  roleName    String   @unique @map("role_name")  
+  id           Int           @id @default(autoincrement())
+  roleName     String        @unique @map("role_name")
   
   users        User[]
-  roleRequests RoleRequest[] 
+  roleRequests RoleRequest[]
 
   @@map("roles")
 }
 
 model User {
-  id              Int           @id @default(autoincrement()) 
-  lineUniqueId    String        @unique @map("line_unique_id") 
-  lineProfileName String        @map("line_profile_name")    
-  firstName       String?       @map("first_name") 
-  lastName        String?       @map("last_name") 
-  phoneNumber     String?       @map("phone_number")   
+  id              Int           @id @default(autoincrement())
+  lineUniqueId    String        @unique @map("line_unique_id")
+  lineProfileName String        @map("line_profile_name")
+  firstName       String?       @map("first_name")
+  lastName        String?       @map("last_name")
+  phoneNumber     String?       @map("phone_number")
   
   roleId          Int           @map("role_id")
   systemRole      Role          @relation(fields: [roleId], references: [id])
   
   samples         WaterSample[]
-  roleRequests    RoleRequest[] 
+  roleRequests    RoleRequest[]
   
-  registeredAt    DateTime      @default(now()) @map("registered_at") 
-  lastActiveAt    DateTime      @updatedAt @map("last_active_at")    
+  registeredAt    DateTime      @default(now()) @map("registered_at")
+  lastActiveAt    DateTime      @updatedAt @map("last_active_at")
 
   @@map("users")
 }
 
 model RoleRequest {
-  id              Int          @id @default(autoincrement())
-  userId          Int          @map("user_id")
-
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  requestedRoleId Int          @map("requested_role_id")
-
-  requestedRole   Role         @relation(fields: [requestedRoleId], references: [id])
-  status          String       @default("pending") @map("status")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  requestedRoleId Int      @map("requested_role_id")
+  requestedRole   Role     @relation(fields: [requestedRoleId], references: [id])
+  
+  status          String   @default("pending") @map("status")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("role_requests")
 }
 
 model Location {
-  id              Int           @id @default(autoincrement()) 
-  stationName     String        @map("station_name")          
-  governingAgency String        @map("governing_agency")    
-  latitude        Float         @map("latitude")           
-  longitude       Float         @map("longitude")            
+  id              Int           @id @default(autoincrement())
+  stationName     String        @map("station_name")
+  governingAgency String        @map("governing_agency")
+  latitude        Float         @map("latitude")
+  longitude       Float         @map("longitude")
   
   samples         WaterSample[]
   
@@ -75,34 +74,65 @@ model Location {
 }
 
 model WaterSample {
-  id                Int         @id @default(autoincrement()) 
+  id               Int                      @id @default(autoincrement())
   
-  collectorId       Int         @map("collector_id")         
-  collector         User        @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  collectorId      Int                      @map("collector_id")
+  collector        User                     @relation(fields: [collectorId], references: [id], onDelete: Cascade)
   
-  locationId        Int         @map("location_id")           
-  location          Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId       Int                      @map("location_id")
+  location         Location                 @relation(fields: [locationId], references: [id], onDelete: Cascade)
   
-  collectionTime    DateTime    @map("collection_time")     
-  uploadedActiveAt  DateTime    @default(now()) @map("uploaded_active_at") 
+  collectionTime   DateTime                 @map("collection_time")
+  uploadedActiveAt DateTime                 @default(now()) @map("uploaded_active_at")
   
-  ammoniaValue      Float       @map("ammonia_value")       
-  phosphateValue    Float       @map("phosphate_value")      
-  dissolvedOxygen   Float?      @map("dissolved_oxygen")     
+  // เก็บค่สภาพแวดล้อมส่วนกลางไว้ที่ตารางหลักเหมือนเดิม
+  dissolvedOxygen  Float?                   @map("dissolved_oxygen")
+  airTemperature   Float?                   @map("air_temperature")
+  rainAccumulation Float?                   @map("rain_accumulation")
+  weatherCondCode  Int?                     @map("weather_cond_code")
   
-  airTemperature    Float?      @map("air_temperature")      
-  rainAccumulation  Float?      @map("rain_accumulation")    
-  weatherCondCode   Int?        @map("weather_cond_code")    
+  status           WaterStatus
   
-  status            WaterStatus
+  rawImageUrl      String?                  @map("raw_image_url") @db.Text
+  imageExpiresAt   DateTime?                @map("image_expires_at")
+  isDeleted        Boolean                  @default(false) @map("is_deleted")
+  analyzedPlotUrl  String?                  @map("analyzed_plot_url") @db.Text
   
-  rawImageUrl       String?     @map("raw_image_url") @db.Text
-  imageExpiresAt    DateTime?   @map("image_expires_at")
-  isDeleted         Boolean     @default(false) @map("is_deleted") 
-  analyzedPlotUrl   String?     @map("analyzed_plot_url") @db.Text 
-  
-  lastModifiedBy    Int?        @map("last_modified_by")   
-  updatedActiveAt   DateTime    @default(now()) @updatedAt @map("updated_active_at") 
+  lastModifiedBy   Int?                     @map("last_modified_by")
+  updatedActiveAt  DateTime                 @default(now()) @updatedAt @map("updated_active_at")
+
+  // Relation เชื่อมต่อไปยังตารางเก็บค่าสารเคมีตัวย่อยต่าง ๆ (1 Sample มีได้หลายผลตรวจสาร)
+  measurements     WaterSampleMeasurement[]
 
   @@map("samples")
+}
+
+// 1. ตารางสำหรับเก็บรายชื่อสาร/พารามิเตอร์ทั้งหมดในระบบ (Master Data)
+model Parameter {
+  id          Int                      @id @default(autoincrement())
+  name        String                   @unique @map("name") // เช่น "ammonia", "phosphate", "nitrate", "ph"
+  unit        String?                  @map("unit") // เช่น "mg/L", "pH"
+  description String?                  @map("description") @db.Text
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
+
+  // Relation กลับไปยังตารางบันทึกผล
+  measurements WaterSampleMeasurement[]
+
+  @@map("parameters")
+}
+
+// 2. ตารางเชื่อม (Junction Table) สำหรับเก็บค่าผลลัพธ์ของสารแต่ละชนิดในรอบการเก็บน้ำนั้นๆ
+model WaterSampleMeasurement {
+  id          Int         @id @default(autoincrement())
+  sampleId    Int         @map("sample_id")
+  parameterId Int         @map("parameter_id")
+  value       Float       @map("value") // ค่าที่วัดได้ (ตัวเลข)
+
+  sample      WaterSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  parameter   Parameter   @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+
+  // ทำ Unique Constraint ร่วมกัน เพื่อป้องกันไม่ให้สารชนิดเดียวกัน บันทึกซ้ำซ้อนใน Sample ID เดียวกัน
+  @@unique([sampleId, parameterId])
+  @@map("sample_measurements")
 }
