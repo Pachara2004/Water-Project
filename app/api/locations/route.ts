@@ -20,8 +20,6 @@ export async function GET(request: NextRequest) {
                     select: {
                         id: true,
                         status: true,
-                        phosphateValue: true,
-                        ammoniaValue: true,
                         collectionTime: true,
                         dissolvedOxygen: true,
                         airTemperature: true,
@@ -36,31 +34,53 @@ export async function GET(request: NextRequest) {
                                 phoneNumber: true,
                             },
                         },
+                        // แก้ไข: ดึงข้อมูลค่าวัดผ่านตาราง Relation ย่อยคู่กับชื่อสารเคมี
+                        measurements: {
+                            select: {
+                                value: true,
+                                parameter: {
+                                    select: {
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
             },
         });
 
         const result = locations.map((loc) => {
-            const mappedSamples = loc.samples.map((s) => ({
-                id: s.id,
-                status: s.status,
-                phosphateVal: s.phosphateValue,
-                ammoniaVal: s.ammoniaValue,
-                collectedAt: s.collectionTime.toISOString(),
-                oxygen: s.dissolvedOxygen,
-                temperature: s.airTemperature,
-                rainVolume: s.rainAccumulation,
-                weatherCondCode: s.weatherCondCode,
-                collector: s.collector
-                    ? {
-                          id: s.collector.id,
-                          displayName: s.collector.lineProfileName,
-                          fullName: `${s.collector.firstName || ""} ${s.collector.lastName || ""}`.trim() || "เจ้าหน้าที่ภาคสนาม",
-                          phone: s.collector.phoneNumber,
-                      }
-                    : null,
-            }));
+            const mappedSamples = loc.samples.map((s) => {
+                // แยกแกะค่าสารเคมีจาก Array ของ measurements ออกมาจัดรูปแบบแบน (Flat) ตามเดิม
+                let ammoniaVal: number | null = null;
+                let phosphateVal: number | null = null;
+
+                s.measurements.forEach((m) => {
+                    if (m.parameter.name === "ammonia") ammoniaVal = m.value;
+                    if (m.parameter.name === "phosphate") phosphateVal = m.value;
+                });
+
+                return {
+                    id: s.id,
+                    status: s.status,
+                    phosphateVal: phosphateVal, // ส่งค่ากลับไปในชื่อฟิลด์เดิม
+                    ammoniaVal: ammoniaVal, // ส่งค่ากลับไปในชื่อฟิลด์เดิม
+                    collectedAt: s.collectionTime.toISOString(),
+                    oxygen: s.dissolvedOxygen,
+                    temperature: s.airTemperature,
+                    rainVolume: s.rainAccumulation,
+                    weatherCondCode: s.weatherCondCode,
+                    collector: s.collector
+                        ? {
+                              id: s.collector.id,
+                              displayName: s.collector.lineProfileName,
+                              fullName: `${s.collector.firstName || ""} ${s.collector.lastName || ""}`.trim() || "เจ้าหน้าที่ภาคสนาม",
+                              phone: s.collector.phoneNumber,
+                          }
+                        : null,
+                };
+            });
 
             return {
                 id: loc.id,
@@ -89,7 +109,6 @@ export async function POST(request: NextRequest) {
     antiSpam.set(ip, Date.now());
 
     try {
-        // ใส่สลักนิรภัย: แกะโทเคนดักจับ ตรวจสอบและอนุญาตให้เฉพาะ "admin" เท่านั้นที่วิ่งผ่านเข้ามาได้
         const auth = await verifyAuth(request, ["admin"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -130,7 +149,6 @@ export async function POST(request: NextRequest) {
 // PUT /api/locations — ปรับปรุงแก้ไขข้อมูลพิกัดสถานีเดิม (เฉพาะ admin)
 export async function PUT(request: NextRequest) {
     try {
-        // ใส่สลักนิรภัย: ตรวจสอบและอนุญาตให้เฉพาะสิทธิ์ "admin" ทำรายการผ่าน Token เท่านั้น
         const auth = await verifyAuth(request, ["admin"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -170,7 +188,6 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/locations — ลบสถานีพิกัดออกจากระบบ (เฉพาะ admin)
 export async function DELETE(request: NextRequest) {
     try {
-        // ใส่สลักนิรภัย: ตรวจสอบตั๋วโทเคนของ LINE และอนุญาตเฉพาะ "admin" เท่านั้น
         const auth = await verifyAuth(request, ["admin"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -185,6 +202,8 @@ export async function DELETE(request: NextRequest) {
 
         const targetId = Number(id);
 
+        // หมายเหตุ: เนื่องจากใน Schema ตาราง measurements ถูกตั้ง onDelete: Cascade พ่วงกับตาราง samples ไว้แล้ว
+        // เมื่อสั่งลบตาราง samples ด้านล่างนี้ รายการสารเคมีในตารางย่อยจะถูกลบตามอัตโนมัติ (ไม่ต้องเรียก deleteMany ซ้อน)
         await prisma.waterSample.deleteMany({
             where: { locationId: targetId },
         });
