@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import { useRouter } from "next/navigation";
-import { Camera, FileText, FlaskConical, MapPin, Calendar, Beaker, ImageOff} from "lucide-react"; /* prettier-ignore */
+import { Camera, FileText, FlaskConical, MapPin, Calendar, Beaker, ImageOff, Search, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react"; /* prettier-ignore */
+
+// ─── Import TanStack Table Core ───
+import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
 import StatusBadge from "@/components/map/StatusBadge";
 
@@ -27,6 +30,12 @@ interface CollectorSample {
     } | null;
 }
 
+const statusOptions = [
+    { id: "safe", label: "ปลอดภัย", color: "bg-emerald-500" },
+    { id: "warning", label: "เฝ้าระวัง", color: "bg-amber-500" },
+    { id: "danger", label: "อันตราย", color: "bg-red-500" },
+];
+
 export default function CollectorDashboard() {
     const { currentUser } = useAppStore();
     const router = useRouter();
@@ -34,8 +43,29 @@ export default function CollectorDashboard() {
     const [loading, setLoading] = useState(true);
     const [showOnlyMine, setShowOnlyMine] = useState(true);
 
-    // สเตตัสสำหรับเก็บไอดีของการ์ดที่รูปภาพโหลดพัง (Image Fallback State)
+    // ─── TanStack Table States ───
+    const [globalFilter, setGlobalFilter] = useState("");
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [sorting, setSorting] = useState<SortingState>([{ id: "collectedAt", desc: true }]);
+
+    // ─── State สำหรับระบบ Multi-Select สถานะ (เก็บเป็น Array) ───
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+
+    // ─── States สำหรับระบบควบคุมช่วงเวลา (Date Range) ───
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [isDatePanelOpen, setIsDatePanelOpen] = useState(false);
+
+    // ─── State สำหรับควบคุม Dropdown เลือกสถานะ ───
+    const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+
+    const datePanelRef = useRef<HTMLDivElement>(null);
+    const statusMenuRef = useRef<HTMLDivElement>(null);
     const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+
+    const handleImageError = (sampleId: number) => {
+        setImageErrors((prev) => ({ ...prev, [sampleId]: true }));
+    };
 
     useEffect(() => {
         if (!currentUser) return;
@@ -85,177 +115,454 @@ export default function CollectorDashboard() {
             .finally(() => setLoading(false));
     }, [currentUser, router]);
 
-    const handleImageError = (sampleId: number) => {
-        setImageErrors((prev) => ({ ...prev, [sampleId]: true }));
+    // เคลียร์ป็อปอัปต่าง ๆ เมื่อคลิกด้านนอกกล่องควบคุม
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (datePanelRef.current && !datePanelRef.current.contains(event.target as Node)) {
+                setIsDatePanelOpen(false);
+            }
+            if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+                setIsStatusMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // ─── 1. เตรียมข้อมูล Data Source หลัก ───
+    const tableData = useMemo(() => {
+        return samples.filter((s) => !s.isDeleted).filter((s) => !showOnlyMine || s.collectedBy === currentUser?.id);
+    }, [samples, showOnlyMine, currentUser]);
+
+    // ─── 2. นิยามโครงสร้าง Columns พร้อม Custom Filter ฟังก์ชัน ───
+    const columns = useMemo(
+        () => [
+            {
+                accessorKey: "status",
+                header: "สถานะ",
+                // ฟังก์ชันคัดกรองแบบ Multi-select ตรวจสอบจาก Array
+                filterFn: (row: any, columnId: string, filterValue: string[]) => {
+                    if (!filterValue || filterValue.length === 0) return true;
+                    const rowStatus = row.getValue(columnId) as string;
+                    return filterValue.includes(rowStatus.toLowerCase());
+                },
+            },
+            {
+                accessorFn: (row: CollectorSample) => row.location?.name || "",
+                id: "locationName",
+                header: "ชื่อสถานที่",
+            },
+            {
+                accessorKey: "collectedAt",
+                header: "วันที่เก็บตัวอย่าง",
+                filterFn: (row: any, columnId: string, filterValue: [string, string]) => {
+                    const [start, end] = filterValue;
+                    if (!start && !end) return true;
+
+                    const rowDateStr = new Date(row.getValue(columnId)).toISOString().split("T")[0];
+                    const rowTime = new Date(rowDateStr).getTime();
+
+                    const startTime = start ? new Date(start).getTime() : -Infinity;
+                    const endTime = end ? new Date(end).getTime() : Infinity;
+
+                    return rowTime >= startTime && rowTime <= endTime;
+                },
+            },
+        ],
+        [],
+    );
+
+    // ─── 3. เรียกใช้งาน TanStack Table Engine ───
+    const table = useReactTable({
+        data: tableData,
+        columns,
+        state: {
+            globalFilter,
+            columnFilters,
+            sorting,
+        },
+        onGlobalFilterChange: setGlobalFilter,
+        onColumnFiltersChange: setColumnFilters,
+        onSortingChange: setSorting,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        initialState: {
+            pagination: {
+                pageSize: 10,
+            },
+        },
+    });
+
+    // ส่งฟิลเตอร์ช่วงวันที่เข้า TanStack
+    useEffect(() => {
+        if (startDate || endDate) {
+            table.getColumn("collectedAt")?.setFilterValue([startDate, endDate]);
+        } else {
+            table.getColumn("collectedAt")?.setFilterValue(undefined);
+        }
+        table.setPageIndex(0);
+    }, [startDate, endDate, table]);
+
+    // จัดการการกดย้อนกลับ/ติ๊กเลือกสถานะแบบ Multi-Select
+    const handleStatusToggle = (status: string) => {
+        let updatedStatuses: string[];
+
+        if (selectedStatuses.includes(status)) {
+            // ถ้าเลือกอยู่แล้ว -> ติ๊กออก
+            updatedStatuses = selectedStatuses.filter((s) => s !== status);
+        } else {
+            // ถ้ายังไม่เลือก -> เพิ่มเข้า Array
+            updatedStatuses = [...selectedStatuses, status];
+        }
+
+        setSelectedStatuses(updatedStatuses);
+
+        // ส่ง Array ไปอัปเดตตัวกรองคอลัมน์ใน TanStack Table
+        if (updatedStatuses.length === 0) {
+            table.getColumn("status")?.setFilterValue(undefined);
+        } else {
+            table.getColumn("status")?.setFilterValue(updatedStatuses);
+        }
+        table.setPageIndex(0);
     };
+
+    const clearDateRange = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setStartDate("");
+        setEndDate("");
+        setIsDatePanelOpen(false);
+    };
+
+    const toggleSortDirection = () => {
+        const isDesc = sorting[0]?.id === "collectedAt" && sorting[0]?.desc;
+        setSorting([{ id: "collectedAt", desc: !isDesc }]);
+    };
+
+    const totalFilteredRecords = table.getFilteredRowModel().rows.length;
+    const displayedRows = table.getRowModel().rows;
+    const pageIndex = table.getState().pagination.pageIndex;
+    const pageCount = table.getPageCount();
+
+    const isDateActive = startDate || endDate;
+
+    // ข้อความแสดงสถานะบนปุ่มหลัก (กรณีเลือกตัวเดียว หรือเลือกหลายตัว)
+    const currentStatusLabel = useMemo(() => {
+        if (selectedStatuses.length === 0) return "ทุกสถานะ";
+        if (selectedStatuses.length === 1) {
+            return statusOptions.find((o) => o.id === selectedStatuses[0])?.label || "ทุกสถานะ";
+        }
+        return `เลือกแล้ว ${selectedStatuses.length} สถานะ`;
+    }, [selectedStatuses]);
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-surface-muted p-4 sm:p-8 space-y-6 max-w-7xl mx-auto">
-                <div className="w-full h-48 rounded-2xl shimmer border border-border/60" />
-                <div className="w-48 h-5 bg-surface-subtle shimmer rounded-md mt-10" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {[1, 2, 3].map((n) => (
-                        <div key={n} className="w-full h-28 rounded-2xl bg-surface border border-border/60 flex p-5 gap-4">
-                            <div className="w-16 h-16 rounded-xl bg-surface-subtle shimmer flex-shrink-0" />
-                            <div className="flex-1 space-y-3 mt-1">
-                                <div className="w-1/2 h-3 bg-surface-subtle rounded" />
-                                <div className="w-full h-4 bg-surface-subtle rounded" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
+            <div className="min-h-screen bg-[#f4f6f8] flex items-center justify-center">
+                <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen w-full bg-surface-muted pb-16 transition-colors duration-300">
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6 pt-6 sm:pt-10">
-                <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                    <div className="">
-                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary flex items-center">
-                            ศูนย์ข้อมูล<span className="text-primary font-bold">ผู้เก็บตัวอย่างน้ำ</span>
-                        </h1>
-                        <p className="text-black text-xs sm:text-sm">ระบบรายงานและสืบค้นผลวิเคราะห์สารเคมีในน้ำทะเลชายฝั่ง</p>
+        <div className="min-h-screen w-full bg-[#f4f6f8] pb-24 text-gray-900 antialiased selection:bg-primary/10">
+            <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
+                {/* Header Welcome Card */}
+                <div className="relative w-full rounded-2xl bg-white p-5 border border-gray-200/50 shadow-xs flex flex-col gap-4">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-lg font-bold tracking-tight text-gray-900">
+                                ศูนย์ข้อมูล<span className="text-primary font-extrabold">ตรวจสอบคุณภาพน้ำ</span>
+                            </h1>
+                            <p className="text-black font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
+                        </div>
+                        {currentUser?.pictureUrl && <img src={currentUser.pictureUrl} alt="profile" className="w-9 h-9 rounded-full border border-gray-100" />}
                     </div>
 
                     <button
                         onClick={() => router.push("/submit")}
-                        className="w-full sm:w-auto py-3 px-6 min-h-[48px] bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2.5 shadow-sm active:scale-[0.98] transition-all cursor-pointer text-sm shrink-0"
+                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
                     >
                         <Camera size={16} strokeWidth={2.5} />
-                        <span>ส่งตรวจคุณภาพน้ำ</span>
+                        <span>ตรวจคุณภาพน้ำ</span>
                     </button>
                 </div>
 
-                {/* Filtering Title Bar */}
-                <div className="flex flex-col-2 sm:flex-row sm:items-center justify-between sm:justify-between gap-3 pt-4 px-1">
-                    <div className="inline-flex items-center gap-2">
-                        <FileText size={15} className="text-primary" />
-                        <h2 className="text-xs sm:text-xs uppercase text-text-secondary font-semibold">ประวัติการส่งตรวจคุณภาพน้ำ</h2>
-                    </div>
+                {/* โซนกล่องค้นหาและฟิลเตอร์แบบ Dropdown Multi-Select */}
 
-                    <div className="inline-flex items-center gap-1 bg-surface border border-border/50 px-3 py-1.5 rounded-md shadow-xs shrink-0 w-max">
-                        <span className="text-xs font-semibold text-black">ข้อมูลของฉัน</span>
-                        <button
-                            title="button"
-                            type="button"
-                            onClick={() => setShowOnlyMine(!showOnlyMine)}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out outline-none ${
-                                showOnlyMine ? "bg-primary" : "bg-border"
-                            }`}
-                        >
-                            <span
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out mt-0.5 ${
-                                    showOnlyMine ? "translate-x-4.5" : "translate-x-0.5"
-                                }`}
-                            />
-                        </button>
-                    </div>
-                </div>
+                <div className="relative w-full bg-surface rounded-2xl p-4 border border-border">
+                    {/* แท็บคัดกรอง ข้อมูลของฉัน แบบดั้งเดิม */}
+                    <div className="flex items-center justify-between gap-3 pt-1 px-1">
+                        <div className="inline-flex items-center gap-1.5">
+                            <FileText size={18} className="text-primary" />
+                            <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ประวัติการส่งตรวจน้ำ</h2>
+                        </div>
 
-                {/* Content Core Render */}
-                {(() => {
-                    const displayedSamples = (showOnlyMine ? samples.filter((s) => s.collectedBy === currentUser?.id) : samples).filter((s) => !s.isDeleted); // 👈 เปลี่ยนเป็นตัวแปรใหม่
+                        <label className="inline-flex items-center gap-2 bg-white border border-gray-200/80 px-3 py-2 rounded-xl shrink-0 cursor-pointer select-none">
+                            <span className="text-xs font-semibold text-slate">เฉพาะของฉัน</span>
 
-                    if (displayedSamples.length === 0) {
-                        return (
-                            <div className="text-center p-12 bg-surface rounded-2xl border border-border/60 flex flex-col items-center">
-                                <div className="w-12 h-12 bg-surface-subtle rounded-xl flex items-center justify-center mb-4 border border-border/60 text-text-muted">
-                                    <FileText size={20} />
-                                </div>
-                                <p className="text-text-primary font-bold mb-1.5 text-sm sm:text-base">{showOnlyMine ? "คุณยังไม่มีประวัติการส่งข้อมูล" : "ยังไม่มีประวัติการส่งข้อมูลในระบบ"}</p>
-                                <p className="text-xs text-text-secondary mb-6 max-w-sm leading-relaxed">เริ่มต้นส่งภาพชุดทดสอบคุณภาพน้ำเพื่อบันทึกและประมวลผลค่าน้ำในพื้นที่ของท่าน</p>
-                                <button
-                                    onClick={() => router.push("/submit")}
-                                    className="px-5 py-2.5 min-h-[42px] bg-primary text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2"
-                                >
-                                    <Camera size={14} />
-                                    <span>ส่งผลตรวจครั้งแรก</span>
-                                </button>
+                            <div className="relative">
+                                {/* Hidden Checkbox ที่เข้าถึงได้ (sr-only) */}
+                                <input type="checkbox" checked={showOnlyMine} onChange={(e) => setShowOnlyMine(e.target.checked)} className="sr-only peer" />
+
+                                {/* โครงสร้างสวิตช์ Flowbite / Shadcn ตามที่บอสส่งมา */}
+                                <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
                             </div>
-                        );
-                    }
+                        </label>
+                    </div>
+                    <div className="bg-white  rounded-2xl  space-y-4 mt-6 mb-2">
+                        {/* Input ค้นหาชื่อสถานที่ ทรงรีมน */}
+                        <div className="relative w-full flex items-center bg-[#f8f9fa] border border-gray-200/80 rounded-xl px-4 transition-all">
+                            <input
+                                type="text"
+                                placeholder="ค้นหาชื่อสถานที่..."
+                                value={globalFilter ?? ""}
+                                onChange={(e) => setGlobalFilter(e.target.value)}
+                                className="w-full py-3 bg-transparent text-xs text-gray-900 outline-hidden placeholder:text-gray-400/80"
+                            />
+                            <Search size={16} className="text-gray-400 ml-2" />
+                        </div>
 
-                    return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {displayedSamples.map((sample) => {
-                                const hasImageError = imageErrors[sample.id];
+                        {/* แถวแถบปุ่มกดตัวเลือก Dropdown สำหรับ Mobile */}
+                        <div className="flex items-center gap-2.5 relative">
+                            {/* 1. ปุ่มเปิดตัวเลือกช่วงวันที่ (Date Range Popover) */}
+                            <div className="relative flex-1" ref={datePanelRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-white border rounded-xl text-xs font-semibold transition-all cursor-pointer  select-none ${
+                                        isDateActive ? "border-black text-black ring-1 ring-black" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <SlidersHorizontal size={13} className={isDateActive ? "text-black" : "text-gray-400"} />
+                                        <span className="truncate">{isDateActive ? "กรองช่วงเวลา" : "เลือกวันที่"}</span>
+                                    </div>
+                                    {isDateActive ? (
+                                        <span onClick={clearDateRange} className="p-0.5 rounded-full hover:bg-gray-100 text-gray-500 flex items-center shrink-0">
+                                            <X size={11} strokeWidth={3} />
+                                        </span>
+                                    ) : (
+                                        <ChevronDown size={13} className="text-gray-400 shrink-0" />
+                                    )}
+                                </button>
 
-                                return (
-                                    <div
-                                        key={sample.id}
-                                        onClick={() => router.push(`/collector/history/${sample.id}`)}
-                                        className="bg-surface rounded-2xl p-4 border border-border/50 shadow-xs hover:shadow-md flex flex-col justify-between transition-all duration-200 cursor-pointer group hover:border-border-strong relative"
-                                    >
-                                        {/* Top Row: Meta and Badges */}
-                                        <div className="flex gap-4 items-start w-full">
-                                            {/* Thumbnail Section */}
-                                            {sample.imageUrl && !hasImageError ? (
-                                                <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-subtle border border-border/60 flex-shrink-0 relative bg-neutral-100">
-                                                    <img
-                                                        src={sample.imageUrl}
-                                                        alt="sample data"
-                                                        onError={() => handleImageError(sample.id)}
-                                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
-                                                    />
-                                                </div>
-                                            ) : sample.imageUrl && hasImageError ? (
-                                                <div
-                                                    className="w-16 h-16 border border-border/60 rounded-xl flex flex-col items-center justify-center gap-0.5 animate-fade-in text-text-muted"
-                                                    title="ไม่สามารถโหลดรูปภาพได้"
-                                                >
-                                                    <ImageOff size={16} strokeWidth={2.5} />
-                                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-80">Error</span>
-                                                </div>
-                                            ) : (
-                                                <div className="w-16 h-16 bg-surface-subtle rounded-xl flex items-center justify-center border border-border/60 flex-shrink-0 text-primary">
-                                                    <FlaskConical size={18} strokeWidth={2.5} />
-                                                </div>
-                                            )}
-
-                                            {/* Content Data Stack */}
-                                            <div className="flex-1 min-w-0 space-y-1">
-                                                <div className="flex items-center gap-1.5 text-xs font-extrabold text-text-primary truncate">
-                                                    <MapPin size={13} className="text-primary shrink-0" />
-                                                    <span className="truncate">{sample.location?.name || "ไม่ทราบสถานที่"}</span>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold">
-                                                    <Calendar size={11} className="shrink-0" />
-                                                    <span>
-                                                        {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                                                            day: "numeric",
-                                                            month: "short",
-                                                            year: "2-digit",
-                                                        })}
-                                                    </span>
-                                                </div>
-                                            </div>
+                                {/* กล่องเลือกช่วงวันที่ */}
+                                {isDatePanelOpen && (
+                                    <div className="absolute top-[calc(100%+6px)] left-0 w-65 bg-white border border-gray-200 rounded-2xl  p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 mb-3 pb-1 border-b border-gray-100">
+                                            <CalendarDays size={13} className="text-primary" />
+                                            <span>ระบุช่วงเวลาเก็บตัวอย่าง</span>
                                         </div>
-
-                                        {/* Bottom Metric Divider */}
-                                        <div className="mt-4 pt-3.5 border-t border-border/40 flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-3 text-[11px] font-bold text-text-secondary">
-                                                <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md">
-                                                    <Beaker size={11} className="text-blue-500" />
-                                                    <span>P: {sample.phosphateVal !== null && sample.phosphateVal !== undefined ? `${sample.phosphateVal} mg/L` : "-"}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md">
-                                                    <Beaker size={11} className="text-amber-500" />
-                                                    <span>N: {sample.ammoniaVal !== null && sample.ammoniaVal !== undefined ? `${sample.ammoniaVal} mg/L` : "-"}</span>
-                                                </div>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">จากวันที่</label>
+                                                <input
+                                                    type="date"
+                                                    value={startDate}
+                                                    onChange={(e) => setStartDate(e.target.value)}
+                                                    className="w-full text-xs border border-gray-200 rounded-lg p-2 bg-gray-50 focus:outline-hidden focus:border-black"
+                                                />
                                             </div>
-
-                                            <StatusBadge status={sample.status} size="sm" />
+                                            <div>
+                                                <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">ถึงวันที่</label>
+                                                <input
+                                                    type="date"
+                                                    value={endDate}
+                                                    min={startDate}
+                                                    onChange={(e) => setEndDate(e.target.value)}
+                                                    className="w-full text-xs border border-gray-200 rounded-lg p-2 bg-gray-50 focus:outline-hidden focus:border-black"
+                                                />
+                                            </div>
+                                            <div className="flex justify-end gap-2 pt-1">
+                                                {(startDate || endDate) && (
+                                                    <button onClick={clearDateRange} className="text-[11px] font-bold text-gray-400 hover:text-gray-600 px-2 py-1">
+                                                        ล้างค่า
+                                                    </button>
+                                                )}
+                                                <button onClick={() => setIsDatePanelOpen(false)} className="text-[11px] font-bold bg-black text-white px-3 py-1.5 rounded-lg">
+                                                    ตกลง
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                );
-                            })}
+                                )}
+                            </div>
+
+                            {/* 2. ปุ่มเลือกสถานะแบบ Multi-Select Dropdown ที่บอสต้องการ */}
+                            <div className="relative flex-1" ref={statusMenuRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-white border rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                                        selectedStatuses.length > 0 ? "border-black text-black ring-1 ring-black" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="truncate">{currentStatusLabel}</span>
+                                    </div>
+                                    <ChevronDown size={13} className="text-gray-400 shrink-0" />
+                                </button>
+
+                                {/* รายการตัวเลือกสถานะภายในเมนู (Multi-Select Menu) */}
+                                {isStatusMenuOpen && (
+                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-40 bg-white border border-gray-200 rounded-2xl shadow-xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                        {/* ลูปรายการสถานะให้สามารถเลือกพร้อมกันได้หลายตัว */}
+                                        {statusOptions.map((option) => {
+                                            const isChecked = selectedStatuses.includes(option.id);
+                                            return (
+                                                <button
+                                                    key={option.id}
+                                                    type="button"
+                                                    onClick={() => handleStatusToggle(option.id)}
+                                                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                                                        isChecked ? "bg-gray-50/80 text-black" : "text-gray-600 hover:bg-gray-50"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {/* กล่องติ๊กถูกจำลองรูปทรงกลมตามสีสถานะ */}
+                                                        <div
+                                                            className={`w-3.5 h-3.5 border rounded-sm flex items-center justify-center transition-all ${
+                                                                isChecked ? "border-black bg-black text-white" : "border-gray-300 bg-white"
+                                                            }`}
+                                                        >
+                                                            {isChecked && <Check size={10} strokeWidth={4} />}
+                                                        </div>
+                                                        <span>{option.label}</span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    );
-                })()}
+
+                        {/* สรุปข้อมูลผลลัพธ์และระบบสลับ ล่าสุด/เก่าสุด */}
+                        <div className="flex items-center justify-between text-xs text-gray-400  px-0.5 pt-1 border-t border-gray-100">
+                            <div className="text-gray-500">พบ {totalFilteredRecords} รายการ</div>
+
+                            <div onClick={toggleSortDirection} className="flex items-center gap-1 cursor-pointer hover:text-gray-900 text-gray-500 transition-colors py-0.5 select-none">
+                                <span>{sorting[0]?.id === "collectedAt" && sorting[0]?.desc ? "ล่าสุด" : "เก่าสุด"}</span>
+                                <div className="flex items-center text-gray-400">
+                                    {sorting[0]?.id === "collectedAt" &&
+                                        (sorting[0]?.desc ? <ArrowDown size={12} className="text-black font-bold" /> : <ArrowUp size={12} className="text-black font-bold" />)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Content Core Render */}
+                    {(() => {
+                        if (totalFilteredRecords === 0) {
+                            return (
+                                <div className="text-center p-10 bg-white rounded-2xl border border-gray-200/50 flex flex-col items-center justify-center">
+                                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center mb-3 text-gray-400 border border-gray-100">
+                                        <FileText size={18} />
+                                    </div>
+                                    <p className="text-gray-900 font-bold text-xs">ไม่พบข้อมูลประวัติ</p>
+                                    <p className="text-[11px] text-gray-400 mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่บอสกำหนดไว้ครับ</p>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="space-y-4">
+                                {/* รายการประวัติแบบการ์ดประมวลผล */}
+                                <div className="flex flex-col gap-3">
+                                    {displayedRows.map((row) => {
+                                        const sample = row.original;
+                                        const hasImageError = imageErrors[sample.id];
+
+                                        return (
+                                            <div
+                                                key={sample.id}
+                                                onClick={() => router.push(`/collector/history/${sample.id}`)}
+                                                className="bg-white rounded-2xl p-3.5 border border-gray-200/50 shadow hover:shadow-xs active:scale-[0.99] transition-all flex items-center gap-3.5 cursor-pointer group"
+                                            >
+                                                <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 shrink-0 overflow-hidden flex items-center justify-center relative transition-all">
+                                                    {sample.imageUrl && !hasImageError ? (
+                                                        <img
+                                                            src={sample.imageUrl}
+                                                            alt="sample data"
+                                                            onError={() => handleImageError(sample.id)}
+                                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                                                        />
+                                                    ) : (
+                                                        <ImageOff size={15} className="text-gray-300" />
+                                                    )}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0 flex flex-col justify-between h-15">
+                                                    <div>
+                                                        <div className="flex items-center justify-between gap-2 w-full">
+                                                            <h4 className="font-semibold text-sm text-black text-left">
+                                                                {sample.location?.name || "ไม่ทราบสถานที่"}
+                                                            </h4>
+                                                            <div className="shrink-0">
+                                                                <StatusBadge status={sample.status} size="sm" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+                                                            <MapPin size={10} className="text-gray-300 shrink-0" />
+                                                            <span className="truncate max-w-30">{sample.location?.organization || "หน่วยงานทั่วไป"}</span>
+                                                            <span className="opacity-40">•</span>
+                                                            <Calendar size={10} className="text-gray-300 shrink-0" />
+                                                            <span>
+                                                                {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                                    day: "numeric",
+                                                                    month: "short",
+                                                                    year: "2-digit",
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+                                                            <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md">
+                                                                <Beaker size={8} className="text-blue-500" />
+                                                                <span>P: {sample.phosphateVal ?? "-"}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md">
+                                                                <Beaker size={8} className="text-amber-500" />
+                                                                <span>N: {sample.ammoniaVal ?? "-"}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Pagination Controls */}
+                                {pageCount > 1 && (
+                                    <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2 select-none">
+                                        <div className="text-xs text-gray-400 font-medium">
+                                            หน้า <span className="font-bold text-gray-700">{pageIndex + 1}</span> จาก <span className="font-bold text-gray-700">{pageCount}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                disabled={!table.getCanPreviousPage()}
+                                                onClick={() => table.previousPage()}
+                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer shadow-3xs"
+                                            >
+                                                ก่อนหน้า
+                                            </button>
+                                            <button
+                                                disabled={!table.getCanNextPage()}
+                                                onClick={() => table.nextPage()}
+                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer shadow-3xs"
+                                            >
+                                                ถัดไป
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+                </div>
             </div>
         </div>
     );

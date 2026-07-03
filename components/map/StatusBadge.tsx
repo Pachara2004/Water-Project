@@ -13,11 +13,7 @@ const statusStyles = {
     danger: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
 };
 
-const dotStyles = {
-    safe: "bg-emerald-500",
-    warning: "bg-amber-500",
-    danger: "bg-red-500",
-};
+
 
 const sizeStyles = {
     sm: "text-[10px] px-2.5 py-1 gap-1.5",
@@ -25,17 +21,11 @@ const sizeStyles = {
     lg: "text-sm px-4.5 py-2.5 gap-2.5",
 };
 
-const dotSizes = {
-    sm: "w-1.5 h-1.5",
-    md: "w-2 h-2",
-    lg: "w-2.5 h-2.5",
-};
 
 export default function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
     if (!status) {
         return (
-            <span className={`inline-flex items-center rounded-full border font-medium bg-gray-50 text-gray-500 border-gray-200 ${sizeStyles[size]}`}>
-                <span className={`rounded-full bg-gray-400 ${dotSizes[size]}`} />
+            <span className={`inline-flex items-center rounded-md  font-medium bg-gray-50 text-gray-500 border-gray-200 ${sizeStyles[size]}`}>
                 ไม่มีข้อมูล
             </span>
         );
@@ -45,8 +35,7 @@ export default function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
     const lowerStatus = status.toLowerCase() as "safe" | "warning" | "danger";
 
     return (
-        <span className={`inline-flex items-center rounded-full border font-black ${statusStyles[lowerStatus]} ${sizeStyles[size]}`}>
-            <span className={`rounded-full ${dotStyles[lowerStatus]} ${dotSizes[size]}`} />
+        <span className={`inline-flex items-center rounded-md font-semibold ${statusStyles[lowerStatus]} ${sizeStyles[size]}`}>
             {getStatusLabel(lowerStatus)}
         </span>
     );
