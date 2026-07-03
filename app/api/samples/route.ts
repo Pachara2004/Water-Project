@@ -27,11 +27,6 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
 // GET /api/samples — ดึงประวัติข้อมูลผลตรวจน้ำ (ปัจจุบันเปิดเป็น Public ให้ทุกคนเข้าถึงเพื่อเรนเดอร์กราฟชาร์ตได้)
 export async function GET(request: NextRequest) {
     try {
-        /* หมายเหตุ: หากในอนาคตบอสต้องการจำกัดให้ดูข้อมูลได้เฉพาะกลุ่มเจ้าหน้าที่ สามารถปลดคอมเมนต์ 3 บรรทัดนี้ได้เลยครับ:
-        const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
-        if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
-        */
-
         const { searchParams } = new URL(request.url);
         const locationId = searchParams.get("locationId");
         const collectedBy = searchParams.get("collectedBy");
@@ -53,30 +48,64 @@ export async function GET(request: NextRequest) {
                         phoneNumber: true,
                     },
                 },
+                // 🛠️ แก้ไขเพิ่ม: ดึงข้อมูลพารามิเตอร์ค่าวัดจากตารางความสัมพันธ์ย่อยพ่วงชื่อสารเคมีมาด้วย
+                measurements: {
+                    select: {
+                        value: true,
+                        parameter: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: { collectionTime: "desc" },
         });
 
-        const formattedSamples = samples.map((s: any) => ({
-            ...s,
-            phosphateVal: s.phosphateValue,
-            ammoniaVal: s.ammoniaValue,
-            rainVolume: s.rainAccumulation,
-            weatherCondition: s.weatherCondCode,
-            collectedAt: s.collectionTime,
+        const formattedSamples = samples.map((s: any) => {
+            // แกะผลสารเคมีจากตารางย่อยกลับมาจัดวางฟอร์แมตแบนเป็นคีย์ดั้งเดิมหน้าบ้าน
+            let ammoniaValue = 0;
+            let phosphateValue = 0;
 
-            location: s.location
-                ? {
-                      id: s.location.id,
-                      name: s.location.stationName,
-                      organization: s.location.governingAgency,
-                      lat: s.location.latitude,
-                      lng: s.location.longitude,
-                  }
-                : null,
+            s.measurements.forEach((m: any) => {
+                if (m.parameter.name === "ammonia") ammoniaValue = m.value;
+                if (m.parameter.name === "phosphate") phosphateValue = m.value;
+            });
 
-            status: s.status ? s.status.toUpperCase() : "SAFE",
-        }));
+            return {
+                id: s.id,
+                collectorId: s.collectorId,
+                locationId: s.locationId,
+                collectionTime: s.collectionTime,
+                uploadedActiveAt: s.uploadedActiveAt,
+                dissolvedOxygen: s.dissolvedOxygen,
+                airTemperature: s.airTemperature,
+                rainAccumulation: s.rainAccumulation,
+                weatherCondCode: s.weatherCondCode,
+                rawImageUrl: s.rawImageUrl,
+                analyzedPlotUrl: s.analyzedPlotUrl,
+                isDeleted: s.isDeleted,
+                phosphateVal: phosphateValue, // พ่นค่าที่แกะได้กลับไปในชื่อคีย์เดิมของ Boss
+                ammoniaVal: ammoniaValue, // พ่นค่าที่แกะได้กลับไปในชื่อคีย์เดิมของ Boss
+                rainVolume: s.rainAccumulation,
+                weatherCondition: s.weatherCondCode,
+                collectedAt: s.collectionTime,
+
+                location: s.location
+                    ? {
+                          id: s.location.id,
+                          name: s.location.stationName,
+                          organization: s.location.governingAgency,
+                          lat: s.location.latitude,
+                          lng: s.location.longitude,
+                      }
+                    : null,
+
+                collector: s.collector,
+                status: s.status ? s.status.toUpperCase() : "SAFE",
+            };
+        });
 
         return NextResponse.json(formattedSamples);
     } catch (error) {
@@ -84,9 +113,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" }, { status: 500 });
     }
 }
-
 const antiSpam = new Map<string, number>();
-
 // POST /api/samples — บันทึกตัวอย่างข้อมูลน้ำเข้าฐานข้อมูล
 export async function POST(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
@@ -127,6 +154,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "ไม่พบสถานีจุดตรวจที่ระบุในระบบ" }, { status: 404 });
         }
 
+        // 🔍 สแกนหา Master Data ของสารเคมีในระบบเตรียมไว้จับคู่ ID ลงตารางแยกย่อย
+        const parameterMap = await prisma.parameter.findMany();
+        const paramAmmonia = parameterMap.find((p) => p.name === "ammonia");
+        const paramPhosphate = parameterMap.find((p) => p.name === "phosphate");
+
+        if (!paramAmmonia || !paramPhosphate) {
+            return NextResponse.json({ error: "ระบบตรวจสารเคมีขัดข้อง กรุณาติดต่อ Admin เพื่อรัน Seed ข้อมูลสารเคมีตั้งต้น" }, { status: 500 });
+        }
+
         const uploadDir = path.join(process.cwd(), "public", "uploads");
         await mkdir(uploadDir, { recursive: true });
 
@@ -148,7 +184,6 @@ export async function POST(request: NextRequest) {
             dbImageUrl = `/uploads/${filename}`;
         }
 
-        // 🔥 ปลดคอมเมนต์ออกแล้ว เพื่อเซฟรูป Plot ลงดิสก์จริงไว้ศึกษาโครงสร้างระบบ
         // SECURITY STEP 4: Safe File Upload รูปผลพล็อตสีวิเคราะห์ค่า
         let dbImagePlotUrl: string | null = null;
         if (imagePlotFile && imagePlotFile.size > 0) {
@@ -159,7 +194,6 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: "ขนาดไฟล์ภาพผลวิเคราะห์ต้องไม่เกิน 5MB" }, { status: 400 });
             }
 
-            // ✨ เรียกใช้ฟังก์ชันจัดการชื่อไฟล์พ่วงวันที่ให้คลีนระดับสากลเหมือนกัน
             const filename = sanitizeAndGenerateFilename(imagePlotFile.name, "plot");
             await writeFile(path.join(uploadDir, filename), Buffer.from(await imagePlotFile.arrayBuffer()));
             dbImagePlotUrl = `/uploads/${filename}`;
@@ -173,26 +207,42 @@ export async function POST(request: NextRequest) {
             console.error("TMD Weather API Error (Non-blocking):", weatherErr);
         }
 
-        // บันทึกข้อมูลลงฐานข้อมูลอย่างปลอดภัย
+        const finalAmmonia = parseFloat(ammoniaVal || "0");
+        const finalPhosphate = parseFloat(phosphateVal || "0");
+
+        // บันทึกข้อมูลลงฐานข้อมูลอย่างปลอดภัยในรูปแบบโครงสร้างใหม่ (EAV Pattern)
         const sample = await prisma.waterSample.create({
             data: {
                 locationId: Number(locationId),
                 collectorId: secureCollectorId,
                 collectionTime: parsedCollectionTime,
-                ammoniaValue: parseFloat(ammoniaVal || "0"),
-                phosphateValue: parseFloat(phosphateVal || "0"),
                 dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
                 airTemperature: weather?.temperature ?? null,
                 rainAccumulation: weather?.rainVolume ?? null,
                 weatherCondCode: weather?.weatherCondition ? Number(weather.weatherCondition) : null,
                 status: status.toLowerCase() as WaterStatus,
                 rawImageUrl: dbImageUrl,
-                analyzedPlotUrl: dbImagePlotUrl, // 👈 กลับมาผูกตัวแปรชี้พิกัดลง Database ตามเดิมเพื่อเก็บสถิติ
+                analyzedPlotUrl: dbImagePlotUrl,
                 isDeleted: false,
+
+                // 🔥 ไฮไลท์แก้ไข: ส่งค่าวัดกระจายลงตารางย่อยสัมพันธ์ลูกอัตโนมัติผ่านคำสั่ง Nested Write
+                measurements: {
+                    create: [
+                        { parameterId: paramAmmonia.id, value: finalAmmonia },
+                        { parameterId: paramPhosphate.id, value: finalPhosphate },
+                    ],
+                },
             },
         });
 
-        return NextResponse.json(sample, { status: 201 });
+        // จัดรูปคีย์ส่งโครงสร้าง Object ดั้งเดิมกลับไปเพื่อให้หน้าบ้านทำงานได้สมบูรณ์ทันที
+        const responseData = {
+            ...sample,
+            ammoniaValue: finalAmmonia,
+            phosphateValue: finalPhosphate,
+        };
+
+        return NextResponse.json(responseData, { status: 201 });
     } catch (error: any) {
         console.error("POST /api/samples error:", error);
         return NextResponse.json(

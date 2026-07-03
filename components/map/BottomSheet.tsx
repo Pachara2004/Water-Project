@@ -70,8 +70,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
     const HEIGHTS = {
         collapsed: 120,
-        half: typeof window !== "undefined" ? window.innerHeight * 0.50 : 300,
-        full: typeof window !== "undefined" ? window.innerHeight * 0.90 : 700,
+        half: typeof window !== "undefined" ? window.innerHeight * 0.5 : 300,
+        full: typeof window !== "undefined" ? window.innerHeight * 0.9 : 700,
     };
 
     const getSnapHeight = (snap: "collapsed" | "half" | "full"): number => HEIGHTS[snap];
@@ -167,7 +167,9 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const renderCollectorInfo = () => {
         if (!latest?.collector) return null;
 
-        const { name: colName, phone: colPhone, id: colId } = latest.collector;
+        // 🛠️ แก้ไข: ดึง fullName และ displayName แทน name เดิมที่ไม่มีใน API ตัวใหม่
+        const { fullName, displayName, phone: colPhone, id: colId } = latest.collector as any;
+        const colName = fullName || displayName || "เจ้าหน้าที่";
         const role = currentUser?.role;
 
         // 1. GENERAL/PUBLIC users or not logged in: Hide collector details completely
@@ -198,7 +200,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     </div>
                 );
             } else {
-                const anonymizedName = colName.length > 0 ? `${colName[0]}***` : "***";
+                // 🛡️ ปลอดภัยชัวร์: ดักจับโครงสร้างตัวแปร string ป้องกันการอ่านความยาวพลาด
+                const anonymizedName = colName && colName.length > 0 ? `${colName[0]}***` : "***";
                 return (
                     <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
                         <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">ผู้บันทึกข้อมูล (ผู้ใช้รายอื่น)</span>
@@ -211,7 +214,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
         // 4. EXECUTIVE: Anonymized name, hide phone
         if (role === "officer") {
-            const anonymizedName = colName.length > 0 ? `${colName[0]}***` : "***";
+            const anonymizedName = colName && colName.length > 0 ? `${colName[0]}***` : "***";
             return (
                 <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
                     <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">ผู้บันทึกข้อมูล (ข้อมูลอนามัย)</span>
@@ -519,10 +522,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             <div className="w-20 h-1 rounded-full bg-secondary transition-all" />
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="w-8 h-8m flex items-center justify-center transition-colors active:scale-90 cursor-pointer"
-                    >
+                    <button onClick={onClose} className="w-8 h-8m flex items-center justify-center transition-colors active:scale-90 cursor-pointer">
                         <X size={24} className="text-primary" />
                     </button>
                 </div>
