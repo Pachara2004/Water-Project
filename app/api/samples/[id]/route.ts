@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ตระบบสแกนสิทธิ์ส่วนกลาง
+import { verifyAuth } from "@/lib/auth-guard";
 
-// PUT /api/samples/[id] — อัปเดตและบันทึกประวัติข้อมูลน้ำ (เฉพาะ admin)
+// ========================================================
+// 📝 PUT /api/samples/[id] — ปรับปรุงและชุบชีวิตประวัติน้ำแบบ Dynamic 100%
+// ========================================================
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // 🔥 SECURITY STEP 1: ล็อกกลอนขั้นสูงสุด อนุญาตให้เฉพาะระดับสิทธิ์ "admin" ทำรายการผ่าน Token เท่านั้น
+    // 🔥 SECURITY STEP 1: อนุญาตให้เฉพาะระดับสิทธิ์ "admin" เท่านั้น
     const auth = await verifyAuth(request, ["admin"]);
     if (!auth.isValid) {
         return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -15,45 +17,48 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         const sampleId = Number(id);
 
         const body = await request.json();
-        // 🔒 ปลอดภัยขึ้น: สลัดฟิลด์ adminId ที่ส่งมาจากหน้าบ้านทิ้งไปได้เลย ใช้ auth.user จาก LINE แทน
-        const { collectionTime, locationId, oxygen } = body;
+        const { collectionTime, locationId, oxygen, measurements } = body;
+        // 💡 measurements ที่ส่งมาควรรองรับรูปแบบ Array: [{ parameterId: 4, value: 0.5 }, ...]
 
-        // ดึงแอดมินตัวจริงที่แกะได้จาก Token ปลอดภัยชัวร์ 100%
         const secureAdmin = auth.user!;
 
-        // ค้นหา Record เดิมที่ต้องการปรับปรุงโครงสร้าง (พร้อมดึงข้อมูลผลสารเคมีเดิมที่มีอยู่มาด้วย)
+        // ค้นหา Record เดิมพร้อมดึงประวัติการตรวจวัดสารทั้งหมด
         const oldSample = await prisma.waterSample.findUnique({
             where: { id: sampleId },
-            include: {
-                measurements: true,
-            },
+            include: { measurements: true },
         });
 
         if (!oldSample || oldSample.isDeleted) {
-            return NextResponse.json(
-                {
-                    error: "ไม่พบข้อมูลประวัติน้ำทะเลที่ระบุ หรือข้อมูลอาจถูกลบไปแล้ว",
-                },
-                { status: 404 },
-            );
+            return NextResponse.json({ error: "ไม่พบข้อมูลประวัติน้ำทะเลที่ระบุ หรือข้อมูลอาจถูกลบไปแล้ว" }, { status: 404 });
         }
 
-        // สั่ง Soft Delete ด้วยการมาร์กสวิตช์เป็น true และผูกบันทึกรหัสแอดมินผู้กระทำ
+        // 1. สั่ง Soft Delete เวอร์ชันเก่าทิ้งไป มาร์กสวิตช์เป็น true
         await prisma.waterSample.update({
             where: { id: sampleId },
             data: {
                 isDeleted: true,
-                lastModifiedBy: secureAdmin.id, // 🔒 ใช้ ID จริงจาก Token
+                lastModifiedBy: secureAdmin.id,
             },
         });
 
-        // คัดลอกรายการค่าวัดสารเคมีทั้งหมดจากเวอร์ชันเดิม เพื่อเตรียมชุบชีวิตใส่ตัวอย่างน้ำชุดใหม่
-        const measurementsPayload = oldSample.measurements.map((m) => ({
-            parameterId: m.parameterId,
-            value: m.value,
-        }));
+        // 2. จัดการ Payload ผลตรวจสารเคมีตัวใหม่
+        let finalMeasurementsPayload: Array<{ parameterId: number; value: number }> = [];
 
-        // ชุบชีวิตข้อมูลชุดใหม่เชื่อมประวัติเข้าตารางเป็นกระดานล่าสุด
+        if (measurements && Array.isArray(measurements)) {
+            // ถ้าน้าบ้านส่งค่าใหม่มาแบบกลุ่ม ให้ใช้ชุดใหม่
+            finalMeasurementsPayload = measurements.map((m: any) => ({
+                parameterId: Number(m.parameterId),
+                value: parseFloat(m.value || "0"),
+            }));
+        } else {
+            // ถ้าหน้าบ้านไม่ได้ส่งค่าชุดใหม่มา ให้สืบทอดค่าวัดเดิมจากเวอร์ชันเก่าไปเลยแบบ Dynamic
+            finalMeasurementsPayload = oldSample.measurements.map((m) => ({
+                parameterId: m.parameterId,
+                value: m.value,
+            }));
+        }
+
+        // 3. ชุบชีวิตสร้าง Record ตัวแทนตัวใหม่ขึ้นมา
         const createdSample = await prisma.waterSample.create({
             data: {
                 collectorId: oldSample.collectorId,
@@ -68,29 +73,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 analyzedPlotUrl: oldSample.analyzedPlotUrl,
                 imageExpiresAt: oldSample.imageExpiresAt,
                 isDeleted: false,
-                lastModifiedBy: secureAdmin.id, // 🔒 ใช้ ID จริงจาก Token
+                lastModifiedBy: secureAdmin.id,
 
-                // คัดลอกและสร้างข้อมูลผลสแกนรายสารพ่วงเข้าตารางย่อยผ่าน Nested Write
+                // บันทึกความสัมพันธ์ลงตารางเชื่อมแบบ Dynamic ตาม Payload
                 measurements: {
-                    create: measurementsPayload,
+                    create: finalMeasurementsPayload,
                 },
             },
             include: {
                 measurements: {
-                    include: {
-                        parameter: true,
-                    },
+                    include: { parameter: true },
                 },
             },
         });
 
-        // แปลงรูปแบบข้อมูลส่งกลับเพื่อให้โครงสร้างคีย์ฝั่ง Response ตรงตามเดิม
-        let ammoniaValue: number | null = null;
-        let phosphateValue: number | null = null;
-
-        createdSample.measurements.forEach((m) => {
-            if (m.parameter.name === "ammonia") ammoniaValue = m.value;
-            if (m.parameter.name === "phosphate") phosphateValue = m.value;
+        // 4. แตกคีย์พ่นผลลัพธ์สารเคมีออกไปหา Client แบบ Dynamic Flattening
+        const dynamicMeasurements: Record<string, number> = {};
+        createdSample.measurements.forEach((m: any) => {
+            if (m.parameter?.name) {
+                dynamicMeasurements[`${m.parameter.name.toLowerCase()}Value`] = m.value;
+            }
         });
 
         const responsePutData = {
@@ -99,8 +101,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             locationId: createdSample.locationId,
             collectionTime: createdSample.collectionTime,
             uploadedActiveAt: createdSample.uploadedActiveAt,
-            ammoniaValue: ammoniaValue,
-            phosphateValue: phosphateValue,
             dissolvedOxygen: createdSample.dissolvedOxygen,
             airTemperature: createdSample.airTemperature,
             rainAccumulation: createdSample.rainAccumulation,
@@ -112,6 +112,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             isDeleted: createdSample.isDeleted,
             lastModifiedBy: createdSample.lastModifiedBy,
             updatedActiveAt: createdSample.updatedActiveAt,
+
+            // สาดก้อนข้อมูลสารเคมีทั้งหมดที่ได้จาก DB ไปหาหน้าบ้าน
+            ...dynamicMeasurements,
+
+            // ล็อค Fallback คีย์เดิมกันระบบหน้าบ้านเวอร์ชันเก่าแครช
+            ammoniaValue: dynamicMeasurements["ammoniaValue"] ?? null,
+            phosphateValue: dynamicMeasurements["phosphateValue"] ?? null,
         };
 
         return NextResponse.json(responsePutData);
@@ -121,9 +128,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 }
 
-// GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำรายชิ้น (เฉพาะเจ้าหน้าที่และผู้บริหาร)
+// ========================================================
+// 🔍 GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำรายชิ้นแบบ Dynamic
+// ========================================================
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // 🔥 SECURITY STEP 2: ป้องกันการสุ่ม ID ส่องข้อมูลดิบรายชิ้น บล็อกให้เฉพาะเจ้าหน้าที่ในระบบเท่านั้นเข้าถึงได้
+    // 🔥 SECURITY STEP 2: บล็อกให้เฉพาะบุคลากรในระบบที่มี Token สิทธิ์เท่านั้นเข้าถึงได้
     const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
     if (!auth.isValid) {
         return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -135,28 +144,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const sample = await prisma.waterSample.findUnique({
             where: { id: sampleId },
-            select: {
-                id: true,
-                collectorId: true,
-                locationId: true,
-                collectionTime: true,
-                uploadedActiveAt: true,
-                dissolvedOxygen: true,
-                airTemperature: true,
-                rainAccumulation: true,
-                weatherCondCode: true,
-                status: true,
-                rawImageUrl: true,
-                analyzedPlotUrl: true,
-                location: {
-                    select: {
-                        id: true,
-                        stationName: true,
-                        governingAgency: true,
-                        latitude: true,
-                        longitude: true,
-                    },
-                },
+            include: {
+                location: true,
                 collector: {
                     select: {
                         id: true,
@@ -165,47 +154,30 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         lastName: true,
                     },
                 },
-                // แก้ไขดึงค่าวัดจากตารางความสัมพันธ์ย่อยแทนคอลัมน์เก่า
                 measurements: {
-                    select: {
-                        value: true,
-                        parameter: {
-                            select: {
-                                name: true,
-                            },
-                        },
-                    },
+                    include: { parameter: true },
                 },
             },
         });
 
-        if (!sample) {
-            return NextResponse.json(
-                {
-                    error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล",
-                },
-                { status: 404 },
-            );
+        if (!sample || sample.isDeleted) {
+            return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 
-        // แกะผลสารเคมีจากตารางย่อยกลับมาเป็นตัวแปรแบน (Flat) แบบดั้งเดิม
-        let ammoniaValue: number | null = null;
-        let phosphateValue: number | null = null;
-
-        sample.measurements.forEach((m) => {
-            if (m.parameter.name === "ammonia") ammoniaValue = m.value;
-            if (m.parameter.name === "phosphate") phosphateValue = m.value;
+        // ⚡️ วนลูปแตกกิ่งข้อมูลพารามิเตอร์ทุกตัวที่มีอยู่ใน Database คืนสู่ Client
+        const dynamicMeasurements: Record<string, number> = {};
+        sample.measurements.forEach((m: any) => {
+            if (m.parameter?.name) {
+                dynamicMeasurements[`${m.parameter.name.toLowerCase()}Value`] = m.value;
+            }
         });
 
-        // จัดรูปโครงสร้างก้อน Object คืนกลับไปหา Client ตัวเดิมให้ทำงานได้อย่างปกติ
         const responseGetData = {
             id: sample.id,
             collectorId: sample.collectorId,
             locationId: sample.locationId,
             collectionTime: sample.collectionTime,
             uploadedActiveAt: sample.uploadedActiveAt,
-            ammoniaValue: ammoniaValue,
-            phosphateValue: phosphateValue,
             dissolvedOxygen: sample.dissolvedOxygen,
             airTemperature: sample.airTemperature,
             rainAccumulation: sample.rainAccumulation,
@@ -213,8 +185,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             status: sample.status,
             rawImageUrl: sample.rawImageUrl,
             analyzedPlotUrl: sample.analyzedPlotUrl,
-            location: sample.location,
+            location: sample.location
+                ? {
+                      id: sample.location.id,
+                      stationName: sample.location.stationName,
+                      governingAgency: sample.location.governingAgency,
+                      latitude: sample.location.latitude,
+                      longitude: sample.location.longitude,
+                  }
+                : null,
             collector: sample.collector,
+
+            // แนบก้อนผลลัพธ์สารแบบ Dynamic
+            ...dynamicMeasurements,
+
+            // เผื่อระบบเก่าเรียกใช้
+            ammoniaValue: dynamicMeasurements["ammoniaValue"] ?? null,
+            phosphateValue: dynamicMeasurements["phosphateValue"] ?? null,
         };
 
         return NextResponse.json(responseGetData);
