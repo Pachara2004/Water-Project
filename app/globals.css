@@ -349,6 +349,22 @@ body {
   border-radius: 4px;
 }
 
+/* Reserves scrollbar space so SweetAlert2's body.swal2-shown{overflow:hidden} scroll-lock
+   doesn't shift the layout. Needed on both html and body: body's overflow-x:hidden makes the
+   viewport scrollbar belong to html on desktop. Toggled per-page (see reserve-scrollbar-gutter
+   class usage in code) so pages without confirm dialogs are unaffected. */
+html.reserve-scrollbar-gutter,
+html.reserve-scrollbar-gutter body {
+  scrollbar-gutter: stable;
+}
+
+/* The reserved gutter is native browser chrome, not a paintable element — blur can't reach it.
+   Tint body's background to match the popup backdrop so the sliver blends in instead of
+   showing the page's own background color. */
+body.swal2-shown:not(.swal2-no-backdrop, .swal2-toast-shown) {
+  background-color: var(--swal2-backdrop, rgba(0, 0, 0, 0.4));
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 5px;

@@ -83,6 +83,15 @@ export async function PATCH(request: NextRequest) {
     try {
         const { userId, role, action, requestId } = await request.json();
 
+        // กรณีแอดมินกดปุ่ม "ปฏิเสธทั้งหมด" (Reject All) คำร้องขอที่รออนุมัติทั้งหมด — ไม่ผูกกับ userId รายบุคคล
+        if (action === "rejectAll") {
+            const result = await prisma.roleRequest.updateMany({
+                where: { status: "pending" },
+                data: { status: "rejected" },
+            });
+            return NextResponse.json({ success: true, message: `ปฏิเสธคำร้องขอสิทธิ์ทั้งหมด ${result.count} รายการเรียบร้อยแล้ว` });
+        }
+
         if (!userId) {
             return NextResponse.json({ error: "กรุณาระบุ userId" }, { status: 400 });
         }
