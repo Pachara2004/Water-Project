@@ -11,6 +11,7 @@ import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowMo
 
 import StatusBadge from "@/components/map/StatusBadge";
 
+// 1. แก้ไขโครงสร้าง Interface ด้านบนสุด
 interface CollectorSample {
     id: number;
     locationId: number;
@@ -19,8 +20,6 @@ interface CollectorSample {
     collectedBy: number;
     imageUrl?: string | null;
     imagePlotUrl?: string | null;
-    phosphateVal?: number | null;
-    ammoniaVal?: number | null;
     isDeleted: boolean;
     updatedBy?: number | null;
     location?: {
@@ -28,6 +27,8 @@ interface CollectorSample {
         name: string;
         organization: string;
     } | null;
+    // ⚡️ รองรับคุณสมบัติค่าวัดเคมีจากหลังบ้านแบบ Dynamic ทุกคีย์สารใน DB
+    [key: string]: any; 
 }
 
 const statusOptions = [
@@ -96,8 +97,11 @@ export default function CollectorDashboard() {
                         imagePlotUrl: s.analyzedPlotUrl,
                         isDeleted: s.isDeleted,
                         updatedBy: s.lastModifiedBy,
-                        phosphateVal: s.phosphateValue,
-                        ammoniaVal: s.ammoniaValue,
+
+                        // ⚡️ ดึงก้อนข้อมูลที่ผ่านการสกัด EAV Flattening จาก API มาใช้โดยตรง
+                        // เช่น phosphateVal, ammoniaVal, nitrateVal จะหลั่งไหลเข้ามาอัตโนมัติ
+                        ...s,
+
                         location: s.location
                             ? {
                                   id: s.locationId,
@@ -525,14 +529,27 @@ export default function CollectorDashboard() {
                                                     </div>
                                                     {/* แถวล่าง: ค่าสารเคมี - เอา grid และ justify-end ออกเพื่อให้ชิดซ้ายตามปกติ */}
                                                     <div className="flex flex-wrap items-center gap-2 mt-1 w-full">
-                                                        <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md text-xs font-semibold text-gray-500 shrink-0">
-                                                            <Beaker size={10} className="text-blue-500" />
-                                                            <span>P: {sample.phosphateVal ?? "-"}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md text-xs font-semibold text-gray-500 shrink-0">
-                                                            <Beaker size={10} className="text-amber-500" />
-                                                            <span>N: {sample.ammoniaVal ?? "-"}</span>
-                                                        </div>
+                                                        {[
+                                                            { key: "phosphateVal", label: "P", color: "text-teal-500" },
+                                                            { key: "ammoniaVal", label: "N", color: "text-purple-500" },
+                                                            // ➕ อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย:
+                                                            // { key: "nitrateVal", label: "NO3", color: "text-blue-500" }
+                                                        ].map((indicator) => {
+                                                            const value = sample[indicator.key];
+                                                            if (value === undefined || value === null) return null;
+
+                                                            return (
+                                                                <div
+                                                                    key={indicator.key}
+                                                                    className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md text-xs font-semibold text-gray-500 shrink-0"
+                                                                >
+                                                                    <Beaker size={10} className={indicator.color} />
+                                                                    <span>
+                                                                        {indicator.label}: {Number(value).toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             </div>

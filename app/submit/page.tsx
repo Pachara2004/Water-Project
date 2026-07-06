@@ -330,7 +330,7 @@ function SubmitContent() {
 
                 const fd = new FormData();
                 fd.append("image", file);
-                fd.append("parameterId", param.id.toString());
+                fd.append("parameterName", param.name.toLowerCase());
 
                 const res = await fetch("/api/analyze", {
                     method: "POST",
