@@ -258,17 +258,17 @@ export default function CollectorDashboard() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#f4f6f8] flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen w-full bg-[#f4f6f8] pb-24 text-gray-900 antialiased selection:bg-primary/10">
+        <div className="min-h-screen w-full bg-primary pb-5 antialiased">
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
                 {/* Header Welcome Card */}
-                <div className="relative w-full rounded-2xl bg-white p-5 border border-gray-200/50 shadow-xs flex flex-col gap-4">
+                <div className="relative w-full rounded-2xl bg-white p-5 border border-border  flex flex-col gap-4">
                     <div className="flex justify-between items-start">
                         <div>
                             <h1 className="text-lg font-bold tracking-tight text-gray-900">
@@ -276,12 +276,11 @@ export default function CollectorDashboard() {
                             </h1>
                             <p className="text-black font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
-                        {currentUser?.pictureUrl && <img src={currentUser.pictureUrl} alt="profile" className="w-9 h-9 rounded-full border border-gray-100" />}
                     </div>
 
                     <button
                         onClick={() => router.push("/submit")}
-                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
+                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
                     >
                         <Camera size={16} strokeWidth={2.5} />
                         <span>ตรวจคุณภาพน้ำ</span>
@@ -295,7 +294,7 @@ export default function CollectorDashboard() {
                     <div className="flex items-center justify-between gap-3 pt-1 px-1">
                         <div className="inline-flex items-center gap-1.5">
                             <FileText size={18} className="text-primary" />
-                            <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ประวัติการส่งตรวจน้ำ</h2>
+                            <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ประวัติการส่งตรวจ</h2>
                         </div>
 
                         <label className="inline-flex items-center gap-2 bg-white border border-gray-200/80 px-3 py-2 rounded-xl shrink-0 cursor-pointer select-none">
@@ -306,7 +305,7 @@ export default function CollectorDashboard() {
                                 <input type="checkbox" checked={showOnlyMine} onChange={(e) => setShowOnlyMine(e.target.checked)} className="sr-only peer" />
 
                                 {/* โครงสร้างสวิตช์ Flowbite / Shadcn ตามที่บอสส่งมา */}
-                                <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
+                                <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
                             </div>
                         </label>
                     </div>
@@ -315,7 +314,7 @@ export default function CollectorDashboard() {
                         <div className="relative w-full flex items-center bg-[#f8f9fa] border border-gray-200/80 rounded-xl px-4 transition-all">
                             <input
                                 type="text"
-                                placeholder="ค้นหาชื่อสถานที่..."
+                                placeholder="ค้นหา..."
                                 value={globalFilter ?? ""}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
                                 className="w-full py-3 bg-transparent text-xs text-gray-900 outline-hidden placeholder:text-gray-400/80"
@@ -358,6 +357,7 @@ export default function CollectorDashboard() {
                                             <div>
                                                 <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">จากวันที่</label>
                                                 <input
+                                                    title="start date"
                                                     type="date"
                                                     value={startDate}
                                                     onChange={(e) => setStartDate(e.target.value)}
@@ -367,6 +367,7 @@ export default function CollectorDashboard() {
                                             <div>
                                                 <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">ถึงวันที่</label>
                                                 <input
+                                                    title="end date"
                                                     type="date"
                                                     value={endDate}
                                                     min={startDate}
@@ -406,7 +407,7 @@ export default function CollectorDashboard() {
 
                                 {/* รายการตัวเลือกสถานะภายในเมนู (Multi-Select Menu) */}
                                 {isStatusMenuOpen && (
-                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-40 bg-white border border-gray-200 rounded-2xl shadow-xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-40 bg-white border border-gray-200 rounded-2xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                                         {/* ลูปรายการสถานะให้สามารถเลือกพร้อมกันได้หลายตัว */}
                                         {statusOptions.map((option) => {
                                             const isChecked = selectedStatuses.includes(option.id);
@@ -477,8 +478,9 @@ export default function CollectorDashboard() {
                                             <div
                                                 key={sample.id}
                                                 onClick={() => router.push(`/collector/history/${sample.id}`)}
-                                                className="bg-white rounded-2xl p-3.5 border border-gray-200/50 shadow hover:shadow-xs active:scale-[0.99] transition-all flex items-center gap-3.5 cursor-pointer group"
+                                                className="bg-white rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
                                             >
+                                                {/* รูปภาพ - ล็อกขนาดไม่ให้โดนบีบ */}
                                                 <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 shrink-0 overflow-hidden flex items-center justify-center relative transition-all">
                                                     {sample.imageUrl && !hasImageError ? (
                                                         <img
@@ -492,41 +494,44 @@ export default function CollectorDashboard() {
                                                     )}
                                                 </div>
 
-                                                <div className="flex-1 min-w-0 flex flex-col justify-between h-15">
-                                                    <div>
-                                                        <div className="flex items-center justify-between gap-2 w-full">
-                                                            <h4 className="font-semibold text-sm text-black text-left">
-                                                                {sample.location?.name || "ไม่ทราบสถานที่"}
-                                                            </h4>
-                                                            <div className="shrink-0">
-                                                                <StatusBadge status={sample.status} size="sm" />
+                                                {/* ฝั่งเนื้อหาข้อมูล - ถอด h-15 ออกเพื่อให้ขยายแนวตั้งได้ตามจริง */}
+                                                <div className="flex-1 min-w-0 flex flex-col ">
+                                                    {/* แถวบน: ชื่อสถานที่ และ สถานะ */}
+                                                    <div className="flex items-start justify-between gap-4 w-full">
+                                                        {/* ฝั่งซ้าย: ชื่อสถานที่ + วันที่ */}
+                                                        <div className="flex-1 min-w-0">
+                                                            {/* แสดงบรรทัดเดียวแล้วตัดด้วย ... */}
+                                                            <h4 className="font-semibold text-sm text-black text-left truncate">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+
+                                                            {/* แถวกลาง: เมทาดาต้า วันที่ */}
+                                                            <div className="flex flex-wrap items-center text-xs text-gray-400 font-medium">
+                                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                                    <Calendar size={14} className="text-gray-300 shrink-0" />
+                                                                    <span>
+                                                                        {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                                            day: "numeric",
+                                                                            month: "short",
+                                                                            year: "2-digit",
+                                                                        })}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
-                                                            <MapPin size={10} className="text-gray-300 shrink-0" />
-                                                            <span className="truncate max-w-30">{sample.location?.organization || "หน่วยงานทั่วไป"}</span>
-                                                            <span className="opacity-40">•</span>
-                                                            <Calendar size={10} className="text-gray-300 shrink-0" />
-                                                            <span>
-                                                                {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                                                                    day: "numeric",
-                                                                    month: "short",
-                                                                    year: "2-digit",
-                                                                })}
-                                                            </span>
+
+                                                        {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
+                                                        <div className="shrink-0">
+                                                            <StatusBadge status={sample.status} size="sm" />
                                                         </div>
                                                     </div>
-
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
-                                                            <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md">
-                                                                <Beaker size={8} className="text-blue-500" />
-                                                                <span>P: {sample.phosphateVal ?? "-"}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md">
-                                                                <Beaker size={8} className="text-amber-500" />
-                                                                <span>N: {sample.ammoniaVal ?? "-"}</span>
-                                                            </div>
+                                                    {/* แถวล่าง: ค่าสารเคมี - เอา grid และ justify-end ออกเพื่อให้ชิดซ้ายตามปกติ */}
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1 w-full">
+                                                        <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md text-xs font-semibold text-gray-500 shrink-0">
+                                                            <Beaker size={10} className="text-blue-500" />
+                                                            <span>P: {sample.phosphateVal ?? "-"}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md text-xs font-semibold text-gray-500 shrink-0">
+                                                            <Beaker size={10} className="text-amber-500" />
+                                                            <span>N: {sample.ammoniaVal ?? "-"}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -545,14 +550,14 @@ export default function CollectorDashboard() {
                                             <button
                                                 disabled={!table.getCanPreviousPage()}
                                                 onClick={() => table.previousPage()}
-                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer shadow-3xs"
+                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
                                             >
                                                 ก่อนหน้า
                                             </button>
                                             <button
                                                 disabled={!table.getCanNextPage()}
                                                 onClick={() => table.nextPage()}
-                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer shadow-3xs"
+                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer "
                                             >
                                                 ถัดไป
                                             </button>

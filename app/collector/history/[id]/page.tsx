@@ -270,17 +270,22 @@ export default function CollectorHistoryDetailPage() {
     const collectorFullName = `${sample.collector.firstName || ""} ${sample.collector.lastName || ""}`.trim() || sample.collector.lineProfileName;
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-10 transition-colors duration-300">
-            <div className="w-full max-w-3xl mx-auto px-5 sm:px-8 lg:px-0 py-6 sm:py-10 space-y-5">
-                <div className="bg-surface px-5 py-5 sm:px-6 rounded-3xl border border-border shadow-sm">
-                    <div className="flex items-center justify-between mb-5">
+        <div className="min-h-screen w-full bg-primary pb-5 antialiased">
+            <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
+                <div className="bg-surface  rounded-xl border border-border">
+                    <div className="flex items-center justify-between">
                         <button
                             onClick={() => router.back()}
-                            className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary active:scale-95 text-xs font-bold transition-all bg-surface-subtle border border-border py-1.5 px-3.5 rounded-full w-fit cursor-pointer"
+                            className="flex items-center gap-1 text-text-secondary hover:text-text-primary  text-xs font-semibold transition-all py-2 px-3.5 rounded-xl w-fit cursor-pointer"
                         >
-                            <ArrowLeft size={13} />
+                            <ArrowLeft size={16} />
                             ย้อนกลับ
                         </button>
+                    </div>
+                </div>
+                <div className="bg-surface px-5 py-5 sm:px-6 rounded-2xl border border-border">
+                    <div className="flex items-center justify-between mb-5">
+                        
 
                         {currentUser?.role === "admin" && (
                             <div className="flex items-center gap-2">
@@ -380,7 +385,8 @@ export default function CollectorHistoryDetailPage() {
                         <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-2xl px-4 py-3">
                             <Calendar size={13} className="text-primary flex-shrink-0" />
                             {isEditing ? (
-                                <input title="input"
+                                <input
+                                    title="input"
                                     type="datetime-local"
                                     value={editData.collectionTime}
                                     onChange={(e) =>

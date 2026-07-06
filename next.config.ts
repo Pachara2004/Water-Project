@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    // นำมาไว้ระดับนอกสุด ตรงตามที่ Next.js แจ้งเตือน
-    // @ts-ignore
-    allowedDevOrigins: ["desktops-issued-kids-collectors.trycloudflare.com"],
+    // บล็อกคำสั่งเช็กความปลอดภัย HMR
+    allowedDevOrigins: ["localhost:3000", "noble-arc-elizabeth-wages.trycloudflare.com"],
 
     images: {
         remotePatterns: [
