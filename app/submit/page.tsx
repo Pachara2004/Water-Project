@@ -86,6 +86,20 @@ function SectionHead({ icon, label }: { icon: React.ReactNode; label: string }) 
 /* ─── Main ─────────────────────────────────────────────────── */
 
 function SubmitContent() {
+    interface DbParameter {
+        id: number;
+        name: string;
+        unit: string | null;
+        description: string | null;
+    }
+
+    const [systemParameters, setSystemParameters] = useState<DbParameter[]>([]);
+    const [isLoadingParams, setIsLoadingParams] = useState(true);
+
+    const [imageFiles, setImageFiles] = useState<Record<number, File>>({});
+    const [imagePreviews, setImagePreviews] = useState<Record<number, string>>({});
+    const [imagePlotFiles, setImagePlotFiles] = useState<Record<number, File>>({});
+
     const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
     const [imagePlotFile, setImagePlotFile] = useState<File | null>(null);
     const searchParams = useSearchParams();
@@ -100,12 +114,16 @@ function SubmitContent() {
     const [step, setStep] = useState<"upload" | "analyzing" | "results">("upload");
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [results, setResults] = useState<{
-        phosphate: number;
-        ammonia: number;
-        status: "safe" | "warning" | "danger";
-        imageUrl: string;
-    } | null>(null);
+    const [results, setResults] = useState<
+        Record<
+            number,
+            {
+                concentrated: number;
+                status: "safe" | "warning" | "danger";
+            }
+        >
+        >({});
+    const [overallStatus, setOverallStatus] = useState<"safe" | "warning" | "danger">("safe");
     const [saved, setSaved] = useState(false);
     const [isRecommending, setIsRecommending] = useState(false);
     const [nearestLocations, setNearestLocations] = useState<LocationItem[]>([]);
@@ -120,6 +138,26 @@ function SubmitContent() {
     const sessionId = useRef(`${new Date().getFullYear().toString().slice(2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 999)).padStart(3, "0")}`);
 
     /* ── effects ── */
+
+    useEffect(() => {
+        setIsLoadingParams(true);
+        fetch("/api/parameters")
+            .then((r) => {
+                if (!r.ok) throw new Error("Failed to fetch parameters");
+                return r.json();
+            })
+            .then((data) => {
+                if (Array.isArray(data)) {
+                    setSystemParameters(data);
+                }
+            })
+            .catch((err) => {
+                console.error("Fetch Parameters Error:", err);
+            })
+            .finally(() => {
+                setIsLoadingParams(false);
+            });
+    }, []);
 
     useEffect(() => {
         fetch("/api/locations")
@@ -274,67 +312,103 @@ function SubmitContent() {
             img.src = URL.createObjectURL(file);
         });
 
+    // เพิ่มฟังก์ชันดักรอ (helper) ไว้ด้านบน handleAnalyze
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
     const handleAnalyze = async () => {
-        if (!imageFile) return;
-
+        if (systemParameters.length === 0) return;
         setStep("analyzing");
+
         try {
-            const fd = new FormData();
-            fd.append("image", imageFile);
+            const newResults: Record<number, { concentrated: number; status: "safe" | "warning" | "danger" }> = {};
+            let hasDanger = false;
+            let hasWarning = false;
 
-            const res = await fetch("/api/analyze", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${liff.getAccessToken()}`,
-                },
-                body: fd,
-            });
+            for (const param of systemParameters) {
+                const file = imageFiles[param.id];
+                if (!file) throw new Error(`ไม่พบไฟล์ภาพของสาร ${param.name}`);
 
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "ไม่สามารถเปิดระบบวิเคราะห์ภาพได้");
+                const fd = new FormData();
+                fd.append("image", file);
+                fd.append("parameterName", param.name.toLowerCase());
+
+                const res = await fetch("/api/analyze", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
+                    body: fd,
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || `วิเคราะห์สาร ${param.name} ไม่สำเร็จ`);
+                }
+
+                const data = await res.json();
+
+                // วาดภาพ Grid Plot ตามข้อมูล AI
+                const plotted = await generateAiImagePlot(file, data);
+                if (plotted) {
+                    setImagePlotFiles((prev) => ({ ...prev, [param.id]: plotted }));
+                }
+
+                // บันทึกผลแยกราย ID สาร
+                const currentStatus = (data.status?.toLowerCase() ?? "safe") as "safe" | "warning" | "danger";
+                newResults[param.id] = {
+                    concentrated: data.concentrated,
+                    status: currentStatus,
+                };
+
+                if (currentStatus === "danger") hasDanger = true;
+                if (currentStatus === "warning") hasWarning = true;
             }
 
-            const data = await res.json();
-            const isAmmonia = data.ammonia === true;
+            // คำนวณสถานะรวมของรอบตรวจวัดนี้
+            const finalStatus = hasDanger ? "danger" : hasWarning ? "warning" : "safe";
 
-            // วาดเส้นตารางพรีวิวบนหน้าจอตามปกติ
-            const plotted = await generateAiImagePlot(imageFile, data);
-            if (plotted) setImagePlotFile(plotted);
-
-            setResults({
-                phosphate: isAmmonia ? 0 : data.concentrated,
-                ammonia: isAmmonia ? data.concentrated : 0,
-                status: data.status?.toLowerCase() ?? "safe",
-                imageUrl: "", 
-            });
+            setResults(newResults);
+            setOverallStatus(finalStatus);
             setStep("results");
         } catch (err: any) {
             console.error("Analysis failed:", err);
-            alert(err.message || "เกิดข้อผิดพลาดในการวิเคราะห์ภาพ");
+            Swal.fire({
+                icon: "error",
+                title: "วิเคราะห์ภาพล้มเหลว",
+                text: err.message,
+                confirmButtonColor: "#0D9488",
+            });
             setStep("upload");
         }
     };
 
     const handleSave = async () => {
-        if (!results || !currentLocationId || !currentUser || !imageFile) return;
+        if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
         try {
             const fd = new FormData();
-
-            fd.append("image", imageFile);
-            if (imagePlotFile) fd.append("imagePlot", imagePlotFile);
+            fd.copy;
             fd.append("locationId", currentLocationId);
-            fd.append("phosphateVal", (results.phosphate ?? 0).toString());
-            fd.append("ammoniaVal", (results.ammonia ?? 0).toString());
-            fd.append("status", results.status || "safe");
+            fd.append("status", overallStatus);
             fd.append("collectionTime", new Date(collectionTime).toISOString());
             if (oxygen) fd.append("oxygen", oxygen);
 
+            // ⚡️ รวบรวมผลลัพธ์การวัดค่าเป็นโครงสร้าง Array เพื่อส่งเข้าตารางเชื่อมใน Database
+            const measurementsPayload = systemParameters.map((param) => ({
+                parameterId: param.id,
+                value: results[param.id]?.concentrated || 0,
+            }));
+
+            fd.append("measurements", JSON.stringify(measurementsPayload));
+
+            // แนบไฟล์รูปภาพทั้งหมดเข้า FormData
+            systemParameters.forEach((param) => {
+                const rawFile = imageFiles[param.id];
+                const plotFile = imagePlotFiles[param.id];
+                if (rawFile) fd.append(`image_raw_${param.id}`, rawFile);
+                if (plotFile) fd.append(`image_plot_${param.id}`, plotFile);
+            });
+
             const res = await fetch("/api/samples", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${liff.getAccessToken()}`,
-                },
+                headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
                 body: fd,
             });
 
@@ -549,53 +623,101 @@ function SubmitContent() {
     );
 
     /* ── Image zone ───────────────────────────────────────── */
-    const ImageZone = () => (
-        <section className="rounded-xl bg-surface overflow-hidden border border-border">
-            <SectionHead icon={<Camera size={13} />} label="ภาพตัวอย่าง" />
-            <div className="p-4">
-                <div
-                    onClick={() => step === "upload" && fileInputRef.current?.click()}
-                    className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
+    /* ── Image zone (Dynamic Version) ───────────────────────── */
+    const ImageZone = ({ param }: { param: DbParameter }) => {
+        const fileInputRef = useRef<HTMLInputElement>(null);
+        const paramId = param.id;
+        const preview = imagePreviews[paramId];
+        const plotFile = imagePlotFiles[paramId];
+
+        const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            // ดักขนาดไฟล์ 10MB เดิมของบอส
+            const MAX_FILE_SIZE = 10 * 1024 * 1024;
+            if (file.size > MAX_FILE_SIZE) {
+                Swal.fire({
+                    title: "ไฟล์มีขนาดใหญ่เกินไป",
+                    text: "กรุณาเลือกไฟล์รูปภาพที่มีขนาดไม่เกิน 10MB",
+                    icon: "error",
+                    confirmButtonColor: "#0D9488",
+                });
+                return;
+            }
+
+            // เซ็ตไฟล์ลง State แยกตามไอดีสาร
+            setImageFiles((prev) => ({ ...prev, [paramId]: file }));
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreviews((prev) => ({ ...prev, [paramId]: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+
+            // โค้ด EXIF Location เดิมของบอส
+            setIsRecommending(true);
+            try {
+                const { getExifLocation, calculateDistance } = await import("@/lib/exif");
+                const coords = await getExifLocation(file);
+                if (coords && allLocations.length) {
+                    const sorted = [...allLocations].sort(
+                        (a, b) => calculateDistance(coords.latitude, coords.longitude, a.lat, a.lng) - calculateDistance(coords.latitude, coords.longitude, b.lat, b.lng),
+                    );
+                    setNearestLocations(sorted.slice(0, 5));
+                }
+            } catch (err) {
+                console.error("EXIF Error:", err);
+            } finally {
+                setIsRecommending(false);
+            }
+        };
+
+        return (
+            <section className="rounded-xl bg-surface overflow-hidden border border-border">
+                <SectionHead icon={<Camera size={13} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()} (${param.unit ?? "mg/L"})`} />
+                <div className="p-4">
+                    <div
+                        onClick={() => step === "upload" && fileInputRef.current?.click()}
+                        className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
                         ${
                             step === "analyzing"
                                 ? "aspect-[4/3] border-slate-700 bg-slate-950 cursor-default"
-                                : imagePreview
+                                : preview
                                   ? "aspect-[4/3] border-teal-500/30 bg-surface-subtle cursor-pointer"
                                   : "aspect-square border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"
                         }`}
-                >
-                    {step === "analyzing" ? (
-                        <>
-                            {imagePreview && <img src={imagePreview} alt="Sample" className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
-                            <div className="animate-laser" />
-                            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
-                            {["top-3 left-3 border-t border-l", "top-3 right-3 border-t border-r", "bottom-3 left-3 border-b border-l", "bottom-3 right-3 border-b border-r"].map((c, i) => (
-                                <div key={i} className={`absolute ${c} border-teal-500 w-4 h-4`} />
-                            ))}
-                        </>
-                    ) : (step === "results" || step === "upload") && (imagePreview || (step === "results" && imagePlotFile)) ? (
-                        <img src={step === "results" && imagePlotFile ? URL.createObjectURL(imagePlotFile) : imagePreview!} alt="Sample" className="w-full h-full object-contain" />
-                    ) : (
-                        <div className="flex flex-col items-center gap-3 px-8 text-center py-8">
-                            <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center border border-border group-hover:scale-105 transition-transform">
-                                <ImagePlus size={24} className="text-slate-700 dark:text-slate-500" />
+                    >
+                        {step === "analyzing" ? (
+                            <>
+                                {preview && <img src={preview} alt={param.name} className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
+                                <div className="animate-laser" />
+                                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
+                            </>
+                        ) : (step === "results" || step === "upload") && (preview || (step === "results" && plotFile)) ? (
+                            <img src={step === "results" && plotFile ? URL.createObjectURL(plotFile) : preview} alt={param.name} className="w-full h-full object-contain" />
+                        ) : (
+                            <div className="flex flex-col items-center gap-3 px-8 text-center py-8">
+                                <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center border border-border">
+                                    <ImagePlus size={24} className="text-slate-700 dark:text-slate-500" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-text-primary">แตะเพื่อถ่ายหรือเลือกภาพ ({param.name})</p>
+                                    <p className="text-[10px] text-text-muted mt-1">ให้แผ่น ColorChecker ของ {param.name} อยู่ในกรอบและชัดเจน</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs font-medium text-text-primary">แตะเพื่อถ่ายหรือเลือกภาพ</p>
-                                <p className="text-[10px] text-text-muted mt-1">ให้แผ่น ColorChecker อยู่ในกรอบและชัดเจน</p>
-                            </div>
-                        </div>
+                        )}
+                        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                    </div>
+                    {step === "upload" && preview && (
+                        <button onClick={() => fileInputRef.current?.click()} className="mt-2 text-[10px] text-text-muted underline underline-offset-2">
+                            เปลี่ยนภาพถ่าย {param.name}
+                        </button>
                     )}
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />{" "}
                 </div>
-                {step === "upload" && imagePreview && (
-                    <button onClick={() => fileInputRef.current?.click()} className="mt-2 text-[10px] text-text-muted underline underline-offset-2">
-                        เปลี่ยนภาพ
-                    </button>
-                )}
-            </div>
-        </section>
-    );
+            </section>
+        );
+    };
 
     /* ── Metadata fields ──────────────────────────────────── */
     const MetadataFields = () => (
@@ -634,27 +756,38 @@ function SubmitContent() {
     );
 
     /* ── Analyze button ───────────────────────────────────── */
-    const AnalyzeButton = () => (
-        <button
-            onClick={handleAnalyze}
-            disabled={!imageFile || !currentLocationId || isRecommending}
-            className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-teal-700 hover:bg-teal-800 active:scale-[0.99] text-white shadow-sm"
-        >
-            {isRecommending ? (
-                <>
-                    <Loader2 size={15} className="animate-spin" /> กำลังตรวจจับตำแหน่ง…
-                </>
-            ) : !currentLocationId && imageFile ? (
-                <>
-                    <MapPin size={15} /> กรุณาเลือกสถานีก่อน
-                </>
-            ) : (
-                <>
-                    <Sparkles size={15} /> วิเคราะห์ด้วย AI
-                </>
-            )}
-        </button>
-    );
+    /* ── Analyze button ───────────────────────────────────── */
+    const AnalyzeButton = () => {
+        // 💡 เช็กว่าทุกพารามิเตอร์ที่ดึงมาจาก DB มีไฟล์รูปภาพอัปโหลดเข้ามาครบถ้วนแล้วหรือยัง
+        const isAllImagesUploaded = systemParameters.length > 0 && systemParameters.every((param) => imageFiles[param.id] !== undefined);
+
+        return (
+            <button
+                onClick={handleAnalyze}
+                // ✅ แก้ไขเงื่อนไข: ถ้ายังอัปโหลดไม่ครบ หรือยังไม่เลือกสถานี หรือระบบกำลังค้นหาตำแหน่ง ให้ปิดปุ่มไว้
+                disabled={!isAllImagesUploaded || !currentLocationId || isRecommending}
+                className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-teal-700 hover:bg-teal-800 active:scale-[0.99] text-white shadow-sm"
+            >
+                {isRecommending ? (
+                    <>
+                        <Loader2 size={15} className="animate-spin" /> กำลังตรวจจับตำแหน่ง…
+                    </>
+                ) : !currentLocationId ? (
+                    <>
+                        <MapPin size={15} /> กรุณาเลือกสถานีก่อน
+                    </>
+                ) : !isAllImagesUploaded ? (
+                    <>
+                        <Camera size={15} /> กรุณาถ่ายภาพผลทดสอบให้ครบทุกสาร
+                    </>
+                ) : (
+                    <>
+                        <Sparkles size={15} /> วิเคราะห์ด้วย AI ทั้งหมด
+                    </>
+                )}
+            </button>
+        );
+    };
 
     /* ── Analyzing indicator (mobile only, below image) ───── */
     const AnalyzingStatus = () => (
@@ -676,90 +809,67 @@ function SubmitContent() {
 
     /* ── Results panel ────────────────────────────────────── */
     const ResultsPanel = () => {
-        if (!results) return null;
-        const paramSt = (val: number, max: number) => getParameterStatus(val, max) as "safe" | "warning" | "danger";
+        if (Object.keys(results).length === 0) return null;
         const std = getLocStd();
 
         return (
             <div className="space-y-4">
-                {/* status banner */}
+                {/* แถบแจ้งเตือนสถานะน้ำรวม */}
                 <div
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-medium ${
-                        results.status === "safe"
+                        overallStatus === "safe"
                             ? "bg-teal-50 dark:bg-teal-950/20 border-teal-500/30 text-teal-800 dark:text-teal-200"
-                            : results.status === "warning"
+                            : overallStatus === "warning"
                               ? "bg-amber-50 dark:bg-amber-950/20 border-amber-500/30 text-amber-800 dark:text-amber-200"
                               : "bg-red-50 dark:bg-red-950/20 border-red-500/30 text-red-800 dark:text-red-200"
                     }`}
                 >
-                    <span className={`h-2 w-2 rounded-full shrink-0 ${results.status === "safe" ? "bg-teal-500" : results.status === "warning" ? "bg-amber-500" : "bg-red-500"}`} />
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${overallStatus === "safe" ? "bg-teal-500" : overallStatus === "warning" ? "bg-amber-500" : "bg-red-500"}`} />
                     <div>
                         <p className="font-semibold">
-                            {results.status === "safe" ? "คุณภาพน้ำอยู่ในเกณฑ์ปลอดภัย" : results.status === "warning" ? "ตรวจพบค่าสูง — ต้องตรวจสอบเพิ่มเติม" : "ค่าเกินมาตรฐานความปลอดภัย"}
-                        </p>
-                        <p className="text-[10px] mt-0.5 font-normal opacity-80">
-                            สถานะรวม: <span className="font-mono uppercase">{results.status}</span>
+                            {overallStatus === "safe" ? "คุณภาพน้ำอยู่ในเกณฑ์ปลอดภัย" : overallStatus === "warning" ? "ตรวจพบค่าสูง — ต้องตรวจสอบเพิ่มเติม" : "ค่าเกินมาตรฐานความปลอดภัย"}
                         </p>
                     </div>
                 </div>
 
-                {/* readout cards */}
+                {/* รายการแสดงผลสารเคมีแบบ Dynamic เคลื่อนตาม Database */}
                 <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1">
-                    {/* หัวตารางหลัก (Header) */}
                     <div className="px-6 py-3 border-b border-border bg-muted/40 flex justify-between items-center text-text-muted font-mono text-xs uppercase tracking-wider">
                         <div>Parameter</div>
                         <div>Value</div>
                     </div>
 
-                    {/* รายการข้อมูลแต่ละตัว (ยืดหยุ่นตามข้อมูลใน Array) */}
                     <div className="divide-y divide-border">
-                        {(
-                            [
-                                {
-                                    label: "Phosphate",
-                                    sub: "PO₄",
-                                    val: results.phosphate,
-                                    max: getLocStd().phosphateMax,
-                                },
-                                {
-                                    label: "Ammonia",
-                                    sub: "NH₃",
-                                    val: results.ammonia,
-                                    max: getLocStd().ammoniaMax,
-                                },
-                                /* ➕ อนาคตเพิ่มสารเคมีตัวใหม่ต่อท้ายตรงนี้ได้เลย */
-                            ] as const
-                        ).map(({ label, sub, val, max }) => {
-                            // คำนวณ Status
-                            const paramStatus = getParameterStatus(val, max) as "safe" | "warning" | "danger";
+                        {systemParameters.map((param) => {
+                            const measurement = results[param.id];
+                            if (!measurement) return null;
 
-                            // คำนวณหา % ที่เกินเกณฑ์มาตรฐาน (เช่น ค่าวัดได้ 2.5 แต่ Max ยอมรับได้ 0.95)
-                            const percentageOfMax = max > 0 ? (val / max) * 100 : 0;
-                            const isExceeded = val > max;
-                            const exceededPercentage = isExceeded ? Math.round(((val - max) / max) * 100) : 0;
+                            // ดึงเกณฑ์มาตรฐานสูงสุดแบบไดนามิก
+                            const max = std[`${param.name.toLowerCase()}Max` as keyof typeof std] ?? 1.0;
+                            const isExceeded = measurement.concentrated > max;
+                            const exceededPercentage = isExceeded ? Math.round(((measurement.concentrated - max) / max) * 100) : 0;
 
                             return (
-                                <div key={label} className="px-6 py-4 flex flex-col gap-2 hover:bg-muted/5 transition-colors">
-                                    {/* บรรทัดบน: ชื่อสาร (ซ้าย) & ค่าวัดได้ (ขวา) */}
+                                <div key={param.id} className="px-6 py-4 flex flex-col gap-2 hover:bg-muted/5 transition-colors">
                                     <div className="flex justify-between items-baseline">
                                         <div className="font-medium text-text-primary">
-                                            <span className="font-mono text-base uppercase">{label}</span> <span className="text-xs text-text-muted">({sub})</span>
+                                            <span className="font-mono text-base uppercase">{param.name}</span>
                                         </div>
                                         <div className="font-mono text-sm font-semibold text-text-primary">
-                                            {val.toFixed(3)} <span className="text-[10px] text-text-muted font-normal ml-0.5">mg/L</span>
+                                            {measurement.concentrated.toFixed(3)} <span className="text-[10px] text-text-muted font-normal ml-0.5">{param.unit ?? "mg/L"}</span>
                                         </div>
                                     </div>
 
-                                    {/* บรรทัดกลาง: แถบหลอดแก้วระดับความยาวเต็มแถว */}
                                     <div className="w-full">
-                                        <ThresholdBar value={val} max={max} status={paramStatus} />
-                                        <div className="flex-1 text-center font-sans">
-                                            {isExceeded && (
+                                        <ThresholdBar value={measurement.concentrated} max={max} status={measurement.status} />
+                                        <div className="text-center font-sans mt-1 text-xs">
+                                            {isExceeded ? (
                                                 <span className="text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded">
                                                     เกินเกณฑ์มาตรฐาน {exceededPercentage}%
                                                 </span>
+                                            ) : (
+                                                <span className="text-teal-600 dark:text-teal-400">ปกติ</span>
                                             )}
-                                            {!isExceeded && <span className="text-teal-600 dark:text-teal-400">ปกติ</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -767,27 +877,6 @@ function SubmitContent() {
                         })}
                     </div>
                 </div>
-
-                {/* standards */}
-                <section className="rounded-xl border border-border bg-surface overflow-hidden">
-                    <SectionHead icon={<ShieldCheck size={13} />} label="Standards compliance" />
-                    <div className="p-4 space-y-2">
-                        {getStandardsEvaluation(results.phosphate, results.ammonia).map((std) => (
-                            <div
-                                key={std.type}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium border ${
-                                    std.passed
-                                        ? "bg-teal-50/60 dark:bg-teal-950/15 text-teal-800 dark:text-teal-200 border-teal-500/20"
-                                        : "bg-red-50/60 dark:bg-red-950/15 text-red-800 dark:text-red-200 border-red-500/20"
-                                }`}
-                            >
-                                {std.passed ? <ShieldCheck size={13} className="text-teal-600 flex-shrink-0" /> : <ShieldX size={13} className="text-red-500 flex-shrink-0" />}
-                                <span className="flex-1">{std.label}</span>
-                                <span className="font-mono text-[9px] uppercase tracking-wider">{std.passed ? "Pass" : "Fail"}</span>
-                            </div>
-                        ))}
-                    </div>
-                </section>
             </div>
         );
     };
@@ -842,10 +931,19 @@ function SubmitContent() {
             </div>
 
             {/* ══════════════ MOBILE LAYOUT (< md) ══════════════ */}
+            {/* ══════════════ MOBILE LAYOUT (< md) ══════════════ */}
             <div className="md:hidden px-4 pb-24 space-y-4 mt-3">
                 {step === "upload" && (
                     <>
-                        <ImageZone />
+                        {/* วนลูปสร้างกล่องอัปโหลดภาพตามจำนวนสารในฐานข้อมูลจริง */}
+                        {isLoadingParams ? (
+                            <div className="p-8 text-center text-xs text-text-muted flex items-center justify-center gap-2">
+                                <Loader2 size={14} className="animate-spin text-teal-600" /> กำลังโหลดข้อมูลสารเคมี...
+                            </div>
+                        ) : (
+                            systemParameters.map((param) => <ImageZone key={param.id} param={param} />)
+                        )}
+
                         <LocationPicker />
                         <MetadataFields />
                         <AnalyzeButton />
@@ -853,13 +951,18 @@ function SubmitContent() {
                 )}
                 {step === "analyzing" && (
                     <>
-                        <ImageZone />
+                        {/* ✅ แก้ไขจุดนี้: วนลูปส่ง param ป้องกันหน้าจอแครชบนมือถือ */}
+                        {systemParameters.map((param) => (
+                            <ImageZone key={param.id} param={param} />
+                        ))}
                         <AnalyzingStatus />
                     </>
                 )}
                 {step === "results" && results && (
                     <>
-                        <ImageZone />
+                        {systemParameters.map((param) => (
+                            <ImageZone key={param.id} param={param} />
+                        ))}
                         <ResultsPanel />
                         <SaveSection />
                     </>
@@ -881,14 +984,16 @@ function SubmitContent() {
                         <DesktopSidebar />
 
                         {/* Col 2: Image + metadata + action */}
-                        <div className="flex flex-col border-r border-border flex-1">
-                            <div className="p-4 flex flex-col h-full gap-4">
-                                <ImageZone />
-                                {step === "upload" && (
-                                    <>
-                                        <AnalyzeButton />
-                                    </>
+                        <div className="flex flex-col border-r border-border flex-1 max-h-[70vh] overflow-y-auto">
+                            <div className="p-4 flex flex-col gap-4">
+                                {/* ✅ แก้ไขจุดนี้: ให้ทุก Step (upload, analyzing, results) ใช้กล่องที่แมปตัวแปรเหมือนกันทั้งหมด */}
+                                {isLoadingParams ? (
+                                    <div className="p-8 text-center text-xs text-text-muted">กำลังโหลดพารามิเตอร์ระบบ...</div>
+                                ) : (
+                                    systemParameters.map((param) => <ImageZone key={param.id} param={param} />)
                                 )}
+
+                                {step === "upload" && <AnalyzeButton />}
                                 {step === "analyzing" && <AnalyzingStatus />}
                                 {step === "results" && results && <SaveSection />}
                             </div>
