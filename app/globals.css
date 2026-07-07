@@ -268,6 +268,23 @@ body {
   animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Toast ขาออก: เลื่อนลงแล้วจางหาย แทนการหายวับทันที */
+@keyframes toast-exit {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+}
+
+.animate-toast-exit {
+  animation: toast-exit 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
 .animate-fade-in {
   animation: fade-in 0.4s ease-out forwards;
 }
@@ -347,6 +364,92 @@ body {
   background: rgba(255, 255, 255, 0.7) !important;
   backdrop-filter: blur(4px);
   border-radius: 4px;
+}
+
+/* Reserves scrollbar space so SweetAlert2's body.swal2-shown{overflow:hidden} scroll-lock
+   doesn't shift the layout. Needed on both html and body: body's overflow-x:hidden makes the
+   viewport scrollbar belong to html on desktop. Toggled per-page (see reserve-scrollbar-gutter
+   class usage in code) so pages without confirm dialogs are unaffected. */
+html.reserve-scrollbar-gutter,
+html.reserve-scrollbar-gutter body {
+  scrollbar-gutter: stable;
+}
+
+/* The reserved gutter is native browser chrome, not a paintable element — blur can't reach it.
+   Tint body's background to match the popup backdrop so the sliver blends in instead of
+   showing the page's own background color. */
+body.swal2-shown:not(.swal2-no-backdrop, .swal2-toast-shown) {
+  background-color: var(--swal2-backdrop, rgba(0, 0, 0, 0.4));
+}
+
+/* ── SweetAlert dialog theme (ใช้คู่กับ lib/swal.ts) ──
+   สีทั้ง icon/ปุ่ม วิ่งตาม --swal-tone ที่ helper กำหนดต่อ dialog */
+.app-swal {
+  border-radius: 16px;
+  padding: 1.75rem 1.5rem 1.5rem;
+}
+
+.app-swal .swal2-title {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.75rem 0 0;
+}
+
+.app-swal .swal2-html-container {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0.5rem 1rem 0;
+}
+
+.app-swal-icon {
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  background: var(--swal-tone);
+  margin: 0 auto;
+}
+
+.app-swal-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.app-swal-actions {
+  width: 100%;
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.app-swal-confirm,
+.app-swal-cancel {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-swal-confirm {
+  background: var(--swal-tone);
+  color: #fff;
+  border: none;
+}
+
+.app-swal-cancel {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1.5px solid var(--color-border);
+}
+
+/* dialog สำเร็จ: ปุ่มเดียวเต็มกว้าง */
+.app-swal--single .app-swal-confirm {
+  flex: 1 1 100%;
 }
 
 /* Scrollbar styling */

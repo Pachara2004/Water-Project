@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import liff from "@line/liff";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import Swal from "sweetalert2";
+import { alertError, errorToast } from "@/lib/swal";
 import { getParameterStatus, LOCATION_STANDARDS, evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
 import { FlaskConical, Loader2, CheckCircle2, MapPin, ArrowLeft, ImagePlus, Sparkles, ShieldCheck, ShieldX, Camera, Clock, Database, ChevronRight, Search, AlertCircle } from "lucide-react";
 
@@ -198,15 +198,48 @@ function SubmitContent() {
     }, [currentUser, router]);
 
     /* ── handlers ── */
-    const Toast = Swal.mixin({
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 2500,
-        timerProgressBar: true,
-        background: "var(--color-surface, #ffffff)",
-        color: "var(--color-text-primary, #000000)",
-    });
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // ดักจับนิรภัยตั้งแต่ตอนกดเลือกรูปภาพหน้าบ้าน
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+        // 1. ดักขนาดไฟล์เกิน (ใช้ Alert Modal เพื่อความชัดเจน)
+        if (file.size > MAX_FILE_SIZE) {
+            errorToast("ขนาดไฟล์ใหญ่เกินกำหนด!", "รูปภาพผลน้ำต้องมีขนาดไม่เกิน 5MB กรุณาถ่ายภาพใหม่หรือลดความละเอียดของกล้องลงครับบอส");
+            e.target.value = "";
+            return;
+        }
+
+        // 2. ดักประเภทไฟล์แปลกปลอม
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            alertError("รูปแบบไฟล์ไม่ถูกต้อง!", "ระบบอนุญาตเฉพาะไฟล์รูปภาพสากล (.jpg, .jpeg, .png, .webp) เท่านั้นครับบอส");
+            e.target.value = "";
+            return;
+        }
+
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview(reader.result as string);
+        reader.readAsDataURL(file);
+        setIsRecommending(true);
+        try {
+            const { getExifLocation, calculateDistance } = await import("@/lib/exif");
+            const coords = await getExifLocation(file);
+            if (coords && allLocations.length) {
+                const sorted = [...allLocations].sort(
+                    (a, b) => calculateDistance(coords.latitude, coords.longitude, a.lat, a.lng) - calculateDistance(coords.latitude, coords.longitude, b.lat, b.lng),
+                );
+                setNearestLocations(sorted.slice(0, 5));
+            }
+        } catch (err) {
+            console.error("EXIF:", err);
+        } finally {
+            setIsRecommending(false);
+        }
+    };
 
     const generateAiImagePlot = (file: File, aiData: any): Promise<File | null> =>
         new Promise((resolve) => {
@@ -354,7 +387,7 @@ function SubmitContent() {
                 setSaved(true);
             } else {
                 const errData = await res.json();
-                alert(errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+                alertError("บันทึกข้อมูลไม่สำเร็จ", errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
             }
         } catch (err) {
             console.error("Save failed:", err);
