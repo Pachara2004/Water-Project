@@ -344,12 +344,7 @@ function SubmitContent() {
             setStep("results");
         } catch (err: any) {
             console.error("Analysis failed:", err);
-            Swal.fire({
-                icon: "error",
-                title: "วิเคราะห์ภาพล้มเหลว",
-                text: err.message,
-                confirmButtonColor: "#0D9488",
-            });
+            alertError("วิเคราะห์ภาพล้มเหลว", err.message);
             setStep("upload");
         }
     };

@@ -293,9 +293,9 @@ export default function AdminUsersPage() {
                 <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
                     <ShieldAlert size={28} className="animate-pulse" />
                 </div>
-                <h1 className="font-display text-xl font-bold text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
+                <h1 className="font-display text-base font-semibold text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
                 <p className="text-xs text-text-secondary mb-6">หน้านี้สำหรับผู้ดูแลระบบสูงสุดสูงสุดเท่านั้น</p>
-                <button onClick={() => router.push("/map")} className="py-3 px-8 bg-primary text-white font-bold rounded-2xl text-xs cursor-pointer">
+                <button onClick={() => router.push("/map")} className="py-3 px-8 bg-primary text-white font-semibold rounded-2xl text-xs cursor-pointer">
                     กลับหน้าแผนที่
                 </button>
             </div>
@@ -311,7 +311,7 @@ export default function AdminUsersPage() {
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-8">
                 {/* Header */}
                 <div className="pt-10 sm:pt-16 pb-8 border-b border-border mb-6">
-                    <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-bold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
+                    <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
                         <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
                         Admin Panel
                     </button>
@@ -322,7 +322,7 @@ export default function AdminUsersPage() {
                                 <Users size={22} className="text-white" />
                             </div>
                             <div>
-                                <h1 className="font-display text-2xl font-bold text-text-primary leading-tight">
+                                <h1 className="font-display text-base font-semibold text-text-primary leading-tight">
                                     จัดการ <span className="text-primary">ผู้ใช้งาน</span>
                                 </h1>
                                 <p className="text-xs text-text-secondary mt-0.5">อนุมัติสิทธิ์และจัดการบทบาทผู้ใช้ในระบบ</p>
@@ -348,8 +348,8 @@ export default function AdminUsersPage() {
                             { label: "รอการอนุมัติ", value: stats.pending, color: stats.pending > 0 ? "text-amber-600 dark:text-amber-400" : "text-text-primary" },
                         ].map((s) => (
                             <div key={s.label} className="flex-1 bg-surface rounded-2xl border border-border px-4 py-3 text-center">
-                                <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
-                                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mt-0.5">{s.label}</div>
+                                <div className={`text-base font-semibold ${s.color}`}>{s.value}</div>
+                                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-0.5">{s.label}</div>
                             </div>
                         ))}
                     </div>
@@ -361,7 +361,7 @@ export default function AdminUsersPage() {
                         <button
                             key={t}
                             onClick={() => setTab(t)}
-                            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap ${
                                 tab === t ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                             }`}
                         >
@@ -402,11 +402,11 @@ export default function AdminUsersPage() {
                 {/* Reject all — เฉพาะ tab รออนุมัติ */}
                 {tab === "queue" && queue.length > 0 && (
                     <div className="flex items-center justify-between mb-3 px-1">
-                        <p className="text-xs font-bold text-text-muted">ตรวจสอบคำร้องแต่ละรายการด้านล่าง</p>
+                        <p className="text-xs font-semibold text-text-muted">ตรวจสอบคำร้องแต่ละรายการด้านล่าง</p>
                         <button
                             onClick={handleRejectAll}
                             disabled={rejectingAll}
-                            className="flex items-center gap-1.5 px-3 py-2 min-h-[36px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all disabled:opacity-40 cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-2 min-h-[36px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-semibold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all disabled:opacity-40 cursor-pointer"
                         >
                             {rejectingAll ? <RefreshCw size={12} className="animate-spin" /> : <XCircle size={12} />}
                             ปฏิเสธทั้งหมด
@@ -419,14 +419,14 @@ export default function AdminUsersPage() {
                     {loading ? (
                         <div className="bg-surface rounded-3xl p-10 text-center border border-border flex flex-col items-center justify-center gap-3">
                             <RefreshCw size={22} className="animate-spin text-primary" />
-                            <span className="text-xs text-text-muted font-bold">กำลังโหลดข้อมูลผู้ใช้...</span>
+                            <span className="text-xs text-text-muted font-semibold">กำลังโหลดข้อมูลผู้ใช้...</span>
                         </div>
                     ) : filtered.length === 0 ? (
                         <div className="bg-surface rounded-3xl p-10 text-center border border-border">
                             <div className="w-14 h-14 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mx-auto mb-4">
                                 {tab === "queue" ? <CheckCircle2 size={20} className="text-emerald-500" /> : <Users size={20} className="text-text-muted" />}
                             </div>
-                            <p className="text-sm font-bold text-text-muted">{tab === "queue" ? "ไม่มีผู้ใช้รอการอนุมัติ" : tab === "staff" ? "ไม่พบเจ้าหน้าที่ที่ค้นหา" : "ไม่พบผู้ใช้ที่ค้นหา"}</p>
+                            <p className="text-sm font-semibold text-text-muted">{tab === "queue" ? "ไม่มีผู้ใช้รอการอนุมัติ" : tab === "staff" ? "ไม่พบเจ้าหน้าที่ที่ค้นหา" : "ไม่พบผู้ใช้ที่ค้นหา"}</p>
                         </div>
                     ) : (
                         filtered.map((user) => {
@@ -443,15 +443,15 @@ export default function AdminUsersPage() {
                                 >
                                     <div className="p-4 sm:p-5 flex items-center flex-wrap sm:flex-nowrap gap-4">
                                         {/* Avatar */}
-                                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white text-xs font-black ${avatarColor(displayName)}`}>
+                                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white text-xs font-semibold ${avatarColor(displayName)}`}>
                                             {getInitials(user.fullName, user.lineProfileName)}
                                         </div>
 
                                         {/* Info */}
                                         <div className="flex-1 min-w-[140px]">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="text-sm font-bold text-text-primary truncate min-w-0">{displayName}</h3>
-                                                <span className={`inline-flex items-center justify-center text-xs font-bold leading-none px-2 py-1 rounded-full border flex-shrink-0 ${cfg.color}`}>
+                                                <h3 className="text-sm font-semibold text-text-primary truncate min-w-0">{displayName}</h3>
+                                                <span className={`inline-flex items-center justify-center text-xs font-semibold leading-none px-2 py-1 rounded-full border flex-shrink-0 ${cfg.color}`}>
                                                     {cfg.label}
                                                 </span>
                                             </div>
@@ -493,7 +493,7 @@ export default function AdminUsersPage() {
                                                     <>
                                                         <button
                                                             onClick={() => setOpenDropdown(isOpen ? null : user.id)}
-                                                            className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[160px] px-3 py-2 bg-surface-subtle hover:bg-surface-muted border border-border rounded-xl text-sm font-bold text-text-secondary transition-all cursor-pointer min-h-[36px]"
+                                                            className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[160px] px-3 py-2 bg-surface-subtle hover:bg-surface-muted border border-border rounded-xl text-sm font-semibold text-text-secondary transition-all cursor-pointer min-h-[36px]"
                                                         >
                                                             เปลี่ยนสิทธิ์
                                                             <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -501,7 +501,7 @@ export default function AdminUsersPage() {
 
                                                         {isOpen && (
                                                             <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-surface border border-border rounded-2xl shadow-xl py-2 animate-fade-in">
-                                                                <p className="text-xs font-bold text-text-muted uppercase tracking-wider px-4 pt-1 pb-2 border-b border-border mb-1">เลือกบทบาท</p>
+                                                                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider px-4 pt-1 pb-2 border-b border-border mb-1">เลือกบทบาท</p>
                                                                 {ROLE_OPTIONS.map((r) => {
                                                                     const rc = ROLE_CONFIG[r];
                                                                     const isCurrent = user.role === r;
@@ -510,7 +510,7 @@ export default function AdminUsersPage() {
                                                                             key={r}
                                                                             onClick={() => !isCurrent && handleRoleChange(user.id, r)}
                                                                             disabled={isCurrent}
-                                                                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors text-left cursor-pointer
+                                                                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors text-left cursor-pointer
                                   ${isCurrent ? "text-text-muted cursor-not-allowed opacity-50" : "text-text-primary hover:bg-surface-subtle"}`}
                                                                         >
                                                                             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${rc.dot}`} />
@@ -538,7 +538,7 @@ export default function AdminUsersPage() {
                                                 <>
                                                     <button
                                                         onClick={() => handleApprove(user, displayName)}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-primary hover:bg-navy-dark text-white text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-primary hover:bg-navy-dark text-white text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
                                                     >
                                                         <CheckCircle2 size={13} />
                                                         อนุมัติเป็น {ROLE_CONFIG[user.requestedRole].label}
@@ -546,7 +546,7 @@ export default function AdminUsersPage() {
 
                                                     <button
                                                         onClick={() => handleReject(user, displayName)}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-semibold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
                                                     >
                                                         <XCircle size={13} />
                                                         ปฏิเสธ
@@ -565,7 +565,7 @@ export default function AdminUsersPage() {
             {/* Toast */}
             {toast && (
                 <div className={`fixed bottom-[88px] left-1/2 -translate-x-1/2 z-[999] ${toastLeaving ? "animate-toast-exit" : "animate-slide-up"}`}>
-                    <div className="flex items-center gap-2.5 bg-surface text-text-primary border border-border/60 text-xs font-bold px-5 py-3 rounded-2xl shadow-xl whitespace-nowrap">
+                    <div className="flex items-center gap-2.5 bg-surface text-text-primary border border-border/60 text-xs font-semibold px-5 py-3 rounded-2xl shadow-xl whitespace-nowrap">
                         {toast.variant === "success" ? (
                             <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
                         ) : (

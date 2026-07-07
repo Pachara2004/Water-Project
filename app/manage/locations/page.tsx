@@ -194,11 +194,11 @@ export default function AdminLocationsPage() {
                 <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
                     <ShieldAlert size={28} className="animate-pulse" />
                 </div>
-                <h1 className="font-display text-xl font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
+                <h1 className="font-display text-base font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
                 <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้าการกำหนดค่าพิกัดพ้นกรอบการจัดการทั่วไป สำหรับผู้ดูแลระบบสูงสุด (System Admin) เท่านั้น</p>
                 <button
                     onClick={() => router.push("/map")}
-                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
+                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
                 >
                     กลับไปหน้าแผนที่
                 </button>
@@ -215,11 +215,11 @@ export default function AdminLocationsPage() {
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
                 {/* Header */}
                 <div className="bg-surface px-6 sm:px-8 pt-10 sm:pt-16 pb-6 sm:pb-10 mb-6 sm:mb-10 border-b border-border transition-colors duration-300">
-                    <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-bold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
+                    <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
                         <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
                         Admin Panel
                     </button>
-                    <h1 className="font-display text-2xl font-bold text-text-primary tracking-wide leading-tight">
+                    <h1 className="font-display text-base font-semibold text-text-primary tracking-wide leading-tight">
                         ตั้งค่าจุดตรวจ <span className="font-display text-primary">สถานีชายฝั่ง</span>
                     </h1>
                     <p className="text-text-secondary text-xs mt-4 leading-loose">กำหนดตำแหน่งพิกัดจุดเก็บตัวอย่างน้ำเพื่อการวิเคราะห์ทางวิทยาศาสตร์ร่วมกับแผนที่ระบบ</p>
@@ -232,13 +232,13 @@ export default function AdminLocationsPage() {
                             <div className="w-8 h-8 bg-primary-light text-primary rounded-xl flex items-center justify-center border border-border">
                                 <Plus size={16} />
                             </div>
-                            <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider ">Register New Station</h2>
+                            <h2 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Register New Station</h2>
                         </div>
 
                         <div className="space-y-7">
                             {/* Name */}
                             <div className="space-y-4">
-                                <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block ">ชื่อจุดเก็บตัวอย่างชายฝั่ง</label>
+                                <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block ">ชื่อจุดเก็บตัวอย่างชายฝั่ง</label>
                                 <input
                                     type="text"
                                     value={name}
@@ -250,7 +250,7 @@ export default function AdminLocationsPage() {
 
                             {/* Organization */}
                             <div className="space-y-4">
-                                <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block flex items-center gap-1.5 ">
+                                <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block flex items-center gap-1.5 ">
                                     <Building2 size={12} className="text-text-muted" />
                                     หน่วยงานหลักผู้ดูแล (Authority)
                                 </label>
@@ -289,7 +289,7 @@ export default function AdminLocationsPage() {
 
                             {/* Mini Map */}
                             <div className="space-y-4">
-                                <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block flex items-center gap-1.5 ">
+                                <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block flex items-center gap-1.5 ">
                                     <MapPin size={12} className="text-text-muted" />
                                     ปักหมุดตำแหน่งพิกัด (Tap on Map)
                                 </label>
@@ -298,7 +298,7 @@ export default function AdminLocationsPage() {
                                 </div>
 
                                 {pickedPosition ? (
-                                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-primary bg-primary-light border border-primary/10 py-2 px-4 rounded-full w-fit tracking-wider mt-2.5">
+                                    <div className="flex items-center gap-1.5 text-[9px] font-semibold text-primary bg-primary-light border border-primary/10 py-2 px-4 rounded-full w-fit tracking-wider mt-2.5">
                                         <Layers size={11} className="animate-pulse" />
                                         LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
                                     </div>
@@ -308,7 +308,7 @@ export default function AdminLocationsPage() {
                             </div>
 
                             {success && (
-                                <div className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 font-bold text-center flex items-center justify-center gap-1.5 animate-fade-in">
+                                <div className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 font-semibold text-center flex items-center justify-center gap-1.5 animate-fade-in">
                                     <Check size={14} className="text-emerald-500" />
                                     บันทึกตำแหน่งสถานีตรวจวัดเรียบร้อยแล้ว
                                 </div>
@@ -318,7 +318,7 @@ export default function AdminLocationsPage() {
                             <button
                                 onClick={handleSubmit}
                                 disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim())}
-                                className="w-full mt-6 py-4 min-h-[56px] bg-primary hover:bg-navy-dark text-white font-bold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                                className="w-full mt-6 py-4 min-h-[56px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                             >
                                 {saving ? (
                                     <>
@@ -342,9 +342,9 @@ export default function AdminLocationsPage() {
                                 <div className="w-8 h-8 bg-foreground text-background rounded-xl flex items-center justify-center">
                                     <MapPin size={15} />
                                 </div>
-                                <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider ">Saved Stations</h2>
+                                <h2 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Saved Stations</h2>
                             </div>
-                            <span className="text-[9px] font-bold text-primary bg-primary-light border border-primary/10 px-2.5 py-1 rounded-full uppercase tracking-wider ">
+                            <span className="text-[9px] font-semibold text-primary bg-primary-light border border-primary/10 px-2.5 py-1 rounded-full uppercase tracking-wider ">
                                 {filteredLocations.length} Stations
                             </span>
                         </div>
@@ -371,21 +371,21 @@ export default function AdminLocationsPage() {
                             {isLoading ? (
                                 <div className="bg-surface rounded-3xl p-10 text-center border border-border flex flex-col items-center justify-center gap-3">
                                     <RefreshCw size={22} className="animate-spin text-primary" />
-                                    <span className="text-xs text-text-muted font-bold">กำลังดาวน์โหลดข้อมูลสถานี...</span>
+                                    <span className="text-xs text-text-muted font-semibold">กำลังดาวน์โหลดข้อมูลสถานี...</span>
                                 </div>
                             ) : filteredLocations.length === 0 ? (
                                 <div className="bg-surface rounded-3xl p-10 text-center border border-border shadow-sm">
                                     <div className="w-14 h-14 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mx-auto mb-4">
                                         <MapPin size={20} className="text-text-muted" />
                                     </div>
-                                    <p className="text-xs font-bold text-text-muted">ไม่พบสถานีตรวจวัดตามตัวกรองนี้</p>
+                                    <p className="text-xs font-semibold text-text-muted">ไม่พบสถานีตรวจวัดตามตัวกรองนี้</p>
                                 </div>
                             ) : (
                                 filteredLocations.map((loc) => (
                                     <div key={loc.id} className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden transition-all hover:scale-[1.01] duration-200">
                                         {deletingId === loc.id ? (
                                             <div className="p-6 bg-red-500/5 border-b border-red-500/10 space-y-5">
-                                                <p className="text-xs font-bold text-danger">
+                                                <p className="text-xs font-semibold text-danger">
                                                     ลบสถานี &quot;{loc.name}
                                                     &quot; พร้อมผลข้อมูลประวัติทิ้งถาวร?
                                                 </p>
@@ -393,14 +393,14 @@ export default function AdminLocationsPage() {
                                                     <button
                                                         onClick={() => handleDelete(loc.id)}
                                                         disabled={deleting}
-                                                        className="flex-1 py-2 min-h-[48px] bg-danger text-white rounded-xl text-xs font-bold active:scale-[0.96] transition-all disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
+                                                        className="flex-1 py-2 min-h-[48px] bg-danger text-white rounded-xl text-xs font-semibold active:scale-[0.96] transition-all disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
                                                     >
                                                         {deleting ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Trash2 size={12} />}
                                                         <span>ยืนยันลบ</span>
                                                     </button>
                                                     <button
                                                         onClick={() => setDeletingId(null)}
-                                                        className="flex-1 py-2 min-h-[48px] bg-surface text-text-primary rounded-xl text-xs font-bold border border-border hover:bg-surface-subtle active:scale-[0.96] transition-all cursor-pointer"
+                                                        className="flex-1 py-2 min-h-[48px] bg-surface text-text-primary rounded-xl text-xs font-semibold border border-border hover:bg-surface-subtle active:scale-[0.96] transition-all cursor-pointer"
                                                     >
                                                         ยกเลิก
                                                     </button>
@@ -413,10 +413,10 @@ export default function AdminLocationsPage() {
                                                 </div>
 
                                                 <div className="flex-1 min-w-0">
-                                                    <h3 className="text-xs sm:text-sm font-bold text-text-primary truncate">{loc.name}</h3>
+                                                    <h3 className="text-xs sm:text-sm font-semibold text-text-primary truncate">{loc.name}</h3>
                                                     <div className="flex items-center gap-1.5 sm:gap-2 mt-2 text-[9px] sm:text-xs text-text-secondary">
                                                         <Building2 size={10} className="text-text-muted flex-shrink-0" />
-                                                        <span className="font-bold truncate max-w-[110px] sm:max-w-none">{getOrganizationLabel(loc.organization)}</span>
+                                                        <span className="font-semibold truncate max-w-[110px] sm:max-w-none">{getOrganizationLabel(loc.organization)}</span>
                                                         <span className="text-text-muted/30">•</span>
                                                         <span className="text-text-muted text-[8px] sm:text-[9px] bg-surface-subtle px-1.5 py-0.5 rounded border border-border">
                                                             {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
@@ -460,7 +460,7 @@ export default function AdminLocationsPage() {
                             <div className="w-12 h-1 bg-border rounded-full mx-auto mb-6 pointer-events-none" />
 
                             <div className="flex items-center justify-between mb-7">
-                                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider ">Edit Station Properties</h3>
+                                <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Edit Station Properties</h3>
                                 <button
                                     onClick={() => setEditingLoc(null)}
                                     className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
@@ -471,7 +471,7 @@ export default function AdminLocationsPage() {
 
                             <div className="space-y-7">
                                 <div className="space-y-3">
-                                    <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block ">ชื่อสถานีตรวจ</label>
+                                    <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block ">ชื่อสถานีตรวจ</label>
                                     <input
                                         type="text"
                                         value={editName}
@@ -481,7 +481,7 @@ export default function AdminLocationsPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block ">หน่วยงานหลัก</label>
+                                    <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block ">หน่วยงานหลัก</label>
                                     <div className="relative">
                                         <select
                                             value={uniqueOrgs.includes(editOrg) ? editOrg : "CUSTOM"}
@@ -518,7 +518,7 @@ export default function AdminLocationsPage() {
                                 <button
                                     onClick={handleEdit}
                                     disabled={editSaving || !editName.trim() || !editOrg.trim()}
-                                    className="w-full mt-6 py-4 min-h-[56px] bg-primary hover:bg-navy-dark text-white font-bold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                                    className="w-full mt-6 py-4 min-h-[56px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                                 >
                                     {editSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
                                     <span>บันทึกข้อมูลการแก้ไข</span>
