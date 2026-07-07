@@ -43,8 +43,11 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
                     </div>
                 </div>
 
-                {/* Label */}
-                <span className="text-xs font-bold text-text-secondary whitespace-nowrap">{isDark ? "โหมดสว่าง" : "โหมดมืด"}</span>
+                {/* Label — จองความกว้างตามข้อความที่ยาวสุด ("โหมดสว่าง") เสมอ เพื่อให้ปุ่มกว้างเท่ากันทั้งสองโหมด */}
+                <span className="grid justify-items-center text-xs font-bold text-text-secondary whitespace-nowrap">
+                    <span aria-hidden className="col-start-1 row-start-1 invisible">โหมดสว่าง</span>
+                    <span className="col-start-1 row-start-1">{isDark ? "โหมดสว่าง" : "โหมดมืด"}</span>
+                </span>
             </button>
         );
     }

@@ -6,6 +6,8 @@ import dynamic from "next/dynamic";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { getOrganizationLabel } from "@/lib/standards";
+import { confirmDialog } from "@/lib/swal";
+import { useToast } from "@/components/useToast";
 import { MapPin, MapPinPlus, MapPinned, Building2, Save, ShieldAlert, Plus, Pencil, Trash2, X, Check, ArrowLeft, RefreshCw, Search } from "lucide-react";
 
 const MapView = dynamic(() => import("@/components/map/MapView"), {
@@ -28,6 +30,7 @@ interface LocationItem {
 export default function AdminLocationsPage() {
     const { currentUser } = useAppStore();
     const router = useRouter();
+    const { showToast, toastElement } = useToast();
 
     // Create form
     const [name, setName] = useState("");
@@ -38,7 +41,6 @@ export default function AdminLocationsPage() {
         lng: number;
     } | null>(null);
     const [saving, setSaving] = useState(false);
-    const [success, setSuccess] = useState(false);
 
     // Organization combobox (ค้นหา/กรอง dropdown หน่วยงานที่มีอยู่)
     const [orgSearch, setOrgSearch] = useState("");
@@ -55,12 +57,13 @@ export default function AdminLocationsPage() {
     const [editOrg, setEditOrg] = useState("");
     const [editSaving, setEditSaving] = useState(false);
 
-    // Delete confirmation
-    const [deletingId, setDeletingId] = useState<number | null>(null); // 🔢 ปรับประเภทเป็น number
-    const [deleting, setDeleting] = useState(false);
+    // Delete: ยืนยันผ่าน SweetAlert แทน inline panel; ใช้ deletingId คุมสถานะ loading รายการที่กำลังลบ
+    const [deletingId, setDeletingId] = useState<number | null>(null);
 
-    const fetchLocations = useCallback(async () => {
-        setIsLoading(true);
+    // silent=true สำหรับ refetch หลังทำ action (เพิ่ม/แก้ไข/ลบ) เพื่อไม่ให้ list ยุบเป็น spinner
+    // ทั้งก้อน ซึ่งทำให้หน้าสั้นวูบแล้ว scroll เด้ง — โชว์ spinner เฉพาะตอนโหลดครั้งแรกเท่านั้น
+    const fetchLocations = useCallback(async (silent = false) => {
+        if (!silent) setIsLoading(true);
         try {
             const res = await fetch("/api/locations");
             const data = await res.json();
@@ -81,7 +84,7 @@ export default function AdminLocationsPage() {
         } catch (err) {
             console.error("Failed to fetch locations:", err);
         } finally {
-            setIsLoading(false);
+            if (!silent) setIsLoading(false);
         }
     }, []);
 
@@ -101,11 +104,18 @@ export default function AdminLocationsPage() {
 
     const handleSubmit = async () => {
         const orgVal = getOrgValue();
-        if (!name.trim() || !pickedPosition || !orgVal || !currentUser) return;
+        const stationName = name.trim();
+        if (!stationName || !pickedPosition || !orgVal || !currentUser) return;
+
+        const confirmed = await confirmDialog({
+            title: "ยืนยันเพิ่มสถานี?",
+            text: `เพิ่มสถานี "${stationName}" ลงในระบบ`,
+            confirmText: "เพิ่มสถานี",
+            tone: "primary",
+        });
+        if (!confirmed) return;
 
         setSaving(true);
-        setSuccess(false);
-
         try {
             const res = await fetch("/api/locations", {
                 method: "POST",
@@ -114,7 +124,7 @@ export default function AdminLocationsPage() {
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
-                    name: name.trim(),
+                    name: stationName,
                     organization: orgVal,
                     lat: pickedPosition.lat,
                     lng: pickedPosition.lng,
@@ -122,14 +132,13 @@ export default function AdminLocationsPage() {
             });
 
             if (res.ok) {
-                setSuccess(true);
                 setName("");
                 setPickedPosition(null);
                 setOrganization("");
                 setCustomOrg("");
                 setOrgSearch("");
-                fetchLocations();
-                setTimeout(() => setSuccess(false), 3000);
+                fetchLocations(true);
+                showToast(`เพิ่มสถานี "${stationName}" เรียบร้อยแล้ว`, "success");
             }
         } catch (err) {
             console.error("Failed to create location:", err);
@@ -139,7 +148,17 @@ export default function AdminLocationsPage() {
     };
 
     const handleEdit = async () => {
-        if (!editingLoc || !editName.trim() || !editOrg.trim() || !currentUser) return;
+        const editedName = editName.trim();
+        if (!editingLoc || !editedName || !editOrg.trim() || !currentUser) return;
+
+        const confirmed = await confirmDialog({
+            title: "ยืนยันแก้ไขสถานี?",
+            text: `บันทึกการแก้ไขข้อมูลสถานี "${editedName}"`,
+            confirmText: "บันทึก",
+            tone: "warning",
+        });
+        if (!confirmed) return;
+
         setEditSaving(true);
         try {
             const res = await fetch("/api/locations", {
@@ -150,13 +169,14 @@ export default function AdminLocationsPage() {
                 },
                 body: JSON.stringify({
                     id: editingLoc.id,
-                    name: editName.trim(),
+                    name: editedName,
                     organization: editOrg.trim(),
                 }),
             });
             if (res.ok) {
                 setEditingLoc(null);
-                fetchLocations();
+                fetchLocations(true);
+                showToast(`อัปเดตข้อมูลสถานี "${editedName}" แล้ว`, "success");
             }
         } catch (err) {
             console.error("Failed to update location:", err);
@@ -165,24 +185,33 @@ export default function AdminLocationsPage() {
         }
     };
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (loc: LocationItem) => {
         if (!currentUser) return;
-        setDeleting(true);
+
+        const confirmed = await confirmDialog({
+            title: "ยืนยันลบสถานี?",
+            text: `ลบสถานี "${loc.name}" พร้อมผลข้อมูลประวัติทิ้งถาวร — ไม่สามารถย้อนกลับได้`,
+            confirmText: "ลบสถานี",
+            tone: "danger",
+        });
+        if (!confirmed) return;
+
+        setDeletingId(loc.id);
         try {
-            const res = await fetch(`/api/locations?id=${id}`, {
+            const res = await fetch(`/api/locations?id=${loc.id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
             });
             if (res.ok) {
-                setDeletingId(null);
-                fetchLocations();
+                fetchLocations(true);
+                showToast(`ลบสถานี "${loc.name}" ออกจากระบบแล้ว`, "danger");
             }
         } catch (err) {
             console.error("Failed to delete location:", err);
         } finally {
-            setDeleting(false);
+            setDeletingId(null);
         }
     };
 
@@ -347,13 +376,6 @@ export default function AdminLocationsPage() {
                                 )}
                             </div>
 
-                            {success && (
-                                <div className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 font-semibold text-center flex items-center justify-center gap-1.5 animate-fade-in">
-                                    <Check size={14} className="text-emerald-500" />
-                                    บันทึกตำแหน่งสถานีตรวจวัดเรียบร้อยแล้ว
-                                </div>
-                            )}
-
                             {/* Submit Button */}
                             <button
                                 onClick={handleSubmit}
@@ -418,63 +440,43 @@ export default function AdminLocationsPage() {
                             ) : (
                                 filteredLocations.map((loc) => (
                                     <div key={loc.id} className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden transition-all hover:scale-[1.01] duration-200">
-                                        {deletingId === loc.id ? (
-                                            <div className="p-6 bg-red-500/5 border-b border-red-500/10 space-y-5">
-                                                <p className="text-xs font-semibold text-danger">
-                                                    ลบสถานี &quot;{loc.name}
-                                                    &quot; พร้อมผลข้อมูลประวัติทิ้งถาวร?
-                                                </p>
-                                                <div className="flex gap-3">
-                                                    <button
-                                                        onClick={() => handleDelete(loc.id)}
-                                                        disabled={deleting}
-                                                        className="flex-1 py-2 min-h-[48px] bg-danger text-white rounded-xl text-xs font-semibold active:scale-[0.96] transition-all disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
-                                                    >
-                                                        {deleting ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Trash2 size={12} />}
-                                                        <span>ยืนยันลบ</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeletingId(null)}
-                                                        className="flex-1 py-2 min-h-[48px] bg-surface text-text-primary rounded-xl text-xs font-semibold border border-border hover:bg-surface-subtle active:scale-[0.96] transition-all cursor-pointer"
-                                                    >
-                                                        ยกเลิก
-                                                    </button>
+                                        <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-5">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-light text-primary border border-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                                <MapPin size={15} className="sm:size-[16px]" />
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-xs sm:text-sm font-semibold text-text-primary truncate">{loc.name}</h3>
+                                                <div className="flex items-center gap-1.5 sm:gap-2 mt-2 text-[9px] sm:text-xs text-text-secondary">
+                                                    <Building2 size={10} className="text-text-muted flex-shrink-0" />
+                                                    <span className="font-semibold truncate max-w-[110px] sm:max-w-none">{getOrganizationLabel(loc.organization)}</span>
+                                                    <span className="text-text-muted/30">•</span>
+                                                    <span className="text-text-muted text-[8px] sm:text-[9px] bg-surface-subtle px-1.5 py-0.5 rounded border border-border">
+                                                        {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
+                                                    </span>
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-5">
-                                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-light text-primary border border-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                                                    <MapPin size={15} className="sm:size-[16px]" />
-                                                </div>
 
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="text-xs sm:text-sm font-semibold text-text-primary truncate">{loc.name}</h3>
-                                                    <div className="flex items-center gap-1.5 sm:gap-2 mt-2 text-[9px] sm:text-xs text-text-secondary">
-                                                        <Building2 size={10} className="text-text-muted flex-shrink-0" />
-                                                        <span className="font-semibold truncate max-w-[110px] sm:max-w-none">{getOrganizationLabel(loc.organization)}</span>
-                                                        <span className="text-text-muted/30">•</span>
-                                                        <span className="text-text-muted text-[8px] sm:text-[9px] bg-surface-subtle px-1.5 py-0.5 rounded border border-border">
-                                                            {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex gap-2 sm:gap-3 flex-shrink-0">
-                                                    <button
-                                                        onClick={() => openEdit(loc)}
-                                                        className="w-8 h-8 sm:w-10 sm:h-10 min-h-[32px] min-w-[32px] sm:min-h-[40px] sm:min-w-[40px] bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
-                                                    >
-                                                        <Pencil size={13} className="text-text-muted group-hover:text-primary sm:size-[14px]" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeletingId(loc.id)}
-                                                        className="w-8 h-8 sm:w-10 sm:h-10 min-h-[32px] min-w-[32px] sm:min-h-[40px] sm:min-w-[40px] bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
-                                                    >
+                                            <div className="flex gap-2 sm:gap-3 flex-shrink-0">
+                                                <button
+                                                    onClick={() => openEdit(loc)}
+                                                    className="w-8 h-8 sm:w-10 sm:h-10 min-h-[32px] min-w-[32px] sm:min-h-[40px] sm:min-w-[40px] bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
+                                                >
+                                                    <Pencil size={13} className="text-text-muted group-hover:text-primary sm:size-[14px]" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(loc)}
+                                                    disabled={deletingId === loc.id}
+                                                    className="w-8 h-8 sm:w-10 sm:h-10 min-h-[32px] min-w-[32px] sm:min-h-[40px] sm:min-w-[40px] bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {deletingId === loc.id ? (
+                                                        <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
                                                         <Trash2 size={13} className="text-text-muted group-hover:text-red-500 sm:size-[14px]" />
-                                                    </button>
-                                                </div>
+                                                    )}
+                                                </button>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 ))
                             )}
@@ -485,9 +487,9 @@ export default function AdminLocationsPage() {
                 {/* ══════════ EDIT DRAWER (MODAL) ══════════ */}
                 {editingLoc && (
                     <>
-                        <div className="fixed inset-0 bg-black/40 z-[800] backdrop-blur-xs transition-opacity" onClick={() => setEditingLoc(null)} />
+                        <div className="fixed inset-0 bg-black/40 z-[1000] backdrop-blur-xs transition-opacity" onClick={() => setEditingLoc(null)} />
                         <div
-                            className="fixed bottom-0 left-0 right-0 z-[801] bg-surface rounded-t-[32px] shadow-2xl border-t border-border max-w-lg mx-auto px-8 pt-8 space-y-8 animate-slide-up transition-colors duration-300"
+                            className="fixed bottom-0 left-0 right-0 z-[1001] bg-surface rounded-t-[32px] shadow-2xl border-t border-border max-w-lg mx-auto px-8 pt-8 space-y-8 animate-slide-up transition-colors duration-300"
                             style={{
                                 paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
                             }}
@@ -563,6 +565,9 @@ export default function AdminLocationsPage() {
                     </>
                 )}
             </div>
+
+            {/* Toast */}
+            {toastElement}
         </div>
     );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { MapPin, ShieldAlert, ChevronRight, Shield, Users, Phone, UserCircle2, Pencil, X, Check, AlertCircle, User } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -64,8 +65,8 @@ function validateName(v: string): string {
 }
 
 function validatePhone(v: string): string {
-    if (!v.trim()) return "";
     const clean = v.trim().replace(/[-\s]/g, "");
+    if (!clean) return "กรุณากรอกเบอร์โทรศัพท์";
     if (!PHONE_RE.test(clean)) return "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)";
     return "";
 }
@@ -111,15 +112,15 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
         setSaving(true);
         setServerError("");
         try {
-            const res = await fetch("/api/auth/onboarding", {
-                method: "PUT",
+            // ยิงไปที่ /api/profile (แก้เฉพาะข้อมูลส่วนตัว ไม่ยุ่งกับ role)
+            // แนบ LINE token ให้หลังบ้านแกะ userId จาก token เอง กัน IDOR
+            const res = await fetch("/api/profile", {
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    // 🔥 เพิ่มกลอนล็อกแนบ LINE Access Token ส่งไปยืนยันตัวตนจริงกับหลังบ้านครับบอส!
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
-                    // 🔒 ปลอดภัยสูงสุด: ถอดไอดี userId ออกไปได้เลยครับ เพราะหลังบ้านจะแกะจากตั๋ว Token แทนแล้ว
                     firstName,
                     lastName,
                     phoneNumber: phone.trim().replace(/[-\s]/g, ""),

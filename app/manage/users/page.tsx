@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { confirmDialog } from "@/lib/swal";
+import { useToast } from "@/components/useToast";
 import { useAppStore } from "@/lib/store";
 import { ArrowLeft, ShieldAlert, Users, UserCog, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, Search } from "lucide-react";
 
@@ -79,27 +80,7 @@ export default function AdminUsersPage() {
     const [search, setSearch] = useState("");
     const [updating, setUpdating] = useState<number | null>(null);
     const [openDropdown, setOpenDropdown] = useState<number | null>(null);
-    const [toast, setToast] = useState<{ message: string; variant: "success" | "danger" } | null>(null);
-    const [toastLeaving, setToastLeaving] = useState(false);
-    const toastTimers = useRef<{ hide?: ReturnType<typeof setTimeout>; remove?: ReturnType<typeof setTimeout> }>({});
-
-    // โชว์ toast 5 วิ (เดิม 3 วิ + เพิ่ม 2 วิ) แล้วเล่น animation เลื่อนลงก่อนค่อยลบออกจาก DOM
-    const showToast = useCallback((message: string, variant: "success" | "danger") => {
-        clearTimeout(toastTimers.current.hide);
-        clearTimeout(toastTimers.current.remove);
-        setToast({ message, variant });
-        setToastLeaving(false);
-        toastTimers.current.hide = setTimeout(() => setToastLeaving(true), 5000);
-        toastTimers.current.remove = setTimeout(() => setToast(null), 5300);
-    }, []);
-
-    useEffect(() => {
-        const timers = toastTimers.current;
-        return () => {
-            clearTimeout(timers.hide);
-            clearTimeout(timers.remove);
-        };
-    }, []);
+    const { showToast, toastElement } = useToast();
 
     const [rejectingAll, setRejectingAll] = useState(false);
     const [stats, setStats] = useState({ total: 0, staff: 0, pending: 0 });
@@ -563,18 +544,7 @@ export default function AdminUsersPage() {
             </div>
 
             {/* Toast */}
-            {toast && (
-                <div className={`fixed bottom-[88px] left-1/2 -translate-x-1/2 z-[999] ${toastLeaving ? "animate-toast-exit" : "animate-slide-up"}`}>
-                    <div className="flex items-center gap-2.5 bg-surface text-text-primary border border-border/60 text-xs font-semibold px-5 py-3 rounded-2xl shadow-xl whitespace-nowrap">
-                        {toast.variant === "success" ? (
-                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                        ) : (
-                            <XCircle size={14} className="text-red-500 shrink-0" />
-                        )}
-                        {toast.message}
-                    </div>
-                </div>
-            )}
+            {toastElement}
         </div>
     );
 }
