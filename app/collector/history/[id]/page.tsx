@@ -22,8 +22,7 @@ interface SampleDetail {
     locationId: number;
     collectionTime: string;
     uploadedActiveAt: string;
-    ammoniaValue: number;
-    phosphateValue: number;
+    [key: string]: any; // ⚡️ รองรับคีย์สารเคมีแบบไดนามิกเคลื่อนตาม DB
     dissolvedOxygen: number | null;
     airTemperature: number | null;
     rainAccumulation: number | null;
@@ -45,6 +44,12 @@ interface SampleDetail {
         lastName?: string | null;
     };
 }
+
+// ⚡️ แกนพิกัด Master Data สารเคมีสำหรับวนลูปเรนเดอร์ UI แบบ Dynamic
+const PARAM_RENDER_MAP = [
+    { key: "phosphateValue", label: "Phosphate", sub: "PO₄", bgClass: "bg-teal-50 dark:bg-teal-950/20", textClass: "text-teal-500", iconColor: "text-teal-500" },
+    { key: "ammoniaValue", label: "Ammonia", sub: "NH₃", bgClass: "bg-purple-50 dark:bg-purple-950/20", textClass: "text-purple-500", iconColor: "text-purple-500" },
+];
 
 function formatDateTime(value: string) {
     return new Date(value).toLocaleDateString("th-TH", {
@@ -74,6 +79,9 @@ export default function CollectorHistoryDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [imageView, setImageView] = useState<"original" | "plot">("original");
+
+    const [activeParamKey, setActiveParamKey] = useState<string>("phosphate");
+
 
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -136,7 +144,6 @@ export default function CollectorHistoryDetailPage() {
         };
     }, [currentUser, params.id]);
 
-    // โหลด locations เมื่อเข้าเข้าสู่ Edit Mode
     useEffect(() => {
         if (!isEditing || locations.length > 0) return;
 
@@ -219,12 +226,14 @@ export default function CollectorHistoryDetailPage() {
     }
 
     const filteredLocations = locations.filter((l) => l.name?.toLowerCase().includes(locationSearch.toLowerCase()) || l.agency?.toLowerCase().includes(locationSearch.toLowerCase()));
-
     const isLocationValid = locations.some((l) => String(l.id) === editData.locationId && l.name === locationSearch) || (locations.length === 0 && editData.locationId !== "");
 
     const standardsEvaluation = useMemo(() => {
         if (!sample) return [];
-        return Object.entries(evaluateAllStandards(sample.phosphateValue, sample.ammoniaValue)).map(([type, passed]) => ({
+        const currentPhosphate = sample.phosphateValue ?? 0;
+        const currentAmmonia = sample.ammoniaValue ?? 0;
+
+        return Object.entries(evaluateAllStandards(currentPhosphate, currentAmmonia)).map(([type, passed]) => ({
             type,
             label: LOCATION_TYPE_LABELS[type as keyof typeof LOCATION_TYPE_LABELS] || type,
             passed,
@@ -272,11 +281,11 @@ export default function CollectorHistoryDetailPage() {
     return (
         <div className="min-h-screen w-full bg-primary pb-5 antialiased">
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
-                <div className="bg-surface  rounded-xl border border-border">
+                <div className="bg-surface rounded-xl border border-border">
                     <div className="flex items-center justify-between">
                         <button
                             onClick={() => router.back()}
-                            className="flex items-center gap-1 text-text-secondary hover:text-text-primary  text-xs font-semibold transition-all py-2 px-3.5 rounded-xl w-fit cursor-pointer"
+                            className="flex items-center gap-1 text-text-secondary hover:text-text-primary text-xs font-semibold transition-all py-2 px-3.5 rounded-xl w-fit cursor-pointer"
                         >
                             <ArrowLeft size={16} />
                             ย้อนกลับ
@@ -285,8 +294,6 @@ export default function CollectorHistoryDetailPage() {
                 </div>
                 <div className="bg-surface px-5 py-5 sm:px-6 rounded-2xl border border-border">
                     <div className="flex items-center justify-between mb-5">
-                        
-
                         {currentUser?.role === "admin" && (
                             <div className="flex items-center gap-2">
                                 {isEditing ? (
@@ -409,20 +416,52 @@ export default function CollectorHistoryDetailPage() {
                 </div>
 
                 {/* Image Section */}
-                <div className="bg-surface rounded-3xl shadow-sm border border-border overflow-hidden p-2">
+                {/* 📸 Image Section (Dynamic Tabs Version) */}
+                <div className="bg-surface rounded-3xl shadow-sm border border-border overflow-hidden p-3 space-y-3">
+                    {/* 🔄 แถบเลือกสารเคมี (Tabs) ดึงตามรายการที่มีใน PARAM_RENDER_MAP */}
+                    <div className="flex border-b border-border/60 pb-1.5 gap-1">
+                        {PARAM_RENDER_MAP.map((param) => {
+                            // สกัดชื่อสารสั้น ๆ ออกมา (เช่น "phosphateValue" -> "phosphate")
+                            const paramBaseName = param.key.replace("Value", "").toLowerCase();
+                            const isActive = activeParamKey === paramBaseName;
+
+                            return (
+                                <button
+                                    key={param.key}
+                                    onClick={() => setActiveParamKey(paramBaseName)}
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                        isActive ? "bg-primary text-white border-primary" : "bg-surface-subtle text-text-secondary border-border hover:bg-muted/10"
+                                    }`}
+                                >
+                                    {param.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
                     <div className="relative">
                         {(() => {
-                            const src = imageView === "original" ? sample.rawImageUrl : sample.analyzedPlotUrl;
+                            // ⚡️ ดึง URL รูปภาพแบบไดนามิกจับคู่ตามชื่อสารเคมี (ล้อตามโครงสร้างอัปโหลดของ API /api/samples)
+                            // เช่น sample["rawImageUrl_phosphate"] หรือ sample["analyzedPlotUrl_ammonia"]
+                            // (หมายเหตุ: ถ้า DB ของบอสเก็บ URL รวมไว้ที่คีย์กลาง ให้สืบทอดใช้ sample.rawImageUrl เป็นหลักได้ครับ)
+                            const rawKey = `rawImageUrl_${activeParamKey}`;
+                            const plotKey = `analyzedPlotUrl_${activeParamKey}`;
+
+                            const src = imageView === "original" ? sample[rawKey] || sample.rawImageUrl : sample[plotKey] || sample.analyzedPlotUrl;
+
                             return src ? (
-                                <img src={src} alt={imageView === "original" ? "ภาพต้นฉบับ" : "ภาพพลอตสี"} className="w-full h-52 sm:h-72 object-contain rounded-2xl bg-surface-subtle" />
+                                <img src={src} alt={`${activeParamKey} view`} className="w-full h-52 sm:h-72 object-contain rounded-2xl bg-slate-950" />
                             ) : (
                                 <div className="w-full h-52 sm:h-72 rounded-2xl bg-surface-subtle border border-border flex flex-col items-center justify-center gap-2">
                                     {imageView === "original" ? <Camera size={28} className="text-text-muted" /> : <Microscope size={28} className="text-text-muted" />}
-                                    <span className="text-[10px] font-bold text-text-muted">{imageView === "original" ? "ไม่มีภาพต้นฉบับ" : "ไม่มีภาพพลอตสี"}</span>
+                                    <span className="text-[10px] font-bold text-text-muted">
+                                        {imageView === "original" ? `ไม่มีภาพต้นฉบับสำหรับ ${activeParamKey}` : `ไม่มีภาพพลอตสีสำหรับ ${activeParamKey}`}
+                                    </span>
                                 </div>
                             );
                         })()}
 
+                        {/* ปุ่มสลับโหมด ต้นฉบับ / พลอตสี คงเดิมไว้ */}
                         <button
                             onClick={() => setImageView((v) => (v === "original" ? "plot" : "original"))}
                             className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-full shadow-lg text-white cursor-pointer transition-all active:scale-90"
@@ -449,33 +488,28 @@ export default function CollectorHistoryDetailPage() {
                     </div>
                 </div>
 
-                {/* Chemical Values Card */}
+                {/* ⚡️ Chemical Values Card (Dynamic Version วนลูปตาม Array) */}
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-surface rounded-2xl p-5 shadow-sm border border-border flex flex-col justify-between min-h-32">
-                        <div className="flex items-center gap-1.5 mb-3">
-                            <div className="bg-primary-light p-1.5 rounded-xl border border-primary/10">
-                                <FlaskConical size={13} className="text-primary" />
-                            </div>
-                            <div className="font-mono text-[9px] font-bold text-text-muted uppercase tracking-wider">Phosphate</div>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                            <div className={`text-2xl sm:text-3xl font-black ${valueColor}`}>{sample.phosphateValue.toFixed(3)}</div>
-                            <span className="font-mono text-[9px] font-bold text-text-muted">mg/L</span>
-                        </div>
-                    </div>
+                    {PARAM_RENDER_MAP.map((param) => {
+                        const chemicalValue = sample[param.key] !== undefined ? Number(sample[param.key]) : 0;
 
-                    <div className="bg-surface rounded-2xl p-5 shadow-sm border border-border flex flex-col justify-between min-h-32">
-                        <div className="flex items-center gap-1.5 mb-3">
-                            <div className="bg-purple-50 dark:bg-purple-950/20 p-1.5 rounded-xl border border-purple-100/10">
-                                <FlaskConical size={13} className="text-purple-500" />
+                        return (
+                            <div key={param.key} className="bg-surface rounded-2xl p-5 shadow-sm border border-border flex flex-col justify-between min-h-32">
+                                <div className="flex items-center gap-1.5 mb-3">
+                                    <div className={`${param.bgClass} p-1.5 rounded-xl border border-border/10`}>
+                                        <FlaskConical size={13} className={param.iconColor} />
+                                    </div>
+                                    <div className="font-mono text-[9px] font-bold text-text-muted uppercase tracking-wider">
+                                        {param.label} <span className="text-[8px] font-normal lowercase">({param.sub})</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-baseline gap-1">
+                                    <div className={`text-2xl sm:text-3xl font-black ${valueColor}`}>{chemicalValue.toFixed(3)}</div>
+                                    <span className="font-mono text-[9px] font-bold text-text-muted">mg/L</span>
+                                </div>
                             </div>
-                            <div className="font-mono text-[9px] font-bold text-text-muted uppercase tracking-wider">Ammonia</div>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                            <div className={`text-2xl sm:text-3xl font-black ${valueColor}`}>{sample.ammoniaValue.toFixed(3)}</div>
-                            <span className="font-mono text-[9px] font-bold text-text-muted">mg/L</span>
-                        </div>
-                    </div>
+                        );
+                    })}
                 </div>
 
                 {/* Meteorological Inputs */}
