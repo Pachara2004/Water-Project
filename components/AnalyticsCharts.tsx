@@ -11,14 +11,14 @@ export interface SampleItem {
     locationId: number;
     status: "safe" | "warning" | "danger";
     collectionTime: string | Date;
-    phosphateValue: number | null; // ซิงค์ตามฟิลด์จริงของบอส
-    ammoniaValue: number | null; // ซิงค์ตามฟิลด์จริงของบอส
+    phosphateValue: number | null; 
+    ammoniaValue: number | null; 
     rainAccumulation?: number | null;
     weatherCondCode?: number | null;
     location?: {
         id?: number;
-        name: string; // ✅ กลับมาใช้ name ตาม DB จริง
-        organization: string; // ✅ กลับมาใช้ organization ตาม DB จริง
+        name: string; 
+        organization: string; 
         lat?: number;
         lng?: number;
     };
@@ -85,7 +85,7 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
         });
     }, [samples, filterOrg, filterLoc, filterTime, filterWeather]);
 
-    // 🥧 1. สัดส่วนคุณภาพน้ำรวม (รองรับทั้งพิมพ์เล็กพิมพ์ใหญ่ด้วย .toLowerCase)
+    // 1. สัดส่วนคุณภาพน้ำรวม (รองรับทั้งพิมพ์เล็กพิมพ์ใหญ่ด้วย .toLowerCase)
     const statusDist = useMemo(() => {
         let safe = 0,
             warning = 0,
@@ -111,7 +111,7 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
         return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
     };
 
-    // 📊 2. สหสัมพันธ์สารเคมีและน้ำฝนสะสม
+    // 2. สหสัมพันธ์สารเคมีและน้ำฝนสะสม
     const avgChemData = useMemo(() => {
         const map: Record<
             string,
@@ -164,7 +164,7 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
             .slice(-10);
     }, [filteredSamples]);
 
-    // 🛑 3. ตารางวิเคราะห์หาพิกัดจุดเสี่ยงวิกฤตพบบ่อยสูงสุด
+    // 3. ตารางวิเคราะห์หาพิกัดจุดเสี่ยงวิกฤตพบบ่อยสูงสุด
     const topCritical = useMemo(() => {
         const locMap: Record<
             number,

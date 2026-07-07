@@ -74,20 +74,20 @@ export default function ExportButtons() {
             <button
                 onClick={handleExportCSV}
                 disabled={isExporting !== null}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer shadow-sm min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer"
             >
                 {isExporting === "csv" ? <Loader2 size={14} className="animate-spin text-primary" /> : <FileText size={14} className="text-orange-500" />}
-                ส่งออกไฟล์ CSV (.csv)
+                ส่งออกไฟล์ CSV
             </button>
 
             {/* ปุ่มดาวน์โหลด Excel */}
             <button
                 onClick={handleExportExcel}
                 disabled={isExporting !== null}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer shadow-sm min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer"
             >
                 {isExporting === "excel" ? <Loader2 size={14} className="animate-spin text-primary" /> : <FileSpreadsheet size={14} className="text-emerald-500" />}
-                ส่งออกไฟล์ Excel (.xlsx)
+                ส่งออกไฟล์ Excel
             </button>
         </div>
     );

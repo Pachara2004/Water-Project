@@ -129,16 +129,15 @@ export default function ExecutiveDashboard() {
                 <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                     <div className="space-y-1.5">
                         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary items-center">
-                            ระบบวิเคราะห์และติดตาม<span className="text-primary font-bold">คุณภาพน้ำทะเล</span>
+                            ระบบวิเคราะห์และติดตาม<span className="text-primary font-bold">คุณภาพน้ำ</span>
                         </h1>
-                        <p className="text-text-secondary text-xs sm:text-sm">ศูนย์ข้อมูลคุณภาพสารเคมีแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม </p>
                     </div>
                     <ExportButtons />
                 </div>
 
                 {isUserAdmin && (
-                    <div className="px-5 sm:px-8 mb-2 flex justify-end">
-                        <div className="inline-flex rounded-xl p-1 bg-surface border border-border shadow-sm">
+                    <div className="flex justify-end">
+                        <div className="inline-flex rounded-xl p-1 bg-surface border border-border">
                             <button
                                 onClick={() => setViewMode("ALL")}
                                 className={`px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all cursor-pointer ${
@@ -150,7 +149,7 @@ export default function ExecutiveDashboard() {
                             <button
                                 onClick={() => setViewMode("MINE")}
                                 className={`px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                                    viewMode === "MINE" ? "bg-primary text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
+                                    viewMode === "MINE" ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
                                 }`}
                             >
                                 ข้อมูลของฉัน
