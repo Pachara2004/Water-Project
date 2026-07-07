@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { evaluateSample } from "@/lib/standards";
+import { evaluateSample } from "@/lib/standards"; 
 import { verifyAuth } from "@/lib/auth-guard";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const antiSpam = new Map<string, number>();
 
+const apiAi = process.env.API_AI_URL;
+
 export async function POST(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
 
-    // ⚡️ แกะดูชื่อสาร (parameterName) แทน ID เพื่อเอามาทำ Anti-Spam Key
     const cloneRequest = request.clone();
     let parameterNameStr = "default";
     try {
         const testData = await cloneRequest.formData();
         parameterNameStr = testData.get("parameterName")?.toString()?.toLowerCase() || "default";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {}
 
     const spamKey = `${ip}_${parameterNameStr}`;
@@ -31,15 +33,13 @@ export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
         const imageFile = formData.get("image") as File | null;
-
-        // ⚡️ เปลี่ยนฟิลด์ที่รับจากหน้าบ้านเป็น parameterName (เช่น "ammonia", "phosphate")
         const parameterName = formData.get("parameterName") as string | null;
 
         if (!imageFile || !parameterName) {
             return NextResponse.json({ error: "ข้อมูลไม่ครบถ้วน (ขาดรูปภาพหรือชื่อพารามิเตอร์)" }, { status: 400 });
         }
 
-        // 🔍 ค้นหาใน DB ของเราด้วยชื่อ (Name) เพื่อเอา ID มาใช้บันทึก/อ้างอิงภายในเว็บแอป
+        // ค้นหาพารามิเตอร์จากฐานข้อมูล
         const dbParam = await prisma.parameter.findFirst({
             where: {
                 name: {
@@ -52,27 +52,54 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: `ไม่พบพารามิเตอร์ชื่อ '${parameterName}' นี้ในระบบฐานข้อมูล` }, { status: 400 });
         }
 
-        console.log(`Analyzing ${dbParam.name}: ${imageFile.name} for User ID: ${auth.user?.id}`);
+        console.log(`Connecting to AI Pipeline for ${dbParam.name}...`);
 
-        // [กระบวนการอ่าน Buffer และหน่วงเวลาจำลองของบอส...]
-        const bytes = await imageFile.arrayBuffer();
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        // 1. จัดแจง FormData ส่งเข้าหา AI Pipeline
+        const apiFormData = new FormData();
+        const blob = new Blob([await imageFile.arrayBuffer()], { type: imageFile.type });
+        apiFormData.append("image", blob, imageFile.name);
 
-        // 🧠 จำลองผลลัพธ์จาก AI
-        const mockConcentration = Math.random() * 2;
+        // ฟอร์แมตชื่อส่งไปหาโมเดล AI (ปรับตัวแรกเป็นพิมพ์ใหญ่ตามสเปก)
+        const formattedParamName = dbParam.name.charAt(0).toUpperCase() + dbParam.name.slice(1).toLowerCase();
+        apiFormData.append("parameterName", formattedParamName);
 
-        const targetPhosphate = dbParam.name.toLowerCase().includes("phosphate") ? mockConcentration : 0;
-        const targetAmmonia = dbParam.name.toLowerCase().includes("ammonia") ? mockConcentration : 0;
+        const aiResponse = await fetch(apiAi, {
+            method: "POST",
+            body: apiFormData,
+        });
+
+        if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            console.error("FastAPI Server Error:", errorText);
+            return NextResponse.json({ error: "AI Pipeline เกิดข้อผิดพลาดในการประมวลผล" }, { status: 502 });
+        }
+
+        // แกะผลลัพธ์จากสเปกใหม่ของทีม AI
+        const aiResult = await aiResponse.json();
+
+        // 2. คำนวณสถานะความปลอดภัยแบบ Dynamic เพื่อรักษาระบบเดิม
+        const currentParamName = dbParam.name.toLowerCase();
+        const targetPhosphate = currentParamName.includes("phosphate") ? aiResult.concentrated : 0;
+        const targetAmmonia = currentParamName.includes("ammonia") ? aiResult.concentrated : 0;
+
+        // เรียกใช้งานเกณฑ์มาตรฐานกลางในเว็บแอป (เปิดช่องทางสำหรับปรับปรุงโมดูลรวมสารในอนาคต)
         const evalResult = evaluateSample(targetPhosphate, targetAmmonia);
 
-        // ⚡️ คืนค่ากลับไปโดยระบุทั้ง Name และ ID คืนให้หน้าบ้าน
+        // ดึงข้อความแนะนำสเปกใหม่ ดักจับกรณีคีย์ผันแปร
+        const aiMessage = aiResult.message || aiResult.text || "";
+
+        // ดักจับ Bounding Box แบบครอบคลุมความผันผวนของคีย์ JSON ทั้งแบบเคสเว้นวรรคและอันเดอร์สกอร์
+        const boundingBox = aiResult["bounding box"] || aiResult["bounding_box"] || [];
+
+        // 3. คืนค่าผลลัพธ์ผ่าน JSON กลับไปให้หน้าบ้าน (Frontend)
         return NextResponse.json({
             parameterId: dbParam.id,
-            parameterName: dbParam.name.toLowerCase(), // ส่งชื่อพิมพ์เล็กกลับไปให้ฝั่ง AI/หน้าบ้านใช้คุยกันง่ายๆ
-            concentrated: mockConcentration,
-            status: evalResult.overallStatus,
-            confidence: 95,
-            "bounding box": [500, 700, 150, 550],
+            parameterName: currentParamName,
+            concentrated: aiResult.concentrated,
+            status: evalResult.overallStatus, 
+            confidence: aiResult.confidence, 
+            "bounding box": boundingBox, 
+            message: aiMessage, 
         });
     } catch (error) {
         console.error("POST /api/analyze error:", error);

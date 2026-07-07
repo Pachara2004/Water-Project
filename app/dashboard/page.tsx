@@ -124,7 +124,7 @@ export default function ExecutiveDashboard() {
     const isUserExecutive = currentUser?.role?.toUpperCase() === "EXECUTIVE" || currentUser?.role?.toUpperCase() === "OFFICER";
 
     return (
-        <div className="min-h-screen w-full bg-surface-muted pb-16 transition-colors duration-300">
+        <div className="min-h-screen w-full bg-primary pb-5 antialiased">
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6 pt-6 sm:pt-10">
                 <div className="relative w-full rounded-xl bg-surface p-6 sm:p-8 border border-border/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                     <div className="space-y-1.5">
@@ -162,7 +162,7 @@ export default function ExecutiveDashboard() {
                 {isUserCollector && <div className="px-5 sm:px-8 mb-2 text-xs text-text-secondary text-right">แสดงเฉพาะข้อมูลการจัดเก็บของคุณ</div>}
                 {isUserExecutive && <div className="px-5 sm:px-8 mb-2 text-xs text-text-secondary text-right">แสดงภาพรวมข้อมูลทั้งหมดในระบบ</div>}
 
-                <div className="px-5 sm:px-8 mt-4 sm:mt-5">
+                <div className="">
                     <AnalyticsCharts samples={filteredSamples} />
                 </div>
             </div>
