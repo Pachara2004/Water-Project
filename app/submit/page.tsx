@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import Swal from "sweetalert2";
 import { getParameterStatus, LOCATION_STANDARDS, evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
-import { FlaskConical, Loader2, CheckCircle2, MapPin, ArrowLeft, ImagePlus, Sparkles, ShieldCheck, ShieldX, Camera, Clock, Database, ChevronRight, Search } from "lucide-react";
+import { FlaskConical, Loader2, CheckCircle2, MapPin, ArrowLeft, ImagePlus, Sparkles, ShieldCheck, ShieldX, Camera, Clock, Database, ChevronRight, Search, AlertCircle } from "lucide-react";
 
 interface LocationItem {
     id: number;
@@ -101,28 +101,25 @@ function SubmitContent() {
     const [imagePlotFiles, setImagePlotFiles] = useState<Record<number, File>>({});
 
     const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
-    const [imagePlotFile, setImagePlotFile] = useState<File | null>(null);
     const searchParams = useSearchParams();
     const router = useRouter();
     const { currentUser } = useAppStore();
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const locationIdParam = searchParams.get("locationId");
     const [currentLocationId, setCurrentLocationId] = useState<string | null>(locationIdParam);
     const [locationName, setLocationName] = useState("");
     const [locationType, setLocationType] = useState("COMMUNITY");
     const [step, setStep] = useState<"upload" | "analyzing" | "results">("upload");
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [imageFile, setImageFile] = useState<File | null>(null);
     const [results, setResults] = useState<
         Record<
             number,
             {
                 concentrated: number;
                 status: "safe" | "warning" | "danger";
+                message: string; // ⚡️ เพิ่มฟิลด์รองรับสเปกข้อความแนะนำตัวใหม่
             }
         >
-        >({});
+    >({});
     const [overallStatus, setOverallStatus] = useState<"safe" | "warning" | "danger">("safe");
     const [saved, setSaved] = useState(false);
     const [isRecommending, setIsRecommending] = useState(false);
@@ -211,65 +208,6 @@ function SubmitContent() {
         color: "var(--color-text-primary, #000000)",
     });
 
-    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        // 🛑 ดักจับนิรภัยตั้งแต่ตอนกดเลือกรูปภาพหน้าบ้าน
-        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-        const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-        // 1. ดักขนาดไฟล์เกิน (ใช้ Alert Modal เพื่อความชัดเจน)
-        if (file.size > MAX_FILE_SIZE) {
-            Toast.fire({
-                icon: "error",
-                title: "ขนาดไฟล์ใหญ่เกินกำหนด!",
-                text: "รูปภาพผลน้ำต้องมีขนาดไม่เกิน 5MB กรุณาถ่ายภาพใหม่หรือลดความละเอียดของกล้องลงครับบอส",
-                confirmButtonText: "รับทราบ",
-                confirmButtonColor: "#0f766e",
-                background: "var(--color-surface, #ffffff)",
-                color: "var(--color-text-primary, #000000)",
-            });
-            e.target.value = "";
-            return;
-        }
-
-        // 2. ดักประเภทไฟล์แปลกปลอม
-        if (!ALLOWED_TYPES.includes(file.type)) {
-            Swal.fire({
-                icon: "error",
-                title: "รูปแบบไฟล์ไม่ถูกต้อง!",
-                text: "ระบบอนุญาตเฉพาะไฟล์รูปภาพสากล (.jpg, .jpeg, .png, .webp) เท่านั้นครับบอส",
-                confirmButtonText: "เข้าใจแล้ว",
-                confirmButtonColor: "#0f766e",
-                background: "var(--color-surface, #ffffff)",
-                color: "var(--color-text-primary, #000000)",
-            });
-            e.target.value = "";
-            return;
-        }
-
-        setImageFile(file);
-        const reader = new FileReader();
-        reader.onloadend = () => setImagePreview(reader.result as string);
-        reader.readAsDataURL(file);
-        setIsRecommending(true);
-        try {
-            const { getExifLocation, calculateDistance } = await import("@/lib/exif");
-            const coords = await getExifLocation(file);
-            if (coords && allLocations.length) {
-                const sorted = [...allLocations].sort(
-                    (a, b) => calculateDistance(coords.latitude, coords.longitude, a.lat, a.lng) - calculateDistance(coords.latitude, coords.longitude, b.lat, b.lng),
-                );
-                setNearestLocations(sorted.slice(0, 5));
-            }
-        } catch (err) {
-            console.error("EXIF:", err);
-        } finally {
-            setIsRecommending(false);
-        }
-    };
-
     const generateAiImagePlot = (file: File, aiData: any): Promise<File | null> =>
         new Promise((resolve) => {
             const img = new Image();
@@ -281,13 +219,19 @@ function SubmitContent() {
                 canvas.width = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
+
+                // สอดคล้องกับคีย์สากลที่ปรับปรุงใน Next.js API
                 const box = aiData["bounding box"];
                 if (box?.length === 4) {
-                    const [x_min, x_max, y_min, y_max] = box;
+                    const [x_min, y_min, x_max, y_max] = box;
                     ctx.strokeStyle = "#28a745";
                     ctx.lineWidth = Math.max(4, img.width * 0.005);
                     ctx.strokeRect(x_min, y_min, x_max - x_min, y_max - y_min);
-                    const label = `${aiData.ammonia ? "Ammonia" : "Phosphate"} | ${aiData.concentrated} mg/L`;
+
+                    // ⚡️ ตกแต่ง Label ให้ Dynamic ตามชื่อสารจริงที่สะท้อนมาจากโมเดล
+                    const paramLabel = aiData.parameterName ? aiData.parameterName.charAt(0).toUpperCase() + aiData.parameterName.slice(1).toLowerCase() : "Vial";
+                    const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L`;
+
                     const fs = Math.max(16, Math.floor(img.width * 0.018));
                     ctx.font = `bold ${fs}px Arial`;
                     const tw = ctx.measureText(label).width,
@@ -312,15 +256,12 @@ function SubmitContent() {
             img.src = URL.createObjectURL(file);
         });
 
-    // เพิ่มฟังก์ชันดักรอ (helper) ไว้ด้านบน handleAnalyze
-    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
     const handleAnalyze = async () => {
         if (systemParameters.length === 0) return;
         setStep("analyzing");
 
         try {
-            const newResults: Record<number, { concentrated: number; status: "safe" | "warning" | "danger" }> = {};
+            const newResults: Record<number, { concentrated: number; status: "safe" | "warning" | "danger"; message: string }> = {};
             let hasDanger = false;
             let hasWarning = false;
 
@@ -345,24 +286,24 @@ function SubmitContent() {
 
                 const data = await res.json();
 
-                // วาดภาพ Grid Plot ตามข้อมูล AI
+                // วาดภาพ Grid Plot ตามข้อมูล AI พิกัดจริง
                 const plotted = await generateAiImagePlot(file, data);
                 if (plotted) {
                     setImagePlotFiles((prev) => ({ ...prev, [param.id]: plotted }));
                 }
 
-                // บันทึกผลแยกราย ID สาร
+                // บันทึกผลแยกราย ID สารพร้อมแนบข้อความแจ้งเตือนคำแนะนำจากตัวโมเดล
                 const currentStatus = (data.status?.toLowerCase() ?? "safe") as "safe" | "warning" | "danger";
                 newResults[param.id] = {
                     concentrated: data.concentrated,
                     status: currentStatus,
+                    message: data.message || "", // ⚡️ ดึงฟิลด์ข้อความสเปกใหม่ลง State
                 };
 
                 if (currentStatus === "danger") hasDanger = true;
                 if (currentStatus === "warning") hasWarning = true;
             }
 
-            // คำนวณสถานะรวมของรอบตรวจวัดนี้
             const finalStatus = hasDanger ? "danger" : hasWarning ? "warning" : "safe";
 
             setResults(newResults);
@@ -384,13 +325,11 @@ function SubmitContent() {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
         try {
             const fd = new FormData();
-            fd.copy;
             fd.append("locationId", currentLocationId);
             fd.append("status", overallStatus);
             fd.append("collectionTime", new Date(collectionTime).toISOString());
             if (oxygen) fd.append("oxygen", oxygen);
 
-            // ⚡️ รวบรวมผลลัพธ์การวัดค่าเป็นโครงสร้าง Array เพื่อส่งเข้าตารางเชื่อมใน Database
             const measurementsPayload = systemParameters.map((param) => ({
                 parameterId: param.id,
                 value: results[param.id]?.concentrated || 0,
@@ -398,7 +337,6 @@ function SubmitContent() {
 
             fd.append("measurements", JSON.stringify(measurementsPayload));
 
-            // แนบไฟล์รูปภาพทั้งหมดเข้า FormData
             systemParameters.forEach((param) => {
                 const rawFile = imageFiles[param.id];
                 const plotFile = imagePlotFiles[param.id];
@@ -422,12 +360,6 @@ function SubmitContent() {
             console.error("Save failed:", err);
         }
     };
-    const getStandardsEvaluation = (phosphate: number, ammonia: number) =>
-        Object.entries(evaluateAllStandards(phosphate, ammonia)).map(([type, passed]) => ({
-            type,
-            label: LOCATION_TYPE_LABELS[type as keyof typeof LOCATION_TYPE_LABELS] || type,
-            passed: passed as boolean,
-        }));
 
     const getLocStd = () => LOCATION_STANDARDS[locationType as keyof typeof LOCATION_STANDARDS] || LOCATION_STANDARDS["COMMUNITY"];
     const currentStep = step === "upload" ? 1 : step === "analyzing" ? 2 : 3;
@@ -476,22 +408,14 @@ function SubmitContent() {
                         val: step === "results" ? "Complete" : step === "analyzing" ? "Running…" : "Pending",
                         ok: step === "results",
                     },
-                    ...(results
-                        ? [
-                              {
-                                  key: "Phosphate",
-                                  val: `${(results.phosphate ?? 0).toFixed(3)} mg/L`,
-                              },
-                          ]
-                        : []),
-                    ...(results
-                        ? [
-                              {
-                                  key: "Ammonia",
-                                  val: `${(results.ammonia ?? 0).toFixed(3)} mg/L`,
-                              },
-                          ]
-                        : []),
+                    // ⚡️ ลบล้างการ Hardcode ดึงและแผ่ข้อมูลสรุปเรียงคีย์ตามข้อมูลสถิติในฐานข้อมูลจริง
+                    ...systemParameters.map((param) => {
+                        const resVal = results[param.id]?.concentrated ?? 0;
+                        return {
+                            key: param.name.charAt(0).toUpperCase() + param.name.slice(1).toLowerCase(),
+                            val: step === "results" ? `${resVal.toFixed(3)} ${param.unit ?? "mg/L"}` : "—",
+                        };
+                    }),
                 ].map(({ key, val, ok }) => (
                     <div key={key} className="flex justify-between items-center py-1">
                         <span className="font-mono text-[10px] text-text-muted">{key}</span>
@@ -554,7 +478,6 @@ function SubmitContent() {
                     />
                 </div>
 
-                {/* selected station badge */}
                 {locationName && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-500/30">
                         <span className="h-1.5 w-1.5 rounded-full bg-teal-500 flex-shrink-0" />
@@ -623,7 +546,6 @@ function SubmitContent() {
     );
 
     /* ── Image zone ───────────────────────────────────────── */
-    /* ── Image zone (Dynamic Version) ───────────────────────── */
     const ImageZone = ({ param }: { param: DbParameter }) => {
         const fileInputRef = useRef<HTMLInputElement>(null);
         const paramId = param.id;
@@ -634,19 +556,29 @@ function SubmitContent() {
             const file = e.target.files?.[0];
             if (!file) return;
 
-            // ดักขนาดไฟล์ 10MB เดิมของบอส
             const MAX_FILE_SIZE = 10 * 1024 * 1024;
+            const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
             if (file.size > MAX_FILE_SIZE) {
                 Swal.fire({
                     title: "ไฟล์มีขนาดใหญ่เกินไป",
-                    text: "กรุณาเลือกไฟล์รูปภาพที่มีขนาดไม่เกิน 10MB",
+                    text: "กรุณาเลือกไฟล์รูปภาพที่มีขนาดไม่เกิน 10MB ครับบอส",
                     icon: "error",
                     confirmButtonColor: "#0D9488",
                 });
                 return;
             }
 
-            // เซ็ตไฟล์ลง State แยกตามไอดีสาร
+            if (!ALLOWED_TYPES.includes(file.type)) {
+                Swal.fire({
+                    title: "รูปแบบไฟล์ไม่ถูกต้อง",
+                    text: "ระบบอนุญาตเฉพาะไฟล์รูปภาพสากล (.jpg, .jpeg, .png, .webp) เท่านั้นครับบอส",
+                    icon: "error",
+                    confirmButtonColor: "#0D9488",
+                });
+                return;
+            }
+
             setImageFiles((prev) => ({ ...prev, [paramId]: file }));
 
             const reader = new FileReader();
@@ -655,7 +587,6 @@ function SubmitContent() {
             };
             reader.readAsDataURL(file);
 
-            // โค้ด EXIF Location เดิมของบอส
             setIsRecommending(true);
             try {
                 const { getExifLocation, calculateDistance } = await import("@/lib/exif");
@@ -756,15 +687,12 @@ function SubmitContent() {
     );
 
     /* ── Analyze button ───────────────────────────────────── */
-    /* ── Analyze button ───────────────────────────────────── */
     const AnalyzeButton = () => {
-        // 💡 เช็กว่าทุกพารามิเตอร์ที่ดึงมาจาก DB มีไฟล์รูปภาพอัปโหลดเข้ามาครบถ้วนแล้วหรือยัง
         const isAllImagesUploaded = systemParameters.length > 0 && systemParameters.every((param) => imageFiles[param.id] !== undefined);
 
         return (
             <button
                 onClick={handleAnalyze}
-                // ✅ แก้ไขเงื่อนไข: ถ้ายังอัปโหลดไม่ครบ หรือยังไม่เลือกสถานี หรือระบบกำลังค้นหาตำแหน่ง ให้ปิดปุ่มไว้
                 disabled={!isAllImagesUploaded || !currentLocationId || isRecommending}
                 className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-teal-700 hover:bg-teal-800 active:scale-[0.99] text-white shadow-sm"
             >
@@ -814,7 +742,6 @@ function SubmitContent() {
 
         return (
             <div className="space-y-4">
-                {/* แถบแจ้งเตือนสถานะน้ำรวม */}
                 <div
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-medium ${
                         overallStatus === "safe"
@@ -832,7 +759,6 @@ function SubmitContent() {
                     </div>
                 </div>
 
-                {/* รายการแสดงผลสารเคมีแบบ Dynamic เคลื่อนตาม Database */}
                 <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1">
                     <div className="px-6 py-3 border-b border-border bg-muted/40 flex justify-between items-center text-text-muted font-mono text-xs uppercase tracking-wider">
                         <div>Parameter</div>
@@ -844,8 +770,9 @@ function SubmitContent() {
                             const measurement = results[param.id];
                             if (!measurement) return null;
 
-                            // ดึงเกณฑ์มาตรฐานสูงสุดแบบไดนามิก
-                            const max = std[`${param.name.toLowerCase()}Max` as keyof typeof std] ?? 1.0;
+                            // ⚡️ ดึงเกณฑ์คัดกรองขอบเขตสูงสุดแบบ Dynamic ไร้สารเจือปน
+                            const maxKey = `${param.name.toLowerCase()}Max`;
+                            const max = std[maxKey as keyof typeof std] ?? 1.0;
                             const isExceeded = measurement.concentrated > max;
                             const exceededPercentage = isExceeded ? Math.round(((measurement.concentrated - max) / max) * 100) : 0;
 
@@ -872,6 +799,14 @@ function SubmitContent() {
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* ⚡️ บล็อกคำแนะนำคำเตือน (Message text) ที่สะท้อนเพิ่มเข้ามาจากโมเดล AI */}
+                                    {measurement.message && (
+                                        <div className="mt-2 flex items-start gap-1.5 p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-border text-[11px] text-text-secondary leading-relaxed">
+                                            <AlertCircle size={12} className="text-teal-600 dark:text-teal-400 mt-0.5 shrink-0" />
+                                            <span>{measurement.message}</span>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -909,7 +844,6 @@ function SubmitContent() {
         <div className="min-h-screen w-full bg-surface-muted transition-colors duration-300">
             <canvas ref={hiddenCanvasRef} className="hidden" />
 
-            {/* ── Top bar ── */}
             <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10">
                 <button onClick={() => router.back()} className="flex items-center gap-1.5 text-[11px] text-text-secondary hover:text-text-primary transition-colors min-h-[44px] pr-3">
                     <ArrowLeft size={14} />
@@ -919,23 +853,19 @@ function SubmitContent() {
                     <h1 className="text-sm font-semibold text-text-primary">ส่งตัวอย่างน้ำ</h1>
                     <p className="text-[10px] text-text-muted hidden sm:block">SESSION #{sessionId.current}</p>
                 </div>
-                <div className="w-10" /> {/* spacer */}
+                <div className="w-10" />
             </div>
 
-            {/* ── Mobile step bar ── */}
             <MobileStepBar />
 
-            {/* ── Page subtitle (mobile only) ── */}
             <div className="px-4 pt-4 pb-1 md:hidden">
                 <p className="text-xs text-text-secondary">การติดตามคุณภาพน้ำชายฝั่ง — อัปโหลดภาพชุดทดสอบเพื่อวิเคราะห์ด้วย AI</p>
             </div>
 
             {/* ══════════════ MOBILE LAYOUT (< md) ══════════════ */}
-            {/* ══════════════ MOBILE LAYOUT (< md) ══════════════ */}
             <div className="md:hidden px-4 pb-24 space-y-4 mt-3">
                 {step === "upload" && (
                     <>
-                        {/* วนลูปสร้างกล่องอัปโหลดภาพตามจำนวนสารในฐานข้อมูลจริง */}
                         {isLoadingParams ? (
                             <div className="p-8 text-center text-xs text-text-muted flex items-center justify-center gap-2">
                                 <Loader2 size={14} className="animate-spin text-teal-600" /> กำลังโหลดข้อมูลสารเคมี...
@@ -951,7 +881,6 @@ function SubmitContent() {
                 )}
                 {step === "analyzing" && (
                     <>
-                        {/* ✅ แก้ไขจุดนี้: วนลูปส่ง param ป้องกันหน้าจอแครชบนมือถือ */}
                         {systemParameters.map((param) => (
                             <ImageZone key={param.id} param={param} />
                         ))}
@@ -972,21 +901,16 @@ function SubmitContent() {
             {/* ══════════════ DESKTOP LAYOUT (md+) ══════════════ */}
             <div className="hidden md:block m-4">
                 <div className="bg-surface border border-border rounded-xl overflow-hidden">
-                    {/* page title bar */}
                     <div className="px-6 py-4 border-b border-border">
                         <h2 className="text-base font-semibold text-text-primary">ส่งตัวอย่างน้ำ</h2>
                         <p className="text-xs text-text-secondary mt-0.5">การติดตามคุณภาพน้ำชายฝั่ง — อัปโหลดภาพชุดทดสอบน้ำเพื่อการวิเคราะห์ด้วย AI</p>
                     </div>
 
-                    {/* 3-column grid */}
                     <div className="flex min-h-[600px]">
-                        {/* Col 1: Sidebar */}
                         <DesktopSidebar />
 
-                        {/* Col 2: Image + metadata + action */}
                         <div className="flex flex-col border-r border-border flex-1 max-h-[70vh] overflow-y-auto">
                             <div className="p-4 flex flex-col gap-4">
-                                {/* ✅ แก้ไขจุดนี้: ให้ทุก Step (upload, analyzing, results) ใช้กล่องที่แมปตัวแปรเหมือนกันทั้งหมด */}
                                 {isLoadingParams ? (
                                     <div className="p-8 text-center text-xs text-text-muted">กำลังโหลดพารามิเตอร์ระบบ...</div>
                                 ) : (
@@ -999,14 +923,12 @@ function SubmitContent() {
                             </div>
                         </div>
 
-                        {/* Col 3: Location picker → results */}
                         <div className="flex flex-col flex-1 p-4 gap-4">
                             {step === "upload" && (
                                 <>
                                     <div>
                                         <LocationPicker />
                                     </div>
-
                                     <div>
                                         <MetadataFields />
                                     </div>
