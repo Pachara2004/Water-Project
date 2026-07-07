@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { getOrganizationLabel } from "@/lib/standards";
-import { MapPin, Building2, Save, ShieldAlert, Plus, Pencil, Trash2, X, Check, ArrowLeft, RefreshCw, Layers } from "lucide-react";
+import { MapPin, MapPinPlus, MapPinned, Building2, Save, ShieldAlert, Plus, Pencil, Trash2, X, Check, ArrowLeft, RefreshCw, Search } from "lucide-react";
 
 const MapView = dynamic(() => import("@/components/map/MapView"), {
     ssr: false,
@@ -40,9 +40,13 @@ export default function AdminLocationsPage() {
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    // Organization combobox (ค้นหา/กรอง dropdown หน่วยงานที่มีอยู่)
+    const [orgSearch, setOrgSearch] = useState("");
+    const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
+
     // List
     const [locations, setLocations] = useState<LocationItem[]>([]);
-    const [filterOrg, setFilterOrg] = useState("ALL");
+    const [stationSearch, setStationSearch] = useState("");
     const [isLoading, setIsLoading] = useState(true);
 
     // Edit modal
@@ -123,6 +127,7 @@ export default function AdminLocationsPage() {
                 setPickedPosition(null);
                 setOrganization("");
                 setCustomOrg("");
+                setOrgSearch("");
                 fetchLocations();
                 setTimeout(() => setSuccess(false), 3000);
             }
@@ -206,74 +211,108 @@ export default function AdminLocationsPage() {
         );
     }
 
-    const filteredLocations = locations.filter((loc) => filterOrg === "ALL" || loc.organization === filterOrg);
-
     const uniqueOrgs = Array.from(new Set(locations.map((l) => l.organization).filter(Boolean)));
 
+    const stationKeyword = stationSearch.trim().toLowerCase();
+    const filteredLocations = stationKeyword
+        ? locations.filter((loc) => loc.name.toLowerCase().includes(stationKeyword) || getOrganizationLabel(loc.organization).toLowerCase().includes(stationKeyword))
+        : locations;
+
+    const orgKeyword = orgSearch.trim().toLowerCase();
+    const orgOptions = orgKeyword ? uniqueOrgs.filter((org) => getOrganizationLabel(org).toLowerCase().includes(orgKeyword)) : uniqueOrgs;
+
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-[120px] relative transition-colors duration-300 overflow-hidden">
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
-                {/* Header */}
-                <div className="bg-surface px-6 sm:px-8 pt-10 sm:pt-16 pb-6 sm:pb-10 mb-6 sm:mb-10 border-b border-border transition-colors duration-300">
-                    <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
-                        <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
-                        Admin Panel
-                    </button>
-                    <h1 className="font-display text-base font-semibold text-text-primary tracking-wide leading-tight">
+        <div className="min-h-dvh w-full bg-surface-muted pb-[120px] relative transition-colors duration-300 overflow-hidden" onClick={() => orgDropdownOpen && setOrgDropdownOpen(false)}>
+            <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pt-10 sm:pt-16">
+                <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
+                    <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
+                    Admin Panel
+                </button>
+
+                {/* Header card */}
+                <div className="bg-surface rounded-3xl border border-border shadow-sm p-6 sm:p-8 mb-6 sm:mb-10 transition-colors duration-300">
+                    <h1 className="font-display text-lg font-bold text-text-primary leading-tight">
                         ตั้งค่าจุดตรวจ <span className="font-display text-primary">สถานีชายฝั่ง</span>
                     </h1>
-                    <p className="text-text-secondary text-xs mt-4 leading-loose">กำหนดตำแหน่งพิกัดจุดเก็บตัวอย่างน้ำเพื่อการวิเคราะห์ทางวิทยาศาสตร์ร่วมกับแผนที่ระบบ</p>
+                    <p className="text-text-secondary text-xs mt-2 leading-relaxed">กำหนดตำแหน่งพิกัดจุดเก็บตัวอย่างน้ำเพื่อการวิเคราะห์ทางวิทยาศาสตร์ร่วมกับแผนที่ระบบ</p>
                 </div>
 
-                <div className="px-4 sm:px-6 space-y-6 sm:space-y-10">
+                <div className="space-y-6 sm:space-y-10">
                     {/* ══════════ SECTION 1: ADD NEW ══════════ */}
                     <section className="bg-surface rounded-3xl p-5 sm:p-8 border border-border shadow-md space-y-6 sm:space-y-8 transition-all duration-300 relative overflow-hidden">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-8 h-8 bg-primary-light text-primary rounded-xl flex items-center justify-center border border-border">
-                                <Plus size={16} />
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-primary-light text-primary rounded-full flex items-center justify-center flex-shrink-0">
+                                <MapPinPlus size={16} />
                             </div>
-                            <h2 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Register New Station</h2>
+                            <h2 className="text-sm font-bold text-text-primary">Add checkpoint stations</h2>
                         </div>
 
-                        <div className="space-y-7">
+                        <div className="space-y-5">
                             {/* Name */}
-                            <div className="space-y-4">
-                                <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block ">ชื่อจุดเก็บตัวอย่างชายฝั่ง</label>
+                            <div className="space-y-2.5">
+                                <label className="text-sm font-bold text-text-primary block">ชื่อจุดเก็บตัวอย่าง</label>
                                 <input
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    placeholder="เช่น หาดพัทยาเหนือ จุดตรวจที่ 1"
+                                    placeholder="เช่น หาดจอมเทียน ชลบุรี ป้อมที่ 1"
                                     className="w-full px-5 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[48px]"
                                 />
                             </div>
 
-                            {/* Organization */}
-                            <div className="space-y-4">
-                                <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block flex items-center gap-1.5 ">
-                                    <Building2 size={12} className="text-text-muted" />
-                                    หน่วยงานหลักผู้ดูแล (Authority)
+                            {/* Organization — ค้นหา/กรอง dropdown หน่วยงานที่มีอยู่ */}
+                            <div className="space-y-2.5">
+                                <label className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+                                    <Building2 size={14} className="text-text-secondary" />
+                                    หน่วยงานที่รับผิดชอบ
                                 </label>
-                                <div className="relative">
-                                    <select
-                                        value={organization}
+                                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                                    <input
+                                        type="text"
+                                        value={orgSearch}
                                         onChange={(e) => {
-                                            setOrganization(e.target.value);
-                                            if (e.target.value !== "CUSTOM") setCustomOrg("");
+                                            setOrgSearch(e.target.value);
+                                            setOrgDropdownOpen(true);
                                         }}
-                                        className={`w-full px-5 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none cursor-pointer min-h-[48px] appearance-none ${!organization && "text-text-muted/50"}`}
-                                    >
-                                        <option value="" disabled>
-                                            -- โปรดเลือกหน่วยงาน --
-                                        </option>
-                                        {uniqueOrgs.map((org) => (
-                                            <option key={org} value={org}>
-                                                {getOrganizationLabel(org)}
-                                            </option>
-                                        ))}
-                                        <option value="CUSTOM">+ เพิ่มหน่วยงานใหม่...</option>
-                                    </select>
-                                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-xs">▼</div>
+                                        onFocus={() => setOrgDropdownOpen(true)}
+                                        placeholder="ค้นหาหน่วยงาน"
+                                        className="w-full pl-10 pr-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[48px]"
+                                    />
+
+                                    {orgDropdownOpen && (
+                                        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 bg-surface border border-border rounded-2xl shadow-xl py-2 max-h-56 overflow-y-auto animate-fade-in">
+                                            {orgOptions.map((org) => (
+                                                <button
+                                                    key={org}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setOrganization(org);
+                                                        setOrgSearch(getOrganizationLabel(org));
+                                                        setCustomOrg("");
+                                                        setOrgDropdownOpen(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
+                                                >
+                                                    <Building2 size={12} className="text-text-muted flex-shrink-0" />
+                                                    {getOrganizationLabel(org)}
+                                                </button>
+                                            ))}
+                                            {orgOptions.length === 0 && <p className="px-4 py-2.5 text-xs text-text-muted">ไม่พบหน่วยงานที่ค้นหา</p>}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setOrganization("CUSTOM");
+                                                    setOrgSearch("");
+                                                    setOrgDropdownOpen(false);
+                                                }}
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1 pt-2.5"
+                                            >
+                                                <Plus size={12} className="flex-shrink-0" />
+                                                เพิ่มหน่วยงานใหม่...
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {organization === "CUSTOM" && (
@@ -288,22 +327,23 @@ export default function AdminLocationsPage() {
                             </div>
 
                             {/* Mini Map */}
-                            <div className="space-y-4">
-                                <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block flex items-center gap-1.5 ">
-                                    <MapPin size={12} className="text-text-muted" />
-                                    ปักหมุดตำแหน่งพิกัด (Tap on Map)
+                            <div className="space-y-2.5">
+                                <label className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+                                    <MapPin size={14} className="text-text-secondary" />
+                                    ปักหมุดบนแผนที่
                                 </label>
-                                <div className="w-full h-52 rounded-2xl overflow-hidden border border-border bg-surface-subtle relative">
+                                {/* z-0 สร้าง stacking context ครอบ z-index ภายในของ Leaflet (400-1000) ไม่ให้ทับ dropdown ด้านบน */}
+                                <div className="w-full h-52 rounded-2xl overflow-hidden border border-border bg-surface-subtle relative z-0">
                                     <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} />
                                 </div>
 
                                 {pickedPosition ? (
-                                    <div className="flex items-center gap-1.5 text-[9px] font-semibold text-primary bg-primary-light border border-primary/10 py-2 px-4 rounded-full w-fit tracking-wider mt-2.5">
-                                        <Layers size={11} className="animate-pulse" />
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary bg-surface-subtle border border-border py-2 px-4 rounded-full w-fit mt-2.5">
+                                        <MapPinned size={12} className="text-text-muted" />
                                         LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
                                     </div>
                                 ) : (
-                                    <p className="text-[9px] font-semibold text-text-muted italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดทางภูมิศาสตร์</p>
+                                    <p className="text-xs text-text-muted italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดทางภูมิศาสตร์</p>
                                 )}
                             </div>
 
@@ -328,7 +368,7 @@ export default function AdminLocationsPage() {
                                 ) : (
                                     <>
                                         <Save size={14} />
-                                        เพิ่มสถานีตรวจวัดเข้าระบบ
+                                        เพิ่มสถานีตรวจวัด
                                     </>
                                 )}
                             </button>
@@ -342,28 +382,23 @@ export default function AdminLocationsPage() {
                                 <div className="w-8 h-8 bg-foreground text-background rounded-xl flex items-center justify-center">
                                     <MapPin size={15} />
                                 </div>
-                                <h2 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Saved Stations</h2>
+                                <h2 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Saved stations</h2>
                             </div>
                             <span className="text-[9px] font-semibold text-primary bg-primary-light border border-primary/10 px-2.5 py-1 rounded-full uppercase tracking-wider ">
-                                {filteredLocations.length} Stations
+                                {locations.length} Stations
                             </span>
                         </div>
 
-                        {/* Filter */}
+                        {/* Search */}
                         <div className="relative">
-                            <select
-                                value={filterOrg}
-                                onChange={(e) => setFilterOrg(e.target.value)}
-                                className="w-full text-xs px-5 py-3.5 min-h-[48px] bg-surface border border-border text-text-primary rounded-2xl outline-none cursor-pointer focus:border-primary transition-all appearance-none"
-                            >
-                                <option value="ALL">แสดงจุดของทุกหน่วยงาน</option>
-                                {uniqueOrgs.map((org) => (
-                                    <option key={org} value={org}>
-                                        {getOrganizationLabel(org)}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-xs">▼</div>
+                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                            <input
+                                type="text"
+                                value={stationSearch}
+                                onChange={(e) => setStationSearch(e.target.value)}
+                                placeholder="ค้นหาสถานีหรือหน่วยงานที่รับผิดชอบ"
+                                className="w-full pl-10 pr-4 py-3.5 min-h-[48px] bg-surface border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 outline-none cursor-text focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
                         </div>
 
                         {/* Location List */}
