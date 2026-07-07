@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
-import Swal from "sweetalert2";
+import { confirmDialog } from "@/lib/swal";
 import { useAppStore } from "@/lib/store";
 import { ArrowLeft, ShieldAlert, Users, UserCog, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, Search } from "lucide-react";
 
@@ -79,7 +79,28 @@ export default function AdminUsersPage() {
     const [search, setSearch] = useState("");
     const [updating, setUpdating] = useState<number | null>(null);
     const [openDropdown, setOpenDropdown] = useState<number | null>(null);
-    const [toast, setToast] = useState<{ name: string; role: Role } | null>(null);
+    const [toast, setToast] = useState<{ message: string; variant: "success" | "danger" } | null>(null);
+    const [toastLeaving, setToastLeaving] = useState(false);
+    const toastTimers = useRef<{ hide?: ReturnType<typeof setTimeout>; remove?: ReturnType<typeof setTimeout> }>({});
+
+    // โชว์ toast 5 วิ (เดิม 3 วิ + เพิ่ม 2 วิ) แล้วเล่น animation เลื่อนลงก่อนค่อยลบออกจาก DOM
+    const showToast = useCallback((message: string, variant: "success" | "danger") => {
+        clearTimeout(toastTimers.current.hide);
+        clearTimeout(toastTimers.current.remove);
+        setToast({ message, variant });
+        setToastLeaving(false);
+        toastTimers.current.hide = setTimeout(() => setToastLeaving(true), 5000);
+        toastTimers.current.remove = setTimeout(() => setToast(null), 5300);
+    }, []);
+
+    useEffect(() => {
+        const timers = toastTimers.current;
+        return () => {
+            clearTimeout(timers.hide);
+            clearTimeout(timers.remove);
+        };
+    }, []);
+
     const [rejectingAll, setRejectingAll] = useState(false);
     const [stats, setStats] = useState({ total: 0, staff: 0, pending: 0 });
 
@@ -143,28 +164,13 @@ export default function AdminUsersPage() {
         return () => clearTimeout(timer);
     }, [search, currentUser?.role, fetchUsers]);
 
-    const confirmDialog = (title: string, text: string, confirmButtonText: string, confirmButtonColor: string) =>
-        Swal.fire({
-            icon: "warning",
-            title,
-            text,
-            showCancelButton: true,
-            confirmButtonText,
-            cancelButtonText: "ยกเลิก",
-            confirmButtonColor,
-            background: "var(--color-surface, #ffffff)",
-            color: "var(--color-text-primary, #000000)",
-            heightAuto: false,
-            scrollbarPadding: false,
-        });
-
     const handleRoleChange = async (userId: number, role: Role) => {
         setOpenDropdown(null);
         const user = users.find((u) => u.id === userId);
         const name = user ? (user.fullName !== "ยังไม่ลงทะเบียนข้อมูล" ? user.fullName : user.lineProfileName) : "ผู้ใช้นี้";
 
-        const confirm = await confirmDialog("ยืนยันเปลี่ยนสิทธิ์?", `เปลี่ยนสิทธิ์ของ ${name} เป็น ${ROLE_CONFIG[role].label}`, "ยืนยัน", "#0f766e");
-        if (!confirm.isConfirmed) return;
+        const confirmed = await confirmDialog({ title: "ยืนยันเปลี่ยนสิทธิ์?", text: `เปลี่ยนสิทธิ์ของ ${name} เป็น ${ROLE_CONFIG[role].label}`, confirmText: "ยืนยัน", tone: "warning" });
+        if (!confirmed) return;
 
         setUpdating(userId);
         try {
@@ -180,8 +186,7 @@ export default function AdminUsersPage() {
                 setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
                 fetchStats();
                 if (user) {
-                    setToast({ name, role });
-                    setTimeout(() => setToast(null), 3000);
+                    showToast(`อัปเดตสิทธิ์ ${name} เป็น ${ROLE_CONFIG[role].label} สำเร็จ`, "success");
                 }
             }
         } catch (e) {
@@ -193,8 +198,8 @@ export default function AdminUsersPage() {
 
     const handleApprove = async (user: UserItem, displayName: string) => {
         if (!user.pendingRequestId || !user.requestedRole) return;
-        const confirm = await confirmDialog("ยืนยันอนุมัติคำร้อง?", `อนุมัติ ${displayName} เป็นสิทธิ์ ${ROLE_CONFIG[user.requestedRole].label}`, "อนุมัติ", "#0f766e");
-        if (!confirm.isConfirmed) return;
+        const confirmed = await confirmDialog({ title: "ยืนยันอนุมัติคำร้อง?", text: `อนุมัติ ${displayName} เป็นสิทธิ์ ${ROLE_CONFIG[user.requestedRole].label}`, confirmText: "อนุมัติ", tone: "primary" });
+        if (!confirmed) return;
 
         setUpdating(user.id);
         try {
@@ -214,8 +219,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: user.requestedRole!, pendingRequestId: null, requestedRole: null } : u)));
                 fetchStats();
-                setToast({ name: displayName, role: user.requestedRole! });
-                setTimeout(() => setToast(null), 3000);
+                showToast(`อนุมัติ ${displayName} เป็นสิทธิ์ ${ROLE_CONFIG[user.requestedRole!].label} สำเร็จ`, "success");
             }
         } catch (e) {
             console.error(e);
@@ -226,8 +230,8 @@ export default function AdminUsersPage() {
 
     const handleReject = async (user: UserItem, displayName: string) => {
         if (!user.pendingRequestId) return;
-        const confirm = await confirmDialog("ยืนยันปฏิเสธคำร้อง?", `ปฏิเสธคำร้องขอสิทธิ์ของ ${displayName} — ไม่สามารถย้อนกลับได้`, "ปฏิเสธ", "#dc2626");
-        if (!confirm.isConfirmed) return;
+        const confirmed = await confirmDialog({ title: "ยืนยันปฏิเสธคำร้อง?", text: `ปฏิเสธคำร้องขอสิทธิ์ของ ${displayName} — ไม่สามารถย้อนกลับได้`, confirmText: "ปฏิเสธ", tone: "danger" });
+        if (!confirmed) return;
 
         setUpdating(user.id);
         try {
@@ -247,6 +251,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, pendingRequestId: null, requestedRole: null } : u)));
                 fetchStats();
+                showToast(`ปฏิเสธคำร้องของ ${displayName} แล้ว`, "danger");
             }
         } catch (e) {
             console.error(e);
@@ -256,8 +261,8 @@ export default function AdminUsersPage() {
     };
 
     const handleRejectAll = async () => {
-        const confirm = await confirmDialog("ปฏิเสธคำร้องทั้งหมด?", `คำร้องขอสิทธิ์ที่รออนุมัติทั้ง ${queue.length} รายการจะถูกปฏิเสธ ไม่สามารถย้อนกลับได้`, "ปฏิเสธทั้งหมด", "#dc2626");
-        if (!confirm.isConfirmed) return;
+        const confirmed = await confirmDialog({ title: "ปฏิเสธคำร้องทั้งหมด?", text: `คำร้องขอสิทธิ์ที่รออนุมัติทั้ง ${queue.length} รายการจะถูกปฏิเสธ ไม่สามารถย้อนกลับได้`, confirmText: "ปฏิเสธทั้งหมด", tone: "danger" });
+        if (!confirmed) return;
 
         setRejectingAll(true);
         try {
@@ -272,6 +277,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers((prev) => prev.map((u) => (u.pendingRequestId !== null ? { ...u, pendingRequestId: null, requestedRole: null } : u)));
                 fetchStats();
+                showToast(`ปฏิเสธคำร้องทั้งหมด ${queue.length} รายการแล้ว`, "danger");
             }
         } catch (e) {
             console.error(e);
@@ -400,7 +406,7 @@ export default function AdminUsersPage() {
                         <button
                             onClick={handleRejectAll}
                             disabled={rejectingAll}
-                            className="flex items-center gap-1.5 px-3 py-2 min-h-[36px] bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 hover:border-red-300 transition-all disabled:opacity-40 cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-2 min-h-[36px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all disabled:opacity-40 cursor-pointer"
                         >
                             {rejectingAll ? <RefreshCw size={12} className="animate-spin" /> : <XCircle size={12} />}
                             ปฏิเสธทั้งหมด
@@ -540,7 +546,7 @@ export default function AdminUsersPage() {
 
                                                     <button
                                                         onClick={() => handleReject(user, displayName)}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 hover:border-red-300 transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
                                                     >
                                                         <XCircle size={13} />
                                                         ปฏิเสธ
@@ -558,10 +564,14 @@ export default function AdminUsersPage() {
 
             {/* Toast */}
             {toast && (
-                <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 z-[999] animate-slide-up">
-                    <div className="flex items-center gap-2.5 bg-foreground text-background text-xs font-bold px-5 py-3 rounded-2xl shadow-xl whitespace-nowrap">
-                        <CheckCircle2 size={14} className="text-emerald-400" />
-                        อัปเดตสิทธิ์ <span className="text-emerald-400">{toast.name}</span> เป็น {ROLE_CONFIG[toast.role].label} สำเร็จ
+                <div className={`fixed bottom-[88px] left-1/2 -translate-x-1/2 z-[999] ${toastLeaving ? "animate-toast-exit" : "animate-slide-up"}`}>
+                    <div className="flex items-center gap-2.5 bg-surface text-text-primary border border-border/60 text-xs font-bold px-5 py-3 rounded-2xl shadow-xl whitespace-nowrap">
+                        {toast.variant === "success" ? (
+                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                        ) : (
+                            <XCircle size={14} className="text-red-500 shrink-0" />
+                        )}
+                        {toast.message}
                     </div>
                 </div>
             )}
