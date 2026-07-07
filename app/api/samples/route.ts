@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
                 },
                 measurements: {
                     include: {
-                        parameter: true, // ดึงข้อมูล Parameter Master Data มาด้วย
+                        parameter: true,
                     },
                 },
             },
@@ -62,11 +62,9 @@ export async function GET(request: NextRequest) {
         });
 
         const formattedSamples = samples.map((s: any) => {
-            // ⚡️ Dynamic EAV Flattening: แปลงค่าวัดจาก Array แตกคีย์ออกไปเป็น Flat Object ตามชื่อใน DB
             const dynamicMeasurements: Record<string, number> = {};
             s.measurements.forEach((m: any) => {
                 if (m.parameter?.name) {
-                    // สร้างคีย์ตามชื่อสารใน DB เช่น phosphateVal หรือ ammoniaVal (คงรูปแบบ Val เดิมไว้เผื่อกราฟเก่าเรียกใช้)
                     const keyName = `${m.parameter.name.toLowerCase()}Val`;
                     dynamicMeasurements[keyName] = m.value;
                 }
@@ -86,10 +84,8 @@ export async function GET(request: NextRequest) {
                 analyzedPlotUrl: s.analyzedPlotUrl,
                 isDeleted: s.isDeleted,
 
-                // กระจายผลลัพธ์สารเคมีทั้งหมดที่สกัดได้แบบ Dynamic
                 ...dynamicMeasurements,
 
-                // Fallback คีย์เดิมเผื่อชาร์ตเรียกแบบระบุตรงตัว
                 phosphateVal: dynamicMeasurements["phosphateVal"] ?? 0,
                 ammoniaVal: dynamicMeasurements["ammoniaVal"] ?? 0,
 
@@ -135,6 +131,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
+        const secureCollectorId = auth.user!.id; // แกะ ID ยูสเซอร์ตัวจริงออกมารองรับไว้ตรงนี้
         const formData = await request.formData();
 
         const locationId = formData.get("locationId") as string;
@@ -142,14 +139,9 @@ export async function POST(request: NextRequest) {
         const collectionTime = formData.get("collectionTime") as string;
         const oxygen = formData.get("oxygen") as string | null;
 
-        // ⚡️ ดึง Array JSON ของผลลัพธ์การวัดค่าที่หน้าบ้านส่งมามัดรวมกัน
-        const measurementsJson = formData.get("measurements") as string | null;
-
         if (!locationId || !status || !collectionTime) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" }, { status: 400 });
         }
-
-        const secureCollectorId = auth.user!.id;
 
         // SECURITY STEP 2: ตรวจความถูกต้องของสถานีจุดตรวจ
         const location = await prisma.location.findUnique({
@@ -159,7 +151,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "ไม่พบสถานีจุดตรวจที่ระบุในระบบ" }, { status: 404 });
         }
 
-        // 🔍 ไปดึงรายการ Master Data สารทั้งหมดในระบบมาเพื่อตรวจสอบความถูกต้องของ ID
+        // 🔍 ไปดึงรายการ Master Data สารทั้งหมดในระบบมาเพื่อตรวจสอบความถูกต้อง
         const systemParameters = await prisma.parameter.findMany();
 
         // เตรียมความพร้อมสำหรับโฟลเดอร์ไฟล์อัปโหลด
@@ -169,8 +161,7 @@ export async function POST(request: NextRequest) {
         const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
         const maxFileSize = 10 * 1024 * 1024;
 
-        // ⚡️ SECURITY STEP 3 & 4: วนลูปบันทึกไฟล์รูปภาพ (ทั้งตัวปกติและตัวพล็อตสี) แยกตามรายสารเคมีจริงจาก Database
-        // เนื่องจากตอนนี้เราส่งภาพแยกตามสารเคมี เราสามารถสร้างโฟลเดอร์หรือเก็บ URL มัดรวม หรือบันทึกลงดิสก์แบบแยกไฟล์ได้เลย
+        // ⚡️ SECURITY STEP 3 & 4: วนลูปบันทึกไฟล์รูปภาพแยกตามรายสารเคมีจริงจาก Database
         let mainRawImageUrl: string | null = null;
         let mainAnalyzedPlotUrl: string | null = null;
 
@@ -181,7 +172,6 @@ export async function POST(request: NextRequest) {
             if (rawFile && rawFile.size > 0 && allowedImageTypes.includes(rawFile.type) && rawFile.size <= maxFileSize) {
                 const filename = sanitizeAndGenerateFilename(rawFile.name, `raw-${param.name.toLowerCase()}`);
                 await writeFile(path.join(uploadDir, filename), Buffer.from(await rawFile.arrayBuffer()));
-                // ใช้รูปแรกสุดหรือรูปหลักเป็น URL กลางของ WaterSample (หรือขยายตารางเพิ่มได้ในอนาคต)
                 if (!mainRawImageUrl) mainRawImageUrl = `/uploads/${filename}`;
             }
 
@@ -202,15 +192,19 @@ export async function POST(request: NextRequest) {
         }
 
         // เตรียมชุดข้อมูล Nested Write เพื่อบันทึกลงตารางความสัมพันธ์ย่อย WaterSampleMeasurement
-        let createMeasurementsData: Array<{ parameterId: number; value: number }> = [];
+        let createMeasurementsData: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];
+        const measurementsRaw = formData.get("measurements") as string | null;
 
-        if (measurementsJson) {
-            // หน้าบ้านส่งแบบ JSON Array มาให้ อิงตาม Database จริง
-            const parsedMeasurements = JSON.parse(measurementsJson);
+        if (measurementsRaw) {
+            // หน้าบ้านส่งแบบ JSON Array มาให้แบบพรีเมียม ครบถ้วนตามโครงสร้าง Required Fields จริง
+            const parsedMeasurements = JSON.parse(measurementsRaw);
             if (Array.isArray(parsedMeasurements)) {
                 createMeasurementsData = parsedMeasurements.map((m: any) => ({
                     parameterId: Number(m.parameterId),
                     value: parseFloat(m.value || "0"),
+                    confidence: parseFloat(m.confidence || "0.90"), // ใส่ค่า Default รองรับความแม่นยำ AI
+                    boundingBox: m.boundingBox || null,
+                    message: m.message || null
                 }));
             }
         } else {
@@ -222,21 +216,27 @@ export async function POST(request: NextRequest) {
                 createMeasurementsData.push({
                     parameterId: paramAmmonia.id,
                     value: parseFloat((formData.get("ammoniaVal") as string) || "0"),
+                    confidence: 0.90,
+                    boundingBox: null,
+                    message: null
                 });
             }
             if (paramPhosphate) {
                 createMeasurementsData.push({
                     parameterId: paramPhosphate.id,
                     value: parseFloat((formData.get("phosphateVal") as string) || "0"),
+                    confidence: 0.90,
+                    boundingBox: null,
+                    message: null
                 });
             }
         }
 
-        // 💾 บันทึกทุกอย่างลงฐานข้อมูลแบบ Dynamic ม้วนเดียวจบ
+        // 💾 บันทึกทุกอย่างลงฐานข้อมูลแบบ Dynamic ม้วนเดียวจบ ไร้การชนระลอกสอง
         const sample = await prisma.waterSample.create({
             data: {
                 locationId: Number(locationId),
-                collectorId: secureCollectorId,
+                collectorId: secureCollectorId, // ใช้ ID ความปลอดภัยที่ผ่านการตรวจสอบสิทธิ์แล้ว
                 collectionTime: parsedCollectionTime,
                 dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
                 airTemperature: weather?.temperature ?? null,
@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
                 analyzedPlotUrl: mainAnalyzedPlotUrl,
                 isDeleted: false,
 
-                // ⚡️ บันทึกค่าวัดกระจายลงตารางเชื่อมตามข้อมูลจริงที่ดึงจาก Database
+                // ⚡️ บันทึกค่าวัดกระจายลงตารางเชื่อม Junction
                 measurements: {
                     create: createMeasurementsData,
                 },
