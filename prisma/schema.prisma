@@ -118,7 +118,7 @@ model Parameter {
 
   // Relation กลับไปยังตารางบันทึกผล
   measurements WaterSampleMeasurement[]
-
+  widgets      DashboardWidget[]
   @@map("parameters")
 }
 
@@ -127,7 +127,10 @@ model WaterSampleMeasurement {
   id          Int         @id @default(autoincrement())
   sampleId    Int         @map("sample_id")
   parameterId Int         @map("parameter_id")
-  value       Float       @map("value") // ค่าที่วัดได้ (ตัวเลข)
+  value       Float       @map("value")      
+  confidence  Float       @map("confidence")  
+  boundingBox String?     @map("bounding_box") 
+  message     String?     @map("message") @db.Text
 
   sample      WaterSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
   parameter   Parameter   @relation(fields: [parameterId], references: [id], onDelete: Cascade)
@@ -135,4 +138,29 @@ model WaterSampleMeasurement {
   // ทำ Unique Constraint ร่วมกัน เพื่อป้องกันไม่ให้สารชนิดเดียวกัน บันทึกซ้ำซ้อนใน Sample ID เดียวกัน
   @@unique([sampleId, parameterId])
   @@map("sample_measurements")
+}
+
+model DashboardWidget {
+  id           Int      @id @default(autoincrement())
+  title        String   @map("title")         // ชื่อหัวข้อที่จะแสดงบนการ์ดหรือกราฟ
+  widgetType   String   @map("widget_type")   // ประเภท: 'CARD', 'LINE_CHART', 'PIE_CHART', 'BAR_CHART'
+  
+  metricType   String   @map("metric_type")   // ประเภทสถิติ: 'COUNT', 'AVG', 'SUM', 'MIN', 'MAX'
+  targetType   String   @map("target_type")   // เป้าหมาย: 'SAMPLE_STATUS' (สถานะรวม), 'ENVIRONMENT' (ค่าส่วนกลาง), 'PARAMETER' (สารเคมีย่อย)
+  targetColumn String?  @map("target_column") // ใช้กรณี ENVIRONMENT: 'dissolved_oxygen', 'air_temperature', 'rain_accumulation'
+  parameterId  Int?     @map("parameter_id")  // ใช้กรณี PARAMETER: เชื่อมผูกกับ ID ของตาราง Parameter
+  filterValue  String?  @map("filter_value")  // เงื่อนไขตัวกรองค่า เช่น 'safe', 'warning', 'danger'
+  unit         String?  @map("unit")           // หน่วยนับ เช่น 'รายการ', 'mg/L', '%'
+  cardColor    String   @default("blue") @map("card_color") // สีธีมหลัก: 'blue', 'red', 'green', 'yellow'
+
+  w            Int      @default(3)           // ความกว้างกริดบนหน้าจอ เช่น 3, 4, 6, 12 ช่อง
+
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relation เชื่อมต่อไปตาราง Parameter
+  parameter    Parameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
+
+  @@map("dashboard_widgets")
 }
