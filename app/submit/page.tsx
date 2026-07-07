@@ -261,10 +261,10 @@ function SubmitContent() {
                     ctx.lineWidth = Math.max(4, img.width * 0.005);
                     ctx.strokeRect(x_min, y_min, x_max - x_min, y_max - y_min);
 
-                    // ⚡️ ตกแต่ง Label ให้ Dynamic ตามชื่อสารจริงที่สะท้อนมาจากโมเดล
+                    // ตกแต่ง Label ให้ Dynamic ตามชื่อสารจริงที่สะท้อนมาจากโมเดล
+                    const confPct = aiData.confidence;
                     const paramLabel = aiData.parameterName ? aiData.parameterName.charAt(0).toUpperCase() + aiData.parameterName.slice(1).toLowerCase() : "Vial";
-                    const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L`;
-
+                    const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L confidence ${confPct}`;
                     const fs = Math.max(16, Math.floor(img.width * 0.018));
                     ctx.font = `bold ${fs}px Arial`;
                     const tw = ctx.measureText(label).width,
@@ -363,10 +363,17 @@ function SubmitContent() {
             fd.append("collectionTime", new Date(collectionTime).toISOString());
             if (oxygen) fd.append("oxygen", oxygen);
 
-            const measurementsPayload = systemParameters.map((param) => ({
-                parameterId: param.id,
-                value: results[param.id]?.concentrated || 0,
-            }));
+            const measurementsPayload = systemParameters.map((param) => {
+                const resData = results[param.id];
+                return {
+                    parameterId: param.id,
+                    value: resData?.concentrated || 0,
+                    confidence: resData?.confidence || 0,
+                    // แปลง Array พิกัดพล็อต [x1, y1, x2, y2] หรือวัตถุในระบบให้เป็น String เพื่อความปลอดภัยในฟอร์มดาต้า
+                    boundingBox: resData?.boundingBox ? JSON.stringify(resData.boundingBox) : null,
+                    message: resData?.message || null,
+                };
+            });
 
             fd.append("measurements", JSON.stringify(measurementsPayload));
 
