@@ -114,13 +114,12 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         }
     }, [agencyFilter, statusFilter]);
 
+    // โหลดสถานีที่มีอยู่แล้วทั้งใน explorer และ picker (picker ใช้แสดงหมุดอ้างอิงตอนปักหมุดใหม่)
     useEffect(() => {
-        if (mode === "explorer") {
-            const timer = setTimeout(() => {
-                fetchLocations();
-            }, 0);
-            return () => clearTimeout(timer);
-        }
+        const timer = setTimeout(() => {
+            fetchLocations();
+        }, 0);
+        return () => clearTimeout(timer);
     }, [mode, fetchLocations]);
 
     useEffect(() => {
@@ -154,17 +153,14 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             <MapContainer key={mapKey} ref={leafletMapRef} center={center} zoom={zoom} className="w-full h-full" zoomControl={false} attributionControl={false}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
 
-                {mode === "explorer" &&
-                    locations.map((loc) => (
-                        <Marker
-                            key={loc.id}
-                            position={[loc.lat, loc.lng]}
-                            icon={createLocationIcon(loc.organization, loc.latestSample?.status || null)}
-                            eventHandlers={{
-                                click: () => setSelectedLocation(loc),
-                            }}
-                        />
-                    ))}
+                {locations.map((loc) => (
+                    <Marker
+                        key={loc.id}
+                        position={[loc.lat, loc.lng]}
+                        icon={createLocationIcon(loc.organization, loc.latestSample?.status || null)}
+                        eventHandlers={mode === "explorer" ? { click: () => setSelectedLocation(loc) } : undefined}
+                    />
+                ))}
 
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
 

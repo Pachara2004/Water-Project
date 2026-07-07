@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { MapPin, ShieldAlert, ChevronRight, Shield, Users, Phone, UserCircle2, Pencil, X, Check, AlertCircle, User } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -64,8 +65,8 @@ function validateName(v: string): string {
 }
 
 function validatePhone(v: string): string {
-    if (!v.trim()) return "";
     const clean = v.trim().replace(/[-\s]/g, "");
+    if (!clean) return "กรุณากรอกเบอร์โทรศัพท์";
     if (!PHONE_RE.test(clean)) return "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)";
     return "";
 }
@@ -111,15 +112,15 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
         setSaving(true);
         setServerError("");
         try {
-            const res = await fetch("/api/auth/onboarding", {
-                method: "PUT",
+            // ยิงไปที่ /api/profile (แก้เฉพาะข้อมูลส่วนตัว ไม่ยุ่งกับ role)
+            // แนบ LINE token ให้หลังบ้านแกะ userId จาก token เอง กัน IDOR
+            const res = await fetch("/api/profile", {
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    // 🔥 เพิ่มกลอนล็อกแนบ LINE Access Token ส่งไปยืนยันตัวตนจริงกับหลังบ้านครับบอส!
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
-                    // 🔒 ปลอดภัยสูงสุด: ถอดไอดี userId ออกไปได้เลยครับ เพราะหลังบ้านจะแกะจากตั๋ว Token แทนแล้ว
                     firstName,
                     lastName,
                     phoneNumber: phone.trim().replace(/[-\s]/g, ""),
@@ -163,7 +164,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                 <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
 
                 <div className="flex items-center justify-between mb-7">
-                    <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">แก้ไขข้อมูลส่วนตัว</h3>
+                    <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">แก้ไขข้อมูลส่วนตัว</h3>
                     <button title="button"
                         onClick={onClose}
                         className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
@@ -175,7 +176,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                 <div className="space-y-5">
                     {/* Name field */}
                     <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase tracking-wider">
+                        <label className="flex items-center gap-1.5 text-[9px] font-semibold text-text-muted uppercase tracking-wider">
                             <User size={10} /> ชื่อ-นามสกุลจริง <span className="text-danger">*</span>
                         </label>
                         <input
@@ -187,7 +188,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                             }}
                             placeholder="เช่น นายสมชาย ใจดี"
                             maxLength={100}
-                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-bold
+                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-semibold
                 ${errors.name ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
                         />
                         {errors.name && (
@@ -201,7 +202,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
 
                     {/* Phone field */}
                     <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase tracking-wider">
+                        <label className="flex items-center gap-1.5 text-[9px] font-semibold text-text-muted uppercase tracking-wider">
                             <Phone size={10} /> เบอร์โทรศัพท์มือถือ <span className="text-danger">*</span>
                         </label>
                         <input
@@ -213,7 +214,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                             }}
                             placeholder="เช่น 0812345678"
                             maxLength={15}
-                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-mono font-bold
+                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-mono font-semibold
                 ${errors.phone ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
                         />
                         {errors.phone && (
@@ -234,14 +235,14 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                     {success && (
                         <div className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl animate-fade-in">
                             <Check size={14} className="text-emerald-500" />
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">บันทึกข้อมูลเรียบร้อยแล้ว</p>
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">บันทึกข้อมูลเรียบร้อยแล้ว</p>
                         </div>
                     )}
 
                     <button
                         onClick={handleSave}
                         disabled={saving || success || !isDirty}
-                        className="w-full mt-2 py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-black rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer active:scale-[0.98]"
+                        className="w-full mt-2 py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer active:scale-[0.98]"
                     >
                         {saving ? (
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -276,15 +277,15 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
         <div className="bg-surface rounded-3xl border border-border shadow-sm p-5 sm:p-6">
             <div className="flex items-center gap-4">
                 {/* Avatar */}
-                <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-sm font-black flex-shrink-0 shadow-sm select-none">
+                <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-sm select-none">
                     {getInitials(currentUser.firstName, currentUser.lineProfileName)}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-base font-bold text-text-primary truncate">{userDisplayName}</h2>
+                    <h2 className="text-base font-semibold text-text-primary truncate">{userDisplayName}</h2>
 
-                    <span className={`inline-flex items-center gap-1.5 mt-1.5 text-[9px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${roleColor}`}>
+                    <span className={`inline-flex items-center gap-1.5 mt-1.5 text-[9px] font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${roleColor}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${roleDot}`} />
                         {roleLabel}
                     </span>
@@ -323,11 +324,11 @@ export default function ManagePage() {
                 <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
                     <ShieldAlert size={28} className="animate-pulse" />
                 </div>
-                <h1 className="font-display text-xl font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
+                <h1 className="font-display text-base font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
                 <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้านี้สำหรับเจ้าหน้าที่ปฏิบัติการ, ผู้บริหาร และผู้ดูแลระบบเท่านั้น</p>
                 <button
                     onClick={() => router.push("/map")}
-                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
+                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
                 >
                     กลับไปหน้าแผนที่
                 </button>
@@ -348,7 +349,7 @@ export default function ManagePage() {
                                 {isAdmin ? <Shield size={22} className="text-white" /> : <UserCircle2 size={22} className="text-white" />}
                             </div>
                             <div>
-                                <h1 className="font-display text-2xl font-bold text-text-primary leading-tight">
+                                <h1 className="font-display text-base font-semibold text-text-primary leading-tight">
                                     {isAdmin ? (
                                         <>
                                             Admin <span className="text-primary">Panel</span>
@@ -371,7 +372,7 @@ export default function ManagePage() {
 
                     {isAdmin && (
                         <div className="flex items-center gap-2 mt-5">
-                            <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-primary bg-primary-light border border-primary/10 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-1.5 text-[9px] font-semibold text-primary bg-primary-light border border-primary/10 px-3 py-1.5 rounded-full uppercase tracking-wider">
                                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
                                 System Administrator
                             </span>
@@ -381,14 +382,14 @@ export default function ManagePage() {
 
                 {/* Profile card */}
                 <div className="mb-8">
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider px-1 mb-4">ข้อมูลของฉัน</p>
+                    <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider px-1 mb-4">ข้อมูลของฉัน</p>
                     <ProfileCard onEdit={() => setShowEdit(true)} />
                 </div>
 
                 {/* Admin menus */}
                 {isAdmin && (
                     <div className="space-y-3">
-                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider px-1 mb-5">เมนูการจัดการ</p>
+                        <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider px-1 mb-5">เมนูการจัดการ</p>
 
                         {adminMenus.map((menu) => {
                             const Icon = menu.icon;
@@ -408,16 +409,16 @@ export default function ManagePage() {
 
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="text-sm font-bold text-text-primary truncate">{menu.label}</h3>
+                                            <h3 className="text-sm font-semibold text-text-primary truncate">{menu.label}</h3>
                                             {!menu.available && (
-                                                <span className="text-[8px] font-bold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
+                                                <span className="text-[8px] font-semibold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
                                                     เร็วๆ นี้
                                                 </span>
                                             )}
                                         </div>
                                         <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
                                         {menu.available && (
-                                            <span className={`inline-block mt-2 text-[9px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${menu.color}`}>{menu.badge}</span>
+                                            <span className={`inline-block mt-2 text-[9px] font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${menu.color}`}>{menu.badge}</span>
                                         )}
                                     </div>
 
