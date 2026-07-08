@@ -25,17 +25,9 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
 
     return (
         <div className="space-y-4">
-            {/* กล่องแสดงผลสถานะภาพรวมคุณภาพน้ำ */}
-            <div
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs text-center content-center font-medium ${overallStatus === "safe" ? "bg-teal-50 text-teal-800 border-teal-500/30" : overallStatus === "warning" ? "bg-amber-50 text-amber-800 border-amber-500/30" : "bg-red-50 text-red-800 border-red-500/30"}`}
-            >
-                <p className="font-semibold">
-                    {overallStatus === "safe" ? "คุณภาพน้ำอยู่ในเกณฑ์ปลอดภัย" : overallStatus === "warning" ? "ตรวจพบค่าสูง — ต้องตรวจสอบเพิ่มเติม" : "ค่าเกินมาตรฐานความปลอดภัย"}
-                </p>
-            </div>
-
+            
             {/* ตารางแสดงรายละเอียดแต่ละสารพารามิเตอร์ */}
-            <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1">
+            <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-10">
                 <div className="px-6 py-3 border-b border-border bg-muted/40 flex justify-between items-center text-text-muted text-xs uppercase tracking-wider">
                     <div>Parameter</div>
                     <div>Value</div>
@@ -90,7 +82,7 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                     {/* เมื่อกดกาง Dropdown ออกมา แผ่เต็มกริบ ไม่มีจำกัดความสูงและไม่มี scrollbar */}
                                     {isDropdownOpen && (
                                         <div className="mt-1.5 p-3 rounded-xl bg-surface-subtle border border-border/70 space-y-2 animate-fadeIn">
-                                            <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted border-b border-border/60 pb-1">
+                                            <p className="font-mono text-xs uppercase tracking-widest text-text-muted border-b border-border/60 pb-1">
                                                 เปรียบเทียบเกณฑ์มาตรฐานสิ่งแวดล้อมทางน้ำ
                                             </p>
                                             <div className="space-y-2 h-auto w-full"> 
@@ -101,23 +93,25 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                                     const subParamExceeded = currentParamStatus === "danger";
 
                                                     return (
-                                                        <div key={locKey} className="flex items-center justify-between text-[11px] py-1 border-b border-border/30 last:border-0 pb-1 last:pb-0">
+                                                        <div key={locKey} className="flex items-center justify-between text-xs py-1 border-b border-border/30 last:border-0 pb-1 last:pb-0">
                                                             <div className="flex flex-col">
-                                                                <span className="font-medium text-black">{LOCATION_TYPE_LABELS[locKey]}</span>
-                                                                <span className="text-xs text-secondary ">เกณฑ์สูงสุด: {currentParamMax} {param.unit}</span>
+                                                                <span className="font-medium text-black text-xs">{LOCATION_TYPE_LABELS[locKey]}</span>
+                                                                <span className="text-xs text-secondary ">
+                                                                    เกณฑ์สูงสุด: {currentParamMax} {param.unit}
+                                                                </span>
                                                             </div>
                                                             <div className="flex items-center gap-1 shrink-0 ml-2">
                                                                 {subParamExceeded ? (
-                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-2 py-0.5 rounded-md text-red-600 bg-red-50 text-[10px] border border-red-200/40">
+                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-5 py-0.5 text-red-600 bg-red-50 text-xs">
                                                                         เกินเกณฑ์
                                                                     </span>
-                                                                 ) : currentParamStatus === "warning" ? (
-                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-2 py-0.5 rounded-md text-amber-600 bg-amber-50 text-[10px] border border-amber-200/40">
+                                                                ) : currentParamStatus === "warning" ? (
+                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-5 py-0.5 text-amber-600 bg-amber-50 text-xs">
                                                                         เฝ้าระวัง
                                                                     </span>
-                                                                 ) : (
-                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-2 py-0.5 rounded-md text-teal-600 bg-teal-50 text-[10px] border border-teal-200/40">
-                                                                         ผ่าน
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-5 py-0.5 text-teal-600 bg-teal-50 text-xs">
+                                                                        ผ่าน
                                                                     </span>
                                                                 )}
                                                             </div>

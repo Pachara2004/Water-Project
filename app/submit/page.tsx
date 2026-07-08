@@ -28,7 +28,6 @@ function SubmitContent() {
         sessionId,
         saved,
         handleSave,
-        
     } = hook;
 
     const handleImageSelect = async (paramId: number, file: File) => {
@@ -43,11 +42,54 @@ function SubmitContent() {
         reader.readAsDataURL(file);
     };
 
+    const onConfirmSave = async () => {
+        const Swal = (await import("sweetalert2")).default; // เรียกใช้ Swal ตรงจากโมดูลสากลในเครื่องบอส
+
+        Swal.fire({
+            title: "ยืนยันการบันทึกข้อมูล",
+            text: "คุณต้องการบันทึกผลการตรวจสอบน้ำนี้ลงฐานข้อมูล",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#0D9488", // สี Teal-700 ให้เข้าเซ็ตระบบบอส
+            cancelButtonColor: "#6B7280",
+            confirmButtonText: "ใช่ บันทึกข้อมูล",
+            cancelButtonText: "ยกเลิก",
+            allowOutsideClick: () => !Swal.isLoading(), // บล็อกไม่ให้คลิกพื้นหลังปิดตอนกำลังโหลด
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // 🌟 เปิดสถานะหมุนโหลดตัวเต็มจอ บล็อกปุ่มกดเล่นซ้ำซ้อน
+                Swal.fire({
+                    title: "กำลังบันทึกข้อมูล...",
+                    text: "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading(); // สั่งให้สปินเนอร์ของ Swal หมุนทำงานค้างไว้
+                    },
+                });
+
+                // สั่งรันฟังก์ชันยิง API ของเดิมที่อยู่ใน Hook
+                handleSave()
+                    .then(() => {
+                        Swal.close(); // ปิดโหลดตัวสปินเนอร์เมื่อยิง Network จบสำเร็จจริง ๆ
+                    })
+                    .catch((err) => {
+                        Swal.fire({
+                            title: "เกิดข้อผิดพลาด",
+                            text: err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง",
+                            icon: "error",
+                            confirmButtonColor: "#0D9488",
+                        });
+                    });
+            }
+        });
+    };
+
     const hasLowConfidence = systemParameters.some((param) => {
         const resData = results[param.id];
         if (!resData || resData.confidence === undefined) return false;
         // ดักทั้งกรณีส่งมาแบบ 0.6 หรือส่งมาแบบเต็ม 60
-        return resData.confidence < 0.6 ;
+        return resData.confidence < 0.6;
     });
 
     const currentStep = step === "upload" ? 1 : step === "analyzing" ? 2 : 3;
@@ -108,16 +150,26 @@ function SubmitContent() {
                         ) : !saved ? (
                             /* 🟢 กรณีผ่านหมด: แสดงปุ่มบันทึกปกติ */
                             <button
-                                onClick={handleSave}
+                                onClick={onConfirmSave} // 🌟 เปลี่ยนมาเรียกตัว Confirm ดักตรงนี้แทนครับบอส
                                 className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition-all duration-200"
                             >
                                 <Database size={15} /> บันทึกลงฐานข้อมูล
                             </button>
                         ) : (
                             /* 🤝 บันทึกสำเร็จ */
-                            <div className="text-center p-4 border rounded-xl border-teal-500/30 bg-teal-50">
-                                <CheckCircle2 className="mx-auto text-teal-600 mb-1" size={20} />
-                                <p className="text-xs text-teal-800 font-medium">บันทึกข้อมูลเข้าสู่ระบบเรียบร้อยแล้วครับ</p>
+                            <div className="text-center p-6 border rounded-xl border-teal-500/30 bg-teal-50/60 flex flex-col items-center gap-3">
+                                <CheckCircle2 className="text-teal-600 animate-bounce" size={28} />
+                                <div>
+                                    <p className="text-sm font-semibold text-teal-900">บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย</p>
+                                </div>
+
+                                {/* 🌟 ปุ่มนำทางกลับสู่แดชบอร์ด /collector */}
+                                <button
+                                    onClick={() => router.push("/collector")}
+                                    className="mt-2 px-5 py-2.5 min-h-[40px] bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                                >
+                                    กลับสู่หน้าประวัติการตรวจสอบน้ำ
+                                </button>
                             </div>
                         )}
                     </>
