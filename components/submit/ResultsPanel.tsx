@@ -27,7 +27,7 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
         <div className="space-y-4">
             
             {/* ตารางแสดงรายละเอียดแต่ละสารพารามิเตอร์ */}
-            <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-10">
+            <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-1                                                                                                                                                           ">
                 <div className="px-6 py-3 border-b border-border bg-muted/40 flex justify-between items-center text-text-muted text-xs uppercase tracking-wider">
                     <div>Parameter</div>
                     <div>Value</div>
@@ -56,8 +56,8 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                             </span>
                                         )}
                                     </div>
-                                    <div className="text-sm font-semibold text-text-primary text-right">
-                                        {measurement.concentrated.toFixed(3)} <span className="text-[10px] text-text-muted font-normal ml-0.5">{param.unit ?? "mg/L"}</span>
+                                    <div className="text-xl font-semibold text-black text-right">
+                                        {measurement.concentrated.toFixed(3)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
                                     </div>
                                 </div>
                                 <ThresholdBar value={measurement.concentrated} max={max} status={measurement.status} />
@@ -82,7 +82,7 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                     {/* เมื่อกดกาง Dropdown ออกมา แผ่เต็มกริบ ไม่มีจำกัดความสูงและไม่มี scrollbar */}
                                     {isDropdownOpen && (
                                         <div className="mt-1.5 p-3 rounded-xl bg-surface-subtle border border-border/70 space-y-2 animate-fadeIn">
-                                            <p className="font-mono text-xs uppercase tracking-widest text-text-muted border-b border-border/60 pb-1">
+                                            <p className="text-xs text-primary border-b border-primary pb-1">
                                                 เปรียบเทียบเกณฑ์มาตรฐานสิ่งแวดล้อมทางน้ำ
                                             </p>
                                             <div className="space-y-2 h-auto w-full"> 
@@ -93,7 +93,7 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                                     const subParamExceeded = currentParamStatus === "danger";
 
                                                     return (
-                                                        <div key={locKey} className="flex items-center justify-between text-xs py-1 border-b border-border/30 last:border-0 pb-1 last:pb-0">
+                                                        <div key={locKey} className="flex items-center justify-between text-xs py-1 border-b border-black/20 last:border-0 pb-1 last:pb-0">
                                                             <div className="flex flex-col">
                                                                 <span className="font-medium text-black text-xs">{LOCATION_TYPE_LABELS[locKey]}</span>
                                                                 <span className="text-xs text-secondary ">
