@@ -31,7 +31,7 @@ export const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
     COMMUNITY: "สำหรับเขตชุมชน",
 };
 
-// 2. สลับเปลี่ยนค่าสถานะไทป์ให้เป็นตัวพิมพ์เล็กตามระบบสากลใหม่ของบอส
+// 2. สลับเปลี่ยนค่าสถานะไทป์ให้เป็นตัวพิมพ์เล็กตามระบบสากลใหม่ของ
 export type StatusType = "safe" | "warning" | "danger";
 
 /**

@@ -89,7 +89,7 @@ export default function AdminLocationsPage() {
     }, []);
 
     useEffect(() => {
-        // ตรวจเช็กสิทธิ์ Gate ระบบความปลอดภัยพิมพ์เล็กของบอส
+        // ตรวจเช็กสิทธิ์ Gate ระบบความปลอดภัยพิมพ์เล็กของ
         if (currentUser?.role === "admin") {
             const timer = setTimeout(() => {
                 fetchLocations();

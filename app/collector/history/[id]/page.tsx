@@ -443,7 +443,7 @@ export default function CollectorHistoryDetailPage() {
                         {(() => {
                             // ⚡️ ดึง URL รูปภาพแบบไดนามิกจับคู่ตามชื่อสารเคมี (ล้อตามโครงสร้างอัปโหลดของ API /api/samples)
                             // เช่น sample["rawImageUrl_phosphate"] หรือ sample["analyzedPlotUrl_ammonia"]
-                            // (หมายเหตุ: ถ้า DB ของบอสเก็บ URL รวมไว้ที่คีย์กลาง ให้สืบทอดใช้ sample.rawImageUrl เป็นหลักได้ครับ)
+                            // (หมายเหตุ: ถ้า DB ของเก็บ URL รวมไว้ที่คีย์กลาง ให้สืบทอดใช้ sample.rawImageUrl เป็นหลักได้ครับ)
                             const rawKey = `rawImageUrl_${activeParamKey}`;
                             const plotKey = `analyzedPlotUrl_${activeParamKey}`;
 
