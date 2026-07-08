@@ -48,6 +48,48 @@ export async function GET(request: Request) {
             statusCountMap[g.status] = g._count._all;
         });
 
+        // --- 📈 ช่วงก่อนหน้าขนาดเท่ากัน สำหรับคำนวณ Trend delta (ยืดหยุ่นตามความยาวของ filter ที่เลือก) ---
+        let prevTotal = 0;
+        let prevSafe = 0;
+        let prevDanger = 0;
+        let prevWarning = 0;
+        let hasPrevPeriod = false;
+        if (startDateParam && endDateParam) {
+            const start = new Date(startDateParam);
+            const end = new Date(endDateParam);
+            const span = end.getTime() - start.getTime();
+            if (span > 0) {
+                hasPrevPeriod = true;
+                const prevWhere: any = { ...baseWhere, collectionTime: { gte: new Date(start.getTime() - span), lt: start } };
+                const prevStatusGroups = await prisma.waterSample.groupBy({
+                    by: ["status"],
+                    where: prevWhere,
+                    _count: { _all: true },
+                });
+                prevStatusGroups.forEach((g) => {
+                    prevTotal += g._count._all;
+                    if (g.status === "safe") prevSafe = g._count._all;
+                    if (g.status === "danger") prevDanger = g._count._all;
+                    if (g.status === "warning") prevWarning = g._count._all;
+                });
+            }
+        }
+
+        // ค่าอัตราความปลอดภัย (Safety Rate %) + ตัวช่วยคำนวณ delta เทียบช่วงก่อนหน้า
+        const safeRateValue = totalSamples > 0 ? Number((((statusCountMap["safe"] || 0) / totalSamples) * 100).toFixed(1)) : 0;
+        const prevSafeRate = prevTotal > 0 ? (prevSafe / prevTotal) * 100 : 0;
+        const relDelta = (cur: number, prev: number) => (prev > 0 ? Number((((cur - prev) / prev) * 100).toFixed(1)) : null);
+        const trendForStatus = (w: { filterValue: string | null; title: string }): { value: number | null; kind: "pct" | "pp" } | null => {
+            if (!hasPrevPeriod) return null;
+            const isSafe = w.filterValue === "safe" || w.title.includes("ปลอดภัย");
+            const isDanger = w.filterValue === "danger" || (w.title.includes("อันตราย") && !w.title.includes("เฝ้าระวัง")) || w.title.includes("วิกฤต");
+            const isWarning = w.filterValue === "warning" || w.title.includes("เฝ้าระวัง");
+            if (isSafe) return { value: prevTotal > 0 ? Number((safeRateValue - prevSafeRate).toFixed(1)) : null, kind: "pp" };
+            if (isDanger) return { value: relDelta(statusCountMap["danger"] || 0, prevDanger), kind: "pct" };
+            if (isWarning) return { value: relDelta(statusCountMap["warning"] || 0, prevWarning), kind: "pct" };
+            return { value: relDelta(totalSamples, prevTotal), kind: "pct" };
+        };
+
         // ค่าเฉลี่ยสิ่งแวดล้อมส่วนกลาง คำนวณครั้งเดียวที่ DB (คอลัมน์จริงบนตาราง samples เท่านั้น)
         const envAggregate = await prisma.waterSample.aggregate({
             where: baseWhere,
@@ -81,17 +123,24 @@ export async function GET(request: Request) {
                 let finalValue: number = 0;
                 let unit = "mg/L";
                 let color = "#6366f1";
+                let trend: { value: number | null; kind: "pct" | "pp" } | null = null;
 
                 // จัดการจับคู่ประเภทข้อมูลตามที่บอสออกแบบไว้ในโครงสร้างตาราง
                 if (w.targetType === "SAMPLE_STATUS") {
                     unit = "รายการ";
                     color = "#3b82f6";
-                    if (w.targetColumn === "safe" || w.title.includes("ปลอดภัย")) {
-                        finalValue = statusCountMap["safe"] || 0;
+                    trend = trendForStatus(w);
+                    if (w.filterValue === "safe" || w.targetColumn === "safe" || w.title.includes("ปลอดภัย")) {
+                        // การ์ดความปลอดภัยแสดงเป็น "อัตราส่วน %" ของตัวอย่างที่ผ่านเกณฑ์ SAFE แทนการนับจำนวนดิบ
+                        finalValue = safeRateValue;
+                        unit = "%";
                         color = "#10b981";
-                    } else if (w.targetColumn === "danger" || w.title.includes("อันตราย") || w.title.includes("วิกฤต")) {
+                    } else if (w.filterValue === "danger" || w.targetColumn === "danger" || w.title.includes("วิกฤต") || (w.title.includes("อันตราย") && !w.title.includes("เฝ้าระวัง"))) {
                         finalValue = statusCountMap["danger"] || 0;
                         color = "#ef4444";
+                    } else if (w.filterValue === "warning" || w.targetColumn === "warning" || w.title.includes("เฝ้าระวัง")) {
+                        finalValue = statusCountMap["warning"] || 0;
+                        color = "#f59e0b"; // amber ตาม semantics SAFE/WARNING/DANGER
                     } else {
                         finalValue = totalSamples;
                     }
@@ -139,6 +188,7 @@ export async function GET(request: Request) {
                     value: finalValue,
                     unit: unit,
                     color: color,
+                    trend: trend, // การเปลี่ยนแปลงเทียบช่วงก่อนหน้า (null = ไม่มีข้อมูลช่วงก่อน/ไม่ใช่การ์ดสถานะ)
                 };
             });
 
@@ -173,6 +223,9 @@ export async function GET(request: Request) {
             where: baseWhere,
             select: {
                 collectionTime: true,
+                rainAccumulation: true, // ใช้ต่อในส่วน Correlation (สภาพอากาศ × ความเข้มข้นสาร)
+                airTemperature: true,
+                status: true, // ใช้คัดจุดผิดปกติ (DANGER) มาวางทับ heatmap
                 measurements: {
                     where: { parameter: { name: { in: ["ammonia", "phosphate"] } } },
                     select: { value: true, parameter: { select: { name: true } } },
@@ -247,6 +300,55 @@ export async function GET(request: Request) {
             };
         });
 
+        // --- 🌦️ [มิติที่ 5: Correlation] สหสัมพันธ์สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
+        // เก็บคู่จุดของแต่ละชุด (แกน × สาร) เพื่อคำนวณ Pearson r และแบ่ง density bin ฝั่ง server
+        const rainNH3: { x: number; y: number }[] = [];
+        const rainPO4: { x: number; y: number }[] = [];
+        const tempNH3: { x: number; y: number }[] = [];
+        const tempPO4: { x: number; y: number }[] = [];
+        // จุดผิดปกติ (DANGER) สำหรับวางทับ heatmap
+        const outliers: { rain: number | null; temp: number | null; ammonia: number | null; phosphate: number | null }[] = [];
+
+        timeSeriesSamples.forEach((s) => {
+            const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value ?? null;
+            const phos = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value ?? null;
+            const rain = s.rainAccumulation;
+            const temp = s.airTemperature;
+
+            if (rain !== null && rain !== undefined && amm !== null) rainNH3.push({ x: rain, y: amm });
+            if (rain !== null && rain !== undefined && phos !== null) rainPO4.push({ x: rain, y: phos });
+            if (temp !== null && temp !== undefined && amm !== null) tempNH3.push({ x: temp, y: amm });
+            if (temp !== null && temp !== undefined && phos !== null) tempPO4.push({ x: temp, y: phos });
+
+            if (s.status === "danger" && (amm !== null || phos !== null)) {
+                outliers.push({ rain: rain ?? null, temp: temp ?? null, ammonia: amm, phosphate: phos });
+            }
+        });
+
+        // จำกัดจำนวน outlier ที่ส่งไปวาด (สุ่มเป็นระบบ) กัน overlay รกและ payload บวม
+        let outliersSampled = outliers;
+        if (outliers.length > 120) {
+            const step = Math.ceil(outliers.length / 120);
+            outliersSampled = outliers.filter((_, i) => i % step === 0);
+        }
+
+        const pearsonPairs = (pts: { x: number; y: number }[]): [number, number][] => pts.map((p) => [p.x, p.y]);
+        // เส้น trend คำนวณจากคู่ข้อมูลชุดเดียวกับ Pearson r เสมอ (ความชัน/จุดตัดแกน y)
+        const correlationMetrics = [
+            { key: "rain_nh3", label: "ฝน × NH₃", r: pearson(pearsonPairs(rainNH3)), n: rainNH3.length, trend: linearFit(pearsonPairs(rainNH3)) },
+            { key: "rain_po4", label: "ฝน × PO₄", r: pearson(pearsonPairs(rainPO4)), n: rainPO4.length, trend: linearFit(pearsonPairs(rainPO4)) },
+            { key: "temp_nh3", label: "อุณหภูมิ × NH₃", r: pearson(pearsonPairs(tempNH3)), n: tempNH3.length, trend: linearFit(pearsonPairs(tempNH3)) },
+            { key: "temp_po4", label: "อุณหภูมิ × PO₄", r: pearson(pearsonPairs(tempPO4)), n: tempPO4.length, trend: linearFit(pearsonPairs(tempPO4)) },
+        ];
+
+        // แบ่ง density bin ทั้ง 4 ชุด (แกน × สาร) — ส่งเฉพาะช่องที่มีค่า payload เล็กแม้ข้อมูลหลักพัน
+        const correlationHeatmaps = {
+            rain_nh3: densityBins(rainNH3),
+            rain_po4: densityBins(rainPO4),
+            temp_nh3: densityBins(tempNH3),
+            temp_po4: densityBins(tempPO4),
+        };
+
         return NextResponse.json({
             agencies: activeAgencies,
             kpis: kpisBlueprint, // การ์ดสรุปส่งไปตามแถวจริงในตารางฐานข้อมูลของบอสแบบ 100%
@@ -274,6 +376,13 @@ export async function GET(request: Request) {
                 ],
             },
             trends: trendsData,
+            correlation: {
+                title: "Correlation: สหสัมพันธ์สภาพอากาศกับความเข้มข้นสารเคมี (Pearson r)",
+                note: "อุณหภูมิ = อุณหภูมิอากาศ (ไม่มีอุณหภูมิน้ำใน schema) · จุดแดง = ตัวอย่างสถานะ DANGER",
+                metrics: correlationMetrics,
+                heatmaps: correlationHeatmaps,
+                outliers: outliersSampled,
+            },
         });
     } catch (error) {
         console.error(error);
@@ -284,4 +393,87 @@ export async function GET(request: Request) {
 // ฟังก์ชันช่วยแปลงงูเลื้อย (snake_case) เป็นอูฐ (camelCase) ป้องกันบั๊กฟิลด์โมเดล Prisma
 function toCamelCase(str: string) {
     return str.replace(/([-_][a-z])/g, (group) => group.toUpperCase().replace("-", "").replace("_", ""));
+}
+
+// ค่าสหสัมพันธ์ Pearson (r) จากคู่ข้อมูล [x, y] — คืน null หากจุดน้อยกว่า 2 หรือไม่มีความแปรปรวน
+function pearson(pairs: [number, number][]): number | null {
+    const n = pairs.length;
+    if (n < 2) return null;
+    let sx = 0,
+        sy = 0,
+        sxx = 0,
+        syy = 0,
+        sxy = 0;
+    for (const [x, y] of pairs) {
+        sx += x;
+        sy += y;
+        sxx += x * x;
+        syy += y * y;
+        sxy += x * y;
+    }
+    const cov = n * sxy - sx * sy;
+    const varX = n * sxx - sx * sx;
+    const varY = n * syy - sy * sy;
+    if (varX <= 0 || varY <= 0) return null;
+    return Number((cov / Math.sqrt(varX * varY)).toFixed(2));
+}
+
+// เส้น trend (least-squares) จากคู่ข้อมูลเดียวกับ Pearson — คืน slope/intercept หรือ null หากคำนวณไม่ได้
+function linearFit(pairs: [number, number][]): { slope: number; intercept: number } | null {
+    const n = pairs.length;
+    if (n < 2) return null;
+    let sx = 0,
+        sy = 0,
+        sxx = 0,
+        sxy = 0;
+    for (const [x, y] of pairs) {
+        sx += x;
+        sy += y;
+        sxx += x * x;
+        sxy += x * y;
+    }
+    const denom = n * sxx - sx * sx;
+    if (denom === 0) return null;
+    const slope = (n * sxy - sx * sy) / denom;
+    const intercept = (sy - slope * sx) / n;
+    return { slope: Number(slope.toFixed(4)), intercept: Number(intercept.toFixed(4)) };
+}
+
+// แบ่งจุดเป็นตารางความหนาแน่น (density bin) — คืนเฉพาะช่องที่มีจุด พร้อมขอบเขตและขนาดช่อง
+// ต้นทุน O(N) รอบเดียว และเอาต์พุตคงที่ (≤ cols×rows ช่อง) ไม่ว่าจะมีจุดกี่พัน
+function densityBins(pts: { x: number; y: number }[], cols = 18, rows = 12) {
+    if (pts.length === 0) return { bins: [] as any[], domain: null, binW: 0, binH: 0, cols, rows };
+    let xMin = Infinity,
+        xMax = -Infinity,
+        yMin = Infinity,
+        yMax = -Infinity;
+    for (const p of pts) {
+        if (p.x < xMin) xMin = p.x;
+        if (p.x > xMax) xMax = p.x;
+        if (p.y < yMin) yMin = p.y;
+        if (p.y > yMax) yMax = p.y;
+    }
+    const binW = (xMax - xMin) / cols || 1;
+    const binH = (yMax - yMin) / rows || 1;
+    const grid: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(0));
+    for (const p of pts) {
+        const c = Math.min(cols - 1, Math.max(0, Math.floor((p.x - xMin) / binW)));
+        const r = Math.min(rows - 1, Math.max(0, Math.floor((p.y - yMin) / binH)));
+        grid[r][c]++;
+    }
+    let maxCount = 0;
+    for (const row of grid) for (const v of row) if (v > maxCount) maxCount = v;
+    const bins: { x: number; y: number; count: number; intensity: number }[] = [];
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (!grid[r][c]) continue;
+            bins.push({
+                x: Number((xMin + (c + 0.5) * binW).toFixed(3)),
+                y: Number((yMin + (r + 0.5) * binH).toFixed(4)),
+                count: grid[r][c],
+                intensity: Number((grid[r][c] / maxCount).toFixed(3)),
+            });
+        }
+    }
+    return { bins, domain: { xMin, xMax, yMin, yMax }, binW, binH, cols, rows };
 }

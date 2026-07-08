@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useDeferredValue } from "react";
 import { useAppStore } from "@/lib/store";
-import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideAward, LucideCalendar, LucideFilter, LucideDownload, Activity, LucideBeaker } from "lucide-react";
+import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideAward, LucideCalendar, LucideFilter, LucideDownload, Activity, LucideBeaker } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 
 export default function ExecutiveAnalyticsDashboard() {
@@ -69,6 +69,24 @@ export default function ExecutiveAnalyticsDashboard() {
             groups[cleanKey].items.push(bar);
         });
         return Object.values(groups);
+    };
+
+    // 📈 แสดง badge การเปลี่ยนแปลงเทียบช่วงก่อนหน้า (% สำหรับจำนวน, pp สำหรับอัตราส่วน)
+    const renderTrend = (trend: any) => {
+        if (!trend || trend.value === null || trend.value === undefined) return null;
+        const up = trend.value > 0;
+        const flat = trend.value === 0;
+        const suffix = trend.kind === "pp" ? "pp" : "%";
+        const color = flat ? "text-slate-400 bg-slate-50" : up ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50";
+        const Arrow = up ? LucideTrendingUp : LucideTrendingDown;
+        return (
+            <span className={`inline-flex items-center gap-0.5 text-[8px] font-bold px-1 py-0.5 rounded ${color}`}>
+                {!flat && <Arrow size={8} />}
+                {up ? "+" : ""}
+                {trend.value}
+                {suffix}
+            </span>
+        );
     };
 
     return (
@@ -161,6 +179,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                             <span className="text-base font-bold text-slate-800 tracking-tight">{typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}</span>
                                             {kpi.unit && <span className="text-[8px] text-slate-400 font-medium ml-0.5">{kpi.unit}</span>}
                                         </div>
+                                        {kpi.trend && <div className="mt-1">{renderTrend(kpi.trend)}</div>}
                                     </div>
                                 ))}
                             </div>
@@ -273,10 +292,209 @@ export default function ExecutiveAnalyticsDashboard() {
                                     </ResponsiveContainer>
                                 </div>
                             </div>
+
+                            {/* มิติที่ 5: Correlation — แยกเป็น component ลูกเพื่อไม่ให้การกด toggle re-render ทั้งหน้า */}
+                            {analytics?.correlation && <CorrelationSection correlation={analytics.correlation} />}
                         </>
                     )}
                 </div>
             </div>
         </div>
     );
+}
+
+// 🌦️ Correlation — density heatmap + จุด outlier (DANGER) แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
+function CorrelationSection({ correlation }: { correlation: any }) {
+    const [axis, setAxis] = useState<"rain" | "temp">("rain");
+    const [chem, setChem] = useState<"nh3" | "po4">("nh3");
+    // เลื่อนการวาด heatmap (rect หลายสิบช่อง) ไปทำเบื้องหลัง — ปุ่ม/การ์ดตอบสนองทันที
+    const dAxis = useDeferredValue(axis);
+    const dChem = useDeferredValue(chem);
+    const hm = correlation?.heatmaps?.[`${dAxis}_${dChem}`];
+    const outliers: any[] = correlation?.outliers || [];
+
+    const VB_W = 440,
+        VB_H = 240,
+        mL = 40,
+        mR = 10,
+        mT = 10,
+        mB = 26;
+    const pw = VB_W - mL - mR,
+        ph = VB_H - mT - mB;
+    const ramp = ["#dbeafe", "#93c5fd", "#60a5fa", "#3b82f6", "#1d4ed8", "#1e3a8a"];
+
+    const activeKey = `${axis}_${chem}`;
+    const deferredKey = `${dAxis}_${dChem}`;
+    const activeMetric = correlation?.metrics?.find((m: any) => m.key === deferredKey);
+
+    // แปลงค่าข้อมูล → พิกัดพิกเซล (memoize ให้วาดใหม่เฉพาะตอนเปลี่ยนชุดข้อมูล)
+    const view = useMemo(() => {
+        if (!hm || !hm.domain || hm.bins.length === 0) return { rects: [] as any[], dots: [] as any[], xTicks: [] as any[], yTicks: [] as any[], trendLine: null as any, hasData: false };
+        const { xMin, xMax, yMin, yMax } = hm.domain;
+        const dx = xMax - xMin || 1;
+        const dy = yMax - yMin || 1;
+        const sx = (v: number) => mL + ((v - xMin) / dx) * pw;
+        const sy = (v: number) => mT + (1 - (v - yMin) / dy) * ph;
+        const cw = (hm.binW / dx) * pw;
+        const chh = (hm.binH / dy) * ph;
+        const rects = hm.bins.map((b: any, i: number) => ({
+            key: i,
+            x: sx(b.x) - cw / 2,
+            y: sy(b.y) - chh / 2,
+            w: cw + 0.6,
+            h: chh + 0.6,
+            fill: ramp[Math.min(ramp.length - 1, Math.floor(b.intensity * ramp.length))],
+        }));
+        const axKey = dAxis === "rain" ? "rain" : "temp";
+        const chemKey = dChem === "nh3" ? "ammonia" : "phosphate";
+        const dots = outliers.filter((o) => o[axKey] != null && o[chemKey] != null).map((o, i) => ({ key: i, cx: sx(o[axKey]), cy: sy(o[chemKey]) }));
+        const xTicks = [xMin, (xMin + xMax) / 2, xMax].map((v) => ({ x: sx(v), label: v.toFixed(v >= 20 ? 0 : 1) }));
+        const yTicks = [yMin, (yMin + yMax) / 2, yMax].map((v) => ({ y: sy(v), label: v.toFixed(2) }));
+
+        // เส้น trend: วาดเสมอ ตัดขอบให้อยู่ในกรอบ heatmap แล้วแปลงเป็นพิกัดพิกเซล
+        let trendLine: any = null;
+        if (activeMetric?.trend) {
+            const seg = clipLineToRect(activeMetric.trend.slope, activeMetric.trend.intercept, xMin, xMax, yMin, yMax);
+            if (seg) {
+                const absR = activeMetric.r === null ? 0 : Math.abs(activeMetric.r);
+                trendLine = {
+                    x1: sx(seg.x0),
+                    y1: sy(seg.y0),
+                    x2: sx(seg.x1),
+                    y2: sy(seg.y1),
+                    opacity: 0.25 + 0.75 * absR, // ยิ่ง |r| สูง เส้นยิ่งเข้ม — ต่อเนื่อง ไม่มีขั้นกระโดด
+                };
+            }
+        }
+
+        return { rects, dots, xTicks, yTicks, trendLine, hasData: true };
+    }, [hm, outliers, dAxis, dChem, activeMetric]);
+    const xLabel = dAxis === "rain" ? "ฝนสะสม (mm)" : "อุณหภูมิอากาศ (°C)";
+    const pill = (on: boolean) => `px-2 py-0.5 rounded-md transition-all cursor-pointer ${on ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`;
+
+    return (
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs shrink-0">
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <div className="text-[11px] font-bold text-slate-700 truncate">{correlation.title || "Correlation"}</div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="grid grid-cols-2 rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-[10px] font-semibold">
+                        <button onClick={() => setAxis("rain")} className={pill(axis === "rain")}>
+                            ฝน
+                        </button>
+                        <button onClick={() => setAxis("temp")} className={pill(axis === "temp")}>
+                            อุณหภูมิ
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-[10px] font-semibold">
+                        <button onClick={() => setChem("nh3")} className={pill(chem === "nh3")}>
+                            NH₃
+                        </button>
+                        <button onClick={() => setChem("po4")} className={pill(chem === "po4")}>
+                            PO₄
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+                {/* Density heatmap (SVG) + จุด outlier DANGER ทับ */}
+                <div className="col-span-1 md:col-span-8 w-full">
+                    {view.hasData ? (
+                        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto" }} role="img" aria-label={`density heatmap ของ ${xLabel} กับความเข้มข้น${chem === "nh3" ? " NH₃" : " PO₄"}`}>
+                            <rect x={mL} y={mT} width={pw} height={ph} fill="none" stroke="#e2e8f0" strokeWidth={1} />
+                            {view.rects.map((r: any) => (
+                                <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} />
+                            ))}
+                            {view.trendLine && (
+                                <line
+                                    x1={view.trendLine.x1}
+                                    y1={view.trendLine.y1}
+                                    x2={view.trendLine.x2}
+                                    y2={view.trendLine.y2}
+                                    stroke="#4f46e5"
+                                    strokeWidth={1.6}
+                                    strokeOpacity={view.trendLine.opacity}
+                                    strokeDasharray="5 4"
+                                />
+                            )}
+                            {view.dots.map((d: any) => (
+                                <circle key={`o${d.key}`} cx={d.cx} cy={d.cy} r={2.6} fill="#ef4444" stroke="#fff" strokeWidth={0.9} />
+                            ))}
+                            {view.xTicks.map((t: any, i: number) => (
+                                <text key={`x${i}`} x={t.x} y={VB_H - 13} fontSize={8} fill="#94a3b8" textAnchor="middle">
+                                    {t.label}
+                                </text>
+                            ))}
+                            {view.yTicks.map((t: any, i: number) => (
+                                <text key={`y${i}`} x={mL - 5} y={t.y + 3} fontSize={8} fill="#94a3b8" textAnchor="end">
+                                    {t.label}
+                                </text>
+                            ))}
+                            <text x={mL + pw / 2} y={VB_H - 2} fontSize={8} fill="#64748b" textAnchor="middle">
+                                {xLabel}
+                            </text>
+                            <text x={11} y={mT + ph / 2} fontSize={8} fill="#64748b" textAnchor="middle" transform={`rotate(-90 11 ${mT + ph / 2})`}>
+                                ความเข้มข้น (mg/L)
+                            </text>
+                        </svg>
+                    ) : (
+                        <div className="h-48 flex items-center justify-center text-slate-300 text-[11px]">ไม่มีข้อมูลเพียงพอสำหรับชุดนี้</div>
+                    )}
+                    {/* legend */}
+                    <div className="flex items-center gap-3 mt-1.5 text-[8px] text-slate-400 flex-wrap">
+                        <div className="flex items-center gap-1">
+                            <span>จุดน้อย</span>
+                            <span className="inline-block w-16 h-2 rounded" style={{ background: "linear-gradient(90deg,#dbeafe,#3b82f6,#1e3a8a)" }} />
+                            <span>จุดมาก</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 border border-white" />
+                            จุด DANGER
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <span className="inline-block w-4 h-0 border-t-2 border-indigo-600" />
+เส้นประ trend (ยิ่งเข้ม = ยิ่งสัมพันธ์แรง)
+                        </div>
+                    </div>
+                </div>
+                {/* การ์ดค่าสหสัมพันธ์ Pearson r (คำนวณจากข้อมูลเต็มที่ server) */}
+                <div className="col-span-1 md:col-span-4 grid grid-cols-2 gap-2 content-start">
+                    {correlation.metrics?.map((m: any, i: number) => {
+                        const active = m.key === activeKey;
+                        const rColor = m.r === null ? "text-slate-300" : m.r >= 0.5 ? "text-rose-500" : m.r <= -0.5 ? "text-blue-500" : "text-slate-500";
+                        return (
+                            <button
+                                key={i}
+                                onClick={() => {
+                                    const [a, c] = m.key.split("_");
+                                    setAxis(a === "temp" ? "temp" : "rain");
+                                    setChem(c === "po4" ? "po4" : "nh3");
+                                }}
+                                className={`rounded-lg border p-2 text-center transition-all cursor-pointer ${active ? "border-indigo-300 bg-indigo-50/60" : "border-slate-100 bg-slate-50/40 opacity-50 hover:opacity-80"}`}
+                            >
+                                <div className={`text-base font-bold ${rColor}`}>{m.r === null ? "—" : (m.r > 0 ? "+" : "") + m.r}</div>
+                                <div className="text-[8px] text-slate-400 font-semibold mt-0.5 truncate">{m.label}</div>
+                                <div className="text-[7px] text-slate-300">n={m.n}</div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+            {correlation.note && <div className="text-[8px] text-slate-300 mt-1.5">* {correlation.note}</div>}
+        </div>
+    );
+}
+
+// ตัดเส้น y = slope*x + intercept ให้อยู่ในกรอบ [xMin,xMax] × [yMin,yMax] — คืน null หากเส้นไม่ผ่านกรอบเลย
+function clipLineToRect(slope: number, intercept: number, xMin: number, xMax: number, yMin: number, yMax: number) {
+    if (slope === 0) {
+        const y = intercept;
+        if (y < yMin || y > yMax) return null;
+        return { x0: xMin, y0: y, x1: xMax, y1: y };
+    }
+    const xAtYMin = (yMin - intercept) / slope;
+    const xAtYMax = (yMax - intercept) / slope;
+    const xLo = Math.max(xMin, Math.min(xAtYMin, xAtYMax));
+    const xHi = Math.min(xMax, Math.max(xAtYMin, xAtYMax));
+    if (xLo > xHi) return null;
+    return { x0: xLo, y0: slope * xLo + intercept, x1: xHi, y1: slope * xHi + intercept };
 }
