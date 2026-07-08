@@ -43,10 +43,17 @@ function SubmitContent() {
         reader.readAsDataURL(file);
     };
 
+    const hasLowConfidence = systemParameters.some((param) => {
+        const resData = results[param.id];
+        if (!resData || resData.confidence === undefined) return false;
+        // ดักทั้งกรณีส่งมาแบบ 0.6 หรือส่งมาแบบเต็ม 60
+        return resData.confidence < 0.6 ;
+    });
+
     const currentStep = step === "upload" ? 1 : step === "analyzing" ? 2 : 3;
 
     return (
-        <div className="min-h-screen w-full bg-surface-muted transition-colors duration-300">
+        <div className="min-h-screen w-full bg-primary pb-5 antialiased">
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Bar ── */}
@@ -55,13 +62,12 @@ function SubmitContent() {
                     <ArrowLeft size={14} /> <span>Back</span>
                 </button>
                 <div className="text-center">
-                    <h1 className="text-sm font-semibold text-text-primary">ส่งตัวอย่างน้ำ</h1>
-                    <p className="text-[10px] text-text-muted">SESSION #{sessionId}</p>
+                    <h1 className="text-sm font-semibold text-text-primary">ส่งตรวจคุณภาพน้ำ</h1>
                 </div>
                 <div className="w-10" />
             </div>
 
-            {/* 📱 MOBILE VIEW COMPONENT */}
+            {/* MOBILE VIEW COMPONENT */}
             <div className="md:hidden px-4 pb-24 space-y-4 mt-3">
                 {isLoadingParams ? (
                     <div className="text-center text-xs py-8 text-text-muted">กำลังโหลดข้อมูลสารเคมี...</div>
@@ -73,6 +79,7 @@ function SubmitContent() {
                             step={step}
                             preview={imagePreviews[param.id]}
                             plotFile={imagePlotFiles[param.id]}
+                            measurement={results[param.id]}
                             onImageFilesChange={(file) => handleImageSelect(param.id, file)}
                             onNearestLocationsUpdate={setNearestLocations}
                             allLocations={allLocations}
@@ -90,21 +97,34 @@ function SubmitContent() {
                 {step === "results" && (
                     <>
                         <ResultsPanel {...hook} />
-                        {!saved ? (
-                            <button onClick={handleSave} className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 bg-teal-700 text-white">
+                        {hasLowConfidence ? (
+                            /* 🔴 กรณีไม่ผ่าน: บังคับย้อนกลับ แทนที่ปุ่มบันทึกไปเลย */
+                            <button
+                                onClick={() => hook.setStep("upload")}
+                                className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all duration-200"
+                            >
+                                ย้อนกลับไปถ่ายภาพใหม่
+                            </button>
+                        ) : !saved ? (
+                            /* 🟢 กรณีผ่านหมด: แสดงปุ่มบันทึกปกติ */
+                            <button
+                                onClick={handleSave}
+                                className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition-all duration-200"
+                            >
                                 <Database size={15} /> บันทึกลงฐานข้อมูล
                             </button>
                         ) : (
+                            /* 🤝 บันทึกสำเร็จ */
                             <div className="text-center p-4 border rounded-xl border-teal-500/30 bg-teal-50">
-                                <CheckCircle2 className="mx-auto text-teal-600" />
-                                <p className="text-xs text-teal-800 font-medium">บันทึกข้อมูลเข้าสู่ระบบเรียบร้อยแล้วครับบอส</p>
+                                <CheckCircle2 className="mx-auto text-teal-600 mb-1" size={20} />
+                                <p className="text-xs text-teal-800 font-medium">บันทึกข้อมูลเข้าสู่ระบบเรียบร้อยแล้วครับ</p>
                             </div>
                         )}
                     </>
                 )}
             </div>
 
-            {/* 💻 DESKTOP VIEW COMPONENT */}
+            {/* DESKTOP VIEW COMPONENT */}
             <div className="hidden md:block m-4">
                 <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-[600px]">
                     <DesktopSidebar {...hook} />
@@ -116,6 +136,7 @@ function SubmitContent() {
                                 step={step}
                                 preview={imagePreviews[param.id]}
                                 plotFile={imagePlotFiles[param.id]}
+                                measurement={results[param.id]}
                                 onImageFilesChange={(file) => handleImageSelect(param.id, file)}
                                 onNearestLocationsUpdate={setNearestLocations}
                                 allLocations={allLocations}
@@ -131,7 +152,7 @@ function SubmitContent() {
                                 <MetadataFields {...hook} />
                             </>
                         )}
-                        {step === "results" && <ResultsPanel {...hook} />}
+                        {step === "results" && <ResultsPanel setStep={hook.setStep} {...hook} />}{" "}
                     </div>
                 </div>
             </div>

@@ -15,7 +15,7 @@
 
 import L from "leaflet";
 
-// ปรับเปลี่ยนคีย์สเตตัสให้เป็นตัวพิมพ์เล็กตรงตามผังระบบล่าสุดของบอสครับ
+// ปรับเปลี่ยนคีย์สเตตัสให้เป็นตัวพิมพ์เล็กตรงตามผังระบบล่าสุดของครับ
 const STATUS_COLORS: Record<string, { fill: string; stroke: string; inner: string }> = {
     safe: { fill: "#22C55E", stroke: "#16A34A", inner: "#DCFCE7" },
     warning: { fill: "#F59E0B", stroke: "#D97706", inner: "#FEF3C7" },

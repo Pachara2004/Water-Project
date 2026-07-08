@@ -43,7 +43,7 @@ export async function GET(request: Request) {
             include: { measurements: { include: { parameter: true } } },
         });
 
-        // 🚀 ไฮไลต์: ดึงโครงสร้างพิมพ์เขียวทั้งหมดตรงจากตาราง `dashboard_widgets` ของบอส ไม่ Hardcode
+        // 🚀 ไฮไลต์: ดึงโครงสร้างพิมพ์เขียวทั้งหมดตรงจากตาราง `dashboard_widgets` ของ ไม่ Hardcode
         const dbWidgets = await (prisma as any).dashboardWidget.findMany({
             orderBy: { id: "asc" },
         });
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
                 let unit = "mg/L";
                 let color = "#6366f1";
 
-                // จัดการจับคู่ประเภทข้อมูลตามที่บอสออกแบบไว้ในโครงสร้างตาราง
+                // จัดการจับคู่ประเภทข้อมูลตามที่ออกแบบไว้ในโครงสร้างตาราง
                 if (w.targetType === "SAMPLE_STATUS") {
                     unit = "รายการ";
                     color = "#3b82f6";
@@ -219,7 +219,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             agencies: activeAgencies,
-            kpis: kpisBlueprint, // การ์ดสรุปส่งไปตามแถวจริงในตารางฐานข้อมูลของบอสแบบ 100%
+            kpis: kpisBlueprint, // การ์ดสรุปส่งไปตามแถวจริงในตารางฐานข้อมูลของแบบ 100%
             hotspotConfig: { title: "Danger Hotspots — 4 อันดับสถานีจุดเสี่ยงอันตรายสะสมสูงสุด" },
             hotspots: hotspotsData,
             temporalConfig: {

@@ -308,7 +308,7 @@ export default function CollectorDashboard() {
                                 {/* Hidden Checkbox ที่เข้าถึงได้ (sr-only) */}
                                 <input type="checkbox" checked={showOnlyMine} onChange={(e) => setShowOnlyMine(e.target.checked)} className="sr-only peer" />
 
-                                {/* โครงสร้างสวิตช์ Flowbite / Shadcn ตามที่บอสส่งมา */}
+                                {/* โครงสร้างสวิตช์ Flowbite / Shadcn ตามที่ส่งมา */}
                                 <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
                             </div>
                         </label>
@@ -394,7 +394,7 @@ export default function CollectorDashboard() {
                                 )}
                             </div>
 
-                            {/* 2. ปุ่มเลือกสถานะแบบ Multi-Select Dropdown ที่บอสต้องการ */}
+                            {/* 2. ปุ่มเลือกสถานะแบบ Multi-Select Dropdown ที่ต้องการ */}
                             <div className="relative flex-1" ref={statusMenuRef}>
                                 <button
                                     type="button"
@@ -465,7 +465,7 @@ export default function CollectorDashboard() {
                                         <FileText size={18} />
                                     </div>
                                     <p className="text-gray-900 font-bold text-xs">ไม่พบข้อมูลประวัติ</p>
-                                    <p className="text-[11px] text-gray-400 mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่บอสกำหนดไว้ครับ</p>
+                                    <p className="text-[11px] text-gray-400 mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
                                 </div>
                             );
                         }
