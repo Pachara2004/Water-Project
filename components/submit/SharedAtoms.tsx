@@ -18,8 +18,8 @@ export function StepDot({ n, state }: { n: number; state: "done" | "active" | "i
                 <CheckCircle2 size={11} />
             </div>
         );
-    if (state === "active") return <div className={`${base} border border-teal-600 text-teal-700 dark:text-teal-400 bg-[var(--color-background-info,#eff6ff)]`}>{n}</div>;
-    return <div className={`${base} border border-border text-text-muted bg-[var(--color-background-secondary,#f9fafb)]`}>{n}</div>;
+    if (state === "active") return <div className={`${base} border border-teal-600 text-teal-700 dark:text-teal-400 bg-(--color-background-info,#eff6ff)`}>{n}</div>;
+    return <div className={`${base} border border-border text-text-muted bg-(--color-background-secondary,#f9fafb)`}>{n}</div>;
 }
 
 export function ThresholdBar({ value, max, status }: { value: number; max: number; status: "safe" | "warning" | "danger" }) {
@@ -27,12 +27,12 @@ export function ThresholdBar({ value, max, status }: { value: number; max: numbe
     const fillColor = status === "safe" ? "#1D9E75" : status === "warning" ? "#EF9F27" : "#E24B4A";
     return (
         <div className="mt-2">
-            <div className="h-1 w-full rounded-sm bg-border/40">
+            <div className="h-1 w-full rounded-xs bg-border/40">
                 <div style={{ width: `${pct}%`, backgroundColor: fillColor }} className="h-full rounded-sm transition-all duration-500 ease-out" />
             </div>
             <div className="flex justify-between mt-1">
-                <span className="font-mono text-[9px] text-text-muted">0</span>
-                <span className="font-mono text-[9px] text-text-muted">max {max}</span>
+                <span className="text-xs text-text-muted">0</span>
+                <span className="text-xs text-text-muted">max {max}</span>
             </div>
         </div>
     );

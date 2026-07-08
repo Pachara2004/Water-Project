@@ -60,7 +60,9 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
     return (
         /* 🌟 3. เพิ่ม Dynamic Class บนกรอบ Section: ถ้าไม่ผ่านเปลี่ยนเป็นขอบแดง-พื้นแดงจาง ถ้าผ่านเปลี่ยนเป็นขอบเขียว-พื้นเขียวจาง */
         <section className={`rounded-xl overflow-hidden border border-border transition-all duration-300 bg-surface`}>
-            <SectionHead icon={<Camera size={13} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()} (${param.unit ?? "mg/L"})`} />
+            <div className="text-sm font-semibold ">
+                <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
+            </div>
             <div className="p-4">
                 {/* แถบระบุสถานะประเมินผลลัพธ์ย้อนหลัง */}
                 {hasConf && (
@@ -81,7 +83,7 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
 
                 <div
                     onClick={() => step === "upload" && fileInputRef.current?.click()}
-                    className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
+                    className={`relative w-full rounded-xl border-3 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
                     ${step === "analyzing" ? "aspect-4/3 border-slate-700 bg-slate-950 cursor-default" : preview ? "aspect-4/3 border-teal-500/30 bg-surface-subtle cursor-pointer" : "aspect-square border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"}
                     ${isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                 >
@@ -99,7 +101,6 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
                             </div>
                             <div>
                                 <p className="text-xs font-medium text-text-primary">แตะเพื่อถ่ายหรือเลือกภาพ ({param.name})</p>
-                                <p className="text-[10px] text-text-muted mt-1">ให้แผ่น ColorChecker ของ {param.name} อยู่ในกรอบและชัดเจน</p>
                             </div>
                         </div>
                     )}

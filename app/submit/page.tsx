@@ -99,9 +99,9 @@ function SubmitContent() {
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Bar ── */}
-            <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-[11px] text-text-secondary min-h-[44px]">
-                    <ArrowLeft size={14} /> <span>Back</span>
+            <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-text-secondary min-h-11">
+                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
                     <h1 className="text-sm font-semibold text-text-primary">ส่งตรวจคุณภาพน้ำ</h1>

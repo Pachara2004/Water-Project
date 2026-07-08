@@ -17,28 +17,20 @@ interface LocationPickerProps {
 export function LocationPicker({ searchQuery, setSearchQuery, locationName, currentLocationId, setCurrentLocationId, allLocations, nearestLocations, clearLocation }: LocationPickerProps) {
     return (
         <section className="rounded-xl bg-surface overflow-hidden border border-border">
-            <SectionHead icon={<MapPin size={13} />} label="เลือกสถานีจุดเก็บตัวอย่างน้ำ" />
+            <div className="text-sm font-semibold ">
+                <SectionHead icon={<MapPin size={16} />} label="เลือกสถานีจุดเก็บตัวอย่างน้ำ" />
+            </div>
             <div className="p-4 space-y-3">
                 <div className="relative">
-                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="ค้นหาสถานีตรวจวัด…"
-                        className="w-full pl-8 pr-3 py-2.5 text-xs bg-surface-subtle border border-border rounded-lg text-text-primary focus:outline-none focus:border-teal-500 transition-colors min-h-[44px]"
+                        placeholder={locationName || "ค้นหาสถานีใกล้เคียง"}
+                        className="w-full pl-8 pr-3 py-2.5 text-xs bg-surface-subtle border border-border rounded-lg text-text-primary focus:outline-none focus:border-teal-500 transition-colors min-h-11"
                     />
                 </div>
-
-                {locationName && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-500/30">
-                        <span className="h-1.5 w-1.5 rounded-full bg-teal-500 flex-shrink-0" />
-                        <span className="text-xs font-medium text-teal-800 dark:text-teal-200 truncate flex-1">{locationName}</span>
-                        <button onClick={clearLocation} className="text-[9px] font-mono text-teal-600 dark:text-teal-400 underline flex-shrink-0">
-                            เปลี่ยน
-                        </button>
-                    </div>
-                )}
 
                 {searchQuery.trim() ? (
                     <div className="space-y-1">
@@ -52,9 +44,9 @@ export function LocationPicker({ searchQuery, setSearchQuery, locationName, curr
                                         setCurrentLocationId(loc.id.toString());
                                         setSearchQuery("");
                                     }}
-                                    className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-lg border text-left transition-colors group min-h-[44px] ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-lg border text-left transition-colors group min-h-11 ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
                                 >
-                                    <MapPin size={12} className="text-text-muted group-hover:text-teal-600 flex-shrink-0" />
+                                    <MapPin size={12} className="text-text-muted group-hover:text-teal-600 shrink-0" />
                                     <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
                                     <ChevronRight size={12} className="ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </button>
@@ -62,15 +54,15 @@ export function LocationPicker({ searchQuery, setSearchQuery, locationName, curr
                     </div>
                 ) : nearestLocations.length > 0 ? (
                     <div className="space-y-1">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted px-1">สถานีใกล้เคียง</p>
+                        <p className="text-xs uppercase text-text-muted px-1">สถานีใกล้เคียง</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {nearestLocations.map((loc) => (
                                 <button
                                     key={loc.id}
                                     onClick={() => setCurrentLocationId(loc.id.toString())}
-                                    className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-left transition-colors min-h-[44px] ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
+                                    className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-left transition-colors min-h-11 ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
                                 >
-                                    <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${currentLocationId === loc.id.toString() ? "bg-teal-500" : "bg-text-muted"}`} />
+                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${currentLocationId === loc.id.toString() ? "bg-teal-500" : "bg-text-muted"}`} />
                                     <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
                                 </button>
                             ))}
