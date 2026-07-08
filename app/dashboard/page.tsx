@@ -2,8 +2,16 @@
 
 import { useState, useEffect, useMemo, useDeferredValue } from "react";
 import { useAppStore } from "@/lib/store";
-import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideAward, LucideCalendar, LucideFilter, LucideDownload, Activity, LucideBeaker } from "lucide-react";
+import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideAward, LucideCalendar, LucideFilter, LucideDownload, Activity, LucideBeaker } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
+
+// แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
+function toISODate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
 
 export default function ExecutiveAnalyticsDashboard() {
     const { currentUser } = useAppStore();
@@ -11,9 +19,16 @@ export default function ExecutiveAnalyticsDashboard() {
     const [analytics, setAnalytics] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    const [startDate, setStartDate] = useState("2026-01-01");
-    const [endDate, setEndDate] = useState("2026-12-31");
+    // ค่าเริ่มต้น = 6 เดือนล่าสุดแบบ rolling พอดี (ล็อควันที่ 1 ก่อนถอยเดือน กันเดือนที่ 7 โผล่มาจากเศษวัน) แทนการ hardcode ทั้งปี
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - 5); // เดือนนี้ + ย้อนอีก 5 เดือน = ครบ 6 เดือน
+        return toISODate(d);
+    });
+    const [endDate, setEndDate] = useState(() => toISODate(new Date()));
     const [agency, setAgency] = useState("all");
+    const [trendMode, setTrendMode] = useState<"wow" | "mom">("wow");
 
     const userRole = currentUser?.role?.toLowerCase() || "officer";
     const userId = currentUser?.id || null;
@@ -71,28 +86,47 @@ export default function ExecutiveAnalyticsDashboard() {
         return Object.values(groups);
     };
 
-    // 📈 แสดง badge การเปลี่ยนแปลงเทียบช่วงก่อนหน้า (% สำหรับจำนวน, pp สำหรับอัตราส่วน)
-    const renderTrend = (trend: any) => {
-        if (!trend || trend.value === null || trend.value === undefined) return null;
-        const up = trend.value > 0;
+    // 📈 แสดง badge การเปลี่ยนแปลงเทียบช่วงก่อนหน้าตามปฏิทิน (% สำหรับจำนวน, pp สำหรับอัตราส่วน) พร้อมป้ายโหมด WoW/MoM
+    const renderTrend = (trend: any, modeLabel: string) => {
+        if (!trend) return null;
+        if (trend.value === null || trend.value === undefined) {
+            // ช่วงก่อนหน้าไม่มีตัวอย่างในสถานะนี้เลย (ฐาน = 0) จึงคำนวณ % เปลี่ยนแปลงไม่ได้ — โชว์ป้ายอธิบายแทนการซ่อนเงียบๆ
+            return (
+                <span
+                    className="inline-flex items-center gap-0.5 text-[8px] font-semibold px-1 py-0.5 rounded text-slate-400 bg-slate-50 cursor-help"
+                    title={`ไม่มีข้อมูลเปรียบเทียบ: ช่วงก่อนหน้า (${modeLabel}) ไม่มีตัวอย่างในสถานะนี้เลย (0 รายการ) จึงคำนวณเปอร์เซ็นต์การเปลี่ยนแปลงไม่ได้ (หารด้วยศูนย์)`}
+                >
+                    — {modeLabel}
+                </span>
+            );
+        }
         const flat = trend.value === 0;
+        if (flat) {
+            // เทียบได้จริง (ฐานไม่ใช่ 0) และผลคือไม่เปลี่ยนแปลง — ต่างจากกรณี null ที่เทียบไม่ได้เลย
+            return (
+                <span className="inline-flex items-center gap-0.5 text-[8px] font-bold px-1 py-0.5 rounded text-blue-600 bg-blue-50" title={`ไม่มีการเปลี่ยนแปลงเทียบกับช่วงก่อนหน้า (${modeLabel})`}>
+                    <LucideArrowRight size={8} /> เท่าเดิม
+                </span>
+            );
+        }
+        const up = trend.value > 0;
         const suffix = trend.kind === "pp" ? "pp" : "%";
-        const color = flat ? "text-slate-400 bg-slate-50" : up ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50";
+        const color = up ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50";
         const Arrow = up ? LucideTrendingUp : LucideTrendingDown;
         return (
             <span className={`inline-flex items-center gap-0.5 text-[8px] font-bold px-1 py-0.5 rounded ${color}`}>
-                {!flat && <Arrow size={8} />}
+                <Arrow size={8} />
                 {up ? "+" : ""}
                 {trend.value}
-                {suffix}
+                {suffix} {modeLabel}
             </span>
         );
     };
 
     return (
         <div className="min-h-screen w-full bg-primary pb-5 antialiased">
-            <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
-                <div className="max-w-7xl mx-auto space-y-3">
+            <div className="w-full max-w-xl md:max-w-7xl mx-auto px-4 space-y-5 pt-6">
+                <div className="space-y-3">
                     {/* Header ควบคุมส่วนบน */}
                     <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2 shrink-0">
                         <div className="flex items-center gap-2.5">
@@ -164,6 +198,22 @@ export default function ExecutiveAnalyticsDashboard() {
                     ) : (
                         <>
                             {/* 📊 มิติที่ 1: การ์ดตัวชี้วัดหลักแบบ Dynamic ดึงจาก DB */}
+                            <div className="flex items-center justify-end shrink-0">
+                                <div className="grid grid-cols-2 rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-[10px] font-semibold">
+                                    <button
+                                        onClick={() => setTrendMode("wow")}
+                                        className={`px-2.5 py-0.5 rounded-md transition-all cursor-pointer ${trendMode === "wow" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                    >
+                                        WoW
+                                    </button>
+                                    <button
+                                        onClick={() => setTrendMode("mom")}
+                                        className={`px-2.5 py-0.5 rounded-md transition-all cursor-pointer ${trendMode === "mom" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                    >
+                                        MoM
+                                    </button>
+                                </div>
+                            </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
                                 {analytics?.kpis?.map((kpi: any, index: number) => (
                                     <div
@@ -179,7 +229,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                             <span className="text-base font-bold text-slate-800 tracking-tight">{typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}</span>
                                             {kpi.unit && <span className="text-[8px] text-slate-400 font-medium ml-0.5">{kpi.unit}</span>}
                                         </div>
-                                        {kpi.trend && <div className="mt-1">{renderTrend(kpi.trend)}</div>}
+                                        {kpi.trend && <div className="mt-1">{renderTrend(kpi.trend[trendMode], trendMode === "wow" ? "WoW" : "MoM")}</div>}
                                     </div>
                                 ))}
                             </div>

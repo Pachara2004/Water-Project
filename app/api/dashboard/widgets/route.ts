@@ -48,46 +48,70 @@ export async function GET(request: Request) {
             statusCountMap[g.status] = g._count._all;
         });
 
-        // --- 📈 ช่วงก่อนหน้าขนาดเท่ากัน สำหรับคำนวณ Trend delta (ยืดหยุ่นตามความยาวของ filter ที่เลือก) ---
-        let prevTotal = 0;
-        let prevSafe = 0;
-        let prevDanger = 0;
-        let prevWarning = 0;
-        let hasPrevPeriod = false;
-        if (startDateParam && endDateParam) {
-            const start = new Date(startDateParam);
-            const end = new Date(endDateParam);
-            const span = end.getTime() - start.getTime();
-            if (span > 0) {
-                hasPrevPeriod = true;
-                const prevWhere: any = { ...baseWhere, collectionTime: { gte: new Date(start.getTime() - span), lt: start } };
-                const prevStatusGroups = await prisma.waterSample.groupBy({
-                    by: ["status"],
-                    where: prevWhere,
-                    _count: { _all: true },
-                });
-                prevStatusGroups.forEach((g) => {
-                    prevTotal += g._count._all;
-                    if (g.status === "safe") prevSafe = g._count._all;
-                    if (g.status === "danger") prevDanger = g._count._all;
-                    if (g.status === "warning") prevWarning = g._count._all;
-                });
-            }
-        }
-
-        // ค่าอัตราความปลอดภัย (Safety Rate %) + ตัวช่วยคำนวณ delta เทียบช่วงก่อนหน้า
+        // ค่าอัตราความปลอดภัย (Safety Rate %) ของช่วงที่เลือกบน filter — ใช้แสดงตัวเลขหลักบนการ์ดเหมือนเดิม
         const safeRateValue = totalSamples > 0 ? Number((((statusCountMap["safe"] || 0) / totalSamples) * 100).toFixed(1)) : 0;
-        const prevSafeRate = prevTotal > 0 ? (prevSafe / prevTotal) * 100 : 0;
-        const relDelta = (cur: number, prev: number) => (prev > 0 ? Number((((cur - prev) / prev) * 100).toFixed(1)) : null);
-        const trendForStatus = (w: { filterValue: string | null; title: string }): { value: number | null; kind: "pct" | "pp" } | null => {
-            if (!hasPrevPeriod) return null;
+
+        // --- 📈 WoW / MoM ตามปฏิทินจริง — ยึด "วันนี้" เสมอ ไม่อิงช่วงวันที่ที่เลือกบน filter ---
+        // ขอบเขตสิทธิ์/หน่วยงานยังคงกรองตามเดิม แต่ตัดเงื่อนไขวันที่ของ filter ออก
+        const scopeWhere: any = { isDeleted: false };
+        if (viewMode === "MINE" && collectorId) scopeWhere.collectorId = collectorId;
+        if (agencyParam && agencyParam !== "all") scopeWhere.location = { governingAgency: agencyParam };
+
+        const now = new Date();
+
+        const countByStatus = async (where: any) => {
+            const groups = await prisma.waterSample.groupBy({ by: ["status"], where, _count: { _all: true } });
+            const map: Record<string, number> = { safe: 0, warning: 0, danger: 0 };
+            let total = 0;
+            groups.forEach((g) => {
+                map[g.status] = g._count._all;
+                total += g._count._all;
+            });
+            return { total, safe: map.safe, warning: map.warning, danger: map.danger };
+        };
+
+        type StatusCounts = { total: number; safe: number; warning: number; danger: number };
+        type TrendPair = { value: number | null; kind: "pct" | "pp" };
+        const buildTrendMetrics = (curr: StatusCounts, prev: StatusCounts): Record<"total" | "safe" | "danger" | "warning", TrendPair> => {
+            const relDelta = (cur: number, pv: number): number | null => (pv > 0 ? Number((((cur - pv) / pv) * 100).toFixed(1)) : null);
+            const currSafeRate = curr.total > 0 ? (curr.safe / curr.total) * 100 : 0;
+            const prevSafeRate = prev.total > 0 ? (prev.safe / prev.total) * 100 : 0;
+            return {
+                total: { value: relDelta(curr.total, prev.total), kind: "pct" },
+                safe: { value: prev.total > 0 ? Number((currSafeRate - prevSafeRate).toFixed(1)) : null, kind: "pp" },
+                danger: { value: relDelta(curr.danger, prev.danger), kind: "pct" },
+                warning: { value: relDelta(curr.warning, prev.warning), kind: "pct" },
+            };
+        };
+
+        // สัปดาห์ปฏิทินแบบ ISO (จันทร์–อาทิตย์) เทียบ "สัปดาห์นี้จนถึงตอนนี้" กับ "ช่วงเดียวกันของสัปดาห์ก่อน"
+        const wowCurrentStart = startOfISOWeek(now);
+        const wowPreviousStart = new Date(wowCurrentStart);
+        wowPreviousStart.setDate(wowPreviousStart.getDate() - 7);
+        const wowPreviousEnd = new Date(now);
+        wowPreviousEnd.setDate(wowPreviousEnd.getDate() - 7);
+
+        // เดือนปฏิทิน เทียบ "เดือนนี้จนถึงตอนนี้ (month-to-date)" กับ "ช่วงเดียวกันของเดือนก่อน"
+        const momCurrentStart = startOfCalendarMonth(now);
+        const momPreviousStart = subtractMonthClamped(momCurrentStart, 1);
+        const momPreviousEnd = subtractMonthClamped(now, 1);
+
+        const [wowCurrent, wowPrevious, momCurrent, momPrevious] = await Promise.all([
+            countByStatus({ ...scopeWhere, collectionTime: { gte: wowCurrentStart, lte: now } }),
+            countByStatus({ ...scopeWhere, collectionTime: { gte: wowPreviousStart, lte: wowPreviousEnd } }),
+            countByStatus({ ...scopeWhere, collectionTime: { gte: momCurrentStart, lte: now } }),
+            countByStatus({ ...scopeWhere, collectionTime: { gte: momPreviousStart, lte: momPreviousEnd } }),
+        ]);
+
+        const wowMetrics = buildTrendMetrics(wowCurrent, wowPrevious);
+        const momMetrics = buildTrendMetrics(momCurrent, momPrevious);
+
+        const trendForStatus = (w: { filterValue: string | null; title: string }): { wow: TrendPair; mom: TrendPair } => {
             const isSafe = w.filterValue === "safe" || w.title.includes("ปลอดภัย");
             const isDanger = w.filterValue === "danger" || (w.title.includes("อันตราย") && !w.title.includes("เฝ้าระวัง")) || w.title.includes("วิกฤต");
             const isWarning = w.filterValue === "warning" || w.title.includes("เฝ้าระวัง");
-            if (isSafe) return { value: prevTotal > 0 ? Number((safeRateValue - prevSafeRate).toFixed(1)) : null, kind: "pp" };
-            if (isDanger) return { value: relDelta(statusCountMap["danger"] || 0, prevDanger), kind: "pct" };
-            if (isWarning) return { value: relDelta(statusCountMap["warning"] || 0, prevWarning), kind: "pct" };
-            return { value: relDelta(totalSamples, prevTotal), kind: "pct" };
+            const key = isSafe ? "safe" : isDanger ? "danger" : isWarning ? "warning" : "total";
+            return { wow: wowMetrics[key], mom: momMetrics[key] };
         };
 
         // ค่าเฉลี่ยสิ่งแวดล้อมส่วนกลาง คำนวณครั้งเดียวที่ DB (คอลัมน์จริงบนตาราง samples เท่านั้น)
@@ -123,7 +147,7 @@ export async function GET(request: Request) {
                 let finalValue: number = 0;
                 let unit = "mg/L";
                 let color = "#6366f1";
-                let trend: { value: number | null; kind: "pct" | "pp" } | null = null;
+                let trend: { wow: TrendPair; mom: TrendPair } | null = null;
 
                 // จัดการจับคู่ประเภทข้อมูลตามที่บอสออกแบบไว้ในโครงสร้างตาราง
                 if (w.targetType === "SAMPLE_STATUS") {
@@ -198,7 +222,7 @@ export async function GET(request: Request) {
             where: { ...baseWhere, status: "danger" },
             _count: { id: true },
             orderBy: { _count: { id: "desc" } },
-            take: 4,
+            take: 5,
         });
 
         const hotspotsData = [];
@@ -233,70 +257,147 @@ export async function GET(request: Request) {
             },
         });
 
-        const monthNames = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย."];
-        const temporalMonthlyMap: { [key: string]: { ammM: number; ammE: number; phosM: number; phosE: number; countM: number; countE: number } } = {};
-        monthNames.forEach((m) => {
-            temporalMonthlyMap[m] = { ammM: 0, ammE: 0, phosM: 0, phosE: 0, countM: 0, countE: 0 };
-        });
+        // เลือกความละเอียด (วัน/สัปดาห์/เดือน/ไตรมาส/ปี) อัตโนมัติให้จำนวนแท่ง ≤ MAX_BUCKETS เสมอ
+        // แก้บั๊กเดิมที่ hardcode ไว้แค่ 6 เดือน (ม.ค.-มิ.ย.) ทำให้ข้อมูลเดือน ก.ค.-ธ.ค. หายไปเงียบๆ เมื่อ filter ครอบคลุมทั้งปี
+        const MAX_BUCKETS = 12;
+        const bucketRangeStart: Date = startDateParam
+            ? new Date(startDateParam)
+            : timeSeriesSamples.length > 0
+              ? new Date(Math.min(...timeSeriesSamples.map((s) => new Date(s.collectionTime).getTime())))
+              : (() => {
+                    const d = new Date(now);
+                    d.setMonth(d.getMonth() - 6);
+                    return d;
+                })();
+        const bucketRangeEnd: Date = endDateParam ? new Date(endDateParam) : now;
 
+        const thaiMonthAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+        type Granularity = "day" | "week" | "month" | "quarter" | "year";
+
+        const floorToGranularity = (d: Date, gran: Granularity): Date => {
+            const date = new Date(d);
+            if (gran === "day") {
+                date.setHours(0, 0, 0, 0);
+                return date;
+            }
+            if (gran === "week") return startOfISOWeek(date);
+            if (gran === "month") return new Date(date.getFullYear(), date.getMonth(), 1);
+            if (gran === "quarter") return new Date(date.getFullYear(), Math.floor(date.getMonth() / 3) * 3, 1);
+            return new Date(date.getFullYear(), 0, 1);
+        };
+        const advanceGranularity = (d: Date, gran: Granularity): Date => {
+            const date = new Date(d);
+            if (gran === "day") date.setDate(date.getDate() + 1);
+            else if (gran === "week") date.setDate(date.getDate() + 7);
+            else if (gran === "month") date.setMonth(date.getMonth() + 1);
+            else if (gran === "quarter") date.setMonth(date.getMonth() + 3);
+            else date.setFullYear(date.getFullYear() + 1);
+            return date;
+        };
+        const bucketKeyOf = (d: Date, gran: Granularity): string => {
+            const y = d.getFullYear();
+            if (gran === "day" || gran === "week") return `${y}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            if (gran === "month") return `${y}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            if (gran === "quarter") return `${y}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+            return `${y}`;
+        };
+        const bucketLabelOf = (d: Date, gran: Granularity, crossesYear: boolean): string => {
+            if (gran === "day" || gran === "week") {
+                const base = `${d.getDate()}/${d.getMonth() + 1}`;
+                return crossesYear ? `${base}/${d.getFullYear()}` : base;
+            }
+            if (gran === "month") {
+                const base = thaiMonthAbbr[d.getMonth()];
+                return crossesYear ? `${base} ${d.getFullYear()}` : base;
+            }
+            if (gran === "quarter") return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`;
+            return `${d.getFullYear()}`;
+        };
+        // นับจำนวน bucket จริงด้วย floor/advance ชุดเดียวกับที่ใช้สร้างจริง (แม่นยำกว่าประมาณจากจำนวนวัน เพราะเดือน/ปีมีความยาวไม่เท่ากัน)
+        const countBuckets = (start: Date, end: Date, gran: Granularity): number => {
+            const stopAt = advanceGranularity(floorToGranularity(end, gran), gran);
+            let cursor = floorToGranularity(start, gran);
+            let count = 0;
+            while (cursor.getTime() < stopAt.getTime() && count < 100000) {
+                cursor = advanceGranularity(cursor, gran);
+                count++;
+            }
+            return count;
+        };
+        const pickGranularity = (start: Date, end: Date): Granularity => {
+            const order: Granularity[] = ["day", "week", "month", "quarter", "year"];
+            for (const gran of order) {
+                if (countBuckets(start, end, gran) <= MAX_BUCKETS) return gran;
+            }
+            return "year";
+        };
+
+        type BucketAcc = { ammM: number; ammE: number; phosM: number; phosE: number; countM: number; countE: number; ammAll: number; phosAll: number; countAll: number };
+        const buckets: { key: string; label: string }[] = [];
+        const bucketAcc = new Map<string, BucketAcc>();
+        let granularity: Granularity = "month";
+
+        if (bucketRangeEnd.getTime() >= bucketRangeStart.getTime()) {
+            granularity = pickGranularity(bucketRangeStart, bucketRangeEnd);
+            const crossesYear = bucketRangeStart.getFullYear() !== bucketRangeEnd.getFullYear();
+            const stopAt = advanceGranularity(floorToGranularity(bucketRangeEnd, granularity), granularity);
+            let cursor = floorToGranularity(bucketRangeStart, granularity);
+            let guard = 0;
+            while (cursor.getTime() < stopAt.getTime() && guard < MAX_BUCKETS + 2) {
+                const key = bucketKeyOf(cursor, granularity);
+                buckets.push({ key, label: bucketLabelOf(cursor, granularity, crossesYear) });
+                bucketAcc.set(key, { ammM: 0, ammE: 0, phosM: 0, phosE: 0, countM: 0, countE: 0, ammAll: 0, phosAll: 0, countAll: 0 });
+                cursor = advanceGranularity(cursor, granularity);
+                guard++;
+            }
+        }
+
+        // วนข้อมูลรอบเดียว จัดเข้า bucket ทั้ง temporal (เช้า/เย็น) และ trend (ทุกช่วงเวลารวมกัน) พร้อมกัน
         timeSeriesSamples.forEach((s) => {
             const dateObj = new Date(s.collectionTime);
-            const mName = monthNames[dateObj.getMonth()];
-            const hour = dateObj.getHours();
-            if (!temporalMonthlyMap[mName]) return;
+            const key = bucketKeyOf(floorToGranularity(dateObj, granularity), granularity);
+            const bucket = bucketAcc.get(key);
+            if (!bucket) return; // ตัวอย่างนอกช่วง bucket (ไม่ควรเกิดเพราะ baseWhere กรองไว้แล้ว) — ข้ามอย่างปลอดภัย
 
             const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value || 0;
             const phos = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value || 0;
+            bucket.ammAll += amm;
+            bucket.phosAll += phos;
+            bucket.countAll++;
 
+            const hour = dateObj.getHours();
             if (hour >= 6 && hour < 12) {
-                temporalMonthlyMap[mName].ammM += amm;
-                temporalMonthlyMap[mName].phosM += phos;
-                temporalMonthlyMap[mName].countM++;
+                bucket.ammM += amm;
+                bucket.phosM += phos;
+                bucket.countM++;
             } else if (hour >= 15 && hour < 21) {
-                temporalMonthlyMap[mName].ammE += amm;
-                temporalMonthlyMap[mName].phosE += phos;
-                temporalMonthlyMap[mName].countE++;
+                bucket.ammE += amm;
+                bucket.phosE += phos;
+                bucket.countE++;
             }
         });
 
-        const temporalData = Object.keys(temporalMonthlyMap).map((month) => {
-            const item = temporalMonthlyMap[month];
-            const divM = item.countM > 0 ? item.countM : 1;
-            const divE = item.countE > 0 ? item.countE : 1;
+        const temporalData = buckets.map((b) => {
+            const a = bucketAcc.get(b.key)!;
+            const divM = a.countM > 0 ? a.countM : 1;
+            const divE = a.countE > 0 ? a.countE : 1;
             return {
-                name: month,
-                ammoniaMorning: Number((item.ammM / divM).toFixed(2)),
-                ammoniaEvening: Number((item.ammE / divE).toFixed(2)),
-                phosphateMorning: Number((item.phosM / divM).toFixed(2)),
-                phosphateEvening: Number((item.phosE / divE).toFixed(2)),
+                name: b.label,
+                ammoniaMorning: Number((a.ammM / divM).toFixed(2)),
+                ammoniaEvening: Number((a.ammE / divE).toFixed(2)),
+                phosphateMorning: Number((a.phosM / divM).toFixed(2)),
+                phosphateEvening: Number((a.phosE / divE).toFixed(2)),
             };
         });
 
         // --- [มิติที่ 4: WaterTrendChart] ---
-        const monthlyTrendsMap: { [key: string]: { ammonia: number; phosphate: number; count: number } } = {};
-        monthNames.forEach((m) => {
-            monthlyTrendsMap[m] = { ammonia: 0, phosphate: 0, count: 0 };
-        });
-
-        timeSeriesSamples.forEach((s) => {
-            const mName = monthNames[new Date(s.collectionTime).getMonth()];
-            const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value || 0;
-            const phos = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value || 0;
-
-            if (monthlyTrendsMap[mName]) {
-                monthlyTrendsMap[mName].ammonia += amm;
-                monthlyTrendsMap[mName].phosphate += phos;
-                monthlyTrendsMap[mName].count++;
-            }
-        });
-
-        const trendsData = Object.keys(monthlyTrendsMap).map((m) => {
-            const dataItem = monthlyTrendsMap[m];
-            const div = dataItem.count > 0 ? dataItem.count : 1;
+        const trendsData = buckets.map((b) => {
+            const a = bucketAcc.get(b.key)!;
+            const div = a.countAll > 0 ? a.countAll : 1;
             return {
-                date: m,
-                ammonia: Number((dataItem.ammonia / div).toFixed(2)),
-                phosphate: Number((dataItem.phosphate / div).toFixed(2)),
+                date: b.label,
+                ammonia: Number((a.ammAll / div).toFixed(2)),
+                phosphate: Number((a.phosAll / div).toFixed(2)),
             };
         });
 
@@ -352,7 +453,7 @@ export async function GET(request: Request) {
         return NextResponse.json({
             agencies: activeAgencies,
             kpis: kpisBlueprint, // การ์ดสรุปส่งไปตามแถวจริงในตารางฐานข้อมูลของบอสแบบ 100%
-            hotspotConfig: { title: "Danger Hotspots — 4 อันดับสถานีจุดเสี่ยงอันตรายสะสมสูงสุด" },
+            hotspotConfig: { title: "Danger Hotspots — 5 อันดับสถานีจุดเสี่ยงอันตรายสะสมสูงสุด" },
             hotspots: hotspotsData,
             temporalConfig: {
                 title: "Morning vs Evening Fluctuations (เปรียบเทียบระดับสารเคมีคู่ขนาน)",
@@ -393,6 +494,29 @@ export async function GET(request: Request) {
 // ฟังก์ชันช่วยแปลงงูเลื้อย (snake_case) เป็นอูฐ (camelCase) ป้องกันบั๊กฟิลด์โมเดล Prisma
 function toCamelCase(str: string) {
     return str.replace(/([-_][a-z])/g, (group) => group.toUpperCase().replace("-", "").replace("_", ""));
+}
+
+// จุดเริ่มต้นสัปดาห์แบบ ISO (จันทร์ 00:00) ของวันที่ที่กำหนด — ใช้คำนวณ WoW ตามปฏิทินสากล
+function startOfISOWeek(d: Date): Date {
+    const date = new Date(d);
+    const day = date.getDay(); // 0=อาทิตย์ ... 6=เสาร์
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    date.setDate(date.getDate() + diffToMonday);
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
+
+// วันที่ 1 ของเดือนปฏิทิน เวลา 00:00 — ใช้เป็นจุดเริ่มต้นของ MoM
+function startOfCalendarMonth(d: Date): Date {
+    return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+}
+
+// ถอยหลัง N เดือนแบบปฏิทิน พร้อม clamp วันที่ที่เกินจำนวนวันของเดือนเป้าหมาย (เช่น 31 มี.ค. ถอย 1 เดือน -> 28/29 ก.พ.)
+function subtractMonthClamped(d: Date, months: number): Date {
+    const targetMonthDate = new Date(d.getFullYear(), d.getMonth() - months, 1);
+    const lastDayOfTargetMonth = new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth() + 1, 0).getDate();
+    const clampedDay = Math.min(d.getDate(), lastDayOfTargetMonth);
+    return new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth(), clampedDay, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
 }
 
 // ค่าสหสัมพันธ์ Pearson (r) จากคู่ข้อมูล [x, y] — คืน null หากจุดน้อยกว่า 2 หรือไม่มีความแปรปรวน
