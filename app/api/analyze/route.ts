@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { evaluateSample } from "@/lib/standards"; 
+import { evaluateSample } from "@/lib/standards";
 import { verifyAuth } from "@/lib/auth-guard";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 const antiSpam = new Map<string, number>();
 
 const apiAi = process.env.API_AI_URL;
