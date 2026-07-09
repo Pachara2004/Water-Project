@@ -21,7 +21,16 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
     }, []);
 
     if (!mounted) {
-        return <div className={`bg-surface border border-border opacity-50 flex items-center justify-center ${showLabel ? "h-10 px-4 rounded-2xl gap-2" : "w-10 h-10 rounded-full"}`} />;
+        // Placeholder ต้องกว้างเท่าปุ่มจริงเป๊ะ ไม่งั้นตอน mount ปุ่มจะขยายแล้วบีบข้อความหัวข้อให้ reflow/ขยับ
+        if (showLabel) {
+            return (
+                <div className="flex items-center gap-2.5 h-10 px-4 rounded-2xl bg-surface border border-border opacity-50">
+                    <div className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-xs font-bold whitespace-nowrap invisible">โหมดสว่าง</span>
+                </div>
+            );
+        }
+        return <div className="w-10 h-10 rounded-full bg-surface border border-border opacity-50" />;
     }
 
     const isDark = theme === "dark";

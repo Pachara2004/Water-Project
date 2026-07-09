@@ -22,6 +22,12 @@ async function main() {
     await prisma.user.deleteMany();
     await prisma.role.deleteMany();
 
+    // MySQL ไม่รีเซ็ต AUTO_INCREMENT ให้เองตอน DELETE (ต่างจาก TRUNCATE) — รีเซ็ตมือทุกตารางกันเลข id ไต่สูงขึ้นเรื่อยๆ ทุกครั้งที่ reseed
+    const tablesToResetAutoIncrement = ["dashboard_widgets", "role_requests", "sample_measurements", "samples", "parameters", "locations", "users", "roles"];
+    for (const table of tablesToResetAutoIncrement) {
+        await prisma.$executeRawUnsafe(`ALTER TABLE \`${table}\` AUTO_INCREMENT = 1`);
+    }
+
     // ─── 2. ROLES SEEDING ───
     console.log("🔒 Creating system roles...");
     const roleAdmin = await prisma.role.create({ data: { roleName: "admin" } });
@@ -59,13 +65,13 @@ async function main() {
         data: { title: "จำนวนตัวอย่างน้ำทะเลทั้งหมด", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 3 },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "คุณภาพน้ำในเกณฑ์ปลอดภัย", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "safe", cardColor: "green", w: 3 },
+        data: { title: "อัตราคุณภาพน้ำปลอดภัย (Safety Rate)", widgetType: "CARD", metricType: "RATE", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "safe", unit: "%", cardColor: "green", w: 3 },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "จุดวิกฤตคุณภาพน้ำอันตราย", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "danger", cardColor: "red", w: 3 },
+        data: { title: "ตัวอย่างที่เกินค่ามาตรฐาน (Danger)", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "danger", cardColor: "red", w: 3 },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "ค่าเฉลี่ยปริมาณออกซิเจนละลาย (DO)", widgetType: "CARD", metricType: "AVG", targetType: "ENVIRONMENT", targetColumn: "dissolved_oxygen", cardColor: "blue", w: 3 },
+        data: { title: "ตัวอย่างที่ต้องเฝ้าระวัง (Warning)", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "warning", cardColor: "yellow", w: 3 },
     });
     await prisma.dashboardWidget.create({
         data: { title: "สัดส่วนดัชนีคุณภาพน้ำทะเลรวม", widgetType: "PIE_CHART", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 6 },
@@ -75,38 +81,6 @@ async function main() {
     });
     await prisma.dashboardWidget.create({
         data: { title: "สหสัมพันธ์แนวโน้มปริมาณน้ำฝนสะสม", widgetType: "LINE_CHART", metricType: "AVG", targetType: "ENVIRONMENT", targetColumn: "rain_accumulation", cardColor: "blue", w: 12 },
-    });
-
-    // 🚀 ไอดี 8-11: เพิ่มการ์ดพารามิเตอร์สารเคมีสำคัญ โดยผูก `parameterId` ตรงสเปก schema จริงของ!
-    await prisma.dashboardWidget.create({
-        data: {
-            title: "ค่าเฉลี่ยปริมาณแอมโมเนียในน้ำ (NH3)",
-            widgetType: "CARD",
-            metricType: "AVG",
-            targetType: "PARAMETER",
-            targetColumn: null,
-            parameterId: paramAmmonia.id,
-            cardColor: "yellow",
-            w: 3,
-        },
-    });
-    await prisma.dashboardWidget.create({
-        data: {
-            title: "ค่าเฉลี่ยปริมาณฟอสเฟตสะสม (PO4)",
-            widgetType: "CARD",
-            metricType: "AVG",
-            targetType: "PARAMETER",
-            targetColumn: null,
-            parameterId: paramPhosphate.id,
-            cardColor: "indigo",
-            w: 3,
-        },
-    });
-    await prisma.dashboardWidget.create({
-        data: { title: "ดัชนีความเป็นกรด-ด่างเฉลี่ย (pH)", widgetType: "CARD", metricType: "AVG", targetType: "PARAMETER", targetColumn: null, parameterId: paramPH.id, cardColor: "pink", w: 3 },
-    });
-    await prisma.dashboardWidget.create({
-        data: { title: "ปริมาณสารแขวนลอยรวมในน้ำทะเล (TSS)", widgetType: "CARD", metricType: "AVG", targetType: "PARAMETER", targetColumn: null, parameterId: paramTSS.id, cardColor: "teal", w: 3 },
     });
 
     // ─── 5. USERS SEEDING ───
@@ -136,6 +110,11 @@ async function main() {
         { stationName: "ปากแม่น้ำบางปะกง", governingAgency: "กรมประมง", latitude: 13.4543, longitude: 100.9823 },
         { stationName: "อ่าวศรีราชา", governingAgency: "กรมประมง", latitude: 13.1676, longitude: 100.9267 },
         { stationName: "ท่าเรือแหลมฉบัง", governingAgency: "กรมควบคุมมลพิษ", latitude: 13.0833, longitude: 100.8833 },
+        { stationName: "หาดบางแสน", governingAgency: "กรมทรัพยากรทางทะเลและชายฝั่ง", latitude: 13.2833, longitude: 100.9333 },
+        { stationName: "เกาะสีชัง", governingAgency: "กรมเจ้าท่า", latitude: 13.1531, longitude: 100.8058 },
+        { stationName: "ปากแม่น้ำระยอง", governingAgency: "กรมประมง", latitude: 12.6833, longitude: 101.2667 },
+        { stationName: "อ่าวมาบตาพุด", governingAgency: "กรมควบคุมมลพิษ", latitude: 12.6833, longitude: 101.15 },
+        { stationName: "หาดจอมเทียน", governingAgency: "กรมทรัพยากรทางทะเลและชายฝั่ง", latitude: 12.8833, longitude: 100.9 },
     ];
 
     const insertedLocations = [];
@@ -158,7 +137,8 @@ async function main() {
         sampleDate.setHours(sampleDate.getHours() - hourAgo);
 
         const randomCollectorObj = collectors[i % collectors.length];
-        const randomLocation = insertedLocations[Math.floor(Math.random() * insertedLocations.length)];
+        // round-robin แทนสุ่มล้วน — การันตีว่าทุกสถานีมีตัวอย่างน้ำอย่างน้อย floor(samplesCount / จำนวนสถานี) ตัว ไม่ใช่แค่ "น่าจะมี"
+        const randomLocation = insertedLocations[i % insertedLocations.length];
 
         const rainVol = Math.random() > 0.6 ? parseFloat((Math.random() * 45).toFixed(2)) : 0;
         let computedStatus: WaterStatus = WaterStatus.safe;

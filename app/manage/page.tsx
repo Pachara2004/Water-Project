@@ -6,6 +6,7 @@ import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { MapPin, ShieldAlert, ChevronRight, Shield, Users, Phone, UserCircle2, Pencil, X, Check, AlertCircle, User } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useToast } from "@/components/useToast";
 
 const adminMenus = [
     {
@@ -78,7 +79,7 @@ function getInitials(firstName: string | null, lineName: string) {
     return lineName.trim().slice(0, 2).toUpperCase();
 }
 
-function EditProfileDrawer({ onClose }: { onClose: () => void }) {
+function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showToast: (message: string, variant?: "success" | "danger") => void }) {
     const { currentUser, setUser } = useAppStore();
 
     // ประกอบชื่อฟิลด์เดี่ยวจากฐานข้อมูลใหม่มาให้พิมพ์แก้ง่ายๆ
@@ -88,7 +89,6 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
     const [phone, setPhone] = useState(currentUser?.phoneNumber ?? "");
     const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
     const [saving, setSaving] = useState(false);
-    const [success, setSuccess] = useState(false);
     const [serverError, setServerError] = useState("");
 
     const validate = () => {
@@ -138,8 +138,8 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
             if (data.success) {
                 setUser(data.user);
             }
-            setSuccess(true);
-            setTimeout(onClose, 1200);
+            showToast("บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว", "success");
+            onClose();
         } catch {
             setServerError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่");
         } finally {
@@ -164,7 +164,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                 <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
 
                 <div className="flex items-center justify-between mb-7">
-                    <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">แก้ไขข้อมูลส่วนตัว</h3>
+                    <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">แก้ไขข้อมูลส่วนตัว</h3>
                     <button title="button"
                         onClick={onClose}
                         className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
@@ -176,7 +176,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                 <div className="space-y-5">
                     {/* Name field */}
                     <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-[9px] font-semibold text-text-muted uppercase tracking-wider">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
                             <User size={10} /> ชื่อ-นามสกุลจริง <span className="text-danger">*</span>
                         </label>
                         <input
@@ -192,17 +192,17 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                 ${errors.name ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
                         />
                         {errors.name && (
-                            <p className="flex items-center gap-1.5 text-[10px] text-danger font-semibold animate-fade-in">
+                            <p className="flex items-center gap-1.5 text-xs text-danger font-semibold animate-fade-in">
                                 <AlertCircle size={11} />
                                 {errors.name}
                             </p>
                         )}
-                        <p className="text-[9px] text-text-muted text-right">{fullName.length}/100</p>
+                        <p className="text-xs text-text-muted text-right">{fullName.length}/100</p>
                     </div>
 
                     {/* Phone field */}
                     <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-[9px] font-semibold text-text-muted uppercase tracking-wider">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
                             <Phone size={10} /> เบอร์โทรศัพท์มือถือ <span className="text-danger">*</span>
                         </label>
                         <input
@@ -218,7 +218,7 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                 ${errors.phone ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
                         />
                         {errors.phone && (
-                            <p className="flex items-center gap-1.5 text-[10px] text-danger font-semibold animate-fade-in">
+                            <p className="flex items-center gap-1.5 text-xs text-danger font-semibold animate-fade-in">
                                 <AlertCircle size={11} />
                                 {errors.phone}
                             </p>
@@ -232,24 +232,13 @@ function EditProfileDrawer({ onClose }: { onClose: () => void }) {
                         </div>
                     )}
 
-                    {success && (
-                        <div className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl animate-fade-in">
-                            <Check size={14} className="text-emerald-500" />
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">บันทึกข้อมูลเรียบร้อยแล้ว</p>
-                        </div>
-                    )}
-
                     <button
                         onClick={handleSave}
-                        disabled={saving || success || !isDirty}
+                        disabled={saving || !isDirty}
                         className="w-full mt-2 py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer active:scale-[0.98]"
                     >
                         {saving ? (
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : success ? (
-                            <>
-                                <Check size={14} /> บันทึกแล้ว
-                            </>
                         ) : (
                             <>
                                 <Check size={14} /> บันทึกข้อมูลส่วนตัว
@@ -285,18 +274,18 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
                 <div className="flex-1 min-w-0">
                     <h2 className="text-base font-semibold text-text-primary truncate">{userDisplayName}</h2>
 
-                    <span className={`inline-flex items-center gap-1.5 mt-1.5 text-[9px] font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${roleColor}`}>
+                    <span className={`inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${roleColor}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${roleDot}`} />
                         {roleLabel}
                     </span>
 
                     {currentUser.phoneNumber ? (
-                        <p className="flex items-center gap-1.5 mt-2 text-[10px] text-text-muted font-mono">
+                        <p className="flex items-center gap-1.5 mt-2 text-xs text-text-muted font-mono">
                             <Phone size={10} />
                             {currentUser.phoneNumber}
                         </p>
                     ) : (
-                        <p className="mt-2 text-[10px] text-text-muted/50 italic">ยังไม่ได้ระบุเบอร์โทร</p>
+                        <p className="mt-2 text-xs text-text-muted/50 italic">ยังไม่ได้ระบุเบอร์โทร</p>
                     )}
                 </div>
 
@@ -316,6 +305,7 @@ export default function ManagePage() {
     const { currentUser } = useAppStore();
     const router = useRouter();
     const [showEdit, setShowEdit] = useState(false);
+    const { showToast, toastElement } = useToast();
 
     // ดักตรวจสอบบทบาทความปลอดภัยสิทธิ์ทั่วไปตัวพิมพ์เล็ก
     if (!currentUser || currentUser.role === "guest") {
@@ -372,7 +362,7 @@ export default function ManagePage() {
 
                     {isAdmin && (
                         <div className="flex items-center gap-2 mt-5">
-                            <span className="inline-flex items-center gap-1.5 text-[9px] font-semibold text-primary bg-primary-light border border-primary/10 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary-light border border-primary/10 px-3 py-1.5 rounded-full uppercase tracking-wider">
                                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
                                 System Administrator
                             </span>
@@ -382,14 +372,14 @@ export default function ManagePage() {
 
                 {/* Profile card */}
                 <div className="mb-8">
-                    <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider px-1 mb-4">ข้อมูลของฉัน</p>
+                    <p className="text-sm font-semibold text-text-muted uppercase tracking-wider px-1 mb-4">ข้อมูลของฉัน</p>
                     <ProfileCard onEdit={() => setShowEdit(true)} />
                 </div>
 
                 {/* Admin menus */}
                 {isAdmin && (
                     <div className="space-y-3">
-                        <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider px-1 mb-5">เมนูการจัดการ</p>
+                        <p className="text-sm font-semibold text-text-muted uppercase tracking-wider px-1 mb-5">เมนูการจัดการ</p>
 
                         {adminMenus.map((menu) => {
                             const Icon = menu.icon;
@@ -411,14 +401,14 @@ export default function ManagePage() {
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="text-sm font-semibold text-text-primary truncate">{menu.label}</h3>
                                             {!menu.available && (
-                                                <span className="text-[8px] font-semibold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
+                                                <span className="text-xs font-semibold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
                                                     เร็วๆ นี้
                                                 </span>
                                             )}
                                         </div>
                                         <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
                                         {menu.available && (
-                                            <span className={`inline-block mt-2 text-[9px] font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${menu.color}`}>{menu.badge}</span>
+                                            <span className={`inline-block mt-2 text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${menu.color}`}>{menu.badge}</span>
                                         )}
                                     </div>
 
@@ -431,15 +421,18 @@ export default function ManagePage() {
                         })}
 
                         <div className="mt-10 p-4 bg-surface rounded-2xl border border-border flex items-start gap-3">
-                            <ShieldAlert size={14} className="text-text-muted flex-shrink-0 mt-0.5" />
-                            <p className="text-[10px] text-text-muted leading-relaxed">การเปลี่ยนแปลงใดๆ ในหน้านี้จะมีผลต่อข้อมูลระบบทันที กรุณาดำเนินการด้วยความระมัดระวัง</p>
+                            <ShieldAlert size={20} className="text-text-muted flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-text-muted leading-relaxed">การเปลี่ยนแปลงใดๆ ในหน้านี้จะมีผลต่อข้อมูลระบบทันที กรุณาดำเนินการด้วยความระมัดระวัง</p>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* Edit drawer */}
-            {showEdit && <EditProfileDrawer onClose={() => setShowEdit(false)} />}
+            {showEdit && <EditProfileDrawer onClose={() => setShowEdit(false)} showToast={showToast} />}
+
+            {/* Toast */}
+            {toastElement}
         </div>
     );
 }
