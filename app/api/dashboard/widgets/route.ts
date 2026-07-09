@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
                 let color = "#6366f1";
                 let trend: { wow: TrendPair; mom: TrendPair } | null = null;
 
-                // จัดการจับคู่ประเภทข้อมูลตามที่บอสออกแบบไว้ในโครงสร้างตาราง
+                // จัดการจับคู่ประเภทข้อมูลตามที่ออกแบบไว้ในโครงสร้างตาราง
                 if (w.targetType === "SAMPLE_STATUS") {
                     unit = "รายการ";
                     color = "#3b82f6";

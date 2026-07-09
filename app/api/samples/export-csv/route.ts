@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // ดึงข้อมูลตัวอย่างน้ำเฉพาะรายการที่ยังไม่โดน Soft Delete (isDeleted: false) ตาม Schema ใหม่ของบอส
+        // ดึงข้อมูลตัวอย่างน้ำเฉพาะรายการที่ยังไม่โดน Soft Delete (isDeleted: false) ตาม Schema ใหม่ของ
         const samples = await prisma.waterSample.findMany({
             where: { isDeleted: false },
             include: { location: true },

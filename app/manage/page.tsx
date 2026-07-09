@@ -31,7 +31,7 @@ const adminMenus = [
     },
 ];
 
-// แมปป้ายกำกับและสไตล์สีตามกลุ่มสิทธิ์ระบบพิมพ์เล็กชุดล่าสุดของบอส
+// แมปป้ายกำกับและสไตล์สีตามกลุ่มสิทธิ์ระบบพิมพ์เล็กชุดล่าสุดของ
 const ROLE_LABEL: Record<string, string> = {
     collector: "ผู้เก็บตัวอย่างน้ำ",
     officer: "ผู้บริหาร",
@@ -82,7 +82,7 @@ function getInitials(firstName: string | null, lineName: string) {
 function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showToast: (message: string, variant?: "success" | "danger") => void }) {
     const { currentUser, setUser } = useAppStore();
 
-    // ประกอบชื่อฟิลด์เดี่ยวจากฐานข้อมูลใหม่มาให้บอสพิมพ์แก้ง่ายๆ
+    // ประกอบชื่อฟิลด์เดี่ยวจากฐานข้อมูลใหม่มาให้พิมพ์แก้ง่ายๆ
     const initialFullName = currentUser ? `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim() : "";
 
     const [fullName, setFullName] = useState(initialFullName || currentUser?.lineProfileName || "");

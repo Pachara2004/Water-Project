@@ -1,5 +1,5 @@
 /**
- * prisma/seed.ts — Database seed สำหรับโครงสร้างใหม่ตาม schema.prisma จริงของบอส
+ * prisma/seed.ts — Database seed สำหรับโครงสร้างใหม่ตาม schema.prisma จริงของ
  * ─────────────────────────────────────────────────────────
  * รัน: npm run seed หรือ npx prisma db seed
  */
@@ -57,10 +57,10 @@ async function main() {
         data: { name: "suspended_solids", unit: "mg/L", description: "ปริมาณสารแขวนลอยรวมในน้ำทะเล (TSS)" },
     });
 
-    // ─── 4. DASHBOARD WIDGETS SEEDING (ผูกโครงสร้างตามคอลัมน์และ Parameter ID ของบอสจริง) ───
+    // ─── 4. DASHBOARD WIDGETS SEEDING (ผูกโครงสร้างตามคอลัมน์และ Parameter ID ของจริง) ───
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");
 
-    // ไอดี 1-7 ตามของเดิมในตารางบอส
+    // ไอดี 1-7 ตามของเดิมในตาราง
     await prisma.dashboardWidget.create({
         data: { title: "จำนวนตัวอย่างน้ำทะเลทั้งหมด", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 3 },
     });
@@ -175,7 +175,7 @@ async function main() {
         const phValue = parseFloat((6.5 + Math.random() * 2).toFixed(2));
         const tssValue = parseFloat((10 + Math.random() * 140).toFixed(1));
 
-        // บันทึกลงตารางตามฟิลด์แวดล้อมจริงที่มีในโครงสร้างโมเดลบอสเท่านั้น ปราศจากฟิลด์ส่วนเกิน
+        // บันทึกลงตารางตามฟิลด์แวดล้อมจริงที่มีในโครงสร้างโมเดลเท่านั้น ปราศจากฟิลด์ส่วนเกิน
         await prisma.waterSample.create({
             data: {
                 collectorId: randomCollectorObj.id,

@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         const profileData = await lineProfileRes.json();
         const lineUid = profileData.userId;
 
-        // --- โลจิกจัดการฐานข้อมูลตารางผู้ใช้ของบอสตามเดิม ---
+        // --- โลจิกจัดการฐานข้อมูลตารางผู้ใช้ของตามเดิม ---
         let user = await prisma.user.findUnique({
             where: { lineUniqueId: lineUid },
             include: { systemRole: true },
