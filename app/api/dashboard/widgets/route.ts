@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// ตีความ "YYYY-MM-DD" จาก filter เป็นขอบเขตเวลาไทย (+07:00) ให้ตรงกับ toISODate ฝั่ง frontend
+// ป้องกัน off-by-one จากการ parse เป็น UTC เที่ยงคืน (คลาดกับเวลาไทย 7 ชม.)
+function parseLocalDayStart(dateStr: string): Date {
+    return new Date(`${dateStr}T00:00:00+07:00`);
+}
+function parseLocalDayEnd(dateStr: string): Date {
+    // ครอบคลุมทั้งวัน: ใช้ "น้อยกว่า" เที่ยงคืนของวันถัดไป แทนการเดา .999
+    const d = parseLocalDayStart(dateStr);
+    d.setDate(d.getDate() + 1);
+    return d;
+}
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -27,8 +39,8 @@ export async function GET(request: Request) {
         }
         if (startDateParam || endDateParam) {
             baseWhere.collectionTime = {};
-            if (startDateParam) baseWhere.collectionTime.gte = new Date(startDateParam);
-            if (endDateParam) baseWhere.collectionTime.lte = new Date(endDateParam);
+            if (startDateParam) baseWhere.collectionTime.gte = parseLocalDayStart(startDateParam);
+            if (endDateParam) baseWhere.collectionTime.lt = parseLocalDayEnd(endDateParam);
         }
         if (agencyParam && agencyParam !== "all") {
             baseWhere.location = { governingAgency: agencyParam };
@@ -137,6 +149,7 @@ export async function GET(request: Request) {
 
         // 🚀 ไฮไลต์: ดึงโครงสร้างพิมพ์เขียวทั้งหมดตรงจากตาราง `dashboard_widgets` ของบอส ไม่ Hardcode
         const dbWidgets = await prisma.dashboardWidget.findMany({
+            where: { isActive: true },
             orderBy: { id: "asc" },
         });
 
@@ -170,20 +183,22 @@ export async function GET(request: Request) {
                     }
                 } else if (w.targetType === "ENVIRONMENT") {
                     // ดึงค่าเฉลี่ยสถิติสิ่งแวดล้อมจากตารางหลัก water_samples ที่ DB คำนวณไว้แล้ว
+                    // หมายเหตุ: pH/TSS ไม่ใช่คอลัมน์บน water_samples (เป็น Parameter แยกในตาราง parameters)
+                    // จึงต้องตั้ง targetType="PARAMETER" ให้การ์ดพวกนั้น ไม่ใช่ ENVIRONMENT — ที่นี่จึงรองรับเฉพาะคอลัมน์จริงที่มีอยู่ใน envAvgByField
                     const col = w.targetColumn || "";
                     const avg = envAvgByField[toCamelCase(col)];
                     finalValue = avg !== null && avg !== undefined ? Number(avg.toFixed(2)) : 0;
-                    if (col === "ph_value" || w.title.includes("pH")) {
-                        unit = "pH";
-                        color = "#ec4899";
-                    }
-                    if (col === "suspended_solids" || w.title.includes("TSS")) {
-                        unit = "mg/L";
-                        color = "#14b8a6";
-                    }
                     if (col === "dissolved_oxygen" || w.title.includes("DO")) {
                         unit = "mg/L";
                         color = "#10b981";
+                    }
+                    if (col === "air_temperature" || w.title.includes("อุณหภูมิ")) {
+                        unit = "°C";
+                        color = "#f97316";
+                    }
+                    if (col === "rain_accumulation" || w.title.includes("ฝน")) {
+                        unit = "mm";
+                        color = "#0ea5e9";
                     }
                 } else if (w.targetType === "PARAMETER") {
                     // จับคู่ชื่อสารแบบยืดหยุ่นเหมือนเดิม แล้วรวมค่าเฉลี่ยถ่วงน้ำหนักตามจำนวน (pooled average)
@@ -225,21 +240,29 @@ export async function GET(request: Request) {
             take: 5,
         });
 
-        const hotspotsData = [];
-        for (const loc of topDangerLocations) {
-            const station = await prisma.location.findUnique({ where: { id: loc.locationId } });
-            const totalLocSamples = await prisma.waterSample.count({ where: { ...baseWhere, locationId: loc.locationId } });
+        // แก้ N+1: เดิมวน findUnique + count ทีละสถานี (~2 query × 5 = 10 query) รวมเป็น batch query 2 ครั้งแทน
+        const hotspotLocationIds = topDangerLocations.map((loc) => loc.locationId);
+        const [hotspotStations, hotspotTotalGroups] = await Promise.all([
+            prisma.location.findMany({ where: { id: { in: hotspotLocationIds } }, select: { id: true, stationName: true, governingAgency: true } }),
+            prisma.waterSample.groupBy({ by: ["locationId"], where: { ...baseWhere, locationId: { in: hotspotLocationIds } }, _count: { id: true } }),
+        ]);
+        const stationById = new Map(hotspotStations.map((s) => [s.id, s]));
+        const totalByLocationId = new Map(hotspotTotalGroups.map((g) => [g.locationId, g._count.id]));
+
+        const hotspotsData = topDangerLocations.map((loc) => {
+            const station = stationById.get(loc.locationId);
+            const totalLocSamples = totalByLocationId.get(loc.locationId) || 0;
             const failureRate = totalLocSamples > 0 ? Math.round((loc._count.id / totalLocSamples) * 100) : 0;
 
-            hotspotsData.push({
+            return {
                 stationName: station?.stationName || `สถานีรหัส ${loc.locationId}`,
                 agency: station?.governingAgency || "ไม่ระบุหน่วยงาน",
                 failureRate,
                 dangerCount: loc._count.id,
                 totalCount: totalLocSamples,
                 statusText: failureRate >= 80 ? "วิกฤต" : failureRate >= 50 ? "เสี่ยงสูง" : "เฝ้าระวัง",
-            });
-        }
+            };
+        });
 
         // --- 🌅 3. โครงสร้างระบบประมวลผลช่วงเวลา เช้า vs เย็น (Temporal Data Engine) ---
         // ดึงเฉพาะฟิลด์ที่กราฟรายเดือนต้องใช้จริง (เวลาเก็บ + ค่าสารแอมโมเนีย/ฟอสเฟตเท่านั้น) แทนการโหลดทุกคอลัมน์
@@ -249,7 +272,6 @@ export async function GET(request: Request) {
                 collectionTime: true,
                 rainAccumulation: true, // ใช้ต่อในส่วน Correlation (สภาพอากาศ × ความเข้มข้นสาร)
                 airTemperature: true,
-                status: true, // ใช้คัดจุดผิดปกติ (DANGER) มาวางทับ heatmap
                 measurements: {
                     where: { parameter: { name: { in: ["ammonia", "phosphate"] } } },
                     select: { value: true, parameter: { select: { name: true } } },
@@ -261,7 +283,7 @@ export async function GET(request: Request) {
         // แก้บั๊กเดิมที่ hardcode ไว้แค่ 6 เดือน (ม.ค.-มิ.ย.) ทำให้ข้อมูลเดือน ก.ค.-ธ.ค. หายไปเงียบๆ เมื่อ filter ครอบคลุมทั้งปี
         const MAX_BUCKETS = 12;
         const bucketRangeStart: Date = startDateParam
-            ? new Date(startDateParam)
+            ? parseLocalDayStart(startDateParam)
             : timeSeriesSamples.length > 0
               ? new Date(Math.min(...timeSeriesSamples.map((s) => new Date(s.collectionTime).getTime())))
               : (() => {
@@ -269,7 +291,8 @@ export async function GET(request: Request) {
                     d.setMonth(d.getMonth() - 6);
                     return d;
                 })();
-        const bucketRangeEnd: Date = endDateParam ? new Date(endDateParam) : now;
+        // -1ms ให้เป็นจุดสุดท้ายของวันสิ้นสุดแบบ inclusive (ตรงกับ baseWhere.collectionTime.lt)
+        const bucketRangeEnd: Date = endDateParam ? new Date(parseLocalDayEnd(endDateParam).getTime() - 1) : now;
 
         const thaiMonthAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
         type Granularity = "day" | "week" | "month" | "quarter" | "year";
@@ -401,14 +424,29 @@ export async function GET(request: Request) {
             };
         });
 
+        // ป้ายบอกความละเอียด + ช่วงเวลาที่กราฟ temporal/trend กำลังแสดงจริง (ให้ UI ไม่ hardcode คำว่า "รายเดือน" ทั้งที่ granularity เปลี่ยนได้)
+        const granularityThaiLabel: Record<Granularity, string> = {
+            day: "รายวัน",
+            week: "รายสัปดาห์",
+            month: "รายเดือน",
+            quarter: "รายไตรมาส",
+            year: "รายปี",
+        };
+        const formatThaiDate = (d: Date) => `${d.getDate()} ${thaiMonthAbbr[d.getMonth()]} ${d.getFullYear()}`;
+        const granularityInfo = {
+            granularity,
+            label: granularityThaiLabel[granularity],
+            rangeStart: bucketRangeStart.toISOString(),
+            rangeEnd: bucketRangeEnd.toISOString(),
+            rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStart)} – ${formatThaiDate(bucketRangeEnd)}` : "",
+        };
+
         // --- 🌦️ [มิติที่ 5: Correlation] สหสัมพันธ์สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
         // เก็บคู่จุดของแต่ละชุด (แกน × สาร) เพื่อคำนวณ Pearson r และแบ่ง density bin ฝั่ง server
         const rainNH3: { x: number; y: number }[] = [];
         const rainPO4: { x: number; y: number }[] = [];
         const tempNH3: { x: number; y: number }[] = [];
         const tempPO4: { x: number; y: number }[] = [];
-        // จุดผิดปกติ (DANGER) สำหรับวางทับ heatmap
-        const outliers: { rain: number | null; temp: number | null; ammonia: number | null; phosphate: number | null }[] = [];
 
         timeSeriesSamples.forEach((s) => {
             const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value ?? null;
@@ -420,18 +458,7 @@ export async function GET(request: Request) {
             if (rain !== null && rain !== undefined && phos !== null) rainPO4.push({ x: rain, y: phos });
             if (temp !== null && temp !== undefined && amm !== null) tempNH3.push({ x: temp, y: amm });
             if (temp !== null && temp !== undefined && phos !== null) tempPO4.push({ x: temp, y: phos });
-
-            if (s.status === "danger" && (amm !== null || phos !== null)) {
-                outliers.push({ rain: rain ?? null, temp: temp ?? null, ammonia: amm, phosphate: phos });
-            }
         });
-
-        // จำกัดจำนวน outlier ที่ส่งไปวาด (สุ่มเป็นระบบ) กัน overlay รกและ payload บวม
-        let outliersSampled = outliers;
-        if (outliers.length > 120) {
-            const step = Math.ceil(outliers.length / 120);
-            outliersSampled = outliers.filter((_, i) => i % step === 0);
-        }
 
         const pearsonPairs = (pts: { x: number; y: number }[]): [number, number][] => pts.map((p) => [p.x, p.y]);
         // เส้น trend คำนวณจากคู่ข้อมูลชุดเดียวกับ Pearson r เสมอ (ความชัน/จุดตัดแกน y)
@@ -465,6 +492,7 @@ export async function GET(request: Request) {
                 ],
             },
             temporalData: temporalData,
+            granularityInfo: granularityInfo, // ความละเอียด (วัน/สัปดาห์/เดือน/ไตรมาส/ปี) + ช่วงวันที่ที่ temporalData/trends กำลังแสดงจริง
             trendConfig: {
                 title: "WaterTrendChart: สหสัมพันธ์แนวโน้มความเข้มข้นสารเคมีสะสมพร้อมเกณฑ์ควบคุม PCD",
                 references: [
@@ -479,10 +507,9 @@ export async function GET(request: Request) {
             trends: trendsData,
             correlation: {
                 title: "Correlation: สหสัมพันธ์สภาพอากาศกับความเข้มข้นสารเคมี (Pearson r)",
-                note: "อุณหภูมิ = อุณหภูมิอากาศ (ไม่มีอุณหภูมิน้ำใน schema) · จุดแดง = ตัวอย่างสถานะ DANGER",
+                note: "อุณหภูมิ = อุณหภูมิอากาศ (ไม่มีอุณหภูมิน้ำใน schema)",
                 metrics: correlationMetrics,
                 heatmaps: correlationHeatmaps,
-                outliers: outliersSampled,
             },
         });
     } catch (error) {

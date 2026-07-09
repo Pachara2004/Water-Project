@@ -193,10 +193,11 @@ export default function ExecutiveAnalyticsDashboard() {
                     </div>
 
                     {/* ส่วนการตรวจสอบสถานะและวาดสารสนเทศ */}
-                    {loading || !analytics ? (
-                        <div className="p-14 text-center text-slate-400 text-xs tracking-widest animate-pulse flex-1 flex items-center justify-center">กำลังประมวลผลดัชนีเคมีฐานข้อมูล...</div>
+                    {/* โชว์ skeleton เต็มจอเฉพาะโหลดครั้งแรก (ยังไม่มีข้อมูลเลย) — ถ้าแค่เปลี่ยน filter ให้คงเนื้อหาเดิมไว้ + dim เบาๆ แทน กัน flash ตอนโหลดเร็ว */}
+                    {!analytics ? (
+                        <DashboardSkeleton />
                     ) : (
-                        <>
+                        <div className={`space-y-3 transition-opacity duration-200 ${loading ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
                             {/* 📊 มิติที่ 1: การ์ดตัวชี้วัดหลักแบบ Dynamic ดึงจาก DB */}
                             <div className="flex items-center justify-end shrink-0">
                                 <div className="grid grid-cols-2 rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-[10px] font-semibold">
@@ -272,7 +273,14 @@ export default function ExecutiveAnalyticsDashboard() {
 
                                 {/* 🌅 มิติที่ 3: แยกแท่งกราฟ เช้า vs เย็น ออกตามรายสารเคมีแบบ Dynamic เป็นกล่องย่อยอ่านง่ายสุดๆ */}
                                 <div className="col-span-1 md:col-span-7 bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-col gap-3 overflow-hidden">
-                                    <div className="text-[11px] font-bold text-slate-700 shrink-0">ความผันผวนของสารเคมีรายเดือน (เปรียบเทียบช่วงเวลา เช้า vs เย็น แยกประเภท)</div>
+                                    <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
+                                        <div className="text-[11px] font-bold text-slate-700">ความผันผวนของสารเคมี (เปรียบเทียบช่วงเวลา เช้า vs เย็น แยกประเภท)</div>
+                                        {analytics?.granularityInfo && (
+                                            <span className="inline-flex items-center gap-1 text-[8px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">
+                                                {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-h-0">
                                         {getGroupedBars().map((group: any, gIdx: number) => (
                                             <div key={gIdx} className="bg-slate-50/50 rounded-lg p-2 border border-slate-100 flex flex-col justify-between h-44 sm:h-auto">
@@ -306,7 +314,14 @@ export default function ExecutiveAnalyticsDashboard() {
 
                             {/* มิติที่ 4: WATERTRENDCHART แนวโน้มสารเคมีพร้อมเส้นควบคุมควบคุม PCD */}
                             <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs shrink-0">
-                                <div className="text-[11px] font-bold text-slate-700 mb-0.5">{analytics?.trendConfig?.title || " WaterTrendChart"}</div>
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <div className="text-[11px] font-bold text-slate-700 mb-0.5">{analytics?.trendConfig?.title || " WaterTrendChart"}</div>
+                                    {analytics?.granularityInfo && (
+                                        <span className="inline-flex items-center gap-1 text-[8px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">
+                                            {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="h-40 w-full mt-1">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={analytics?.trends} margin={{ top: 15, right: 5, left: -32, bottom: 0 }}>
@@ -345,7 +360,7 @@ export default function ExecutiveAnalyticsDashboard() {
 
                             {/* มิติที่ 5: Correlation — แยกเป็น component ลูกเพื่อไม่ให้การกด toggle re-render ทั้งหน้า */}
                             {analytics?.correlation && <CorrelationSection correlation={analytics.correlation} />}
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
@@ -353,7 +368,92 @@ export default function ExecutiveAnalyticsDashboard() {
     );
 }
 
-// 🌦️ Correlation — density heatmap + จุด outlier (DANGER) แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
+// ก้อนสี่เหลี่ยมกระพริบพื้นฐานของ skeleton (ขนาดกำหนดผ่าน className ที่ส่งเข้ามา)
+function Sk({ className = "" }: { className?: string }) {
+    return <div className={`bg-slate-200/70 rounded animate-pulse ${className}`} />;
+}
+
+// 💀 Skeleton โครงร่างขนาดเทียบเท่าของจริง — ลอกโครงสร้าง grid/section เดียวกับตอนโหลดเสร็จ ป้องกันเลย์เอาต์กระโดดตอนข้อมูลมาถึง
+function DashboardSkeleton() {
+    return (
+        <>
+            {/* แถวปุ่มสลับ WoW/MoM */}
+            <div className="flex items-center justify-end shrink-0">
+                <Sk className="h-6 w-24" />
+            </div>
+
+            {/* มิติที่ 1: การ์ด KPI 4 ใบ */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-slate-200/60 p-2.5 flex flex-col border-l-10 border-l-slate-200">
+                        <Sk className="h-2.5 w-3/4 mb-2" />
+                        <Sk className="h-5 w-1/2 mb-2" />
+                        <Sk className="h-3 w-2/5" />
+                    </div>
+                ))}
+            </div>
+
+            {/* มิติที่ 2 & 3: Hotspots + Temporal */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+                <div className="col-span-1 md:col-span-5 bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs">
+                    <Sk className="h-3.5 w-2/3 mb-3" />
+                    <div className="space-y-2.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                                <Sk className="h-3 w-3 shrink-0" />
+                                <div className="flex-1">
+                                    <Sk className="h-2.5 w-3/4 mb-1" />
+                                    <Sk className="h-2 w-1/3" />
+                                </div>
+                                <Sk className="h-3 w-8" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="col-span-1 md:col-span-7 bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-col gap-3">
+                    <Sk className="h-3.5 w-3/4" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {Array.from({ length: 2 }).map((_, i) => (
+                            <div key={i} className="bg-slate-50/50 rounded-lg p-2 border border-slate-100 h-44 flex flex-col gap-2">
+                                <Sk className="h-2.5 w-1/2" />
+                                <Sk className="flex-1 w-full" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* มิติที่ 4: WaterTrendChart */}
+            <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs shrink-0">
+                <Sk className="h-3.5 w-1/2 mb-2" />
+                <Sk className="h-40 w-full" />
+            </div>
+
+            {/* มิติที่ 5: Correlation */}
+            <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs shrink-0">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                    <Sk className="h-3.5 w-1/3" />
+                    <Sk className="h-6 w-32" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+                    <div className="col-span-1 md:col-span-8">
+                        <Sk className="h-48 w-full" />
+                    </div>
+                    <div className="col-span-1 md:col-span-4 grid grid-cols-2 gap-2 content-start">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="rounded-lg border border-slate-100 p-2">
+                                <Sk className="h-4 w-1/2 mx-auto mb-1.5" />
+                                <Sk className="h-2 w-3/4 mx-auto" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+
+// 🌦️ Correlation — density heatmap แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
 function CorrelationSection({ correlation }: { correlation: any }) {
     const [axis, setAxis] = useState<"rain" | "temp">("rain");
     const [chem, setChem] = useState<"nh3" | "po4">("nh3");
@@ -361,7 +461,6 @@ function CorrelationSection({ correlation }: { correlation: any }) {
     const dAxis = useDeferredValue(axis);
     const dChem = useDeferredValue(chem);
     const hm = correlation?.heatmaps?.[`${dAxis}_${dChem}`];
-    const outliers: any[] = correlation?.outliers || [];
 
     const VB_W = 440,
         VB_H = 240,
@@ -379,7 +478,7 @@ function CorrelationSection({ correlation }: { correlation: any }) {
 
     // แปลงค่าข้อมูล → พิกัดพิกเซล (memoize ให้วาดใหม่เฉพาะตอนเปลี่ยนชุดข้อมูล)
     const view = useMemo(() => {
-        if (!hm || !hm.domain || hm.bins.length === 0) return { rects: [] as any[], dots: [] as any[], xTicks: [] as any[], yTicks: [] as any[], trendLine: null as any, hasData: false };
+        if (!hm || !hm.domain || hm.bins.length === 0) return { rects: [] as any[], xTicks: [] as any[], yTicks: [] as any[], trendLine: null as any, hasData: false };
         const { xMin, xMax, yMin, yMax } = hm.domain;
         const dx = xMax - xMin || 1;
         const dy = yMax - yMin || 1;
@@ -395,9 +494,6 @@ function CorrelationSection({ correlation }: { correlation: any }) {
             h: chh + 0.6,
             fill: ramp[Math.min(ramp.length - 1, Math.floor(b.intensity * ramp.length))],
         }));
-        const axKey = dAxis === "rain" ? "rain" : "temp";
-        const chemKey = dChem === "nh3" ? "ammonia" : "phosphate";
-        const dots = outliers.filter((o) => o[axKey] != null && o[chemKey] != null).map((o, i) => ({ key: i, cx: sx(o[axKey]), cy: sy(o[chemKey]) }));
         const xTicks = [xMin, (xMin + xMax) / 2, xMax].map((v) => ({ x: sx(v), label: v.toFixed(v >= 20 ? 0 : 1) }));
         const yTicks = [yMin, (yMin + yMax) / 2, yMax].map((v) => ({ y: sy(v), label: v.toFixed(2) }));
 
@@ -417,8 +513,8 @@ function CorrelationSection({ correlation }: { correlation: any }) {
             }
         }
 
-        return { rects, dots, xTicks, yTicks, trendLine, hasData: true };
-    }, [hm, outliers, dAxis, dChem, activeMetric]);
+        return { rects, xTicks, yTicks, trendLine, hasData: true };
+    }, [hm, dAxis, dChem, activeMetric]);
     const xLabel = dAxis === "rain" ? "ฝนสะสม (mm)" : "อุณหภูมิอากาศ (°C)";
     const pill = (on: boolean) => `px-2 py-0.5 rounded-md transition-all cursor-pointer ${on ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`;
 
@@ -466,9 +562,6 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                                     strokeDasharray="5 4"
                                 />
                             )}
-                            {view.dots.map((d: any) => (
-                                <circle key={`o${d.key}`} cx={d.cx} cy={d.cy} r={2.6} fill="#ef4444" stroke="#fff" strokeWidth={0.9} />
-                            ))}
                             {view.xTicks.map((t: any, i: number) => (
                                 <text key={`x${i}`} x={t.x} y={VB_H - 13} fontSize={8} fill="#94a3b8" textAnchor="middle">
                                     {t.label}
@@ -495,10 +588,6 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                             <span>จุดน้อย</span>
                             <span className="inline-block w-16 h-2 rounded" style={{ background: "linear-gradient(90deg,#dbeafe,#3b82f6,#1e3a8a)" }} />
                             <span>จุดมาก</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 border border-white" />
-                            จุด DANGER
                         </div>
                         <div className="flex items-center gap-1">
                             <span className="inline-block w-4 h-0 border-t-2 border-indigo-600" />
