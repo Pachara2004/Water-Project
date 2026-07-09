@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo, useDeferredValue } from "react";
+import { useState, useEffect, useRef, useMemo, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
-import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideAward, LucideCalendar, LucideFilter, LucideDownload, Activity, LucideBeaker } from "lucide-react";
+import ExportButtons from "@/components/dashboard/ExportButtons";
+import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideAward, LucideChevronDown, Activity, LucideBeaker } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
@@ -50,6 +51,8 @@ export default function ExecutiveAnalyticsDashboard() {
     const [endDate, setEndDate] = useState(() => toISODate(new Date()));
     const [agency, setAgency] = useState("all");
     const [trendMode, setTrendMode] = useState<"wow" | "mom">("wow");
+    const [showAgencyMenu, setShowAgencyMenu] = useState(false); // custom dropdown ของหน่วยงาน — คุมความกว้าง popup เองแทน native <select>
+    const agencyMenuRef = useRef<HTMLDivElement>(null);
 
     const userRole = currentUser?.role?.toLowerCase() || "officer";
     const userId = currentUser?.id || null;
@@ -58,6 +61,16 @@ export default function ExecutiveAnalyticsDashboard() {
         if (userRole === "collector") setViewMode("MINE");
         else if (userRole === "officer") setViewMode("ALL");
     }, [userRole]);
+
+    // ปิด dropdown หน่วยงานเวลาคลิกนอกกล่อง
+    useEffect(() => {
+        if (!showAgencyMenu) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (agencyMenuRef.current && !agencyMenuRef.current.contains(e.target as Node)) setShowAgencyMenu(false);
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [showAgencyMenu]);
 
     useEffect(() => {
         // guest/ยังไม่ login ไม่มีสิทธิ์เห็นหน้านี้อยู่แล้ว (จะโดน guard ด้านล่างเด้งกลับ) — ข้ามการยิง fetch ไปเลย
@@ -183,66 +196,99 @@ export default function ExecutiveAnalyticsDashboard() {
             <div className="w-full max-w-xl md:max-w-7xl mx-auto px-4 space-y-5 pt-6">
                 <div className="space-y-3">
                     {/* Header ควบคุมส่วนบน */}
-                    <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2 shrink-0">
-                        <div className="flex items-center gap-2.5">
-                            <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900">ระบบวิเคราะห์ทางวิชาการเชิงลึกระดับบริหาร</h1>
-                                </div>
-                            </div>
+                    <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.03)] flex flex-col items-start text-left gap-3 shrink-0">
+                        <div>
+                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+                                แดชบอร์ดติดตาม <span className="text-indigo-600">คุณภาพน้ำ</span>
+                            </h1>
+                            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                                ศูนย์ข้อมูลคุณภาพสารเคมีแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวังทางสิ่งแวดล้อม
+                            </p>
                         </div>
 
-                        <div className="flex items-center gap-2 self-end sm:self-center w-full sm:w-auto justify-between sm:justify-end">
-                            {(userRole === "admin" || userRole === "officer") && (
-                                <div className="grid grid-cols-2 rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs font-semibold w-full sm:w-auto text-center text-[11px]">
-                                    <button
-                                        onClick={() => setViewMode("ALL")}
-                                        className={`px-3 py-1 rounded-md transition-all cursor-pointer ${viewMode === "ALL" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
-                                    >
-                                        ภาพรวม
-                                    </button>
-                                    {userRole === "admin" && (
-                                        <button
-                                            onClick={() => setViewMode("MINE")}
-                                            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${viewMode === "MINE" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
-                                        >
-                                            ของฉัน
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            <button className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-colors shadow-xs shrink-0 cursor-pointer h-7.5">
-                                <LucideDownload size={12} /> Export
-                            </button>
-                        </div>
+                        <ExportButtons />
                     </div>
 
-                    {/* แถบกล่องตัวกรองสากล */}
-                    <div className="bg-white rounded-xl p-2 border border-slate-200/80 shadow-xs flex items-center gap-2 text-[11px] shrink-0">
-                        <LucideFilter size={12} className="text-indigo-600" />
-                        <div className="flex gap-2 w-full overflow-x-auto no-scrollbar py-0.5">
-                            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 shrink-0">
-                                <LucideCalendar size={11} className="text-slate-400" />
-                                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent outline-none text-slate-600 text-[11px]" />
-                            </div>
-                            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5">
-                                <LucideCalendar size={11} className="text-slate-400" />
-                                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent outline-none text-slate-600 text-[11px]" />
-                            </div>
-
-                            <select
-                                value={agency}
-                                onChange={(e) => setAgency(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-md px-2 py-0.5 font-medium outline-none text-slate-600 h-6.5 text-[11px] max-w-[130px] sm:max-w-none"
+                    {/* แถบสลับมุมมองข้อมูล */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Dropdown หน่วยงานแบบ custom — คุมความกว้าง popup เองแทน native <select> เพื่อให้กล่องปิด/เปิดกว้างเท่ากันเป๊ะ */}
+                        <div className="relative flex-1 min-w-0" ref={agencyMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setShowAgencyMenu((v) => !v)}
+                                className="h-8 w-full flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 font-medium text-slate-700 text-xs cursor-pointer hover:border-indigo-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
                             >
-                                <option value="all">ทุกหน่วยงาน</option>
-                                {analytics?.agencies?.map((item: string, i: number) => (
-                                    <option key={i} value={item}>
-                                        {item}
-                                    </option>
-                                ))}
-                            </select>
+                                <span className="truncate">{agency === "all" ? "ทุกหน่วยงาน" : agency}</span>
+                                <LucideChevronDown size={13} className={`text-slate-400 shrink-0 transition-transform ${showAgencyMenu ? "rotate-180" : ""}`} />
+                            </button>
+
+                            {showAgencyMenu && (
+                                <div className="absolute z-20 top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg py-1 max-h-60 overflow-y-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setAgency("all");
+                                            setShowAgencyMenu(false);
+                                        }}
+                                        className={`w-full text-left px-3 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 ${agency === "all" ? "text-indigo-600 bg-indigo-50" : "text-slate-700"}`}
+                                    >
+                                        ทุกหน่วยงาน
+                                    </button>
+                                    {analytics?.agencies?.map((item: string, i: number) => (
+                                        <button
+                                            type="button"
+                                            key={i}
+                                            onClick={() => {
+                                                setAgency(item);
+                                                setShowAgencyMenu(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 truncate ${agency === item ? "text-indigo-600 bg-indigo-50" : "text-slate-700"}`}
+                                        >
+                                            {item}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {(userRole === "admin" || userRole === "officer") && (
+                            <div className="h-8 grid grid-cols-2 rounded-xl p-0.5 bg-slate-100 border border-slate-200 font-semibold text-center text-xs shrink-0">
+                                <button
+                                    onClick={() => setViewMode("ALL")}
+                                    className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${viewMode === "ALL" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                >
+                                    ข้อมูลทั้งหมด
+                                </button>
+                                {userRole === "admin" && (
+                                    <button
+                                        onClick={() => setViewMode("MINE")}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${viewMode === "MINE" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                    >
+                                        ข้อมูลของฉัน
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* แถบตัวกรองช่วงวันที่ */}
+                    <div className="flex items-center gap-2 w-full shrink-0">
+                        <div className="h-8 flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 flex-1 min-w-0 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="bg-transparent outline-none text-slate-700 font-medium text-xs cursor-pointer w-full min-w-0"
+                            />
+                        </div>
+
+                        <div className="h-8 flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 flex-1 min-w-0 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="bg-transparent outline-none text-slate-700 font-medium text-xs cursor-pointer w-full min-w-0"
+                            />
                         </div>
                     </div>
 
@@ -272,17 +318,18 @@ export default function ExecutiveAnalyticsDashboard() {
                                 </div>
                             )}
                             {/* 📊 มิติที่ 1: การ์ดตัวชี้วัดหลักแบบ Dynamic ดึงจาก DB */}
-                            <div className="flex items-center justify-end shrink-0">
-                                <div className="grid grid-cols-2 rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-[10px] font-semibold">
+                            <div className="flex items-center justify-between shrink-0">
+                                <div className="text-xs font-bold text-white">ตัวชี้วัดหลัก (KPI)</div>
+                                <div className="h-8 grid grid-cols-2 rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs font-semibold">
                                     <button
                                         onClick={() => setTrendMode("wow")}
-                                        className={`px-2.5 py-0.5 rounded-md transition-all cursor-pointer ${trendMode === "wow" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer ${trendMode === "wow" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
                                     >
                                         WoW
                                     </button>
                                     <button
                                         onClick={() => setTrendMode("mom")}
-                                        className={`px-2.5 py-0.5 rounded-md transition-all cursor-pointer ${trendMode === "mom" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer ${trendMode === "mom" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
                                     >
                                         MoM
                                     </button>
