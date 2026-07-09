@@ -93,7 +93,7 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
                             <div className="animate-laser" />
                         </>
                     ) : preview || plotFile ? (
-                        <img src={step === "results" && plotFile ? URL.createObjectURL(plotFile) : preview} alt={param.name} className="w-full h-full object-contain" />
+                        <img src={step === "results" && plotFile instanceof Blob ? URL.createObjectURL(plotFile) : preview} alt={param.name} className="w-full h-full object-contain" />
                     ) : (
                         <div className="flex flex-col items-center gap-3 px-8 text-center py-8">
                             <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center border border-border">
