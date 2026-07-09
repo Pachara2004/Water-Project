@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth-guard";
 
 // ตีความ "YYYY-MM-DD" จาก filter เป็นขอบเขตเวลาไทย (+07:00) ให้ตรงกับ toISODate ฝั่ง frontend
 // ป้องกัน off-by-one จากการ parse เป็น UTC เที่ยงคืน (คลาดกับเวลาไทย 7 ชม.)
@@ -13,12 +14,19 @@ function parseLocalDayEnd(dateStr: string): Date {
     return d;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
     try {
+        // 🔒 SECURITY GUARD: บังคับต้องมี Token ที่ตรวจสอบผ่าน LINE จริง ก่อนอ่านสถิติใด ๆ
+        const auth = await verifyAuth(request, ["admin", "officer", "collector"]);
+        if (!auth.isValid) {
+            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+        }
+
         const { searchParams } = new URL(request.url);
-        const viewMode = searchParams.get("viewMode") || "ALL";
-        const collectorIdStr = searchParams.get("collectorId");
-        const collectorId = collectorIdStr ? Number(collectorIdStr) : null;
+        // collector ดูได้เฉพาะข้อมูลของตัวเองเท่านั้น บังคับ MINE ที่ฝั่ง server เสมอ ไม่สนใจค่าที่ client ส่งมา
+        const viewMode = auth.user!.roleName === "collector" ? "MINE" : searchParams.get("viewMode") || "ALL";
+        // 🔒 ห้ามเชื่อ collectorId จาก query param (ใครก็ปลอมเป็น id ใครก็ได้) — ใช้ id จาก token ที่ยืนยันแล้วเท่านั้น
+        const collectorId = auth.user!.id;
 
         const startDateParam = searchParams.get("startDate");
         const endDateParam = searchParams.get("endDate");
@@ -228,6 +236,7 @@ export async function GET(request: Request) {
                     unit: unit,
                     color: color,
                     trend: trend, // การเปลี่ยนแปลงเทียบช่วงก่อนหน้า (null = ไม่มีข้อมูลช่วงก่อน/ไม่ใช่การ์ดสถานะ)
+                    w: w.w, // ความกว้างกริด (1-12 ช่อง) ตามที่ตั้งค่าไว้ใน dashboard_widgets
                 };
             });
 

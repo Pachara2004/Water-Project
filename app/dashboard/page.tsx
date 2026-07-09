@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo, useDeferredValue } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import liff from "@line/liff";
 import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideAward, LucideCalendar, LucideFilter, LucideDownload, Activity, LucideBeaker } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 
@@ -13,11 +15,30 @@ function toISODate(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
+// แปลงค่า w (1-12 ช่อง ตามที่ตั้งไว้ใน dashboard_widgets) เป็น Tailwind class แบบ static lookup
+// (ต้องเขียนเป็น literal string ครบทุก class เพราะ Tailwind ไม่รู้จัก class ที่ประกอบด้วย template string แบบ dynamic)
+function kpiSpanClass(w: number | undefined): string {
+    switch (w) {
+        case 12:
+            return "col-span-2 md:col-span-12";
+        case 6:
+            return "col-span-2 md:col-span-6";
+        case 4:
+            return "col-span-1 md:col-span-4";
+        case 3:
+        default:
+            return "col-span-1 md:col-span-3";
+    }
+}
+
 export default function ExecutiveAnalyticsDashboard() {
     const { currentUser } = useAppStore();
+    const router = useRouter();
     const [viewMode, setViewMode] = useState<"ALL" | "MINE">("ALL");
     const [analytics, setAnalytics] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(false);
+    const [retryTick, setRetryTick] = useState(0); // เพิ่มค่าเพื่อ trigger fetch ใหม่ตอนกดปุ่มลองใหม่
 
     // ค่าเริ่มต้น = 6 เดือนล่าสุดแบบ rolling พอดี (ล็อควันที่ 1 ก่อนถอยเดือน กันเดือนที่ 7 โผล่มาจากเศษวัน) แทนการ hardcode ทั้งปี
     const [startDate, setStartDate] = useState(() => {
@@ -38,24 +59,58 @@ export default function ExecutiveAnalyticsDashboard() {
         else if (userRole === "officer") setViewMode("ALL");
     }, [userRole]);
 
-    const fetchAnalyticsData = () => {
-        setLoading(true);
-        let url = `/api/dashboard/widgets?viewMode=${viewMode}&startDate=${startDate}&endDate=${endDate}&agency=${agency}`;
-        if (userId) url += `&collectorId=${userId}`;
+    useEffect(() => {
+        // guest/ยังไม่ login ไม่มีสิทธิ์เห็นหน้านี้อยู่แล้ว (จะโดน guard ด้านล่างเด้งกลับ) — ข้ามการยิง fetch ไปเลย
+        // กัน request ที่รู้อยู่แล้วว่าจะโดน 403 จาก backend ไม่ให้ขึ้น error overlay ใน dev เปล่าๆ
+        if (!currentUser || userRole === "guest") return;
 
-        fetch(url)
+        // ยกเลิก request เก่าเวลาสลับ filter เร็วๆ — กัน response เก่าที่มาช้ากว่ามาทับผลลัพธ์ของ filter ปัจจุบัน
+        const controller = new AbortController();
+        setLoading(true);
+        setFetchError(false);
+        const url = `/api/dashboard/widgets?viewMode=${viewMode}&startDate=${startDate}&endDate=${endDate}&agency=${agency}`;
+
+        // ต้องแนบ Token ยืนยันตัวตนเสมอ — server ตรวจสิทธิ์และดึง collectorId จาก token เอง ไม่รับค่าจาก client แล้ว
+        fetch(url, {
+            headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
+            signal: controller.signal,
+        })
             .then((res) => {
                 if (!res.ok) throw new Error("Database Analytics Fetch Error");
                 return res.json();
             })
             .then((data) => setAnalytics(data))
-            .catch(console.error)
-            .finally(() => setLoading(false));
-    };
+            .catch((err) => {
+                if (err.name === "AbortError") return; // ถูกยกเลิกเพราะ filter เปลี่ยนก่อนโหลดเสร็จ ไม่ใช่ error จริง ไม่ต้องโชว์ผู้ใช้
+                console.error(err);
+                setFetchError(true);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setLoading(false);
+            });
 
-    useEffect(() => {
-        fetchAnalyticsData();
-    }, [viewMode, userId, startDate, endDate, agency]);
+        return () => controller.abort();
+    }, [viewMode, userId, userRole, startDate, endDate, agency, retryTick]);
+
+    // 🔒 ปิดกั้นสิทธิ์ role "guest" (ผู้ใช้งานทั่วไป) ไม่ให้เข้าหน้านี้ — เหมือน pattern เดียวกับ app/manage/page.tsx
+    // หมายเหตุ: การบังคับจริงอยู่ที่ backend (verifyAuth ที่ route.ts ไม่รับ role guest อยู่แล้ว) นี่คือแค่ UX กันไม่ให้เห็นหน้าเปล่าๆ ตอนถูก 401 กลับมา
+    if (!currentUser || userRole === "guest") {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto bg-surface-muted border-x border-border">
+                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
+                    <LucideShieldAlert size={28} className="animate-pulse" />
+                </div>
+                <h1 className="font-display text-base font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
+                <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้านี้สำหรับเจ้าหน้าที่ปฏิบัติการ, ผู้บริหาร และผู้ดูแลระบบเท่านั้น</p>
+                <button
+                    onClick={() => router.push("/map")}
+                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
+                >
+                    กลับไปหน้าแผนที่
+                </button>
+            </div>
+        );
+    }
 
     const renderKpiIcon = (title: string) => {
         const lowerTitle = title.toLowerCase();
@@ -194,10 +249,29 @@ export default function ExecutiveAnalyticsDashboard() {
 
                     {/* ส่วนการตรวจสอบสถานะและวาดสารสนเทศ */}
                     {/* โชว์ skeleton เต็มจอเฉพาะโหลดครั้งแรก (ยังไม่มีข้อมูลเลย) — ถ้าแค่เปลี่ยน filter ให้คงเนื้อหาเดิมไว้ + dim เบาๆ แทน กัน flash ตอนโหลดเร็ว */}
-                    {!analytics ? (
+                    {fetchError && !analytics ? (
+                        // โหลดครั้งแรกพังเลย ยังไม่มีข้อมูลเก่าให้โชว์เลย — แจ้ง error เต็มจอพร้อมปุ่มลองใหม่
+                        <div className="bg-white rounded-xl border border-slate-200/80 p-10 flex flex-col items-center justify-center gap-2 text-center">
+                            <LucideShieldAlert size={28} className="text-red-400" />
+                            <div className="text-sm font-bold text-slate-700">ไม่สามารถโหลดข้อมูลได้</div>
+                            <div className="text-xs text-slate-400">เกิดข้อผิดพลาดขณะดึงข้อมูลจากระบบ กรุณาลองใหม่อีกครั้ง</div>
+                            <button
+                                onClick={() => setRetryTick((t) => t + 1)}
+                                className="mt-2 px-4 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                            >
+                                ลองใหม่อีกครั้ง
+                            </button>
+                        </div>
+                    ) : !analytics ? (
                         <DashboardSkeleton />
                     ) : (
                         <div className={`space-y-3 transition-opacity duration-200 ${loading ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+                            {fetchError && (
+                                // มีข้อมูลเก่าอยู่แล้ว แค่ refetch รอบนี้พัง — คงข้อมูลเดิมไว้ให้ดู แค่แจ้งเตือนว่าอาจไม่ใช่ข้อมูลล่าสุด
+                                <div className="bg-red-50 border border-red-100 text-red-600 text-[11px] font-semibold rounded-lg px-3 py-2 flex items-center gap-1.5">
+                                    <LucideShieldAlert size={12} /> โหลดข้อมูลล่าสุดไม่สำเร็จ กำลังแสดงข้อมูลเดิมที่มีอยู่
+                                </div>
+                            )}
                             {/* 📊 มิติที่ 1: การ์ดตัวชี้วัดหลักแบบ Dynamic ดึงจาก DB */}
                             <div className="flex items-center justify-end shrink-0">
                                 <div className="grid grid-cols-2 rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-[10px] font-semibold">
@@ -215,11 +289,11 @@ export default function ExecutiveAnalyticsDashboard() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
+                            <div className="grid grid-cols-2 md:grid-cols-12 gap-2 shrink-0">
                                 {analytics?.kpis?.map((kpi: any, index: number) => (
                                     <div
                                         key={index}
-                                        className="bg-white rounded-xl border border-slate-200/60 p-2.5  flex flex-col border-l-10"
+                                        className={`bg-white rounded-xl border border-slate-200/60 p-2.5  flex flex-col border-l-10 ${kpiSpanClass(kpi.w)}`}
                                         style={{ borderLeftColor: kpi.color || "#6366f1" }}
                                     >
                                         <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1 truncate">
@@ -383,9 +457,9 @@ function DashboardSkeleton() {
             </div>
 
             {/* มิติที่ 1: การ์ด KPI 4 ใบ */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
+            <div className="grid grid-cols-2 md:grid-cols-12 gap-2 shrink-0">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-slate-200/60 p-2.5 flex flex-col border-l-10 border-l-slate-200">
+                    <div key={i} className={`bg-white rounded-xl border border-slate-200/60 p-2.5 flex flex-col border-l-10 border-l-slate-200 ${kpiSpanClass(3)}`}>
                         <Sk className="h-2.5 w-3/4 mb-2" />
                         <Sk className="h-5 w-1/2 mb-2" />
                         <Sk className="h-3 w-2/5" />
