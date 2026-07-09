@@ -69,12 +69,12 @@ export default function ExportButtons() {
     };
 
     return (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-2 gap-3 w-full">
             {/* ปุ่มดาวน์โหลด CSV */}
             <button
                 onClick={handleExportCSV}
                 disabled={isExporting !== null}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer"
             >
                 {isExporting === "csv" ? <Loader2 size={14} className="animate-spin text-primary" /> : <FileText size={14} className="text-orange-500" />}
                 ส่งออกไฟล์ CSV
@@ -84,7 +84,7 @@ export default function ExportButtons() {
             <button
                 onClick={handleExportExcel}
                 disabled={isExporting !== null}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-subtle active:scale-[0.97] transition-all disabled:opacity-50 cursor-pointer"
             >
                 {isExporting === "excel" ? <Loader2 size={14} className="animate-spin text-primary" /> : <FileSpreadsheet size={14} className="text-emerald-500" />}
                 ส่งออกไฟล์ Excel
