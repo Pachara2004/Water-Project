@@ -196,7 +196,6 @@ export default function ExecutiveAnalyticsDashboard() {
                             {(userRole === "admin" || userRole === "officer") && (
                                 <div className="grid grid-cols-2 rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs font-semibold w-full sm:w-auto text-center text-[11px]">
                                     <button
-                                        disabled={userRole === "collector"}
                                         onClick={() => setViewMode("ALL")}
                                         className={`px-3 py-1 rounded-md transition-all cursor-pointer ${viewMode === "ALL" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
                                     >
