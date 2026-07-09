@@ -240,16 +240,18 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
+    // เปลี่ยนมาคำนวณแบบเผื่อสารอื่น ๆ ในอนาคต
     const chartData: TimeSeriesDataPoint[] =
         location.recentSamples
             ?.filter((s) => new Date(s.collectedAt) >= oneWeekAgo)
-            .map((sample) => ({
+            .map((sample: any) => ({
                 date: new Date(sample.collectedAt).toLocaleDateString("th-TH", {
                     day: "numeric",
                     month: "short",
                 }),
                 phosphate: sample.phosphateVal ?? 0,
                 ammonia: sample.ammoniaVal ?? 0,
+                nitrate: sample.nitrateVal ?? 0, // ➕ พ่วงไอดีสารใหม่เข้าไปในไลน์ชาร์ตได้เลยครับบอส
             })) || [];
 
     const samplesArr = location.recentSamples || [];
@@ -304,46 +306,51 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     {renderCollectorInfo()}
 
                     {/* Chemical values */}
+                    {/* 🧪 Chemical values — อัปเดตเวอร์ชันเรนเดอร์วนลูป Dynamic รายสารจากเบสครับบอส */}
                     <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-surface rounded-xl p-6 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="bg-primary-light p-1.5 rounded-lg border border-primary/10">
-                                    <FlaskConical size={12} className="text-primary" />
-                                </div>
-                                <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">Phosphate</span>
-                            </div>
-                            <div className="flex items-baseline gap-1.5 mt-2">
-                                <span className="text-2xl font-black text-text-primary">{latest.phosphateVal?.toFixed(3) ?? "-"}</span>
-                                <span className="text-[10px] text-text-muted font-bold">mg/L</span>
-                            </div>
-                            {prev && po4Diff !== 0 && (
-                                <div className={`flex items-center gap-1 mt-2 text-[10px] font-black ${po4Diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
-                                    {po4Diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                    {po4Diff > 0 ? "+" : ""}
-                                    {po4Diff.toFixed(3)}
-                                </div>
-                            )}
-                        </div>
+                        {[
+                            { key: "phosphateVal", label: "Phosphate", color: "text-teal-500", bgColor: "bg-teal-500/10" },
+                            { key: "ammoniaVal", label: "Ammonia", color: "text-purple-500", bgColor: "bg-purple-500/10" },
+                            { key: "nitrateVal", label: "Nitrate", color: "text-blue-500", bgColor: "bg-blue-500/10" },
+                            { key: "ph_valueVal", label: "pH Value", color: "text-pink-500", bgColor: "bg-pink-500/10" },
+                            { key: "suspended_solidsVal", label: "Suspended Solids (TSS)", color: "text-amber-500", bgColor: "bg-amber-500/10" },
+                        ].map((indicator) => {
+                            // ดึงค่าสารตัวนั้น ๆ ออกมาจากออบเจกต์ผลลัพธ์ล่าสุด
+                            const currentVal = (latest as any)[indicator.key];
 
-                        <div className="bg-surface rounded-xl p-6 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="bg-primary-light p-1.5 rounded-lg border border-primary/10">
-                                    <FlaskConical size={12} className="text-primary" />
+                            // 🔍 ดักจับ: ถ้าแถวผลตรวจเซสชันกลุ่มนี้ ไม่มีค่าวัดของสารตัวนี้ ให้ข้ามไป ไม่ต้องโชว์กล่องให้รกตาครับ
+                            if (currentVal === undefined || currentVal === null) return null;
+
+                            // คำนวณหาผลต่างย้อนหลัง (เปรียบเทียบกับรอบก่อนหน้าในเซสชันกลุ่มอดีต)
+                            const prevVal = prev ? (prev as any)[indicator.key] : null;
+                            const diff = prevVal !== null && prevVal !== undefined ? currentVal - prevVal : 0;
+
+                            return (
+                                <div
+                                    key={indicator.key}
+                                    className="bg-surface rounded-xl p-6 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+                                >
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className={`${indicator.bgColor} p-1.5 rounded-lg border border-primary/10`}>
+                                            <FlaskConical size={12} className={indicator.color} />
+                                        </div>
+                                        <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">{indicator.label}</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-1.5 mt-2">
+                                        <span className="text-2xl font-black text-text-primary">{Number(currentVal).toFixed(3)}</span>
+                                        <span className="text-[10px] text-text-muted font-bold">{indicator.key.includes("ph_value") ? "pH" : "mg/L"}</span>
+                                    </div>
+                                    {/* แสดงลูกศรแนวโน้มขึ้น-ลงเมื่อเทียบกับประวัติครั้งก่อน */}
+                                    {prev && diff !== 0 && (
+                                        <div className={`flex items-center gap-1 mt-2 text-[10px] font-black ${diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
+                                            {diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                            {diff > 0 ? "+" : ""}
+                                            {diff.toFixed(3)}
+                                        </div>
+                                    )}
                                 </div>
-                                <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">Ammonia</span>
-                            </div>
-                            <div className="flex items-baseline gap-1.5 mt-2">
-                                <span className="text-2xl font-black text-text-primary">{latest.ammoniaVal?.toFixed(3) ?? "-"}</span>
-                                <span className="text-[10px] text-text-muted font-bold">mg/L</span>
-                            </div>
-                            {prev && nh3Diff !== 0 && (
-                                <div className={`flex items-center gap-1 mt-2 text-[10px] font-black ${nh3Diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
-                                    {nh3Diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                    {nh3Diff > 0 ? "+" : ""}
-                                    {nh3Diff.toFixed(3)}
-                                </div>
-                            )}
-                        </div>
+                            );
+                        })}
                     </div>
 
                     {/* Dissolved Oxygen Card (DO) */}
@@ -458,7 +465,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                             </span>
                                             <div className="flex items-center gap-4">
                                                 <span className="text-[9px] text-text-muted font-mono bg-surface-subtle px-1.5 py-0.5 border border-border rounded">
-                                                    P: {s.phosphateVal?.toFixed(2) || "-"} | A: {s.ammoniaVal?.toFixed(2) || "-"}
+                                                    P: {(s as any).phosphateVal?.toFixed(2) || "-"} | A: {(s as any).ammoniaVal?.toFixed(2) || "-"}
+                                                    {(s as any).nitrateVal !== undefined}
                                                 </span>
                                                 <StatusBadge status={s.status} size="sm" />
                                             </div>

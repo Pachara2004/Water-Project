@@ -85,13 +85,14 @@ model WaterSample {
   collectionTime   DateTime                 @map("collection_time")
   uploadedActiveAt DateTime                 @default(now()) @map("uploaded_active_at")
   
-  // เก็บค่สภาพแวดล้อมส่วนกลางไว้ที่ตารางหลักเหมือนเดิม
   dissolvedOxygen  Float?                   @map("dissolved_oxygen")
   airTemperature   Float?                   @map("air_temperature")
   rainAccumulation Float?                   @map("rain_accumulation")
   weatherCondCode  Int?                     @map("weather_cond_code")
   
   status           WaterStatus
+  
+  sessionGroup     String?                  @map("session_group")
   
   rawImageUrl      String?                  @map("raw_image_url") @db.Text
   imageExpiresAt   DateTime?                @map("image_expires_at")
@@ -101,7 +102,6 @@ model WaterSample {
   lastModifiedBy   Int?                     @map("last_modified_by")
   updatedActiveAt  DateTime                 @default(now()) @updatedAt @map("updated_active_at")
 
-  // Relation เชื่อมต่อไปยังตารางเก็บค่าสารเคมีตัวย่อยต่าง ๆ (1 Sample มีได้หลายผลตรวจสาร)
   measurements     WaterSampleMeasurement[]
 
   @@map("samples")

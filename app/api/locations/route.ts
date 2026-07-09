@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 
-// GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุด 10 ชุด (Public - คนทั่วไปเข้าดูแผนที่ได้)
+// ==========================================
+// 📥 GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
+// ==========================================
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -10,13 +12,14 @@ export async function GET(request: NextRequest) {
 
         const where = orgFilter && orgFilter !== "ALL" ? { governingAgency: orgFilter } : {};
 
+        // 🔍 ดึงพิกัดทั้งหมดออกมา โดยตึงเอาผลตรวจ WaterSample 50 แถวล่าสุด (เผื่อแตกกระจายตัวรายสารเคมี)
         const locations = await prisma.location.findMany({
             where,
             include: {
                 samples: {
                     where: { isDeleted: false },
                     orderBy: { collectionTime: "desc" },
-                    take: 10,
+                    take: 50, // 🌟 ขยายขนาดการขุดขึ้นมาเผื่อกรณีวนลูปกระจายตัวรายสารเคมีประจำเซสชันครับบอส
                     select: {
                         id: true,
                         status: true,
@@ -25,6 +28,7 @@ export async function GET(request: NextRequest) {
                         airTemperature: true,
                         rainAccumulation: true,
                         weatherCondCode: true,
+                        sessionGroup: true, // 🌟 ดึงคอลัมน์กลุ่มประจำรอบเซสชันมาทำโครงสร้างผูกสัมพันธ์
                         collector: {
                             select: {
                                 id: true,
@@ -34,7 +38,6 @@ export async function GET(request: NextRequest) {
                                 phoneNumber: true,
                             },
                         },
-                        // แก้ไข: ดึงข้อมูลค่าวัดผ่านตาราง Relation ย่อยคู่กับชื่อสารเคมี
                         measurements: {
                             select: {
                                 value: true,
@@ -51,36 +54,75 @@ export async function GET(request: NextRequest) {
         });
 
         const result = locations.map((loc) => {
-            const mappedSamples = loc.samples.map((s) => {
-                // แยกแกะค่าสารเคมีจาก Array ของ measurements ออกมาจัดรูปแบบแบน (Flat) ตามเดิม
-                let ammoniaVal: number | null = null;
-                let phosphateVal: number | null = null;
+            // 🌟 แผนผัง Map ควบแน่นจัดกลุ่มเรคคอร์ดที่มีรหัสเซสชันกลุ่มเดียวกันให้อยู่รวมร่างกันในขวดเดียว
+            const sessionGroupMap = new Map<string, any>();
 
+            loc.samples.forEach((s) => {
+                // ค้นหาคีย์ ถ้าไม่มีให้ใช้ id แถวเดี่ยว ๆ เป็นคีย์สำรองเพื่อไม่ให้ข้อมูลหลุดพังครับบอส
+                const groupKey = s.sessionGroup || `single-${s.id}`;
+
+                // แงะค่าวัดเคมีของสารทั้งหมดประจำแถวนี้ออกมาจัดรูปแบบแบน (Flat Flattening)
+                const currentMeasurements: Record<string, number> = {};
                 s.measurements.forEach((m) => {
-                    if (m.parameter.name === "ammonia") ammoniaVal = m.value;
-                    if (m.parameter.name === "phosphate") phosphateVal = m.value;
+                    if (m.parameter?.name) {
+                        const keyName = `${m.parameter.name.toLowerCase()}Val`;
+                        currentMeasurements[keyName] = m.value;
+                    }
                 });
 
-                return {
-                    id: s.id,
-                    status: s.status,
-                    phosphateVal: phosphateVal, // ส่งค่ากลับไปในชื่อฟิลด์เดิม
-                    ammoniaVal: ammoniaVal, // ส่งค่ากลับไปในชื่อฟิลด์เดิม
-                    collectedAt: s.collectionTime.toISOString(),
-                    oxygen: s.dissolvedOxygen,
-                    temperature: s.airTemperature,
-                    rainVolume: s.rainAccumulation,
-                    weatherCondCode: s.weatherCondCode,
-                    collector: s.collector
-                        ? {
-                              id: s.collector.id,
-                              displayName: s.collector.lineProfileName,
-                              fullName: `${s.collector.firstName || ""} ${s.collector.lastName || ""}`.trim() || "เจ้าหน้าที่ภาคสนาม",
-                              phone: s.collector.phoneNumber,
-                          }
-                        : null,
-                };
+                // 🚨 หากเพิ่งเจอเลขชุดเซสชันนี้เป็นครั้งแรกในพิกัดสถานีนี้
+                if (!sessionGroupMap.has(groupKey)) {
+                    sessionGroupMap.set(groupKey, {
+                        id: s.id,
+                        status: s.status ? s.status.toUpperCase() : "SAFE",
+
+                        // เริ่มต้นกางค่าวัดเคมีที่ดึงออกมาได้ในรอบแรก
+                        ...currentMeasurements,
+                        phosphateVal: currentMeasurements["phosphateVal"] ?? null,
+                        ammoniaVal: currentMeasurements["ammoniaVal"] ?? null,
+                        nitrateVal: currentMeasurements["nitrateVal"] ?? null,
+                        ph_valueVal: currentMeasurements["ph_valueVal"] ?? null,
+                        suspended_solidsVal: currentMeasurements["suspended_solidsVal"] ?? null,
+
+                        collectedAt: s.collectionTime.toISOString(),
+                        oxygen: s.dissolvedOxygen,
+                        temperature: s.airTemperature,
+                        rainVolume: s.rainAccumulation,
+                        weatherCondCode: s.weatherCondCode,
+                        sessionGroup: s.sessionGroup,
+                        collector: s.collector
+                            ? {
+                                  id: s.collector.id,
+                                  displayName: s.collector.lineProfileName,
+                                  fullName: `${s.collector.firstName || ""} ${s.collector.lastName || ""}`.trim() || "เจ้าหน้าที่ภาคสนาม",
+                                  phone: s.collector.phoneNumber,
+                              }
+                            : null,
+                    });
+                } else {
+                    // 🚨 ถ้ารหัสชุดเซสชันนี้เคยถูกสร้างไปรอบก่อนหน้าแล้ว (แปลว่าสารอีกตัวส่งตามเข้ามาผูก)
+                    const existing = sessionGroupMap.get(groupKey);
+
+                    // ออบเจกต์รวมพลัง: ยัดค่าวัดเคมีเพิ่มเสริมเข้าไปในเรคคอร์ดเซสชันเดิมทันที
+                    Object.assign(existing, currentMeasurements);
+                    if (currentMeasurements["phosphateVal"] !== undefined) existing.phosphateVal = currentMeasurements["phosphateVal"];
+                    if (currentMeasurements["ammoniaVal"] !== undefined) existing.ammoniaVal = currentMeasurements["ammoniaVal"];
+                    if (currentMeasurements["nitrateVal"] !== undefined) existing.nitrateVal = currentMeasurements["nitrateVal"];
+                    if (currentMeasurements["ph_valueVal"] !== undefined) existing.ph_valueVal = currentMeasurements["ph_valueVal"];
+                    if (currentMeasurements["suspended_solidsVal"] !== undefined) existing.suspended_solidsVal = currentMeasurements["suspended_solidsVal"];
+
+                    // 🚨 คุมสถานะความปลอดภัยสูงสุดประจำกลุ่มชุดขวดตรวจ (ยึดหลักแย่สุดทับอันดีสุด)
+                    const incomingStatus = s.status ? s.status.toUpperCase() : "SAFE";
+                    if (incomingStatus === "DANGER") {
+                        existing.status = "DANGER";
+                    } else if (incomingStatus === "WARNING" && existing.status !== "DANGER") {
+                        existing.status = "WARNING";
+                    }
+                }
             });
+
+            // แปลงจากข้อมูล Map ดึงออกมาเป็นอาเรย์เรียงตามเวลาตรวจล่าสุด
+            const formattedSamples = Array.from(sessionGroupMap.values());
 
             return {
                 id: loc.id,
@@ -88,8 +130,10 @@ export async function GET(request: NextRequest) {
                 organization: loc.governingAgency,
                 lat: loc.latitude,
                 lng: loc.longitude,
-                latestSample: mappedSamples[0] || null,
-                recentSamples: [...mappedSamples].reverse(),
+                // ใบวิเคราะห์ล่าสุดคืออาร์เรย์ตัวแรกที่ผ่านการควบรวมมาเรียบร้อย
+                latestSample: formattedSamples[0] || null,
+                // ดึงรายการประวัติย้อนหลังเรียงจำกัดเอา 10 ชุดเซสชันกลุ่มพรีเมียม
+                recentSamples: [...formattedSamples].slice(0, 10).reverse(),
             };
         });
 
@@ -110,9 +154,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const auth = await verifyAuth(request, ["admin"]);
-        if (!auth.isValid) {
-            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
-        }
+        if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
 
         const body = await request.json();
         const { name, organization, lat, lng } = body;
@@ -150,16 +192,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     try {
         const auth = await verifyAuth(request, ["admin"]);
-        if (!auth.isValid) {
-            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
-        }
+        if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
 
         const body = await request.json();
         const { id, name, organization, lat, lng } = body;
 
-        if (!id) {
-            return NextResponse.json({ error: "กรุณาระบุรหัส ID สถานีที่ต้องการแก้ไข" }, { status: 400 });
-        }
+        if (!id) return NextResponse.json({ error: "กรุณาระบุรหัส ID สถานีที่ต้องการแก้ไข" }, { status: 400 });
 
         const updateData: any = {};
         if (name !== undefined) updateData.stationName = name;
@@ -189,21 +227,15 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
     try {
         const auth = await verifyAuth(request, ["admin"]);
-        if (!auth.isValid) {
-            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
-        }
+        if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
 
         const { searchParams } = new URL(request.url);
         const id = searchParams.get("id");
 
-        if (!id) {
-            return NextResponse.json({ error: "กรุณาระบุรหัส ID จุดตรวจที่ต้องการถอดถอน" }, { status: 400 });
-        }
+        if (!id) return NextResponse.json({ error: "กรุณาระบุรหัส ID จุดตรวจที่ต้องการถอดถอน" }, { status: 400 });
 
         const targetId = Number(id);
 
-        // หมายเหตุ: เนื่องจากใน Schema ตาราง measurements ถูกตั้ง onDelete: Cascade พ่วงกับตาราง samples ไว้แล้ว
-        // เมื่อสั่งลบตาราง samples ด้านล่างนี้ รายการสารเคมีในตารางย่อยจะถูกลบตามอัตโนมัติ (ไม่ต้องเรียก deleteMany ซ้อน)
         await prisma.waterSample.deleteMany({
             where: { locationId: targetId },
         });

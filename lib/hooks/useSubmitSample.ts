@@ -34,8 +34,9 @@ export function useSubmitSample() {
     });
 
     const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
-    const sessionId = useRef(`${new Date().getFullYear().toString().slice(2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 999)).padStart(3, "0")}`);
-
+    const [sessionId, setSessionId] = useState<string>(() => {
+        return `${new Date().getFullYear().toString().slice(2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 999)).padStart(3, "0")}`;
+    });
     // ── Effects ──
     useEffect(() => {
         setIsLoadingParams(true);
@@ -183,47 +184,54 @@ export function useSubmitSample() {
 
     const handleSave = async () => {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
+
         try {
-            const fd = new FormData();
-            fd.append("locationId", currentLocationId);
-            fd.append("status", overallStatus);
-            fd.append("collectionTime", new Date(collectionTime).toISOString());
-            if (oxygen) fd.append("oxygen", oxygen);
-
-            const measurementsPayload = systemParameters.map((param) => {
+            for (const param of systemParameters) {
                 const resData = results[param.id];
-                return {
-                    parameterId: param.id,
-                    value: resData?.concentrated || 0,
-                    confidence: resData?.confidence || 0,
-                    boundingBox: resData?.boundingBox ? JSON.stringify(resData.boundingBox) : null,
-                    message: resData?.message || null,
-                };
-            });
-
-            fd.append("measurements", JSON.stringify(measurementsPayload));
-
-            systemParameters.forEach((param) => {
                 const rawFile = imageFiles[param.id];
                 const plotFile = imagePlotFiles[param.id];
-                if (rawFile) fd.append(`image_raw_${param.id}`, rawFile);
+
+                if (!resData || !rawFile) continue;
+
+                const fd = new FormData();
+                fd.append("locationId", currentLocationId);
+                fd.append("status", resData.status);
+                fd.append("collectionTime", new Date(collectionTime).toISOString());
+                if (oxygen) fd.append("oxygen", oxygen);
+
+                // 🌟 พอเปลี่ยนเป็น useState แล้ว ตรงนี้บอสพ่นชื่อตัวแปร sessionId ลงไปตรง ๆ ได้เลยครับ!
+                fd.append("sessionGroup", sessionId);
+
+                const singleMeasurementPayload = [
+                    {
+                        parameterId: param.id,
+                        value: resData.concentrated || 0,
+                        confidence: resData.confidence || 0,
+                        boundingBox: resData.boundingBox ? JSON.stringify(resData.boundingBox) : null,
+                        message: resData.message || null,
+                    },
+                ];
+                fd.append("measurements", JSON.stringify(singleMeasurementPayload));
+
+                fd.append(`image_raw_${param.id}`, rawFile);
                 if (plotFile) fd.append(`image_plot_${param.id}`, plotFile);
-            });
 
-            const res = await fetch("/api/samples", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
-                body: fd,
-            });
+                const res = await fetch("/api/samples", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
+                    body: fd,
+                });
 
-            if (res.ok) {
-                setSaved(true);
-            } else {
-                const errData = await res.json();
-                alertError("บันทึกข้อมูลไม่สำเร็จ", errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || `เกิดข้อผิดพลาดในการบันทึกสาร ${param.name}`);
+                }
             }
-        } catch (err) {
+
+            setSaved(true);
+        } catch (err: any) {
             console.error("Save failed:", err);
+            // ... ลอจิก Swal แจ้งเตือนข้อผิดพลาดตามเดิม
         }
     };
 
@@ -267,7 +275,7 @@ export function useSubmitSample() {
         setCollectionTime,
         oxygen,
         setOxygen,
-        sessionId: sessionId.current,
+        sessionId,
         handleAnalyze,
         handleSave,
         clearLocation,
