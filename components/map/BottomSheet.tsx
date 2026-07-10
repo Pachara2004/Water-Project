@@ -251,7 +251,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 }),
                 phosphate: sample.phosphateVal ?? 0,
                 ammonia: sample.ammoniaVal ?? 0,
-                nitrate: sample.nitrateVal ?? 0, // ➕ พ่วงไอดีสารใหม่เข้าไปในไลน์ชาร์ตได้เลยครับบอส
             })) || [];
 
     const samplesArr = location.recentSamples || [];
@@ -311,9 +310,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         {[
                             { key: "phosphateVal", label: "Phosphate", color: "text-teal-500", bgColor: "bg-teal-500/10" },
                             { key: "ammoniaVal", label: "Ammonia", color: "text-purple-500", bgColor: "bg-purple-500/10" },
-                            { key: "nitrateVal", label: "Nitrate", color: "text-blue-500", bgColor: "bg-blue-500/10" },
-                            { key: "ph_valueVal", label: "pH Value", color: "text-pink-500", bgColor: "bg-pink-500/10" },
-                            { key: "suspended_solidsVal", label: "Suspended Solids (TSS)", color: "text-amber-500", bgColor: "bg-amber-500/10" },
                         ].map((indicator) => {
                             // ดึงค่าสารตัวนั้น ๆ ออกมาจากออบเจกต์ผลลัพธ์ล่าสุด
                             const currentVal = (latest as any)[indicator.key];
@@ -338,7 +334,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                     </div>
                                     <div className="flex items-baseline gap-1.5 mt-2">
                                         <span className="text-2xl font-black text-text-primary">{Number(currentVal).toFixed(3)}</span>
-                                        <span className="text-[10px] text-text-muted font-bold">{indicator.key.includes("ph_value") ? "pH" : "mg/L"}</span>
+                                        <span className="text-[10px] text-text-muted font-bold">mg/L</span>
                                     </div>
                                     {/* แสดงลูกศรแนวโน้มขึ้น-ลงเมื่อเทียบกับประวัติครั้งก่อน */}
                                     {prev && diff !== 0 && (
@@ -466,7 +462,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                             <div className="flex items-center gap-4">
                                                 <span className="text-[9px] text-text-muted font-mono bg-surface-subtle px-1.5 py-0.5 border border-border rounded">
                                                     P: {(s as any).phosphateVal?.toFixed(2) || "-"} | A: {(s as any).ammoniaVal?.toFixed(2) || "-"}
-                                                    {(s as any).nitrateVal !== undefined}
                                                 </span>
                                                 <StatusBadge status={s.status} size="sm" />
                                             </div>

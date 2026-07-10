@@ -99,7 +99,7 @@ export default function CollectorDashboard() {
                         updatedBy: s.lastModifiedBy,
 
                         // ⚡️ ดึงก้อนข้อมูลที่ผ่านการสกัด EAV Flattening จาก API มาใช้โดยตรง
-                        // เช่น phosphateVal, ammoniaVal, nitrateVal จะหลั่งไหลเข้ามาอัตโนมัติ
+                        // เช่น phosphateVal, ammoniaVal จะหลั่งไหลเข้ามาอัตโนมัติ
                         ...s,
 
                         location: s.location
@@ -532,8 +532,7 @@ export default function CollectorDashboard() {
                                                         {[
                                                             { key: "phosphateVal", label: "P", color: "text-teal-500" },
                                                             { key: "ammoniaVal", label: "N", color: "text-purple-500" },
-                                                            // ➕ อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย:
-                                                            // { key: "nitrateVal", label: "NO3", color: "text-blue-500" }
+                                                            // ➕ อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย
                                                         ].map((indicator) => {
                                                             const value = sample[indicator.key];
                                                             if (value === undefined || value === null) return null;

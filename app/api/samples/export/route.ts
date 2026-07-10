@@ -109,8 +109,11 @@ export async function GET(request: NextRequest) {
                         await fs.access(fullPath);
                         const imageBuffer = await fs.readFile(fullPath);
 
+                        // exceljs ประกาศ `declare interface Buffer extends ArrayBuffer {}` เองใน index.d.ts (บั๊ก upstream)
+                        // ซึ่งชนกับ Buffer type จริงจาก @types/node เวอร์ชันใหม่ ทำให้ tsc มองว่าไม่ตรงกันเสมอไม่ว่าจะสร้าง Buffer ยังไงก็ตาม
+                        // ค่า runtime ถูกต้อง 100% (เป็น Buffer จริง) จึง cast ผ่านจุดนี้จุดเดียวแทนการไล่แก้ทั้ง type system
                         const imageId = workbook.addImage({
-                            buffer: imageBuffer,
+                            buffer: imageBuffer as any,
                             extension: "jpeg",
                         });
 

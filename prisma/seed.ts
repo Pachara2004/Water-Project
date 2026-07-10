@@ -45,18 +45,6 @@ async function main() {
         data: { name: "phosphate", unit: "mg/L", description: "สารฟอสเฟตในน้ำ (PO4)" },
     });
 
-    const paramNitrate = await prisma.parameter.create({
-        data: { name: "nitrate", unit: "mg/L", description: "สารไนเตรตในน้ำ (NO3)" },
-    });
-
-    const paramPH = await prisma.parameter.create({
-        data: { name: "ph_value", unit: "pH", description: "ดัชนีความเป็นกรด-ด่างเฉลี่ย (pH)" },
-    });
-
-    const paramTSS = await prisma.parameter.create({
-        data: { name: "suspended_solids", unit: "mg/L", description: "ปริมาณสารแขวนลอยรวมในน้ำทะเล (TSS)" },
-    });
-
     // ─── 4. DASHBOARD WIDGETS SEEDING (ผูกโครงสร้างตามคอลัมน์และ Parameter ID ของจริง) ───
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");
 
@@ -167,13 +155,8 @@ async function main() {
                 : computedStatus === WaterStatus.warning
                   ? parseFloat((0.2 + Math.random() * 0.6).toFixed(2))
                   : parseFloat((Math.random() * 0.19).toFixed(2));
-        const nitrateValue = parseFloat((0.2 + Math.random() * 3).toFixed(2));
-
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
         const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
-
-        const phValue = parseFloat((6.5 + Math.random() * 2).toFixed(2));
-        const tssValue = parseFloat((10 + Math.random() * 140).toFixed(1));
 
         // บันทึกลงตารางตามฟิลด์แวดล้อมจริงที่มีในโครงสร้างโมเดลเท่านั้น ปราศจากฟิลด์ส่วนเกิน
         await prisma.waterSample.create({
@@ -194,9 +177,6 @@ async function main() {
                     create: [
                         { parameterId: paramAmmonia.id, value: ammoniaValue, confidence: 0.92, boundingBox: "[10,20,100,200]" },
                         { parameterId: paramPhosphate.id, value: phosphateValue, confidence: 0.89, boundingBox: "[15,25,110,210]" },
-                        { parameterId: paramNitrate.id, value: nitrateValue, confidence: 0.94, boundingBox: "[20,30,120,220]" },
-                        { parameterId: paramPH.id, value: phValue, confidence: 0.98, boundingBox: "[5,10,50,100]" },
-                        { parameterId: paramTSS.id, value: tssValue, confidence: 0.85, boundingBox: "[30,40,150,250]" },
                     ],
                 },
             },
