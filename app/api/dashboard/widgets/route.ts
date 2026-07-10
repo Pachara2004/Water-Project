@@ -496,8 +496,8 @@ export async function GET(request: NextRequest) {
                 bars: [
                     { key: "ammoniaMorning", name: "NH3 เช้า", color: "#60a5fa" },
                     { key: "ammoniaEvening", name: "NH3 เย็น", color: "#fbbf24" },
-                    { key: "phosphateMorning", name: "PO4 เช้า", color: "#818cf8" },
-                    { key: "phosphateEvening", name: "PO4 เย็น", color: "#c084fc" },
+                    { key: "phosphateMorning", name: "PO4 เช้า", color: "#60a5fa" },
+                    { key: "phosphateEvening", name: "PO4 เย็น", color: "#fbbf24" },
                 ],
             },
             temporalData: temporalData,

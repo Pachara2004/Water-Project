@@ -125,6 +125,15 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  /* ปิดกรอบไฮไลต์สีส้มที่ browser มือถือ (LINE webview) แปะให้อัตโนมัติตอนแตะจอ */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* กัน browser วาดกรอบ focus สีดำรอบ element ของกราฟ Recharts ตอนแตะ/โฟกัสบนมือถือ */
+.recharts-wrapper svg,
+.recharts-wrapper svg *,
+.recharts-surface {
+  outline: none;
 }
 
 body {
