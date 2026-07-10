@@ -11,9 +11,11 @@ export async function GET(request: NextRequest) {
 
     try {
         // ดึงข้อมูลตัวอย่างน้ำเฉพาะรายการที่ยังไม่โดน Soft Delete (isDeleted: false) ตาม Schema ใหม่ของ
+        // 🔧 แก้บั๊ก: ต้อง include measurements+parameter ด้วย เพราะค่า ammonia/phosphate ไม่ได้อยู่บน WaterSample ตรงๆ
+        // (เก็บแยกอยู่ในตาราง WaterSampleMeasurement ผูกกับ Parameter) เดิม query นี้ไม่ได้ดึงมาเลยทำให้คอลัมน์สารเคมีว่างเปล่าทุกแถว
         const samples = await prisma.waterSample.findMany({
             where: { isDeleted: false },
-            include: { location: true },
+            include: { location: true, measurements: { include: { parameter: true } } },
             orderBy: { collectionTime: "desc" },
         });
 
@@ -38,6 +40,10 @@ export async function GET(request: NextRequest) {
 
         let index = 1;
         samples.forEach((s) => {
+            // ค่าแอมโมเนีย/ฟอสเฟตหาได้จาก measurements ที่ join พารามิเตอร์มาแล้ว จับคู่ด้วยชื่อพารามิเตอร์
+            const ammonia = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value;
+            const phosphate = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value;
+
             const row = [
                 index++,
                 s.collectionTime.toISOString().replace("T", " ").substring(0, 16),
@@ -45,8 +51,8 @@ export async function GET(request: NextRequest) {
                 `"${s.location?.governingAgency || "N/A"}"`,
                 s.location?.latitude || "",
                 s.location?.longitude || "",
-                s.ammoniaValue,
-                s.phosphateValue,
+                ammonia !== undefined ? ammonia : "N/A",
+                phosphate !== undefined ? phosphate : "N/A",
                 s.dissolvedOxygen || "N/A",
                 s.airTemperature || "N/A",
                 s.rainAccumulation || "N/A",

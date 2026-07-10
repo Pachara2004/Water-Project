@@ -80,9 +80,6 @@ export async function GET(request: NextRequest) {
                         ...currentMeasurements,
                         phosphateVal: currentMeasurements["phosphateVal"] ?? null,
                         ammoniaVal: currentMeasurements["ammoniaVal"] ?? null,
-                        nitrateVal: currentMeasurements["nitrateVal"] ?? null,
-                        ph_valueVal: currentMeasurements["ph_valueVal"] ?? null,
-                        suspended_solidsVal: currentMeasurements["suspended_solidsVal"] ?? null,
 
                         collectedAt: s.collectionTime.toISOString(),
                         oxygen: s.dissolvedOxygen,
@@ -107,9 +104,6 @@ export async function GET(request: NextRequest) {
                     Object.assign(existing, currentMeasurements);
                     if (currentMeasurements["phosphateVal"] !== undefined) existing.phosphateVal = currentMeasurements["phosphateVal"];
                     if (currentMeasurements["ammoniaVal"] !== undefined) existing.ammoniaVal = currentMeasurements["ammoniaVal"];
-                    if (currentMeasurements["nitrateVal"] !== undefined) existing.nitrateVal = currentMeasurements["nitrateVal"];
-                    if (currentMeasurements["ph_valueVal"] !== undefined) existing.ph_valueVal = currentMeasurements["ph_valueVal"];
-                    if (currentMeasurements["suspended_solidsVal"] !== undefined) existing.suspended_solidsVal = currentMeasurements["suspended_solidsVal"];
 
                     // 🚨 คุมสถานะความปลอดภัยสูงสุดประจำกลุ่มชุดขวดตรวจ (ยึดหลักแย่สุดทับอันดีสุด)
                     const incomingStatus = s.status ? s.status.toUpperCase() : "SAFE";

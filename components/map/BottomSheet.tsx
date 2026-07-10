@@ -272,11 +272,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     {/* 🧪 Chemical values — วนลูปสแกนดักจับคีย์แบบยืดหยุ่นรองรับทั้ง API แผนที่และประวัติครับบอส */}
                     <div className="grid grid-cols-2 gap-2">
                         {[
-                            { keys: ["phosphateVal", "phosphateValue"], label: "Phosphate", color: "text-teal-500", bgColor: "bg-teal-500/10" },
-                            { keys: ["ammoniaVal", "ammoniaValue"], label: "Ammonia", color: "text-purple-500", bgColor: "bg-purple-500/10" },
-                            { keys: ["nitrateVal", "nitrateValue"], label: "Nitrate", color: "text-blue-500", bgColor: "bg-blue-500/10" },
-                            { keys: ["ph_valueVal", "ph_valueValue", "phValue"], label: "pH Value", color: "text-pink-500", bgColor: "bg-pink-500/10" },
-                            { keys: ["suspended_solidsVal", "suspended_solidsValue", "tssValue"], label: "TSS (ตะกอนแขวนลอย)", color: "text-amber-500", bgColor: "bg-amber-500/10" },
+                            { key: "phosphateVal", label: "Phosphate", color: "text-teal-500", bgColor: "bg-teal-500/10" },
+                            { key: "ammoniaVal", label: "Ammonia", color: "text-purple-500", bgColor: "bg-purple-500/10" },
                         ].map((indicator) => {
                             // ค้นหาคีย์ตัวแรกที่จับคู่เจอข้อมูลในออบเจกต์
                             const foundKey = indicator.keys.find((k) => (latest as any)[k] !== undefined && (latest as any)[k] !== null);

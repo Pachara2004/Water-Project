@@ -99,7 +99,7 @@ export default function CollectorDashboard() {
                         updatedBy: s.lastModifiedBy,
 
                         // ⚡️ ดึงก้อนข้อมูลที่ผ่านการสกัด EAV Flattening จาก API มาใช้โดยตรง
-                        // เช่น phosphateVal, ammoniaVal, nitrateVal จะหลั่งไหลเข้ามาอัตโนมัติ
+                        // เช่น phosphateVal, ammoniaVal จะหลั่งไหลเข้ามาอัตโนมัติ
                         ...s,
 
                         location: s.location
@@ -262,23 +262,23 @@ export default function CollectorDashboard() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="min-h-dvh bg-surface-muted flex items-center justify-center">
                 <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen w-full bg-primary pb-5 antialiased">
+        <div className="min-h-dvh w-full bg-surface-muted pb-5 antialiased transition-colors duration-300">
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
                 {/* Header Welcome Card */}
-                <div className="relative w-full rounded-2xl bg-white p-5 border border-border  flex flex-col gap-4">
+                <div className="relative w-full rounded-2xl bg-surface p-5 border border-border  flex flex-col gap-4">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h1 className="text-lg font-bold tracking-tight text-gray-900">
+                            <h1 className="text-lg font-bold tracking-tight text-text-primary">
                                 ศูนย์ข้อมูล<span className="text-primary font-extrabold">ตรวจสอบคุณภาพน้ำ</span>
                             </h1>
-                            <p className="text-black font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
+                            <p className="text-text-primary font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
                     </div>
 
@@ -301,29 +301,29 @@ export default function CollectorDashboard() {
                             <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ประวัติการส่งตรวจ</h2>
                         </div>
 
-                        <label className="inline-flex items-center gap-2 bg-white border border-gray-200/80 px-3 py-2 rounded-xl shrink-0 cursor-pointer select-none">
-                            <span className="text-xs font-semibold text-slate">เฉพาะของฉัน</span>
+                        <label className="inline-flex items-center gap-2 bg-surface border border-border px-3 py-2 rounded-xl shrink-0 cursor-pointer select-none">
+                            <span className="text-xs font-semibold text-text-secondary">เฉพาะของฉัน</span>
 
                             <div className="relative">
                                 {/* Hidden Checkbox ที่เข้าถึงได้ (sr-only) */}
                                 <input type="checkbox" checked={showOnlyMine} onChange={(e) => setShowOnlyMine(e.target.checked)} className="sr-only peer" />
 
                                 {/* โครงสร้างสวิตช์ Flowbite / Shadcn ตามที่ส่งมา */}
-                                <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
+                                <div className="relative w-9 h-5 bg-surface-subtle peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-surface after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
                             </div>
                         </label>
                     </div>
-                    <div className="bg-white  rounded-2xl  space-y-4 mt-6 mb-2">
+                    <div className="bg-surface  rounded-2xl  space-y-4 mt-6 mb-2">
                         {/* Input ค้นหาชื่อสถานที่ ทรงรีมน */}
-                        <div className="relative w-full flex items-center bg-[#f8f9fa] border border-gray-200/80 rounded-xl px-4 transition-all">
+                        <div className="relative w-full flex items-center bg-surface-subtle border border-border rounded-xl px-4 transition-all">
                             <input
                                 type="text"
                                 placeholder="ค้นหา..."
                                 value={globalFilter ?? ""}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
-                                className="w-full py-3 bg-transparent text-xs text-gray-900 outline-hidden placeholder:text-gray-400/80"
+                                className="w-full py-3 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
                             />
-                            <Search size={16} className="text-gray-400 ml-2" />
+                            <Search size={16} className="text-text-muted ml-2" />
                         </div>
 
                         {/* แถวแถบปุ่มกดตัวเลือก Dropdown สำหรับ Mobile */}
@@ -333,59 +333,59 @@ export default function CollectorDashboard() {
                                 <button
                                     type="button"
                                     onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
-                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-white border rounded-xl text-xs font-semibold transition-all cursor-pointer  select-none ${
-                                        isDateActive ? "border-black text-black ring-1 ring-black" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-surface border rounded-xl text-xs font-semibold transition-all cursor-pointer  select-none ${
+                                        isDateActive ? "border-primary text-text-primary ring-1 ring-primary" : "border-border text-text-secondary hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
-                                        <SlidersHorizontal size={13} className={isDateActive ? "text-black" : "text-gray-400"} />
+                                        <SlidersHorizontal size={13} className={isDateActive ? "text-text-primary" : "text-text-muted"} />
                                         <span className="truncate">{isDateActive ? "กรองช่วงเวลา" : "เลือกวันที่"}</span>
                                     </div>
                                     {isDateActive ? (
-                                        <span onClick={clearDateRange} className="p-0.5 rounded-full hover:bg-gray-100 text-gray-500 flex items-center shrink-0">
+                                        <span onClick={clearDateRange} className="p-0.5 rounded-full hover:bg-surface-subtle text-text-secondary flex items-center shrink-0">
                                             <X size={11} strokeWidth={3} />
                                         </span>
                                     ) : (
-                                        <ChevronDown size={13} className="text-gray-400 shrink-0" />
+                                        <ChevronDown size={13} className="text-text-muted shrink-0" />
                                     )}
                                 </button>
 
                                 {/* กล่องเลือกช่วงวันที่ */}
                                 {isDatePanelOpen && (
-                                    <div className="absolute top-[calc(100%+6px)] left-0 w-65 bg-white border border-gray-200 rounded-2xl  p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 mb-3 pb-1 border-b border-gray-100">
+                                    <div className="absolute top-[calc(100%+6px)] left-0 w-65 bg-surface border border-border rounded-2xl  p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-primary mb-3 pb-1 border-b border-border">
                                             <CalendarDays size={13} className="text-primary" />
                                             <span>ระบุช่วงเวลาเก็บตัวอย่าง</span>
                                         </div>
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">จากวันที่</label>
+                                                <label className="text-[10px] font-bold uppercase text-text-muted block mb-1">จากวันที่</label>
                                                 <input
                                                     title="start date"
                                                     type="date"
                                                     value={startDate}
                                                     onChange={(e) => setStartDate(e.target.value)}
-                                                    className="w-full text-xs border border-gray-200 rounded-lg p-2 bg-gray-50 focus:outline-hidden focus:border-black"
+                                                    className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-hidden focus:border-primary"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">ถึงวันที่</label>
+                                                <label className="text-[10px] font-bold uppercase text-text-muted block mb-1">ถึงวันที่</label>
                                                 <input
                                                     title="end date"
                                                     type="date"
                                                     value={endDate}
                                                     min={startDate}
                                                     onChange={(e) => setEndDate(e.target.value)}
-                                                    className="w-full text-xs border border-gray-200 rounded-lg p-2 bg-gray-50 focus:outline-hidden focus:border-black"
+                                                    className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-hidden focus:border-primary"
                                                 />
                                             </div>
                                             <div className="flex justify-end gap-2 pt-1">
                                                 {(startDate || endDate) && (
-                                                    <button onClick={clearDateRange} className="text-[11px] font-bold text-gray-400 hover:text-gray-600 px-2 py-1">
+                                                    <button onClick={clearDateRange} className="text-[11px] font-bold text-text-muted hover:text-text-secondary px-2 py-1">
                                                         ล้างค่า
                                                     </button>
                                                 )}
-                                                <button onClick={() => setIsDatePanelOpen(false)} className="text-[11px] font-bold bg-black text-white px-3 py-1.5 rounded-lg">
+                                                <button onClick={() => setIsDatePanelOpen(false)} className="text-[11px] font-bold bg-primary text-white px-3 py-1.5 rounded-lg">
                                                     ตกลง
                                                 </button>
                                             </div>
@@ -399,19 +399,19 @@ export default function CollectorDashboard() {
                                 <button
                                     type="button"
                                     onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
-                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-white border rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
-                                        selectedStatuses.length > 0 ? "border-black text-black ring-1 ring-black" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-surface border rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                                        selectedStatuses.length > 0 ? "border-primary text-text-primary ring-1 ring-primary" : "border-border text-text-secondary hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
                                         <span className="truncate">{currentStatusLabel}</span>
                                     </div>
-                                    <ChevronDown size={13} className="text-gray-400 shrink-0" />
+                                    <ChevronDown size={13} className="text-text-muted shrink-0" />
                                 </button>
 
                                 {/* รายการตัวเลือกสถานะภายในเมนู (Multi-Select Menu) */}
                                 {isStatusMenuOpen && (
-                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-40 bg-white border border-gray-200 rounded-2xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-40 bg-surface border border-border rounded-2xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                                         {/* ลูปรายการสถานะให้สามารถเลือกพร้อมกันได้หลายตัว */}
                                         {statusOptions.map((option) => {
                                             const isChecked = selectedStatuses.includes(option.id);
@@ -421,14 +421,14 @@ export default function CollectorDashboard() {
                                                     type="button"
                                                     onClick={() => handleStatusToggle(option.id)}
                                                     className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
-                                                        isChecked ? "bg-gray-50/80 text-black" : "text-gray-600 hover:bg-gray-50"
+                                                        isChecked ? "bg-surface-subtle text-text-primary" : "text-text-secondary hover:bg-surface-subtle"
                                                     }`}
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         {/* กล่องติ๊กถูกจำลองรูปทรงกลมตามสีสถานะ */}
                                                         <div
                                                             className={`w-3.5 h-3.5 border rounded-sm flex items-center justify-center transition-all ${
-                                                                isChecked ? "border-black bg-black text-white" : "border-gray-300 bg-white"
+                                                                isChecked ? "border-primary bg-primary text-white" : "border-border bg-surface"
                                                             }`}
                                                         >
                                                             {isChecked && <Check size={10} strokeWidth={4} />}
@@ -444,14 +444,14 @@ export default function CollectorDashboard() {
                         </div>
 
                         {/* สรุปข้อมูลผลลัพธ์และระบบสลับ ล่าสุด/เก่าสุด */}
-                        <div className="flex items-center justify-between text-xs text-gray-400  px-0.5 pt-1 border-t border-gray-100">
-                            <div className="text-gray-500">พบ {totalFilteredRecords} รายการ</div>
+                        <div className="flex items-center justify-between text-xs text-text-muted  px-0.5 pt-1 border-t border-border">
+                            <div className="text-text-secondary">พบ {totalFilteredRecords} รายการ</div>
 
-                            <div onClick={toggleSortDirection} className="flex items-center gap-1 cursor-pointer hover:text-gray-900 text-gray-500 transition-colors py-0.5 select-none">
+                            <div onClick={toggleSortDirection} className="flex items-center gap-1 cursor-pointer hover:text-text-primary text-text-secondary transition-colors py-0.5 select-none">
                                 <span>{sorting[0]?.id === "collectedAt" && sorting[0]?.desc ? "ล่าสุด" : "เก่าสุด"}</span>
-                                <div className="flex items-center text-gray-400">
+                                <div className="flex items-center text-text-muted">
                                     {sorting[0]?.id === "collectedAt" &&
-                                        (sorting[0]?.desc ? <ArrowDown size={12} className="text-black font-bold" /> : <ArrowUp size={12} className="text-black font-bold" />)}
+                                        (sorting[0]?.desc ? <ArrowDown size={12} className="text-text-primary font-bold" /> : <ArrowUp size={12} className="text-text-primary font-bold" />)}
                                 </div>
                             </div>
                         </div>
@@ -460,12 +460,12 @@ export default function CollectorDashboard() {
                     {(() => {
                         if (totalFilteredRecords === 0) {
                             return (
-                                <div className="text-center p-10 bg-white rounded-2xl border border-gray-200/50 flex flex-col items-center justify-center">
-                                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center mb-3 text-gray-400 border border-gray-100">
+                                <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center">
+                                    <div className="w-10 h-10 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
                                         <FileText size={18} />
                                     </div>
-                                    <p className="text-gray-900 font-bold text-xs">ไม่พบข้อมูลประวัติ</p>
-                                    <p className="text-[11px] text-gray-400 mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
+                                    <p className="text-text-primary font-bold text-xs">ไม่พบข้อมูลประวัติ</p>
+                                    <p className="text-[11px] text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
                                 </div>
                             );
                         }
@@ -482,10 +482,10 @@ export default function CollectorDashboard() {
                                             <div
                                                 key={sample.id}
                                                 onClick={() => router.push(`/collector/history/${sample.id}`)}
-                                                className="bg-white rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
+                                                className="bg-surface rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
                                             >
                                                 {/* รูปภาพ - ล็อกขนาดไม่ให้โดนบีบ */}
-                                                <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 shrink-0 overflow-hidden flex items-center justify-center relative transition-all">
+                                                <div className="w-14 h-14 rounded-xl bg-surface-subtle border border-border shrink-0 overflow-hidden flex items-center justify-center relative transition-all">
                                                     {sample.imageUrl && !hasImageError ? (
                                                         <img
                                                             src={sample.imageUrl}
@@ -494,7 +494,7 @@ export default function CollectorDashboard() {
                                                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
                                                         />
                                                     ) : (
-                                                        <ImageOff size={15} className="text-gray-300" />
+                                                        <ImageOff size={15} className="text-text-muted" />
                                                     )}
                                                 </div>
 
@@ -505,12 +505,12 @@ export default function CollectorDashboard() {
                                                         {/* ฝั่งซ้าย: ชื่อสถานที่ + วันที่ */}
                                                         <div className="flex-1 min-w-0">
                                                             {/* แสดงบรรทัดเดียวแล้วตัดด้วย ... */}
-                                                            <h4 className="font-semibold text-sm text-black text-left truncate">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+                                                            <h4 className="font-semibold text-sm text-text-primary text-left truncate">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
 
                                                             {/* แถวกลาง: เมทาดาต้า วันที่ */}
-                                                            <div className="flex flex-wrap items-center text-xs text-gray-400 font-medium">
+                                                            <div className="flex flex-wrap items-center text-xs text-text-muted font-medium">
                                                                 <div className="flex items-center gap-1.5 shrink-0">
-                                                                    <Calendar size={14} className="text-gray-300 shrink-0" />
+                                                                    <Calendar size={14} className="text-text-muted shrink-0" />
                                                                     <span>
                                                                         {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
                                                                             day: "numeric",
@@ -532,8 +532,7 @@ export default function CollectorDashboard() {
                                                         {[
                                                             { key: "phosphateVal", label: "P", color: "text-teal-500" },
                                                             { key: "ammoniaVal", label: "N", color: "text-purple-500" },
-                                                            // ➕ อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย:
-                                                            // { key: "nitrateVal", label: "NO3", color: "text-blue-500" }
+                                                            // ➕ อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย
                                                         ].map((indicator) => {
                                                             const value = sample[indicator.key];
                                                             if (value === undefined || value === null) return null;
@@ -541,7 +540,7 @@ export default function CollectorDashboard() {
                                                             return (
                                                                 <div
                                                                     key={indicator.key}
-                                                                    className="flex items-center gap-1 bg-[#f1f3f5] px-2 py-1 rounded-md text-xs font-semibold text-gray-500 shrink-0"
+                                                                    className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text-secondary shrink-0"
                                                                 >
                                                                     <Beaker size={10} className={indicator.color} />
                                                                     <span>
@@ -559,22 +558,22 @@ export default function CollectorDashboard() {
 
                                 {/* Pagination Controls */}
                                 {pageCount > 1 && (
-                                    <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2 select-none">
-                                        <div className="text-xs text-gray-400 font-medium">
-                                            หน้า <span className="font-bold text-gray-700">{pageIndex + 1}</span> จาก <span className="font-bold text-gray-700">{pageCount}</span>
+                                    <div className="flex items-center justify-between border-t border-border pt-4 mt-2 select-none">
+                                        <div className="text-xs text-text-muted font-medium">
+                                            หน้า <span className="font-bold text-text-primary">{pageIndex + 1}</span> จาก <span className="font-bold text-text-primary">{pageCount}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <button
                                                 disabled={!table.getCanPreviousPage()}
                                                 onClick={() => table.previousPage()}
-                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
                                             >
                                                 ก่อนหน้า
                                             </button>
                                             <button
                                                 disabled={!table.getCanNextPage()}
                                                 onClick={() => table.nextPage()}
-                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer "
+                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-surface text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer "
                                             >
                                                 ถัดไป
                                             </button>
