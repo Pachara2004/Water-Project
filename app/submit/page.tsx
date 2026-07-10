@@ -95,7 +95,7 @@ function SubmitContent() {
     const currentStep = step === "upload" ? 1 : step === "analyzing" ? 2 : 3;
 
     return (
-        <div className="min-h-screen w-full bg-primary pb-5 antialiased">
+        <div className="min-h-dvh w-full bg-surface-muted pb-5 antialiased transition-colors duration-300">
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Bar ── */}
