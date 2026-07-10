@@ -3,7 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import LiffProvider from "@/components/LiffProvider";
 
-// สเปก Metadata ยึดอยู่ฝั่ง Server Component ได้อย่างถูกต้อง ไร้ปัญหา Error
+// สเปก Metadata ยึดอยู่ฝั่ง Server Component ได้อย่างถูกต้อง ไร้ปัญหา Error[cite: 8]
 export const metadata: Metadata = {
     title: "ระบบตรวจสอบคุณภาพน้ำ | Water Quality Monitoring",
     description: "ระบบตรวจสอบและบันทึกข้อมูลคุณภาพน้ำทะเลชายฝั่ง ผ่าน LINE LIFF",
@@ -24,9 +24,9 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="th" suppressHydrationWarning>
+        <html lang="th" suppressHydrationWarning={true}>
             <head>
-                {/* สคริปต์ดักตรวจจับ Theme ดำเนินการผ่าน dangerouslySetInnerHTML ได้ปกติบน Server Component */}
+                {/* สคริปต์ดักตรวจจับ Theme ดำเนินการผ่าน dangerouslySetInnerHTML ได้ปกติบน Server Component[cite: 8] */}
                 <script
                     dangerouslySetInnerHTML={{
                         __html: `
@@ -42,9 +42,9 @@ export default function RootLayout({
                 />
             </head>
             <body>
-                {/* LiffProvider และ Navbar ซึ่งเป็น Client Component ด้านในจะสามารถทำงานได้ตามปกติ */}
+                {/* LiffProvider และ Navbar ซึ่งเป็น Client Component ด้านในจะสามารถทำงานได้ตามปกติ[cite: 8] */}
                 <LiffProvider>
-                    <main className="min-h-screen min-h-[100dvh] lg:pl-50 pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
+                    <main className="min-h-screen lg:pl-50 pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
                     <Navbar />
                 </LiffProvider>
             </body>

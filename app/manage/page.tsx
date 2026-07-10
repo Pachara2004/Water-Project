@@ -152,11 +152,11 @@ function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showTo
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/40 z-[800] backdrop-blur-xs transition-opacity" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/40 z-800 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
             {/* Drawer */}
             <div
-                className="fixed bottom-0 left-0 right-0 z-[801] bg-surface rounded-t-[32px] shadow-2xl border-t border-border max-w-lg mx-auto px-6 pt-6 animate-slide-up transition-colors duration-300"
+                className="fixed bottom-0 left-0 right-0 z-801 bg-surface rounded-t-4xl  border-t border-border max-w-lg mx-auto px-6 pt-6 animate-slide-up transition-colors duration-300"
                 style={{
                     paddingBottom: "calc(88px + env(safe-area-inset-bottom))",
                 }}
@@ -235,7 +235,7 @@ function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showTo
                     <button
                         onClick={handleSave}
                         disabled={saving || !isDirty}
-                        className="w-full mt-2 py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer active:scale-[0.98]"
+                        className="w-full mt-2 py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98]"
                     >
                         {saving ? (
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -263,10 +263,10 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
     const userDisplayName = currentUser.firstName ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim() : currentUser.lineProfileName;
 
     return (
-        <div className="bg-surface rounded-3xl border border-border shadow-sm p-5 sm:p-6">
+        <div className="bg-surface rounded-3xl border border-border p-5 sm:p-6">
             <div className="flex items-center gap-4">
                 {/* Avatar */}
-                <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-sm select-none">
+                <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-sm font-semibold shrink-0 select-none">
                     {getInitials(currentUser.firstName, currentUser.lineProfileName)}
                 </div>
 
@@ -275,7 +275,6 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
                     <h2 className="text-base font-semibold text-text-primary truncate">{userDisplayName}</h2>
 
                     <span className={`inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${roleColor}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${roleDot}`} />
                         {roleLabel}
                     </span>
 
@@ -291,7 +290,7 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
 
                 <button
                     onClick={onEdit}
-                    className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 text-text-muted hover:text-primary transition-all duration-200 cursor-pointer active:scale-[0.92] group"
+                    className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 text-text-muted hover:text-primary transition-all duration-200 cursor-pointer active:scale-[0.92] group"
                     title="แก้ไขข้อมูลส่วนตัว"
                 >
                     <Pencil size={14} className="group-hover:scale-110 transition-transform" />
@@ -318,7 +317,7 @@ export default function ManagePage() {
                 <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้านี้สำหรับเจ้าหน้าที่ปฏิบัติการ, ผู้บริหาร และผู้ดูแลระบบเท่านั้น</p>
                 <button
                     onClick={() => router.push("/map")}
-                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
+                    className="w-full max-w-50 py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
                 >
                     กลับไปหน้าแผนที่
                 </button>
@@ -329,13 +328,13 @@ export default function ManagePage() {
     const isAdmin = currentUser.role === "admin";
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-[120px] transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-surface-muted pb-30 transition-colors duration-300">
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-8">
                 {/* Header */}
                 <div className="pt-10 sm:pt-16 pb-8 sm:pb-10 border-b border-border mb-8">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shrink-0">
                                 {isAdmin ? <Shield size={22} className="text-white" /> : <UserCircle2 size={22} className="text-white" />}
                             </div>
                             <div>
@@ -355,24 +354,15 @@ export default function ManagePage() {
                             </div>
                         </div>
 
-                        <div className="flex-shrink-0 mt-1">
+                        <div className="shrink-0 mt-1">
                             <ThemeToggle showLabel />
                         </div>
                     </div>
-
-                    {isAdmin && (
-                        <div className="flex items-center gap-2 mt-5">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary-light border border-primary/10 px-3 py-1.5 rounded-full uppercase tracking-wider">
-                                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                                System Administrator
-                            </span>
-                        </div>
-                    )}
                 </div>
 
                 {/* Profile card */}
-                <div className="mb-8">
-                    <p className="text-sm font-semibold text-text-muted uppercase tracking-wider px-1 mb-4">ข้อมูลของฉัน</p>
+                <div className="mb-5">
+                    <p className="text-sm font-semibold text-text-muted mb-4">ข้อมูลของฉัน</p>
                     <ProfileCard onEdit={() => setShowEdit(true)} />
                 </div>
 
@@ -388,11 +378,11 @@ export default function ManagePage() {
                                     key={menu.href}
                                     onClick={() => menu.available && router.push(menu.href)}
                                     disabled={MenuBoxDisable(menu.available)}
-                                    className={`w-full group flex items-center gap-4 p-5 sm:p-6 bg-surface rounded-2xl border border-border shadow-sm transition-all duration-200 text-left
-                    ${menu.available ? "hover:border-primary/30 hover:shadow-md hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
+                                    className={`w-full group flex items-center gap-4 p-5 sm:p-6 bg-surface rounded-2xl border border-border transition-all duration-200 text-left
+                    ${menu.available ? "hover:border-primary/30  hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
                                 >
                                     <div
-                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 ${menu.iconBg} ${menu.available ? "group-hover:scale-105" : ""}`}
+                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform duration-200 ${menu.iconBg} ${menu.available ? "group-hover:scale-105" : ""}`}
                                     >
                                         <Icon size={20} />
                                     </div>
