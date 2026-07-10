@@ -31,14 +31,17 @@ export async function GET(request: NextRequest) {
         const startDateParam = searchParams.get("startDate");
         const endDateParam = searchParams.get("endDate");
         const agencyParam = searchParams.get("agency");
+        // เลือกกรองเฉพาะสถานีเดียว (จาก search ฝั่ง frontend) — ถ้ามีค่านี้จะกรองแทนที่ agency
+        const locationIdParam = searchParams.get("locationId");
+        const locationId = locationIdParam ? Number(locationIdParam) : null;
 
-        // 1. ดึงรายชื่อหน่วยงานทั้งหมดที่มีอยู่จริงในตาราง Location อิงจาก Database จริง
-        const locationsForAgencies = await prisma.location.findMany({
-            select: { governingAgency: true },
-            distinct: ["governingAgency"],
+        // 1. ดึงรายชื่อหน่วยงาน + สถานีทั้งหมดที่มีอยู่จริงในตาราง Location ให้ frontend เอาไปใช้ค้นหา
+        const allLocations = await prisma.location.findMany({
+            select: { id: true, stationName: true, governingAgency: true },
+            orderBy: { stationName: "asc" },
         });
 
-        const activeAgencies = locationsForAgencies.map((l) => l.governingAgency).filter((agency) => agency !== null && agency !== undefined);
+        const activeAgencies = Array.from(new Set(allLocations.map((l) => l.governingAgency).filter((agency) => agency !== null && agency !== undefined)));
 
         // 🔒 คุมสิทธิ์การดึงข้อมูลหลัก (Base Filter Context)
         const baseWhere: any = { isDeleted: false };
@@ -50,7 +53,10 @@ export async function GET(request: NextRequest) {
             if (startDateParam) baseWhere.collectionTime.gte = parseLocalDayStart(startDateParam);
             if (endDateParam) baseWhere.collectionTime.lt = parseLocalDayEnd(endDateParam);
         }
-        if (agencyParam && agencyParam !== "all") {
+        // เลือกสถานีเจาะจงมาก่อน agency เสมอ (ละเอียดกว่า) — ถ้าไม่ได้เลือกสถานีค่อย fallback ไปกรองด้วยหน่วยงาน
+        if (locationId) {
+            baseWhere.locationId = locationId;
+        } else if (agencyParam && agencyParam !== "all") {
             baseWhere.location = { governingAgency: agencyParam };
         }
 
@@ -75,7 +81,11 @@ export async function GET(request: NextRequest) {
         // ขอบเขตสิทธิ์/หน่วยงานยังคงกรองตามเดิม แต่ตัดเงื่อนไขวันที่ของ filter ออก
         const scopeWhere: any = { isDeleted: false };
         if (viewMode === "MINE" && collectorId) scopeWhere.collectorId = collectorId;
-        if (agencyParam && agencyParam !== "all") scopeWhere.location = { governingAgency: agencyParam };
+        if (locationId) {
+            scopeWhere.locationId = locationId;
+        } else if (agencyParam && agencyParam !== "all") {
+            scopeWhere.location = { governingAgency: agencyParam };
+        }
 
         const now = new Date();
 
@@ -226,8 +236,9 @@ export async function GET(request: NextRequest) {
                     });
 
                     finalValue = count > 0 ? Number((sum / count).toFixed(2)) : 0;
+                    // สีเดียวกับที่ trendConfig.lines/Correlation ใช้แทนสารนี้ทั้งหน้า (Ammonia=amber, Phosphate=indigo) กันสีไม่ตรงกันข้ามกราฟ
                     if (w.title.includes("NH3") || w.title.includes("แอมโมเนีย")) color = "#f59e0b";
-                    if (w.title.includes("PO4") || w.title.includes("ฟอสเฟต")) color = "#818cf8";
+                    if (w.title.includes("PO4") || w.title.includes("ฟอสเฟต")) color = "#6366f1";
                 }
 
                 return {
@@ -272,6 +283,38 @@ export async function GET(request: NextRequest) {
                 statusText: failureRate >= 80 ? "วิกฤต" : failureRate >= 50 ? "เสี่ยงสูง" : "เฝ้าระวัง",
             };
         });
+
+        // --- 📍 เมื่อกรองเจาะจงสถานีเดียว (จาก search) แทนที่จะโชว์ "5 อันดับ" (ไม่มีความหมายกับตัวเลือกเดียว)
+        // ส่งรายละเอียดความเสี่ยงของสถานีนั้นแทน โดยใช้ totalSamples/statusCountMap ที่คำนวณจาก baseWhere ซึ่งกรอง locationId ไว้แล้ว
+        let stationDetail: {
+            stationName: string;
+            agency: string;
+            totalCount: number;
+            safeCount: number;
+            warningCount: number;
+            dangerCount: number;
+            failureRate: number;
+            statusText: string;
+        } | null = null;
+        if (locationId) {
+            const stationInfo = await prisma.location.findUnique({ where: { id: locationId }, select: { stationName: true, governingAgency: true } });
+            if (stationInfo) {
+                const dangerCount = statusCountMap["danger"] || 0;
+                const warningCount = statusCountMap["warning"] || 0;
+                const safeCount = statusCountMap["safe"] || 0;
+                const failureRate = totalSamples > 0 ? Math.round((dangerCount / totalSamples) * 100) : 0;
+                stationDetail = {
+                    stationName: stationInfo.stationName,
+                    agency: stationInfo.governingAgency || "ไม่ระบุหน่วยงาน",
+                    totalCount: totalSamples,
+                    safeCount,
+                    warningCount,
+                    dangerCount,
+                    failureRate,
+                    statusText: failureRate >= 80 ? "วิกฤต" : failureRate >= 50 ? "เสี่ยงสูง" : failureRate > 0 ? "เฝ้าระวัง" : "ปลอดภัย",
+                };
+            }
+        }
 
         // --- 🌅 3. โครงสร้างระบบประมวลผลช่วงเวลา เช้า vs เย็น (Temporal Data Engine) ---
         // ดึงเฉพาะฟิลด์ที่กราฟรายเดือนต้องใช้จริง (เวลาเก็บ + ค่าสารแอมโมเนีย/ฟอสเฟตเท่านั้น) แทนการโหลดทุกคอลัมน์
@@ -472,10 +515,10 @@ export async function GET(request: NextRequest) {
         const pearsonPairs = (pts: { x: number; y: number }[]): [number, number][] => pts.map((p) => [p.x, p.y]);
         // เส้น trend คำนวณจากคู่ข้อมูลชุดเดียวกับ Pearson r เสมอ (ความชัน/จุดตัดแกน y)
         const correlationMetrics = [
-            { key: "rain_nh3", label: "ฝน × NH₃", r: pearson(pearsonPairs(rainNH3)), n: rainNH3.length, trend: linearFit(pearsonPairs(rainNH3)) },
-            { key: "rain_po4", label: "ฝน × PO₄", r: pearson(pearsonPairs(rainPO4)), n: rainPO4.length, trend: linearFit(pearsonPairs(rainPO4)) },
-            { key: "temp_nh3", label: "อุณหภูมิ × NH₃", r: pearson(pearsonPairs(tempNH3)), n: tempNH3.length, trend: linearFit(pearsonPairs(tempNH3)) },
-            { key: "temp_po4", label: "อุณหภูมิ × PO₄", r: pearson(pearsonPairs(tempPO4)), n: tempPO4.length, trend: linearFit(pearsonPairs(tempPO4)) },
+            { key: "rain_nh3", label: "ฝน × Ammonia", r: pearson(pearsonPairs(rainNH3)), n: rainNH3.length, trend: linearFit(pearsonPairs(rainNH3)) },
+            { key: "rain_po4", label: "ฝน × Phosphate", r: pearson(pearsonPairs(rainPO4)), n: rainPO4.length, trend: linearFit(pearsonPairs(rainPO4)) },
+            { key: "temp_nh3", label: "อุณหภูมิ × Ammonia", r: pearson(pearsonPairs(tempNH3)), n: tempNH3.length, trend: linearFit(pearsonPairs(tempNH3)) },
+            { key: "temp_po4", label: "อุณหภูมิ × Phosphate", r: pearson(pearsonPairs(tempPO4)), n: tempPO4.length, trend: linearFit(pearsonPairs(tempPO4)) },
         ];
 
         // แบ่ง density bin ทั้ง 4 ชุด (แกน × สาร) — ส่งเฉพาะช่องที่มีค่า payload เล็กแม้ข้อมูลหลักพัน
@@ -488,16 +531,22 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             agencies: activeAgencies,
+            locations: allLocations, // { id, stationName, governingAgency } ทั้งหมด — ให้ frontend ใช้ค้นหาสถานี/หน่วยงานแบบพิมพ์หา
             kpis: kpisBlueprint, // การ์ดสรุปส่งไปตามแถวจริงในตารางฐานข้อมูลของบอสแบบ 100%
-            hotspotConfig: { title: "Danger Hotspots — 5 อันดับสถานีจุดเสี่ยงอันตรายสะสมสูงสุด" },
+            // หัวข้อปรับตามจำนวนสถานีที่หาเจอจริง (take: 5 เป็นแค่เพดานสูงสุด) กันคำว่า "5 อันดับ" ค้างตอนกรองแล้วเจอน้อยกว่า
+            // หมายเหตุ: ไม่แสดงตอน stationDetail มีค่า เพราะกล่อง Hotspots ถูกซ่อนทั้งกล่องแล้วในกรณีนั้น (ไม่ต้องคำนวณ title พิเศษแยก)
+            hotspotConfig: {
+                title: hotspotsData.length > 0 ? `Danger Hotspots — ${hotspotsData.length} อันดับสถานีจุดเสี่ยงอันตรายสะสมสูงสุด` : "Danger Hotspots — ไม่พบสถานีที่มีความเสี่ยงในช่วงที่เลือก",
+            },
+            stationDetail, // ไม่ null เฉพาะตอนกรองสถานีเดียว — frontend ใช้เป็น flag ซ่อนตาราง Hotspots + ขยายกราฟเช้า-เย็นเต็มแถว
             hotspots: hotspotsData,
             temporalConfig: {
                 title: "Morning vs Evening Fluctuations (เปรียบเทียบระดับสารเคมีคู่ขนาน)",
                 bars: [
-                    { key: "ammoniaMorning", name: "NH3 เช้า", color: "#60a5fa" },
-                    { key: "ammoniaEvening", name: "NH3 เย็น", color: "#fbbf24" },
-                    { key: "phosphateMorning", name: "PO4 เช้า", color: "#60a5fa" },
-                    { key: "phosphateEvening", name: "PO4 เย็น", color: "#fbbf24" },
+                    { key: "ammoniaMorning", name: "Ammonia เช้า", color: "#60a5fa" },
+                    { key: "ammoniaEvening", name: "Ammonia เย็น", color: "#fbbf24" },
+                    { key: "phosphateMorning", name: "Phosphate เช้า", color: "#60a5fa" },
+                    { key: "phosphateEvening", name: "Phosphate เย็น", color: "#fbbf24" },
                 ],
             },
             temporalData: temporalData,
@@ -505,8 +554,8 @@ export async function GET(request: NextRequest) {
             trendConfig: {
                 title: "WaterTrendChart: สหสัมพันธ์แนวโน้มความเข้มข้นสารเคมีสะสมพร้อมเกณฑ์ควบคุม PCD",
                 references: [
-                    { value: 0.5, color: "#ef4444", label: "Max NH3 (0.5)" },
-                    { value: 0.3, color: "#a855f7", label: "Max PO4 (0.3)" },
+                    { value: 0.5, color: "#ef4444", label: "Max Ammonia (0.5)" },
+                    { value: 0.3, color: "#a855f7", label: "Max Phosphate (0.3)" },
                 ],
                 lines: [
                     { key: "ammonia", name: "Ammonia", color: "#f59e0b" },

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import ExportButtons from "@/components/dashboard/ExportButtons";
-import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideAward, LucideChevronDown, Activity, LucideBeaker } from "lucide-react";
+import { LucideShieldAlert, LucideCheckCircle2, LucideLayers, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX, Activity, LucideBeaker } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
@@ -50,8 +50,10 @@ export default function ExecutiveAnalyticsDashboard() {
     });
     const [endDate, setEndDate] = useState(() => toISODate(new Date()));
     const [agency, setAgency] = useState("all");
+    const [locationId, setLocationId] = useState<number | null>(null); // เลือกสถานีเจาะจง (ละเอียดกว่า agency) จากผลค้นหา
+    const [agencySearch, setAgencySearch] = useState(""); // ข้อความที่พิมพ์ค้นหาหน่วยงาน/สถานี
     const [trendMode, setTrendMode] = useState<"wow" | "mom">("wow");
-    const [showAgencyMenu, setShowAgencyMenu] = useState(false); // custom dropdown ของหน่วยงาน — คุมความกว้าง popup เองแทน native <select>
+    const [showAgencyMenu, setShowAgencyMenu] = useState(false); // เปิด/ปิด dropdown ผลค้นหาหน่วยงาน+สถานี
     const agencyMenuRef = useRef<HTMLDivElement>(null);
 
     const userRole = currentUser?.role?.toLowerCase() || "officer";
@@ -81,7 +83,8 @@ export default function ExecutiveAnalyticsDashboard() {
         const controller = new AbortController();
         setLoading(true);
         setFetchError(false);
-        const url = `/api/dashboard/widgets?viewMode=${viewMode}&startDate=${startDate}&endDate=${endDate}&agency=${agency}`;
+        let url = `/api/dashboard/widgets?viewMode=${viewMode}&startDate=${startDate}&endDate=${endDate}&agency=${agency}`;
+        if (locationId) url += `&locationId=${locationId}`;
 
         // ต้องแนบ Token ยืนยันตัวตนเสมอ — server ตรวจสิทธิ์และดึง collectorId จาก token เอง ไม่รับค่าจาก client แล้ว
         fetch(url, {
@@ -103,7 +106,7 @@ export default function ExecutiveAnalyticsDashboard() {
             });
 
         return () => controller.abort();
-    }, [viewMode, userId, userRole, startDate, endDate, agency, retryTick]);
+    }, [viewMode, userId, userRole, startDate, endDate, agency, locationId, retryTick]);
 
     // 🔒 ปิดกั้นสิทธิ์ role "guest" (ผู้ใช้งานทั่วไป) ไม่ให้เข้าหน้านี้ — เหมือน pattern เดียวกับ app/manage/page.tsx
     // หมายเหตุ: การบังคับจริงอยู่ที่ backend (verifyAuth ที่ route.ts ไม่รับ role guest อยู่แล้ว) นี่คือแค่ UX กันไม่ให้เห็นหน้าเปล่าๆ ตอนถูก 401 กลับมา
@@ -221,44 +224,110 @@ export default function ExecutiveAnalyticsDashboard() {
 
                     {/* แถบสลับมุมมองข้อมูล */}
                     <div className="flex items-center gap-2 shrink-0">
-                        {/* Dropdown หน่วยงานแบบ custom — คุมความกว้าง popup เองแทน native <select> เพื่อให้กล่องปิด/เปิดกว้างเท่ากันเป๊ะ */}
+                        {/* ค้นหาหน่วยงาน/สถานี แทนที่ dropdown เดิม — พิมพ์แล้วกรองรายชื่อจาก analytics.agencies + analytics.locations */}
                         <div className="relative flex-1 min-w-0" ref={agencyMenuRef}>
-                            <button
-                                type="button"
-                                onClick={() => setShowAgencyMenu((v) => !v)}
-                                className="h-8 w-full flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 font-semibold text-slate-700 text-xs cursor-pointer hover:border-indigo-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                            >
-                                <span className="truncate">{agency === "all" ? "ทุกหน่วยงาน" : agency}</span>
-                                <LucideChevronDown size={13} className={`text-slate-400 shrink-0 transition-transform ${showAgencyMenu ? "rotate-180" : ""}`} />
-                            </button>
-
-                            {showAgencyMenu && (
-                                <div className="absolute z-20 top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg py-1 max-h-60 overflow-y-auto">
+                            <div className="h-8 w-full flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                                <LucideSearch size={13} className="text-slate-400 shrink-0" />
+                                <input
+                                    type="text"
+                                    value={agencySearch}
+                                    onFocus={(e) => {
+                                        setShowAgencyMenu(true);
+                                        e.target.select();
+                                    }}
+                                    onChange={(e) => {
+                                        setAgencySearch(e.target.value);
+                                        setShowAgencyMenu(true);
+                                    }}
+                                    placeholder="ค้นหาหน่วยงาน/สถานี"
+                                    className="bg-transparent outline-none text-slate-700 font-semibold text-xs w-full min-w-0"
+                                />
+                                {(agency !== "all" || locationId) && (
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setAgency("all");
-                                            setShowAgencyMenu(false);
+                                            setLocationId(null);
+                                            setAgencySearch("");
                                         }}
-                                        className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-slate-50 ${agency === "all" ? "text-indigo-600 bg-indigo-50" : "text-slate-700"}`}
+                                        className="shrink-0 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                        aria-label="ล้างตัวกรองหน่วยงาน/สถานี"
                                     >
-                                        ทุกหน่วยงาน
+                                        <LucideX size={13} />
                                     </button>
-                                    {analytics?.agencies?.map((item: string, i: number) => (
-                                        <button
-                                            type="button"
-                                            key={i}
-                                            onClick={() => {
-                                                setAgency(item);
-                                                setShowAgencyMenu(false);
-                                            }}
-                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-slate-50 truncate ${agency === item ? "text-indigo-600 bg-indigo-50" : "text-slate-700"}`}
-                                        >
-                                            {item}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                                )}
+                            </div>
+
+                            {showAgencyMenu &&
+                                (() => {
+                                    const q = agencySearch.trim().toLowerCase();
+                                    const matchedAgencies = (analytics?.agencies || []).filter((a: string) => a.toLowerCase().includes(q));
+                                    const matchedLocations = (analytics?.locations || []).filter(
+                                        (l: any) => l.stationName?.toLowerCase().includes(q) || l.governingAgency?.toLowerCase().includes(q)
+                                    );
+                                    const hasResults = matchedAgencies.length > 0 || matchedLocations.length > 0;
+                                    return (
+                                        <div className="absolute z-20 top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg py-1 max-h-72 overflow-y-auto">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setAgency("all");
+                                                    setLocationId(null);
+                                                    setAgencySearch("");
+                                                    setShowAgencyMenu(false);
+                                                }}
+                                                className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-slate-50 ${agency === "all" && !locationId ? "text-indigo-600 bg-indigo-50" : "text-slate-700"}`}
+                                            >
+                                                ทุกหน่วยงาน
+                                            </button>
+
+                                            {matchedAgencies.length > 0 && (
+                                                <>
+                                                    <div className="px-3 pt-2 pb-1 text-xs font-semibold text-slate-400">หน่วยงาน</div>
+                                                    {matchedAgencies.map((item: string, i: number) => (
+                                                        <button
+                                                            type="button"
+                                                            key={i}
+                                                            onClick={() => {
+                                                                setAgency(item);
+                                                                setLocationId(null);
+                                                                setAgencySearch(item);
+                                                                setShowAgencyMenu(false);
+                                                            }}
+                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-slate-50 truncate ${agency === item ? "text-indigo-600 bg-indigo-50" : "text-slate-700"}`}
+                                                        >
+                                                            {item}
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            )}
+
+                                            {matchedLocations.length > 0 && (
+                                                <>
+                                                    <div className="px-3 pt-2 pb-1 text-xs font-semibold text-slate-400">สถานี</div>
+                                                    {matchedLocations.map((loc: any) => (
+                                                        <button
+                                                            type="button"
+                                                            key={loc.id}
+                                                            onClick={() => {
+                                                                setLocationId(loc.id);
+                                                                setAgency("all");
+                                                                setAgencySearch(loc.stationName);
+                                                                setShowAgencyMenu(false);
+                                                            }}
+                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-slate-50 truncate ${locationId === loc.id ? "text-indigo-600 bg-indigo-50" : "text-slate-700"}`}
+                                                        >
+                                                            {loc.stationName}
+                                                            <span className="text-slate-400 font-normal"> · {loc.governingAgency}</span>
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            )}
+
+                                            {!hasResults && q && <div className="px-3 py-2 text-xs text-slate-400">ไม่พบ "{agencySearch}"</div>}
+                                        </div>
+                                    );
+                                })()}
                         </div>
 
                         {(userRole === "admin" || userRole === "officer") && (
@@ -331,19 +400,19 @@ export default function ExecutiveAnalyticsDashboard() {
                             )}
                             {/* 📊 มิติที่ 1: การ์ดตัวชี้วัดหลักแบบ Dynamic ดึงจาก DB */}
                             <div className="flex items-center justify-between shrink-0">
-                                <div className="text-sm font-semibold text-white">ตัวชี้วัดหลัก (KPI)</div>
+                                <div className="text-sm font-semibold text-white">ตัวชี้วัดหลัก</div>
                                 <div className="h-8 grid grid-cols-2 rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs font-semibold">
                                     <button
                                         onClick={() => setTrendMode("wow")}
-                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer ${trendMode === "wow" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "wow" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
                                     >
-                                        WoW
+                                        รายสัปดาห์
                                     </button>
                                     <button
                                         onClick={() => setTrendMode("mom")}
-                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer ${trendMode === "mom" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "mom" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-400"}`}
                                     >
-                                        MoM
+                                        รายเดือน
                                     </button>
                                 </div>
                             </div>
@@ -371,42 +440,42 @@ export default function ExecutiveAnalyticsDashboard() {
 
                             {/* 🏅 มิติที่ 2 & 3: แผงควบคุมแบ่งตามตะแกรง Grid (แยกกราฟรายสารอย่างเด็ดขาด) */}
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-                                {/* ตาราง Hotspots เสี่ยงอันตรายสะสมสูงสุด */}
-                                <div className="col-span-1 md:col-span-5 bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-col overflow-hidden justify-between">
-                                    <div className="text-sm font-semibold text-slate-700 flex items-center gap-1.5 mb-2 shrink-0">
-                                        <LucideAward size={13} className="text-red-500" /> {analytics?.hotspotConfig?.title || " Danger Hotspots"}
-                                    </div>
-                                    <div className="w-full overflow-hidden flex-1">
-                                        <table className="w-full text-left text-xs text-slate-600 table-fixed">
-                                            <thead>
-                                                <tr className="border-b border-slate-100 text-slate-400 text-xs font-semibold uppercase pb-1">
-                                                    <th className="pb-1.5 w-[10%]">#</th>
-                                                    <th className="pb-1.5 w-[55%]">สถานี</th>
-                                                    <th className="pb-1.5 w-[20%] text-center">อัตรา</th>
-                                                    <th className="pb-1.5 w-[15%] text-right">ครั้ง</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-50">
-                                                {analytics?.hotspots?.map((spot: any, index: number) => (
-                                                    <tr key={index} className="hover:bg-slate-50/40">
-                                                        <td className="py-2 font-semibold text-slate-300">{index + 1}</td>
-                                                        <td className="py-2 truncate break-words">
-                                                            <div className="font-semibold text-slate-800 truncate text-xs">{spot.stationName}</div>
-                                                            <div className="text-xs text-slate-400 truncate mt-0.5">{spot.agency}</div>
-                                                        </td>
-                                                        <td className="py-2 font-semibold text-red-500 text-center text-xs">{spot.failureRate}%</td>
-                                                        <td className="py-2 text-right font-semibold text-slate-400 text-xs">
-                                                            {spot.dangerCount}/{spot.totalCount}
-                                                        </td>
+                                {/* ตาราง Hotspots เสี่ยงอันตรายสะสมสูงสุด — ซ่อนตอนเลือกสถานีเดียว เพราะข้อมูลซ้ำกับการ์ด KPI ด้านบนที่ scope ตามสถานีเดียวกันอยู่แล้ว */}
+                                {!analytics?.stationDetail && (
+                                    <div className="col-span-1 md:col-span-5 bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-col overflow-hidden justify-between">
+                                        <div className="text-sm font-semibold text-slate-700 mb-2 shrink-0">{analytics?.hotspotConfig?.title || " Danger Hotspots"}</div>
+                                        <div className="w-full overflow-hidden flex-1">
+                                            <table className="w-full text-left text-xs text-slate-600 table-fixed">
+                                                <thead>
+                                                    <tr className="border-b border-slate-100 text-slate-400 text-xs font-semibold uppercase pb-1">
+                                                        <th className="pb-1.5 w-[10%]">#</th>
+                                                        <th className="pb-1.5 w-[55%]">สถานี</th>
+                                                        <th className="pb-1.5 w-[20%] text-center">อัตรา</th>
+                                                        <th className="pb-1.5 w-[15%] text-right">ครั้ง</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {analytics?.hotspots?.map((spot: any, index: number) => (
+                                                        <tr key={index} className="hover:bg-slate-50/40">
+                                                            <td className="py-2 font-semibold text-slate-300">{index + 1}</td>
+                                                            <td className="py-2 truncate break-words">
+                                                                <div className="font-semibold text-slate-800 truncate text-xs">{spot.stationName}</div>
+                                                                <div className="text-xs text-slate-400 truncate mt-0.5">{spot.agency}</div>
+                                                            </td>
+                                                            <td className="py-2 font-semibold text-red-500 text-center text-xs">{spot.failureRate}%</td>
+                                                            <td className="py-2 text-right font-semibold text-slate-400 text-xs">
+                                                                {spot.dangerCount}/{spot.totalCount}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* 🌅 มิติที่ 3: แยกแท่งกราฟ เช้า vs เย็น ออกตามรายสารเคมีแบบ Dynamic เป็นกล่องย่อยอ่านง่ายสุดๆ */}
-                                <div className="col-span-1 md:col-span-7 bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-col gap-3 overflow-hidden">
+                                {/* 🌅 มิติที่ 3: แยกแท่งกราฟ เช้า vs เย็น ออกตามรายสารเคมีแบบ Dynamic เป็นกล่องย่อยอ่านง่ายสุดๆ — เต็มแถวเมื่อ Hotspots ถูกซ่อน */}
+                                <div className={`col-span-1 bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-col gap-3 overflow-hidden ${analytics?.stationDetail ? "md:col-span-12" : "md:col-span-7"}`}>
                                     <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
                                         <div className="text-sm font-semibold text-slate-700">ความผันผวนของสารเคมี (เปรียบเทียบช่วงเวลา เช้า vs เย็น แยกประเภท)</div>
                                         {analytics?.granularityInfo && (
@@ -418,7 +487,9 @@ export default function ExecutiveAnalyticsDashboard() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-h-0">
                                         {getGroupedBars().map((group: any, gIdx: number) => (
                                             <div key={gIdx} className="bg-slate-50/50 rounded-lg p-2 border border-slate-100 flex flex-col justify-between h-52 sm:h-auto">
-                                                <div className="text-xs font-semibold text-indigo-600 mb-1">สถิติความเข้มข้นสะสม: {group.title}</div>
+                                                <div className="text-xs font-semibold mb-1" style={{ color: group.title === "Ammonia" ? CHEM_COLOR.nh3 : CHEM_COLOR.po4 }}>
+                                                    สถิติความเข้มข้นสะสม: {group.title}
+                                                </div>
                                                 <div className="w-full flex-1 min-h-0">
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <BarChart data={analytics?.temporalData} margin={{ top: 10, right: 0, left: -35, bottom: -5 }}>
@@ -465,13 +536,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                             <Legend iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
 
                                             {analytics?.trendConfig?.references?.map((ref: any, rIdx: number) => (
-                                                <ReferenceLine
-                                                    key={rIdx}
-                                                    y={ref.value}
-                                                    stroke={ref.color}
-                                                    strokeDasharray="3 3"
-                                                    label={{ value: ref.label, fill: ref.color, fontSize: 12, position: "top" }}
-                                                />
+                                                <ReferenceLine key={rIdx} y={ref.value} stroke={ref.color} strokeDasharray="3 3" />
                                             ))}
 
                                             {analytics?.trendConfig?.lines?.map((line: any, lIdx: number) => (
@@ -489,6 +554,16 @@ export default function ExecutiveAnalyticsDashboard() {
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
+                                {/* เกณฑ์ควบคุม PCD — ย้ายมาไว้ใต้กราฟแทนการลอย label ทับเส้นข้อมูลข้างใน */}
+                                {analytics?.trendConfig?.references?.length > 0 && (
+                                    <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 mt-1.5 pt-1.5 border-t border-slate-100">
+                                        {analytics.trendConfig.references.map((ref: any, rIdx: number) => (
+                                            <span key={rIdx} className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: ref.color }}>
+                                                <span className="inline-block w-3 border-t-2 border-dashed" style={{ borderColor: ref.color }} /> {ref.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* มิติที่ 5: Correlation — แยกเป็น component ลูกเพื่อไม่ให้การกด toggle re-render ทั้งหน้า */}
@@ -587,6 +662,9 @@ function DashboardSkeleton() {
 }
 
 // 🌦️ Correlation — density heatmap แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
+// สีประจำสารเคมี — ใช้ตัวเดียวกับที่ WaterTrendChart ใช้ (trendConfig.lines) ให้สื่อความหมายตรงกันทั้งหน้า ไม่ใช่คนละสีในแต่ละกราฟ
+const CHEM_COLOR: Record<"nh3" | "po4", string> = { nh3: "#f59e0b", po4: "#6366f1" };
+
 function CorrelationSection({ correlation }: { correlation: any }) {
     const [axis, setAxis] = useState<"rain" | "temp">("rain");
     const [chem, setChem] = useState<"nh3" | "po4">("nh3");
@@ -665,11 +743,11 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                         </button>
                     </div>
                     <div className="grid grid-cols-2 rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-xs font-semibold">
-                        <button onClick={() => setChem("nh3")} className={pill(chem === "nh3")}>
-                            NH₃
+                        <button onClick={() => setChem("nh3")} className={pill(chem === "nh3")} style={chem === "nh3" ? { color: CHEM_COLOR.nh3 } : undefined}>
+                            Ammonia
                         </button>
-                        <button onClick={() => setChem("po4")} className={pill(chem === "po4")}>
-                            PO₄
+                        <button onClick={() => setChem("po4")} className={pill(chem === "po4")} style={chem === "po4" ? { color: CHEM_COLOR.po4 } : undefined}>
+                            Phosphate
                         </button>
                     </div>
                 </div>
@@ -678,7 +756,7 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                 {/* Density heatmap (SVG) + จุด outlier DANGER ทับ */}
                 <div className="col-span-1 md:col-span-8 w-full">
                     {view.hasData ? (
-                        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto" }} role="img" aria-label={`density heatmap ของ ${xLabel} กับความเข้มข้น${chem === "nh3" ? " NH₃" : " PO₄"}`}>
+                        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto" }} role="img" aria-label={`density heatmap ของ ${xLabel} กับความเข้มข้น${chem === "nh3" ? " Ammonia" : " Phosphate"}`}>
                             <rect x={mL} y={mT} width={pw} height={ph} fill="none" stroke="#e2e8f0" strokeWidth={1} />
                             {view.rects.map((r: any) => (
                                 <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} />
@@ -689,7 +767,7 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                                     y1={view.trendLine.y1}
                                     x2={view.trendLine.x2}
                                     y2={view.trendLine.y2}
-                                    stroke="#4f46e5"
+                                    stroke={CHEM_COLOR[dChem]}
                                     strokeWidth={1.6}
                                     strokeOpacity={view.trendLine.opacity}
                                     strokeDasharray="5 4"
@@ -723,7 +801,7 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                             <span>จุดมาก</span>
                         </div>
                         <div className="flex items-center gap-1">
-                            <span className="inline-block w-4 h-0 border-t-2 border-indigo-600" />
+                            <span className="inline-block w-4 h-0 border-t-2" style={{ borderColor: CHEM_COLOR[dChem] }} />
 เส้นประ trend (ยิ่งเข้ม = ยิ่งสัมพันธ์แรง)
                         </div>
                     </div>
