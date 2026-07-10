@@ -215,12 +215,46 @@ export async function POST(request: NextRequest) {
 
         const parsedCollectionTime = new Date(collectionTime);
 
-        // 🌟 3. ปรับลอจิกเรียกใช้ Open-Meteo ผ่านตัวแปร weatherInfo ชัดเจนถูกต้องร้อยเปอร์เซ็นต์ครับบอส!
-        let weatherInfo = null;
+        // 🌟 1. ตั้งตัวแปรสำหรับเก็บข้อมูลสภาพอากาศชุดเดียวที่จะใช้ร่วมกันทั้งกลุ่ม
+        let finalWeather = {
+            airTemperature: null as number | null,
+            rainAccumulation: null as number | null,
+            weatherCondCode: null as number | null,
+        };
+
         try {
-            weatherInfo = await getWeatherData(location.latitude, location.longitude);
+            // 🔍 2. ส่องเช็คก่อนว่า มีสารเคมีเพื่อนร่วมชุดบันทึกเซฟเข้าไปในเซสชันกลุ่มนี้ก่อนเราหรือยัง
+            let existingGroupSample = null;
+            if (sessionGroup) {
+                existingGroupSample = await prisma.waterSample.findFirst({
+                    where: {
+                        sessionGroup: sessionGroup,
+                        isDeleted: false,
+                    },
+                    select: {
+                        airTemperature: true,
+                        rainAccumulation: true,
+                        weatherCondCode: true,
+                    },
+                });
+            }
+
+            if (existingGroupSample) {
+                // 🤝 ถ้ารุ่นพี่สารตัวแรกยิงเก็บสภาพอากาศไว้แล้ว หยิบมาแชร์ใช้ด้วยกันเลยครับบอส! (ลดภาระ Network เหลือ 0)
+                finalWeather.airTemperature = existingGroupSample.airTemperature;
+                finalWeather.rainAccumulation = existingGroupSample.rainAccumulation;
+                finalWeather.weatherCondCode = existingGroupSample.weatherCondCode;
+            } else {
+                // 🌐 ถ้ายังไม่มีใครส่งเลย (เราคือสารตัวแรกของเซสชันนี้) ค่อยยิงไปขอ Open-Meteo ครับบอส
+                const weatherInfo = await getWeatherData(location.latitude, location.longitude);
+                if (weatherInfo) {
+                    finalWeather.airTemperature = weatherInfo.airTemperature;
+                    finalWeather.rainAccumulation = weatherInfo.rainAccumulation;
+                    finalWeather.weatherCondCode = weatherInfo.weatherCondCode;
+                }
+            }
         } catch (weatherErr) {
-            console.error("Open-Meteo Weather API Error:", weatherErr);
+            console.error("Weather resolution error:", weatherErr);
         }
 
         let createMeasurementsData: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];
@@ -238,6 +272,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // 💾 3. สั่งบันทึกข้อมูลลงฐานข้อมูลแถวใครแถวมันเหมือนเดิม
         const sample = await prisma.waterSample.create({
             data: {
                 locationId: Number(locationId),
@@ -245,10 +280,10 @@ export async function POST(request: NextRequest) {
                 collectionTime: parsedCollectionTime,
                 dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
 
-                // 🌟 4. แก้แมปคีย์ที่ส่งมาจากโมดูล Open-Meteo ลงกล่องตารางเบสของบอสได้นุ่มนวลเลยครับ
-                airTemperature: weatherInfo ? weatherInfo.airTemperature : null,
-                rainAccumulation: weatherInfo ? weatherInfo.rainAccumulation : null,
-                weatherCondCode: weatherInfo ? weatherInfo.weatherCondCode : null,
+                // 🌟 ผูกค่าสภาพอากาศแบบหลอมรวมกลุ่มก้อนที่คำนวณมาได้ลง Database ครับบอส
+                airTemperature: finalWeather.airTemperature,
+                rainAccumulation: finalWeather.rainAccumulation,
+                weatherCondCode: finalWeather.weatherCondCode,
 
                 status: status.toLowerCase() as WaterStatus,
                 rawImageUrl: mainRawImageUrl,
