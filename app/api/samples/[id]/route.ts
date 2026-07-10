@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 
+type WaterStatus = "safe" | "warning" | "danger";
+
 // ========================================================
-// 📝 PUT /api/samples/[id] — ปรับปรุงและชุบชีวิตประวัติน้ำแบบ Dynamic 100%
+// 📝 PUT /api/samples/[id] — ปรับปรุงประวัติน้ำแบบผูกสืบทอดกลุ่มรหัสเซสชัน
 // ========================================================
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     // 🔥 SECURITY STEP 1: อนุญาตให้เฉพาะระดับสิทธิ์ "admin" เท่านั้น
@@ -18,7 +20,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         const body = await request.json();
         const { collectionTime, locationId, oxygen, measurements } = body;
-        // 💡 measurements ที่ส่งมาควรรองรับรูปแบบ Array: [{ parameterId: 4, value: 0.5 }, ...]
 
         const secureAdmin = auth.user!;
 
@@ -42,19 +43,24 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         });
 
         // 2. จัดการ Payload ผลตรวจสารเคมีตัวใหม่
-        let finalMeasurementsPayload: Array<{ parameterId: number; value: number }> = [];
+        let finalMeasurementsPayload: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];
 
         if (measurements && Array.isArray(measurements)) {
-            // ถ้าน้าบ้านส่งค่าใหม่มาแบบกลุ่ม ให้ใช้ชุดใหม่
             finalMeasurementsPayload = measurements.map((m: any) => ({
                 parameterId: Number(m.parameterId),
                 value: parseFloat(m.value || "0"),
+                confidence: parseFloat(oldSample.measurements[0]?.confidence || "0.90"),
+                boundingBox: oldSample.measurements[0]?.boundingBox || null,
+                message: oldSample.measurements[0]?.message || null,
             }));
         } else {
-            // ถ้าหน้าบ้านไม่ได้ส่งค่าชุดใหม่มา ให้สืบทอดค่าวัดเดิมจากเวอร์ชันเก่าไปเลยแบบ Dynamic
+            // ถ้าหน้าบ้านไม่ได้ส่งค่าชุดใหม่มา ให้สืบทอดค่าวัดเดิมจากเวอร์ชันเก่าไปเลยแบบครบถ้วนทุกฟิลด์
             finalMeasurementsPayload = oldSample.measurements.map((m) => ({
                 parameterId: m.parameterId,
                 value: m.value,
+                confidence: m.confidence,
+                boundingBox: m.boundingBox,
+                message: m.message,
             }));
         }
 
@@ -69,13 +75,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 rainAccumulation: oldSample.rainAccumulation,
                 weatherCondCode: oldSample.weatherCondCode,
                 status: oldSample.status,
+
+                // 🌟 สืบทอดรหัสกลุ่มประจำเซสชันตามไปด้วยเพื่อไม่ให้กลุ่มแตกแยกแถวกันครับบอส!
+                sessionGroup: oldSample.sessionGroup,
+
                 rawImageUrl: oldSample.rawImageUrl,
                 analyzedPlotUrl: oldSample.analyzedPlotUrl,
                 imageExpiresAt: oldSample.imageExpiresAt,
                 isDeleted: false,
                 lastModifiedBy: secureAdmin.id,
 
-                // บันทึกความสัมพันธ์ลงตารางเชื่อมแบบ Dynamic ตาม Payload
                 measurements: {
                     create: finalMeasurementsPayload,
                 },
@@ -112,11 +121,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             isDeleted: createdSample.isDeleted,
             lastModifiedBy: createdSample.lastModifiedBy,
             updatedActiveAt: createdSample.updatedActiveAt,
+            sessionGroup: createdSample.sessionGroup,
+            measurements: createdSample.measurements,
 
-            // สาดก้อนข้อมูลสารเคมีทั้งหมดที่ได้จาก DB ไปหาหน้าบ้าน
             ...dynamicMeasurements,
 
-            // ล็อค Fallback คีย์เดิมกันระบบหน้าบ้านเวอร์ชันเก่าแครช
             ammoniaValue: dynamicMeasurements["ammoniaValue"] ?? null,
             phosphateValue: dynamicMeasurements["phosphateValue"] ?? null,
         };
@@ -129,7 +138,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // ========================================================
-// 🔍 GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำรายชิ้นแบบ Dynamic
+// 🔍 GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำพร้อมควบรวมรูปภาพแยกตาม Parameter ID
 // ========================================================
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     // 🔥 SECURITY STEP 2: บล็อกให้เฉพาะบุคลากรในระบบที่มี Token สิทธิ์เท่านั้นเข้าถึงได้
@@ -142,7 +151,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const { id } = await params;
         const sampleId = Number(id);
 
-        const sample = await prisma.waterSample.findUnique({
+        const mainSample = await prisma.waterSample.findUnique({
             where: { id: sampleId },
             include: {
                 location: true,
@@ -160,46 +169,90 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             },
         });
 
-        if (!sample || sample.isDeleted) {
+        if (!mainSample || mainSample.isDeleted) {
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 
-        // ⚡️ วนลูปแตกกิ่งข้อมูลพารามิเตอร์ทุกตัวที่มีอยู่ใน Database คืนสู่ Client
+        let allMeasurements = [...mainSample.measurements];
+
+        // 🌟 สร้างแผนผังสำหรับผูกเก็บ URL รูปภาพแยกตามไอดีสารเคมี (Parameter ID)
+        const paramImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
+
+        // แนบรูปภาพของสารเคมีตัวแรก (แถวหลักประจำเซสชันนี้) ลงแผนผังก่อน
+        if (mainSample.measurements[0]) {
+            paramImagesMap[mainSample.measurements[0].parameterId] = {
+                raw: mainSample.rawImageUrl,
+                plot: mainSample.analyzedPlotUrl,
+            };
+        }
+
+        // 🔍 ขุดค้นหาเรคคอร์ดสารเคมีตัวอื่น ๆ ที่ถือเลข sessionGroup เดียวกันรอบเซสชันนี้
+        if (mainSample.sessionGroup) {
+            const partnerSamples = await prisma.waterSample.findMany({
+                where: {
+                    sessionGroup: mainSample.sessionGroup,
+                    id: { not: sampleId }, // ไม่เอาตัวซ้ำเดิมที่คิวรีแล้ว
+                    isDeleted: false,
+                },
+                include: {
+                    measurements: {
+                        include: { parameter: true },
+                    },
+                },
+            });
+
+            // ทำการหลอมรวมค่าวัด และดึงไฟล์ภาพจากเรคคอร์ดคู่ขนานมาผูกแยกราย Parameter ID
+            partnerSamples.forEach((ps) => {
+                allMeasurements.push(...ps.measurements);
+
+                if (ps.measurements[0]) {
+                    paramImagesMap[ps.measurements[0].parameterId] = {
+                        raw: ps.rawImageUrl,
+                        plot: ps.analyzedPlotUrl,
+                    };
+                }
+            });
+        }
+
+        // วนลูปแตกกิ่งข้อมูลพารามิเตอร์ทุกตัวคืนสู่ Client แบบแบนราบ
         const dynamicMeasurements: Record<string, number> = {};
-        sample.measurements.forEach((m: any) => {
+        allMeasurements.forEach((m: any) => {
             if (m.parameter?.name) {
                 dynamicMeasurements[`${m.parameter.name.toLowerCase()}Value`] = m.value;
             }
         });
 
         const responseGetData = {
-            id: sample.id,
-            collectorId: sample.collectorId,
-            locationId: sample.locationId,
-            collectionTime: sample.collectionTime,
-            uploadedActiveAt: sample.uploadedActiveAt,
-            dissolvedOxygen: sample.dissolvedOxygen,
-            airTemperature: sample.airTemperature,
-            rainAccumulation: sample.rainAccumulation,
-            weatherCondCode: sample.weatherCondCode,
-            status: sample.status,
-            rawImageUrl: sample.rawImageUrl,
-            analyzedPlotUrl: sample.analyzedPlotUrl,
-            location: sample.location
+            id: mainSample.id,
+            collectorId: mainSample.collectorId,
+            locationId: mainSample.locationId,
+            collectionTime: mainSample.collectionTime,
+            uploadedActiveAt: mainSample.uploadedActiveAt,
+            dissolvedOxygen: mainSample.dissolvedOxygen,
+            airTemperature: mainSample.airTemperature,
+            rainAccumulation: mainSample.rainAccumulation,
+            weatherCondCode: mainSample.weatherCondCode,
+            status: mainSample.status,
+            rawImageUrl: mainSample.rawImageUrl,
+            analyzedPlotUrl: mainSample.analyzedPlotUrl,
+            sessionGroup: mainSample.sessionGroup,
+            location: mainSample.location
                 ? {
-                      id: sample.location.id,
-                      stationName: sample.location.stationName,
-                      governingAgency: sample.location.governingAgency,
-                      latitude: sample.location.latitude,
-                      longitude: sample.location.longitude,
+                      id: mainSample.location.id,
+                      stationName: mainSample.location.stationName,
+                      governingAgency: mainSample.location.governingAgency,
+                      latitude: mainSample.location.latitude,
+                      longitude: mainSample.location.longitude,
                   }
                 : null,
-            collector: sample.collector,
+            collector: mainSample.collector,
+            measurements: allMeasurements,
 
-            // แนบก้อนผลลัพธ์สารแบบ Dynamic
+            // 🌟 พ่วงส่งแผนผังรูปภาพแยกรายสารเคมีตัวนี้ออกไปให้หน้าบ้านด้วยครับบอส!
+            paramImagesMap: paramImagesMap,
+
             ...dynamicMeasurements,
 
-            // เผื่อระบบเก่าเรียกใช้
             ammoniaValue: dynamicMeasurements["ammoniaValue"] ?? null,
             phosphateValue: dynamicMeasurements["phosphateValue"] ?? null,
         };

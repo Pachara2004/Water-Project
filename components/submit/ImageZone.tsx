@@ -1,6 +1,6 @@
 // components/submit/ImageZone.tsx
-import { useRef } from "react";
-import { Camera, ImagePlus, CheckCircle2, AlertTriangle } from "lucide-react"; // 🌟 Import ไอคอนแจ้งเตือนเพิ่มเข้ามาให้ครบ
+import { useRef, useState } from "react"; // 🌟 เพิ่ม useState เข้ามาจัดการสลับโหมดภาพครับบอส
+import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye } from "lucide-react"; // 🌟 Import ไอคอน Eye เพิ่มเข้ามาครับบอส
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult } from "./types";
 import { SectionHead } from "./SharedAtoms";
@@ -9,7 +9,7 @@ interface ImageZoneProps {
     param: DbParameter;
     step: "upload" | "analyzing" | "results";
     preview?: string;
-    plotFile?: File;
+    plotFile?: File | string; // 🌟 ขยายให้รองรับทั้ง File (บลอบหน้าฟอร์ม) และ string (URL หน้าประวัติ) ครับบอส
     measurement?: MeasurementResult;
     onImageFilesChange: (file: File) => void;
     onNearestLocationsUpdate: (locations: any[]) => void;
@@ -21,10 +21,13 @@ interface ImageZoneProps {
 export function ImageZone({ param, step, preview, plotFile, measurement, onImageFilesChange, onNearestLocationsUpdate, allLocations, setIsRecommending }: ImageZoneProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // 🌟 2. ประกาศและคำนวณสเตตัสความเชื่อมั่นของสารตัวนี้ (ดักจับทั้งกรณีเลข 0.6 และ 60)
+    // 🌟 2. เพิ่ม State สำหรับสลับโหมดดูภาพดิบ (raw) หรือ ภาพพล็อต AI (analyzed)
+    const [viewMode, setViewMode] = useState<"raw" | "analyzed">("analyzed");
+
+    // 🌟 3. ประกาศและคำนวณสเตตัสความเชื่อมั่นของสารตัวนี้ (ดักจับทั้งกรณีเลข 0.6 และ 60)
     const hasConf = measurement?.confidence !== undefined;
     const isLowConf = hasConf && measurement.confidence < 0.6;
-    const confDisplay = hasConf ?  `${measurement.confidence}` : "N/A";
+    const confDisplay = hasConf ? `${measurement.confidence}` : "N/A";
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -57,8 +60,22 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
         }
     };
 
+    // 🌟 4. ลอจิกการคำนวณสลับ Path สื่อรูปภาพที่จะแสดงผลบนหน้าจอตาม viewMode
+    const hasPlotImg = !!plotFile;
+
+    const getDisplayedImage = () => {
+        // ถ้าอยู่ในขั้นตอนแสดงผลลัพธ์ (results) และผู้ใช้เลือกดูโหมดพล็อต AI และมีรูปพล็อตอยู่จริง
+        if (step === "results" && viewMode === "analyzed" && hasPlotImg) {
+            return plotFile instanceof Blob ? URL.createObjectURL(plotFile) : plotFile;
+        }
+        // กรณีอื่น ๆ ให้แสดงผลภาพดิบตัวหลักตัวเดิมของบอสครับ
+        return preview;
+    };
+
+    const displayImgSrc = getDisplayedImage();
+
     return (
-        /* 🌟 3. เพิ่ม Dynamic Class บนกรอบ Section: ถ้าไม่ผ่านเปลี่ยนเป็นขอบแดง-พื้นแดงจาง ถ้าผ่านเปลี่ยนเป็นขอบเขียว-พื้นเขียวจาง */
+        /* 🌟 5. เพิ่ม Dynamic Class บนกรอบ Section: ถ้าไม่ผ่านเปลี่ยนเป็นขอบแดง-พื้นแดงจาง ถ้าผ่านเปลี่ยนเป็นขอบเขียว-พื้นเขียวจาง */
         <section className={`rounded-xl overflow-hidden border border-border transition-all duration-300 bg-surface`}>
             <div className="text-sm font-semibold ">
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
@@ -84,7 +101,7 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
                 <div
                     onClick={() => step === "upload" && fileInputRef.current?.click()}
                     className={`relative w-full rounded-xl border-3 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
-                    ${step === "analyzing" ? "aspect-4/3 border-slate-700 bg-slate-950 cursor-default" : preview ? "aspect-4/3 border-teal-500/30 bg-surface-subtle cursor-pointer" : "aspect-square border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"}
+                    ${step === "analyzing" ? "aspect-4/3 border-slate-700 bg-slate-950 cursor-default" : displayImgSrc ? "aspect-4/3 border-teal-500/30 bg-surface-subtle cursor-pointer" : "aspect-square border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"}
                     ${isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                 >
                     {step === "analyzing" ? (
@@ -92,8 +109,25 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
                             {preview && <img src={preview} alt={param.name} className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
                             <div className="animate-laser" />
                         </>
-                    ) : preview || plotFile ? (
-                        <img src={step === "results" && plotFile instanceof Blob ? URL.createObjectURL(plotFile) : preview} alt={param.name} className="w-full h-full object-contain" />
+                    ) : displayImgSrc ? (
+                        <>
+                            {/* 🌟 6. เปลี่ยนมาเรนเดอร์รูปภาพตัวแปรสลับผลลัพธ์ (displayImgSrc) แทนก้อนเดิมครับบอส */}
+                            <img src={displayImgSrc} alt={param.name} className="w-full h-full object-contain" />
+
+                            {/* 🌟 7. ปุ่มสลับดูภาพดิบ/ภาพพล็อต AI บริเวณมุมซ้ายบนของรูปภาพ (แสดงเมื่อแสดงผลลัพธ์และมีภาพพล็อต) */}
+                            {step === "results" && hasPlotImg && (
+                                <div
+                                    className="absolute top-3 right-3 flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // 🚨 บล็อกไม่ให้การคลิกปุ่มสลับรูปภาพ ทะลุไปเปิดฟังก์ชันเปลี่ยนรูปภาพพื้นหลังครับบอส
+                                        setViewMode(viewMode === "analyzed" ? "raw" : "analyzed");
+                                    }}
+                                >
+                                    <Eye size={12} strokeWidth={2.5} />
+                                    <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <div className="flex flex-col items-center gap-3 px-8 text-center py-8">
                             <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center border border-border">

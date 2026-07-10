@@ -5,13 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import { evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
-import { ArrowLeft, Calendar, Database, MapPin, Pencil, User, X, Thermometer, CloudRain, Waves } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Pencil, User, FlaskConical, Thermometer, CloudRain, Waves } from "lucide-react";
 import { getWeatherConditionLabel } from "@/lib/weather";
 
-// 🌟 Import คอมโพเนนต์ระบุสถานะสีที่ทำเออร์เรอร์รอบที่แล้วกลับมาให้ครบถ้วนแล้วครับบอส
 import StatusBadge from "@/components/map/StatusBadge";
-
-// Import คอมโพเนนต์ตัวมาสเตอร์หลักชุดจริงจากดีไซน์หน้า Submit
 import { ImageZone } from "@/components/submit/ImageZone";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 
@@ -36,6 +33,7 @@ interface SampleDetail {
     status: WaterStatus;
     rawImageUrl: string | null;
     analyzedPlotUrl: string | null;
+    paramImagesMap?: Record<number, { raw: string | null; plot: string | null }>;
     location: {
         id: number;
         stationName: string;
@@ -77,26 +75,18 @@ export default function CollectorHistoryDetailPage() {
     const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
     const locationDropdownRef = useRef<HTMLDivElement>(null);
 
-    // ── 1. ค้นหาและสร้างพารามิเตอร์แบบ Dynamic จาก Array จริงใน DB ──
-    // 🚀 ปรับโค้ดเฉพาะ 2 ส่วนนี้ในไฟล์ page.tsx ครับบอส
-
-    // 1. ตรวจเช็คคีย์สารเคมีที่พ่นมาจาก Backend แบบ Dynamic 100%
+    // ── 1. ค้นหาและสร้างพารามิเตอร์แบบ Dynamic จากโครงสร้าง measurements จริงในเรคคอร์ดนี้ ──
     const systemParameters = useMemo(() => {
-        if (!sample) return [];
+        if (!sample || !Array.isArray(sample.measurements)) return [];
 
-        // กำหนดรูปแบบสารที่ระบบรองรับ (ดึง ID มาสเตอร์ตามจริงจาก Database)
-        // สาร Phosphate มักจะเป็น ID: 1 และ Ammonia เป็น ID: 2
-        const availableParams = [
-            { id: 1, name: "phosphate", unit: "mg/L", key: "phosphateValue" },
-            { id: 2, name: "ammonia", unit: "mg/L", key: "ammoniaValue" },
-        ];
-
-        // ⚡️ กรองเอาเฉพาะสารเคมีที่มีการส่งข้อมูลค่าตรวจจริงมาจาก Database เท่านั้น
-        return availableParams.filter((param) => sample[param.key] !== undefined && sample[param.key] !== null);
+        return sample.measurements.map((m: any) => ({
+            id: m.parameter?.id || m.parameterId,
+            name: m.parameter?.name || "unknown",
+            unit: m.parameter?.unit || "mg/L",
+        }));
     }, [sample]);
 
-    // ── 2. ปรับการแมปข้อมูลงัดก้อนสัมพันธ์มาสร้างเป็นสเตตส่งคอมโพเนนต์ ──
-    // ── 2. ดึงความสัมพันธ์แบบ Dynamic สกัดค่ารายสารและผูกรูปภาพตามพารามิเตอร์จริง ──
+    // ── 2. ดึงความสัมพันธ์แบบ Dynamic สกัดค่ารายสารและผูกรูปภาพตามสเปกจริงประจำเรคคอร์ด ──
     const mockSubmitHook = useMemo(() => {
         if (!sample || systemParameters.length === 0) return null;
 
@@ -104,25 +94,23 @@ export default function CollectorHistoryDetailPage() {
         const imagePreviewsMap: Record<number, string> = {};
         const imagePlotFilesMap: Record<number, any> = {};
 
-        // ⚡️ วนลูปจับคู่โครงสร้างสารเคมีจากระบบอัปโหลดจริง (อิงตาม Parameter ID)
         systemParameters.forEach((param) => {
             const paramId = param.id;
-            const paramNameLower = param.name.toLowerCase(); // "phosphate" หรือ "ammonia"
+            const paramNameLower = param.name.toLowerCase();
 
-            // 🟢 1. สกัดค่าตรวจวัดและระดับความแม่นยำ (Confidence)
-            // เช็คทั้งในรูปก้อนย่อย หรือคีย์หลักของสาร เช่น phosphateValue
+            const mData = Array.isArray(sample.measurements) ? sample.measurements.find((m: any) => (m.parameter?.id || m.parameterId) === paramId) : null;
+
             resultsMap[paramId] = {
-                concentrated: sample[`${paramNameLower}Value`] ?? sample[`${paramNameLower}Val`] ?? 0,
-                confidence: sample[`${paramNameLower}Confidence`] ?? sample.confidence ?? (paramId === 1 ? 0.92 : 0.89),
+                concentrated: mData ? mData.value : (sample[`${paramNameLower}Value`] ?? sample[`${paramNameLower}Val`] ?? 0),
+                confidence: mData ? mData.confidence : (sample[`${paramNameLower}Confidence`] ?? sample.confidence ?? 0.9),
                 status: sample.status,
             };
 
-            // 📸 2. แก้ปัญหาชื่อไฟล์: เจาะจงชี้ไปที่ Pattern คีย์ของสารตัวนั้น ๆ
-            // เช็คว่าใน Object มีการระบุฟิลด์รูปแยกตาม ID สารเคมีหรือไม่ เช่น sample.image_raw_1
-            imagePreviewsMap[paramId] = sample[`image_raw_${paramId}`] || sample[`rawImageUrl_${paramNameLower}`] || sample[`${paramNameLower}RawUrl`] || sample.rawImageUrl || "";
+            // 🌟 ดึงรูปภาพแยกรายสารเคมีที่ถูกต้องผ่านแผนผัง paramImagesMap ที่หลังบ้านแมปคู่ขนานส่งมาให้ครับบอส!
+            const specificImages = sample.paramImagesMap?.[paramId];
 
-            // 📈 3. เจาะจงชี้หา Path รูปภาพกราฟผลวิเคราะห์ตาม ID สารเคมี เช่น sample.image_plot_1
-            imagePlotFilesMap[paramId] = sample[`image_plot_${paramId}`] || sample[`analyzedPlotUrl_${paramNameLower}`] || sample[`${paramNameLower}PlotUrl`] || sample.analyzedPlotUrl || "";
+            imagePreviewsMap[paramId] = specificImages?.raw || sample.rawImageUrl || "";
+            imagePlotFilesMap[paramId] = specificImages?.plot || sample.analyzedPlotUrl || "";
         });
 
         return {
@@ -132,7 +120,7 @@ export default function CollectorHistoryDetailPage() {
             imagePlotFiles: imagePlotFilesMap,
             locationType: "COMMUNITY",
             overallStatus: sample.status,
-            step: "results" as const, // ล็อคสเตตเป็น results เพื่อบังคับ ImageZone แสดงภาพ Plot วิเคราะห์
+            step: "results" as const,
             saved: true,
             setImageFiles: () => {},
             setImagePreviews: () => {},
@@ -224,32 +212,19 @@ export default function CollectorHistoryDetailPage() {
     const filteredLocations = locations.filter((l) => l.name?.toLowerCase().includes(locationSearch.toLowerCase()) || l.agency?.toLowerCase().includes(locationSearch.toLowerCase()));
     const isLocationValid = locations.some((l) => String(l.id) === editData.locationId && l.name === locationSearch) || (locations.length === 0 && editData.locationId !== "");
 
-    // 🟢 โค้ดใหม่: แยกเคส Loading / Error ให้เคลียร์ชัดเจน
-    if (loading) {
-        return <div className="min-h-screen text-center p-8 text-xs text-text-muted">กำลังดึงข้อมูลประวัติ...</div>;
-    }
-
-    if (error) {
-        return <div className="min-h-screen text-center p-8 text-xs text-red-500">เกิดข้อผิดพลาด: {error}</div>;
-    }
-
-    if (!sample) {
-        return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่พบข้อมูลประวัติ</div>;
-    }
-
-    // ถ้าถึงตรงนี้แต่สารเคมียังโหลดไม่เสร็จหรือไม่มีข้อมูลสารเลย ให้ดักบอกสถานะ
-    if (!mockSubmitHook) {
-        return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่มีข้อมูลพารามิเตอร์เคมีในระบบ</div>;
-    }
+    if (loading) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">กำลังดึงข้อมูลประวัติ...</div>;
+    if (error) return <div className="min-h-screen text-center p-8 text-xs text-red-500">เกิดข้อผิดพลาด: {error}</div>;
+    if (!sample) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่พบข้อมูลประวัติ</div>;
+    if (!mockSubmitHook) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่มีข้อมูลพารามิเตอร์เคมีในระบบ</div>;
 
     const collectorFullName = `${sample.collector.firstName || ""} ${sample.collector.lastName || ""}`.trim() || sample.collector.lineProfileName;
 
     const HistoryMetaBlocks = () => (
         <div className="space-y-4">
             <section className="rounded-xl bg-surface overflow-hidden border border-border p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-border pb-2.5">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary font-bold">ข้อมูลจุดตรวจวัด</span>
-                    <StatusBadge status={sample.status} size="sm" />
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                    <span className="text-xs text-primary font-bold">ข้อมูลจุดตรวจวัด</span>
+                    <StatusBadge status={sample.status} size="md" />
                 </div>
                 {isEditing ? (
                     <div ref={locationDropdownRef} className="relative mt-2">
@@ -285,20 +260,18 @@ export default function CollectorHistoryDetailPage() {
                         )}
                     </div>
                 ) : (
-                    <div className="flex items-start gap-2 text-xs pt-1">
-                        <MapPin size={14} className="text-teal-600 mt-0.5 shrink-0" />
+                    <div className="flex items-start gap-2 text-xs pt-1 p-1">
+                        <MapPin size={24} className="text-teal-600 mt-0.5 shrink-0" />
                         <div>
                             <p className="font-bold text-text-primary text-sm">{sample.location.stationName}</p>
-                            <p className="text-[11px] text-text-muted mt-0.5">{sample.location.governingAgency}</p>
+                            <p className="text-xs text-text-muted mt-0.5">{sample.location.governingAgency}</p>
                         </div>
                     </div>
                 )}
-            </section>
 
-            <section className="rounded-xl bg-surface overflow-hidden border border-border p-4 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-xl px-4 py-3">
-                        <Calendar size={13} className="text-teal-600 shrink-0" />
+                        <Calendar size={24} className="text-secondary shrink-0" />
                         {isEditing ? (
                             <input
                                 title="input"
@@ -312,16 +285,16 @@ export default function CollectorHistoryDetailPage() {
                         )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-xl px-4 py-3">
-                        <User size={13} className="text-teal-600" />
+                        <User size={24} className="text-secondary" />
                         <span className="font-bold truncate">{collectorFullName}</span>
                     </div>
                 </div>
-            </section>
-
-            <section className="rounded-xl bg-surface overflow-hidden border border-border p-4 space-y-4">
-                <div>
-                    <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block mb-1.5">ปริมาณออกซิเจนละลายน้ำ (Dissolved Oxygen)</label>
-                    <div className="flex items-center justify-between gap-3 w-full px-4 py-2.5 bg-surface-subtle border border-border rounded-xl min-h-[44px]">
+                <div className="bg-surface-subtle border border-border rounded-xl p-4">
+                    <div className="flex items-center justify-between gap-2 w-full">
+                        <div className="flex items-center gap-2">
+                            <FlaskConical size={24} className="text-secondary" />
+                            <p className="text-xs font-bold text-secondary">ปริมาณออกซิเจนละลายน้ำ</p>
+                        </div>
                         {isEditing ? (
                             <input
                                 type="number"
@@ -329,32 +302,42 @@ export default function CollectorHistoryDetailPage() {
                                 value={editData.oxygen}
                                 onChange={(e) => setEditData((p) => ({ ...p, oxygen: e.target.value }))}
                                 placeholder="ไม่ได้ระบุ"
-                                className="flex-1 text-xs font-bold text-text-primary bg-transparent outline-none"
+                                className="flex-1 text-xs font-bold text-text-primary bg-transparent text-right outline-none px-2"
                             />
                         ) : (
-                            <span className="text-xs font-bold text-text-primary">{sample.dissolvedOxygen === null ? "ไม่ได้ระบุ" : sample.dissolvedOxygen.toFixed(2)}</span>
+                            <span className="text-xs font-bold text-text-primary ml-auto pr-2">{sample.dissolvedOxygen === null ? "-" : sample.dissolvedOxygen.toFixed(2)}</span>
                         )}
-                        <span className="font-mono text-[9px] text-text-muted">mg/L</span>
+                        <span className="text-xs font-bold shrink-0">mg/L</span>
                     </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-surface-subtle border border-border rounded-xl p-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-[9px] text-text-muted font-bold uppercase">
-                            <Thermometer size={11} className="text-teal-600" /> Temp
+
+                <div className="grid grid-cols-1 gap-2">
+                    <div className="bg-surface-subtle border border-border rounded-xl p-4 text-center">
+                        <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-2">
+                                <Thermometer size={24} className="text-secondary" />
+                                <p className="text-xs font-bold text-secondary">อุณหภูมิ</p>
+                            </div>
+                            <p className="text-sm font-bold text-text-primary">{sample.airTemperature === null ? "-" : `${sample.airTemperature.toFixed(1)} °C`}</p>
                         </div>
-                        <p className="text-xs font-bold text-text-primary mt-1">{sample.airTemperature === null ? "-" : `${sample.airTemperature.toFixed(1)} °C`}</p>
                     </div>
-                    <div className="bg-surface-subtle border border-border rounded-xl p-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-[9px] text-text-muted font-bold uppercase">
-                            <CloudRain size={11} className="text-teal-600" /> Rain
+                    <div className="bg-surface-subtle border border-border rounded-xl p-4 text-center">
+                        <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-2">
+                                <CloudRain size={24} className="text-secondary" />
+                                <p className="text-xs font-bold text-secondary">ปริมาณฝน</p>
+                            </div>
+                            <p className="text-sm font-bold text-text-primary">{sample.rainAccumulation === null ? "-" : `${sample.rainAccumulation.toFixed(1)} mm`}</p>
                         </div>
-                        <p className="text-xs font-bold text-text-primary mt-1">{sample.rainAccumulation === null ? "-" : `${sample.rainAccumulation.toFixed(1)} mm`}</p>
                     </div>
-                    <div className="bg-surface-subtle border border-border rounded-xl p-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-[9px] text-text-muted font-bold uppercase">
-                            <Waves size={11} className="text-teal-600" /> Weather
+                    <div className="bg-surface-subtle border border-border rounded-xl p-4 text-center">
+                        <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-2">
+                                <Waves size={24} className="text-secondary" />
+                                <p className="text-xs font-bold text-secondary">สภาพอากาศ</p>
+                            </div>
+                            <p className="text-sm font-bold text-text-primary truncate">{getWeatherConditionLabel(sample.weatherCondCode ?? undefined)}</p>
                         </div>
-                        <p className="text-[10px] font-bold text-text-primary mt-1 truncate">{getWeatherConditionLabel(sample.weatherCondCode ?? undefined)}</p>
                     </div>
                 </div>
             </section>
@@ -363,7 +346,6 @@ export default function CollectorHistoryDetailPage() {
 
     return (
         <div className="min-h-screen w-full bg-primary pb-5 antialiased">
-            {/* ── Top Navigation Bar ── */}
             <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
                 <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-text-secondary min-h-11">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
@@ -415,9 +397,8 @@ export default function CollectorHistoryDetailPage() {
 
             {/* 💻 DESKTOP VIEW COMPONENT */}
             <div className="hidden md:block m-4">
-                <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-[600px]">
-                    {/* ฝั่งซ้าย: Sidebar */}
-                    <aside className="w-[200px] border-r border-border bg-surface flex flex-col p-4 flex-shrink-0">
+                <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-150">
+                    <aside className="w-[200px] border-r border-border bg-surface flex flex-col p-4 shrink-0">
                         <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-2">ประวัติการตรวจ</p>
                         <div className="space-y-2 py-2 border-b">
                             <div className="flex flex-col">
@@ -447,12 +428,10 @@ export default function CollectorHistoryDetailPage() {
                         </div>
                     </aside>
 
-                    {/* ซีกกลาง */}
                     <div className="flex flex-col flex-1 border-r border-border p-4 gap-4 max-h-[75vh] overflow-y-auto">
                         <HistoryMetaBlocks />
                     </div>
 
-                    {/* ซีกขวา */}
                     <div className="flex flex-col flex-1 p-4 gap-4 max-h-[75vh] overflow-y-auto">
                         {systemParameters.map((param) => (
                             <ImageZone
