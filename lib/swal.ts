@@ -11,7 +11,8 @@ export type SwalTone = "danger" | "warning" | "primary";
 
 const TONE_COLOR: Record<SwalTone, string> = {
     danger: "#F43F5E",
-    warning: "#F9A825",
+    // เดิม #F9A825 ให้ contrast กับไอคอน/ปุ่มตัวอักษรขาวแค่ 1.97:1 ไม่ผ่านเกณฑ์ non-text 3:1 ของ WCAG
+    warning: "#B45309",
     primary: "var(--color-primary, #06647F)",
 };
 

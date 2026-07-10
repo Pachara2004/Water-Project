@@ -191,7 +191,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                             <form onSubmit={handleNextStep} className="mt-6 space-y-4">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-semibold text-primary uppercase tracking-wider block">ชื่อ - นามสกุลจริง</label>
+                                    <label className="text-[10px] font-semibold text-navy-light uppercase tracking-wider block">ชื่อ - นามสกุลจริง</label>
                                     <div className="relative">
                                         <input
                                             type="text"
@@ -205,7 +205,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-semibold text-primary uppercase tracking-wider block">เบอร์โทรศัพท์มือถือ</label>
+                                    <label className="text-[10px] font-semibold text-navy-light uppercase tracking-wider block">เบอร์โทรศัพท์มือถือ</label>
                                     <div className="relative">
                                         <input
                                             type="tel"

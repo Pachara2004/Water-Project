@@ -69,7 +69,9 @@
 
   --color-primary: #06647F;
   --color-primary-light: #F1F5F9;
-  --color-secondary: #5FA7BB;
+  --color-secondary: #2E7A91;
+  /* เดิม #5FA7BB ให้ contrast แค่ 2.72:1 บนพื้นขาว ไม่ผ่าน WCAG AA (4.5:1)
+     ตอนใช้เป็นสีตัวอักษร/ไอคอนเล็กตรง ๆ (เช่น text-secondary ใน ResultsPanel, StatusFilterBar) */
 
   /* Semantic Standards */
   --color-safe: #10B981;
@@ -110,7 +112,8 @@
 
   --color-text-primary: #F8FAFC;
   --color-text-secondary: #CBD5E1;
-  --color-text-muted: #64748B;
+  --color-text-muted: #94A3B8;
+  /* เดิม #64748B ให้ contrast แค่ 3.75:1 บนพื้น dark surface ไม่ผ่าน AA (4.5:1) สำหรับตัวอักษรขนาดปกติ */
 
   --color-border: #1E293B;
 }
