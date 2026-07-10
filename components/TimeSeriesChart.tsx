@@ -24,9 +24,9 @@ export default function TimeSeriesChart({ data }: TimeSeriesChartProps) {
 
     return (
         // ล็อกความสูง h-[280px] ที่ตัวนอกสุดเพื่อเคลียร์บั๊ก ResponsiveContainer หดเหลือ 0px ของ Recharts
-        <div className="w-full h-[280px] mt-5 p-4 bg-surface border border-border/40 rounded-2xl shadow-sm">
-            <h3 className="text-xs font-bold text-text-secondary mb-3 px-1">แนวโน้มคุณภาพน้ำ (ย้อนหลัง)</h3>
-            <div className="w-full h-[210px]">
+        <div className="w-full h-70 mt-5 p-4 bg-surface border border-border rounded-2xl ">
+            <h3 className="text-sm font-semibold text-primary mb-4 text-center">แนวโน้มคุณภาพน้ำ</h3>
+            <div className="w-full h-52.5">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={data}

@@ -9,7 +9,7 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        const isDark = document.documentElement.classList.contains("dark");
+        const isDark = document.documentElement.classList.contains("light");
         if (isDark) {
             useAppStore.getState().setTheme("dark");
         } else {
@@ -25,7 +25,7 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
         if (showLabel) {
             return (
                 <div className="flex items-center gap-2.5 h-10 px-4 rounded-2xl bg-surface border border-border opacity-50">
-                    <div className="w-4 h-4 flex-shrink-0" />
+                    <div className="w-4 h-4 shrink-0" />
                     <span className="text-xs font-bold whitespace-nowrap invisible">โหมดสว่าง</span>
                 </div>
             );
