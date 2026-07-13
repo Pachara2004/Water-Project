@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { ShieldAlert, User, Send, ArrowLeft } from "lucide-react";
+import { useToast } from "./useToast";
 
 // โครงสร้างสำหรับเก็บสถานะ Realtime Validation แยกฟิลด์
 interface FieldErrors {
@@ -13,6 +14,7 @@ interface FieldErrors {
 }
 
 export default function LiffProvider({ children }: { children: React.ReactNode }) {
+    const { showToast, toastElement } = useToast();
     const [liffLoaded, setLiffLoaded] = useState(false);
     const [liffError, setLiffError] = useState<string | null>(null);
     const currentUser = useAppStore((state) => state.currentUser);
@@ -173,47 +175,52 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
     // จัดการเมื่อส่งคำร้องขั้นสุดท้าย
     const handleFinalSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!currentUser) return;
-        if (!selectedRole) {
-            setGlobalError("กรุณาเลือกตำแหน่งระบบที่ท่านต้องการส่งคำร้องขอสิทธิ์");
-            return;
+    e.preventDefault();
+    if (!currentUser) return;
+    if (!selectedRole) {
+        setGlobalError("กรุณาเลือกตำแหน่งระบบที่ท่านต้องการส่งคำร้องขอสิทธิ์");
+        return;
+    }
+
+    setSubmitting(true);
+    setGlobalError(null);
+
+    try {
+        const res = await fetch("/api/auth/onboarding", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${liff.getAccessToken()}`,
+            },
+            body: JSON.stringify({
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                phoneNumber: phoneNumber.trim(),
+                requestedRoleName: selectedRole,
+            }),
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
         }
 
-        setSubmitting(true);
-        setGlobalError(null);
-
-        try {
-            const res = await fetch("/api/auth/onboarding", {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${liff.getAccessToken()}`,
-                },
-                body: JSON.stringify({
-                    firstName: firstName.trim(),
-                    lastName: lastName.trim(),
-                    phoneNumber: phoneNumber.trim(),
-                    requestedRoleName: selectedRole,
-                }),
-            });
-
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-            }
-
-            const resData = await res.json();
-            if (resData.success) {
-                setUser(resData.user);
-            }
-        } catch (err: unknown) {
-            const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
-            setGlobalError(errMsg);
-        } finally {
-            setSubmitting(false);
+        const resData = await res.json();
+        if (resData.success) {
+            // แจ้งเตือนความสำเร็จเมื่อส่งคำร้องสำเร็จเรียบร้อย
+            showToast("ส่งคำร้องขอเข้าระบบเรียบร้อยแล้ว รอการอนุมัติ", "success");
+            setUser(resData.user);
         }
-    };
+    } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
+        setGlobalError(errMsg);
+        
+        // แจ้งเตือนฝั่ง Error แดงในกรณีที่ระบบหลังบ้านหรือเน็ตเวิร์กมีปัญหา
+        showToast(errMsg, "danger");
+    } finally {
+        setSubmitting(false);
+    }
+};
 
     // ช่วยคำนวณปุ่มเปิดปิด
     const isFormInvalid = !firstName.trim() || !lastName.trim() || phoneNumber.length < 10 || !!errors.firstName || !!errors.lastName || !!errors.phoneNumber;
@@ -483,5 +490,9 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         );
     }
 
-    return <>{children}</>;
+    return (
+        <>
+            {children} {toastElement}
+        </>
+    );
 }
