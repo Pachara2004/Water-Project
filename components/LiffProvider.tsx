@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { Phone, UserPen, ShieldAlert, User, Send, ArrowLeft } from "lucide-react";
+import { ShieldAlert, User, Send, ArrowLeft } from "lucide-react";
+
+// โครงสร้างสำหรับเก็บสถานะ Realtime Validation แยกฟิลด์
+interface FieldErrors {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+}
 
 export default function LiffProvider({ children }: { children: React.ReactNode }) {
     const [liffLoaded, setLiffLoaded] = useState(false);
@@ -13,11 +20,15 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
     // ─── Flow & Onboarding States ───
     const [step, setStep] = useState<1 | 2>(1); // Step 1: Info, Step 2: Select Role
-    const [fullName, setFullName] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
     const [selectedRole, setSelectedRole] = useState<string>(""); // เก็บบทบาทที่ต้องการร้องขอ
     const [submitting, setSubmitting] = useState(false);
-    const [formError, setFormError] = useState<string | null>(null);
+
+    // จัดการระบบ Realtime Validation แยกส่วนย่อย
+    const [errors, setErrors] = useState<FieldErrors>({});
+    const [globalError, setGlobalError] = useState<string | null>(null);
 
     useEffect(() => {
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
@@ -81,40 +92,98 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             });
     }, [setUser]);
 
-    // จัดการเมื่อกดปุ่มหน้าแรก: ตรวจสอบความถูกต้องเฉย ๆ แล้วเปลี่ยนหน้า (ยังไม่ยิง API)
-    const handleNextStep = (e: React.FormEvent) => {
-        e.preventDefault();
-        const trimmedName = fullName.trim();
-        if (!trimmedName) {
-            setFormError("กรุณากรอกชื่อ-นามสกุลจริงของคุณ");
-            return;
+    // ─── Realtime Validation Logic (Enterprise Standard) ───
+    const validateField = (name: keyof FieldErrors, value: string, currentContext = { firstName, lastName, phoneNumber }) => {
+        let errorMsg = "";
+        const cleanVal = value.trim();
+
+        const nameRegex = /^[A-Za-z]+$/;
+        const nameThaiRegex = /^[ก-์]+$/;
+
+        if (name === "firstName") {
+            if (!cleanVal) {
+                errorMsg = "กรุณากรอกชื่อจริง";
+            } else if (cleanVal.length < 2) {
+                errorMsg = "ต้องยาวอย่างน้อย 2 ตัวอักษร";
+            } else if (!nameRegex.test(cleanVal) && !nameThaiRegex.test(cleanVal)) {
+                errorMsg = "ใช้ได้เฉพาะ ไทย หรือ อังกฤษ ล้วน";
+            } else if (nameThaiRegex.test(cleanVal) && /^([ก-ฮ])\1{2,}$/.test(cleanVal)) {
+                errorMsg = "รูปแบบตัวอักษรซ้ำไม่ถูกต้อง";
+            } else if (nameRegex.test(cleanVal) && (/([A-Za-z])\1{2,}/.test(cleanVal) || /asdf|qwerty|zxcv/i.test(cleanVal))) {
+                errorMsg = "รูปแบบอักษรไม่เหมาะสม";
+            }
         }
-        if (!/^[0-9]{10}$/.test(phoneNumber)) {
-            setFormError("กรุณากรอกเบอร์โทรศัพท์มือถือให้ครบ 10 หลัก");
-            return;
+
+        if (name === "lastName") {
+            if (!cleanVal) {
+                errorMsg = "กรุณากรอกนามสกุล";
+            } else if (cleanVal.length < 2) {
+                errorMsg = "ต้องยาวอย่างน้อย 2 ตัวอักษร";
+            } else if (!nameRegex.test(cleanVal) && !nameThaiRegex.test(cleanVal)) {
+                errorMsg = "ใช้ได้เฉพาะ ไทย หรือ อังกฤษ ล้วน";
+            } else if (nameThaiRegex.test(cleanVal) && /^([ก-ฮ])\1{2,}$/.test(cleanVal)) {
+                errorMsg = "รูปแบบตัวอักษรซ้ำไม่ถูกต้อง";
+            } else if (nameRegex.test(cleanVal) && (/([A-Za-z])\1{2,}/.test(cleanVal) || /asdf|qwerty|zxcv/i.test(cleanVal))) {
+                errorMsg = "รูปแบบอักษรไม่เหมาะสม";
+            }
         }
-        setFormError(null);
-        setStep(2); // ย้ายไปหน้าเลือก Role ทันที
+
+        if (name === "phoneNumber") {
+            if (!cleanVal) {
+                errorMsg = "กรุณากรอกเบอร์โทรศัพท์";
+            } else if (!/^[0-9]{10}$/.test(cleanVal)) {
+                errorMsg = "ต้องเป็นตัวเลขครบ 10 หลัก";
+            } else if (!/^(06|08|09)/.test(cleanVal)) {
+                errorMsg = "ต้องขึ้นต้นด้วย 06, 08 หรือ 09";
+            } else if (/^(\d)\1{9}$/.test(cleanVal)) {
+                errorMsg = "ไม่รองรับเลขซ้ำล้วน";
+            } else if ("01234567890987654321".includes(cleanVal)) {
+                errorMsg = "ไม่รองรับเลขเรียงกันกระชั้นชิด";
+            }
+        }
+
+        setErrors((prev) => ({ ...prev, [name]: errorMsg }));
+        return !errorMsg;
     };
 
-    // จัดการเมื่อกดปุ่มส่งในหน้าเลือก Role: ยิง API ม้วนเดียวจบ
+    // จัดการเมื่อเปลี่ยนหน้า Step 1 -> 2
+    const handleNextStep = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // ทริกเกอร์เช็คซ้ำรอบสุดท้ายก่อนข้ามขั้นตอน
+        const isFirstValid = validateField("firstName", firstName);
+        const isLastValid = validateField("lastName", lastName);
+        const isPhoneValid = validateField("phoneNumber", phoneNumber);
+
+        if (!isFirstValid || !isLastValid || !isPhoneValid) return;
+
+        // เช็คข้ามสายพันธุ์ (ภาษาไทยผสมอังกฤษ)
+        const nameThaiRegex = /^[ก-์]+$/;
+        const isFirstThai = nameThaiRegex.test(firstName.trim());
+        const isLastThai = nameThaiRegex.test(lastName.trim());
+
+        if (firstName.trim() && lastName.trim() && isFirstThai !== isLastThai) {
+            setGlobalError("กรุณาใช้ภาษาเดียวกันทั้งชื่อและนามสกุล");
+            return;
+        }
+
+        setGlobalError(null);
+        setStep(2);
+    };
+
+    // จัดการเมื่อส่งคำร้องขั้นสุดท้าย
     const handleFinalSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) return;
         if (!selectedRole) {
-            setFormError("กรุณาเลือกตำแหน่งระบบที่ท่านต้องการส่งคำร้องขอสิทธิ์");
+            setGlobalError("กรุณาเลือกตำแหน่งระบบที่ท่านต้องการส่งคำร้องขอสิทธิ์");
             return;
         }
 
-        const nameParts = fullName.trim().split(/\s+/);
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(" ") || "";
-
         setSubmitting(true);
-        setFormError(null);
+        setGlobalError(null);
 
         try {
-            // บรรทัดที่ 117 ที่เกิดปัญหา
             const res = await fetch("/api/auth/onboarding", {
                 method: "PUT",
                 headers: {
@@ -122,9 +191,9 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
-                    firstName,
-                    lastName,
-                    phoneNumber,
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                    phoneNumber: phoneNumber.trim(),
                     requestedRoleName: selectedRole,
                 }),
             });
@@ -140,11 +209,14 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             }
         } catch (err: unknown) {
             const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
-            setFormError(errMsg);
+            setGlobalError(errMsg);
         } finally {
             setSubmitting(false);
         }
     };
+
+    // ช่วยคำนวณปุ่มเปิดปิด
+    const isFormInvalid = !firstName.trim() || !lastName.trim() || phoneNumber.length < 10 || !!errors.firstName || !!errors.lastName || !!errors.phoneNumber;
 
     if (!liffLoaded) {
         return (
@@ -171,66 +243,139 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         );
     }
 
-    // แผง Onboarding Guard ดักจับบังคับทำรายการ
     if (currentUser && !currentUser.phoneNumber) {
         return (
-            <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6 transition-all">
+            <div className="fixed inset-0 z-2000 flex items-center justify-center p-4 sm:p-6 transition-all">
                 <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 inset-shadow-sm shadow-sm flex flex-col justify-between animate-fade-in">
-                    {/* STEP 1: หน้าฟอร์มข้อมูลส่วนบุคคลตามรูปภาพต้นฉบับ */}
+                    {/* STEP 1: หน้าข้อมูลส่วนบุคคลแบบ Realtime Validation */}
                     {step === 1 && (
                         <>
                             <div className="text-center space-y-2.5">
-                                <div className="w-14 h-14  text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 inset-shadow-sm shadow-sm mb-4">
+                                <div className="w-14 h-14 text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 inset-shadow-sm shadow-sm mb-4">
                                     <User size={36} strokeWidth={3} />
                                 </div>
                                 <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">ลงทะเบียนเข้าใช้งานครั้งแรก</h1>
-                                <p className="text-xs text-text-primary leading-relaxed max-w-[92%] mx-auto">
-                                    กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำชายฝั่ง
-                                </p>
+                                <p className="text-xs text-black leading-relaxed  mx-auto">กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำ</p>
                             </div>
 
-                            <form onSubmit={handleNextStep} className="mt-6 space-y-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-semibold text-navy-light uppercase tracking-wider block">ชื่อ - นามสกุลจริง</label>
+                            <form onSubmit={handleNextStep} className="mt-6">
+                                {/* ช่องกรอกชื่อจริง */}
+                                <div className="space-y-1 pb-1">
+                                    <label htmlFor="firstName" className="text-xs font-semibold text-primary block">
+                                        ชื่อจริง{" "}
+                                        <span className="text-red-500" aria-hidden="true">
+                                            *
+                                        </span>
+                                    </label>
                                     <div className="relative">
                                         <input
+                                            id="firstName"
                                             type="text"
-                                            value={fullName}
-                                            onChange={(e) => setFullName(e.target.value)}
-                                            placeholder="เช่น นายสมชาย ใจดี"
-                                            className="w-full pl-11 pr-4 border border-border text-text-primary rounded-md text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-semibold"
+                                            value={firstName}
+                                            onChange={(e) => {
+                                                setFirstName(e.target.value);
+                                                validateField("firstName", e.target.value);
+                                            }}
+                                            placeholder="กรอกชื่อ"
+                                            required
+                                            aria-invalid={!!errors.firstName}
+                                            aria-describedby={errors.firstName ? "firstName-error" : undefined}
+                                            className="w-full h-9 pl-3 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
-                                        <UserPen size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80" />
+                                    </div>
+                                    {/* จองพื้นที่ฟิกซ์ความสูงถาวรเพื่อป้องกันกล่องขยับตัวเด้งขึ้นเด้งลง */}
+                                    <div className="h-4 flex items-center">
+                                        {errors.firstName && (
+                                            <p id="firstName" role="alert" className="text-xs text-red-500 flex items-center gap-1">
+                                                {errors.firstName}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-semibold text-navy-light uppercase tracking-wider block">เบอร์โทรศัพท์มือถือ</label>
+                                <div className="space-y-1 pb-1">
+                                    <label htmlFor="lastName" className="text-xs font-semibold text-primary block">
+                                        นามสกุล{" "}
+                                        <span className="text-red-500" aria-hidden="true">
+                                            *
+                                        </span>
+                                    </label>
                                     <div className="relative">
                                         <input
+                                            id="lastName"
+                                            type="text"
+                                            value={lastName}
+                                            onChange={(e) => {
+                                                setLastName(e.target.value);
+                                                validateField("lastName", e.target.value);
+                                            }}
+                                            placeholder="กรอกนามสกุล"
+                                            required
+                                            aria-invalid={!!errors.lastName}
+                                            aria-describedby={errors.lastName ? "lastName-error" : undefined}
+                                            className="w-full h-9 pl-3 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
+                                        />
+                                    </div>
+                                    <div className="h-4 flex items-center">
+                                        {errors.lastName && (
+                                            <p id="lastName" role="alert" className="text-xs text-red-500 flex items-center gap-1">
+                                                {errors.lastName}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* ช่องกรอกเบอร์โทรศัพท์ */}
+                                <div className="space-y-1">
+                                    <label htmlFor="phoneNumber" className="text-xs font-semibold text-primary block">
+                                        <div>
+                                            เบอร์โทรศัพท์มือถือ{" "}
+                                            <span className="text-red-500" aria-hidden="true">
+                                                *
+                                            </span>
+                                        </div>
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            id="phoneNumber"
                                             type="tel"
                                             maxLength={10}
                                             value={phoneNumber}
-                                            onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ""))}
-                                            placeholder="เช่น 0812345678"
-                                            className="w-full pl-11 pr-4 border border-border text-text-primary rounded-md text-xs placeholder:text-text-muted/40 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none min-h-[46px] font-mono font-semibold"
+                                            onChange={(e) => {
+                                                const numericVal = e.target.value.replace(/[^0-9]/g, "");
+                                                setPhoneNumber(numericVal);
+                                                validateField("phoneNumber", numericVal);
+                                            }}
+                                            placeholder="0XXXXXXXXX"
+                                            required
+                                            aria-invalid={!!errors.phoneNumber}
+                                            aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                                            className="w-full h-9 pl-3 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
-                                        <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted opacity-80" />
+                                    </div>
+                                    <div className="h-4 flex items-center">
+                                        {errors.phoneNumber && (
+                                            <p id="phoneNumber" role="alert" className="text-xs text-red-500 flex items-center gap-1">
+                                                {errors.phoneNumber}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
-                                {formError && (
-                                    <div className="text-[10px] text-red-500 font-extrabold px-1 pt-1 flex items-start gap-2 leading-normal">
-                                        <ShieldAlert size={12} className="shrink-0 mt-0.5" />
-                                        <span>{formError}</span>
-                                    </div>
-                                )}
+                                {/* จองบล็อกสำหรับความปลอดภัยภายนอก (Global Error เช่น ชื่อผสมสองภาษา) */}
+                                <div className="h-5 flex items-center justify-center">
+                                    {globalError && (
+                                        <div role="alert" className="text-xs text-red-500 flex items-center">
+                                            <span>{globalError}</span>
+                                        </div>
+                                    )}
+                                </div>
 
-                                <div className="pt-3 justify-center flex">
+                                <div className="pt-2 justify-center flex">
                                     <button
                                         type="submit"
-                                        disabled={!fullName.trim() || phoneNumber.length < 10}
-                                        className="w-70 h-11 bg-primary hover:bg-[#054E62] text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        disabled={isFormInvalid}
+                                        className="w-70 h-11 bg-primary hover:bg-[#054E62] text-white font-black rounded-xl text-xs transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
                                         <span>ดำเนินการต่อ</span>
                                     </button>
@@ -239,15 +384,15 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                         </>
                     )}
 
-                    {/* STEP 2: หน้าเลือก ROLE ที่ต้องการร้องขอสิทธิ์เพิ่มเข้ามาใหม่ */}
+                    {/* STEP 2: หน้าเลือก ROLE คำร้องขอเข้าระบบ */}
                     {step === 2 && (
                         <>
                             <form onSubmit={handleFinalSubmit} className="mt-6 space-y-4">
                                 <div className="space-y-2.5">
                                     <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">เลือกตำแหน่งที่ต้องการขอสิทธิ์</h1>
                                     <p className="text-xs text-black">โปรดเลือกสิทธิ์ที่ท่านต้องการใช้งานในระบบ คำร้องขอนี้จะได้รับการตรวจสอบและอนุมัติโดยเจ้าหน้าที่ดูแลระบบ</p>
+
                                     <div className="space-y-3 mt-2">
-                                        {/* บล็อกเลือกสิทธิ์: เจ้าหน้าที่ภาคสนาม (Collector) */}
                                         <div
                                             onClick={() => setSelectedRole("collector")}
                                             className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
@@ -269,7 +414,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                             </div>
                                         </div>
 
-                                        {/* บล็อกเลือกสิทธิ์: เจ้าหน้าที่บริหาร/สารสนเทศ (Officer) */}
                                         <div
                                             onClick={() => setSelectedRole("officer")}
                                             className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
@@ -293,44 +437,43 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                     </div>
                                 </div>
 
-                                {formError && (
-                                    <div className="text-[10px] text-red-500 font-extrabold px-1 pt-1 flex items-start gap-2 leading-normal">
-                                        <ShieldAlert size={12} className="shrink-0 mt-0.5" />
-                                        <span>{formError}</span>
-                                    </div>
-                                )}
+                                <div className="h-5 flex items-center justify-center">
+                                    {globalError && (
+                                        <div role="alert" className="text-xs text-red-500 font-extrabold flex items-center gap-2">
+                                            <ShieldAlert size={12} className="shrink-0" />
+                                            <span>{globalError}</span>
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="pt-3 grid grid-cols-2 gap-3">
-                                    <div className="space-y-2.5 ">
-                                        <button
-                                            onClick={() => {
-                                                setStep(1);
-                                                setFormError(null);
-                                            }}
-                                            className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-primary font-semibold rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                                        >
-                                            <ArrowLeft size={14} /> ย้อนกลับ
-                                        </button>
-                                    </div>
-                                    <div>
-                                        <button
-                                            type="submit"
-                                            disabled={submitting || !selectedRole}
-                                            className="w-full h-11 bg-primary hover:bg-[#054E62] text-white font-semibold rounded-xl text-xs uppercase tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                                        >
-                                            {submitting ? (
-                                                <>
-                                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    <span>กำลังบันทึกและส่งคำขอสิทธิ์...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Send size={13} />
-                                                    <span>ส่งคำร้องขอเข้าระบบ</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setStep(1);
+                                            setGlobalError(null);
+                                        }}
+                                        className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-primary font-semibold rounded-xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                    >
+                                        <ArrowLeft size={14} /> ย้อนกลับ
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={submitting || !selectedRole}
+                                        className="w-full h-11 bg-primary hover:bg-[#054E62] text-white font-semibold rounded-xl text-xs uppercase tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                    >
+                                        {submitting ? (
+                                            <>
+                                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                <span>กำลังบันทึก...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send size={13} />
+                                                <span>ส่งคำร้องขอ</span>
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </form>
                         </>
