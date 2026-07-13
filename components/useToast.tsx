@@ -18,8 +18,8 @@ export function useToast() {
         clearTimeout(timers.current.remove);
         setToast({ message, variant });
         setLeaving(false);
-        timers.current.hide = setTimeout(() => setLeaving(true), 5000);
-        timers.current.remove = setTimeout(() => setToast(null), 5300);
+        timers.current.hide = setTimeout(() => setLeaving(true), 3000);
+        timers.current.remove = setTimeout(() => setToast(null), 3500);
     }, []);
 
     useEffect(() => {
@@ -31,9 +31,9 @@ export function useToast() {
     }, []);
 
     const toastElement = toast ? (
-        <div className={`fixed bottom-[88px] left-1/2 -translate-x-1/2 z-[999] ${leaving ? "animate-toast-exit" : "animate-slide-up"}`}>
-            <div className="flex items-center gap-2.5 bg-surface text-text-primary border border-border/60 text-xs font-semibold px-5 py-3 rounded-2xl shadow-xl whitespace-nowrap">
-                {toast.variant === "success" ? <CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> : <XCircle size={14} className="text-red-500 shrink-0" />}
+        <div className={`fixed bottom-22 left-1/2 -translate-x-1/2 z-999 ${leaving ? "animate-toast-exit" : "animate-slide-up"}`}>
+            <div className="flex items-center gap-2.5 bg-surface text-text-primary border border-border/60 text-xs font-semibold px-5 py-3 rounded-2xl whitespace-nowrap">
+                {toast.variant === "success" ? <CheckCircle2 size={18} className="text-emerald-500 shrink-0" /> : <XCircle size={16} className="text-red-500 shrink-0" />}
                 {toast.message}
             </div>
         </div>

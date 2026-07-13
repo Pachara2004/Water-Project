@@ -17,6 +17,18 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลส่วนตัวและเลือกสิทธิ์ให้ครบถ้วน" }, { status: 400 });
         }
 
+        // ดักจับข้อมูลมั่วฝั่ง Backend (Production Security Barrier)
+        const nameRegex = /^[A-Za-z]+$/;
+        const nameThaiRegex = /^[ก-์]+$/;
+
+        const isFirstValid = nameRegex.test(firstName.trim()) || nameThaiRegex.test(firstName.trim());
+        const isLastValid = nameRegex.test(lastName.trim()) || nameThaiRegex.test(lastName.trim());
+        const isPhoneValid = /^(06|08|09)[0-9]{8}$/.test(phoneNumber.trim()) && !/^(\d)\1{9}$/.test(phoneNumber.trim());
+
+        if (!isFirstValid || !isLastValid || !isPhoneValid || nameThaiRegex.test(firstName.trim()) !== nameThaiRegex.test(lastName.trim())) {
+            return NextResponse.json({ error: "รูปแบบข้อมูลส่วนตัวไม่ถูกต้องตามมาตรฐานระบบความปลอดภัย" }, { status: 400 });
+        }
+
         // ดึงไอดีผู้ใช้งานตรง ๆ จากผลลัพธ์ถอดรหัส Token ของ LINE ที่ปลอดภัย
         const secureUserId = auth.user!.id;
 
