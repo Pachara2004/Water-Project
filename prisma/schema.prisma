@@ -66,6 +66,7 @@ model Location {
   longitude       Float         @map("longitude")
   
   samples         WaterSample[]
+  weatherData     WeatherData[]
   
   createdActiveAt DateTime      @default(now()) @map("created_active_at")
   updatedActiveAt DateTime      @updatedAt @map("updated_active_at")
@@ -163,4 +164,23 @@ model DashboardWidget {
   parameter    Parameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
 
   @@map("dashboard_widgets")
+}
+
+model WeatherData {
+  id               String   @id @default(uuid())
+  locationId       Int      @map("location_id") // เปลี่ยนมาอิง Location ID ของระบบ
+  timestamp        DateTime // เวลาในรูปแบบ ISO ต้นชั่วโมง (เช่น 2026-07-13 13:00:00)
+  temperature      Float    // tc (°C)
+  rainVolume       Float    // ปริมาณน้ำฝน (mm)
+  weatherCondition Int      // รหัสสภาพอากาศแปลงเข้าระบบเดิม (1-12)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relation เชื่อมไปตาราง Location
+  location         Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  // เปลี่ยน Composite Unique มาเช็คที่คู่ของ Location ID และ Timestamp
+  @@unique([locationId, timestamp])
+  @@index([locationId])
+  @@index([timestamp])
+  @@map("weather_data")
 }

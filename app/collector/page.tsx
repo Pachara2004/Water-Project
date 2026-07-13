@@ -269,7 +269,7 @@ export default function CollectorDashboard() {
     }
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-5 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
                 {/* Header Welcome Card */}
                 <div className="relative w-full rounded-2xl bg-surface p-5 border border-border  flex flex-col gap-4">
