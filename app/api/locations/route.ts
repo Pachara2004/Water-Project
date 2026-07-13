@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
+import { backfillWeatherData } from "@/lib/tmd";
 
 // ==========================================
 // GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
@@ -172,6 +173,9 @@ export async function POST(request: NextRequest) {
             },
         });
 
+        // 🌟 ไฮไลท์เด็ด: บังคับให้รันคำสั่งดึงข้อมูลย้อนหลัง 2 เดือนกวาดลง DB ทันทีตอนสร้างเสร็จครับบอส!
+        await backfillWeatherData(location.id, location.latitude, location.longitude);
+
         return NextResponse.json(
             {
                 id: location.id,
@@ -210,6 +214,7 @@ export async function PUT(request: NextRequest) {
             data: updateData,
         });
 
+        await backfillWeatherData(location.id, location.latitude, location.longitude);
         return NextResponse.json({
             id: location.id,
             name: location.stationName,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getWeatherData } from "@/lib/tmd"; // ดึงฟังก์ชันที่เราจูนเป็น Open-Meteo เรียบร้อยแล้วครับบอส
+import { getWeatherData, backfillWeatherData } from "@/lib/tmd";
 import { WaterStatus } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -204,13 +204,22 @@ export async function POST(request: NextRequest) {
         let mainRawImageUrl: string | null = null;
         let mainAnalyzedPlotUrl: string | null = null;
 
+        // 1. สร้าง Array สำหรับเก็บฟังก์ชันจำพวก Async Tasks ที่จะสั่งรันพร้อมกัน
+        const fileTasks: Promise<void>[] = [];
+
         for (const param of systemParameters) {
             const rawFile = formData.get(`image_raw_${param.id}`) as File | null;
             const plotFile = formData.get(`image_plot_${param.id}`) as File | null;
 
             if (rawFile && rawFile.size > 0 && allowedImageTypes.includes(rawFile.type) && rawFile.size <= maxFileSize) {
                 const filename = sanitizeAndGenerateFilename(rawFile.name, `raw-${param.name.toLowerCase()}`);
-                await writeFile(path.join(uploadDir, filename), Buffer.from(await rawFile.arrayBuffer()));
+                
+                // ปรับจุดที่ 1: ห่อคำสั่งแกะ ArrayBuffer และสั่งเซฟไฟล์ให้อยู่ในโครงสร้าง Async เดียวกัน
+                const saveRawTask = (async () => {
+                    const buffer = Buffer.from(await rawFile.arrayBuffer());
+                    await writeFile(path.join(uploadDir, filename), buffer);
+                })();
+                fileTasks.push(saveRawTask);
 
                 if (String(param.id) === paramKey) {
                     mainRawImageUrl = `/uploads/${filename}`;
@@ -219,12 +228,23 @@ export async function POST(request: NextRequest) {
 
             if (plotFile && plotFile.size > 0 && allowedImageTypes.includes(plotFile.type) && plotFile.size <= maxFileSize) {
                 const filename = sanitizeAndGenerateFilename(plotFile.name, `plot-${param.name.toLowerCase()}`);
-                await writeFile(path.join(uploadDir, filename), Buffer.from(await plotFile.arrayBuffer()));
+                
+                // 🌟 ปรับจุดที่ 2: ห่อคำสั่งแกะภาพพล็อตให้อยู่ในโครงสร้าง Async เดียวกันเช่นกัน
+                const savePlotTask = (async () => {
+                    const buffer = Buffer.from(await plotFile.arrayBuffer());
+                    await writeFile(path.join(uploadDir, filename), buffer);
+                })();
+                fileTasks.push(savePlotTask);
 
                 if (String(param.id) === paramKey) {
                     mainAnalyzedPlotUrl = `/uploads/${filename}`;
                 }
             }
+        }
+
+        // 🔥 สั่งรัน Parallel ทั้งการแกะไฟล์ภาพและบันทึกลงดิสก์ไปพร้อม ๆ กันในช็อตเดียว
+        if (fileTasks.length > 0) {
+            await Promise.all(fileTasks);
         }
 
         const parsedCollectionTime = new Date(collectionTime);
@@ -254,21 +274,51 @@ export async function POST(request: NextRequest) {
             }
 
             if (existingGroupSample) {
-                // ถ้ารุ่นพี่สารตัวแรกยิงเก็บสภาพอากาศไว้แล้ว หยิบมาแชร์ใช้ด้วยกันเลยครับบอส! (ลดภาระ Network เหลือ 0)
+                // 🤝 ถ้ารุ่นพี่สารตัวแรกเซฟค่าแชร์ไว้แล้ว ดึงมาใช้ต่อเลยเพื่อความเร็วระดับสูงสุด
                 finalWeather.airTemperature = existingGroupSample.airTemperature;
                 finalWeather.rainAccumulation = existingGroupSample.rainAccumulation;
                 finalWeather.weatherCondCode = existingGroupSample.weatherCondCode;
             } else {
-                // ถ้ายังไม่มีใครส่งเลย (เราคือสารตัวแรกของเซสชันนี้) ค่อยยิงไปขอ Open-Meteo ครับบอส
-                const weatherInfo = await getWeatherData(location.latitude, location.longitude);
-                if (weatherInfo) {
-                    finalWeather.airTemperature = weatherInfo.airTemperature;
-                    finalWeather.rainAccumulation = weatherInfo.rainAccumulation;
-                    finalWeather.weatherCondCode = weatherInfo.weatherCondCode;
+                // 💾 หากเราคือสารตัวแรกสุดของรอบนี้ (หรือส่งแบบขวดเดี่ยวเดี่ยว) ให้ดึงตรงจากฐานข้อมูลแคชสภาพอากาศ
+                // 🚨 ไฮไลท์เด็ด: ต้องตัดนาที วินาที มิลลิวินาที ทิ้งให้เป็น 00:00.000 เพื่อให้ตรงคีย์ @@unique ใน DB แคช
+                const normalizedTime = new Date(parsedCollectionTime.getTime());
+                normalizedTime.setMinutes(0, 0, 0); 
+                normalizedTime.setSeconds(0, 0);
+
+                let weatherCache = await prisma.weatherData.findUnique({
+                    where: {
+                        locationId_timestamp: {
+                            locationId: Number(locationId),
+                            timestamp: normalizedTime,
+                        },
+                    },
+                });
+
+                // 🚨 กรณีฉุกเฉิน: หากเจ้าหน้าที่กรอกวันย้อนหลังเกิน 2 เดือน แล้วใน DB ไม่มีข้อมูล 
+                // สั่งซ่อมแซมประวัติย้อนหลังตรงรอบพิกัดนั้นทันที
+                if (!weatherCache) {
+                    console.log(`⚠️ [API Sample] ไม่พบแคชสภาพอากาศใน DB รอบเวลา ${normalizedTime.toISOString()} สั่งซ่อมแซมข้อมูล...`);
+                    await backfillWeatherData(location.id, location.latitude, location.longitude);
+                    
+                    weatherCache = await prisma.weatherData.findUnique({
+                        where: {
+                            locationId_timestamp: {
+                                locationId: location.id,
+                                timestamp: normalizedTime,
+                            },
+                        },
+                    });
+                }
+
+                // ดึงค่าอุณหภูมิ, น้ำฝน และสภาพอากาศมาจัดใส่กระเป๋าเพื่อเอาไปเซฟ
+                if (weatherCache) {
+                    finalWeather.airTemperature = weatherCache.temperature;
+                    finalWeather.rainAccumulation = weatherCache.rainVolume;
+                    finalWeather.weatherCondCode = weatherCache.weatherCondition;
                 }
             }
         } catch (weatherErr) {
-            console.error("Weather resolution error:", weatherErr);
+            console.error("❌ Weather resolution error:", weatherErr);
         }
 
         let createMeasurementsData: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];

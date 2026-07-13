@@ -338,7 +338,7 @@ export default function ManagePage() {
     const isAdmin = currentUser.role === "admin";
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-30 transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg pb-30 transition-colors duration-300">
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-8">
                 {/* Header */}
                 <div className="pt-10 sm:pt-16 pb-8 sm:pb-10 border-b border-border mb-8">
