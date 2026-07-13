@@ -240,7 +240,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
     if (liffError) {
         return (
-            <div className="flex h-screen w-full items-center justify-center p-4 bg-surface-muted">
+            <div className="flex h-screen w-full items-center justify-center p-4 bg-card-general">
                 <div className="rounded-2xl bg-surface border border-border/60 p-6 text-center shadow-lg max-w-sm w-full">
                     <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
                     <p className="font-black text-text-primary text-sm">เกิดข้อผิดพลาดในการโหลดระบบ</p>
@@ -252,8 +252,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
     if (currentUser && !currentUser.phoneNumber) {
         return (
-            <div className="fixed inset-0 z-2000 flex items-center justify-center p-4 sm:p-6 transition-all">
-                <div className="bg-surface w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 inset-shadow-sm shadow-sm flex flex-col justify-between animate-fade-in">
+            <div className="fixed inset-0 z-2000 flex items-center justify-center p-4 sm:p-6 transition-all bg-bg">
+                <div className="bg-card-general w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 inset-shadow-sm shadow-sm flex flex-col justify-between animate-fade-in">
                     {/* STEP 1: หน้าข้อมูลส่วนบุคคลแบบ Realtime Validation */}
                     {step === 1 && (
                         <>
@@ -287,7 +287,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                             required
                                             aria-invalid={!!errors.firstName}
                                             aria-describedby={errors.firstName ? "firstName-error" : undefined}
-                                            className="w-full h-9 pl-3 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
+                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     {/* จองพื้นที่ฟิกซ์ความสูงถาวรเพื่อป้องกันกล่องขยับตัวเด้งขึ้นเด้งลง */}
@@ -320,7 +320,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                             required
                                             aria-invalid={!!errors.lastName}
                                             aria-describedby={errors.lastName ? "lastName-error" : undefined}
-                                            className="w-full h-9 pl-3 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
+                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     <div className="h-4 flex items-center">
@@ -357,7 +357,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                             required
                                             aria-invalid={!!errors.phoneNumber}
                                             aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
-                                            className="w-full h-9 pl-3 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
+                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     <div className="h-4 flex items-center">
@@ -413,8 +413,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                                     {selectedRole === "collector" && <div className="w-2 h-2 rounded-full bg-primary" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-text-primary">เจ้าหน้าที่ภาคสนาม (Collector)</p>
-                                                    <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
+                                                    <p className="text-sm font-black text-black">เจ้าหน้าที่ภาคสนาม (Collector)</p>
+                                                    <p className="text-xs text-secondary mt-1">
                                                         สิทธิ์สำหรับผู้จัดเก็บข้อมูล, ตรวจวัดค่าสารเคมี และทำการอัปโหลดผลน้ำเข้าสู่ฐานข้อมูล
                                                     </p>
                                                 </div>
@@ -434,8 +434,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                                     {selectedRole === "officer" && <div className="w-2 h-2 rounded-full bg-primary" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-text-primary">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
-                                                    <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
+                                                    <p className="text-sm font-bold text-black">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
+                                                    <p className="text-xs text-secondary mt-1 ">
                                                         สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยของคุณภาพน้ำ
                                                     </p>
                                                 </div>

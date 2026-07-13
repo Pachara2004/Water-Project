@@ -26,16 +26,12 @@ export default function RootLayout({
     return (
         <html lang="th" suppressHydrationWarning={true}>
             <head>
-                {/* สคริปต์ดักตรวจจับ Theme ดำเนินการผ่าน dangerouslySetInnerHTML ได้ปกติบน Server Component[cite: 8] */}
+                {/* บังคับลบคลาส dark ออกทันทีตั้งแต่เริ่มโหลดหน้าเว็บ เพื่อล็อกไว้ที่ Light Mode */}
                 <script
                     dangerouslySetInnerHTML={{
                         __html: `
               try {
-                if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
+                document.documentElement.classList.remove('dark');
               } catch (_) {}
             `,
                     }}
