@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
+import { getPendingSessionGroups } from "@/lib/review";
 import { backfillWeatherData } from "@/lib/tmd";
 
 // ==========================================
-// 📥 GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
+// GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
@@ -13,14 +14,19 @@ export async function GET(request: NextRequest) {
 
         const where = orgFilter && orgFilter !== "ALL" ? { governingAgency: orgFilter } : {};
 
-        // 🔍 ดึงพิกัดทั้งหมดออกมา โดยตึงเอาผลตรวจ WaterSample 50 แถวล่าสุด (เผื่อแตกกระจายตัวรายสารเคมี)
+        // ข้อมูลสาธารณะ (ทุกคนเห็น) — ต้องซ่อน session ที่ยังรออนุมัติออกทั้งหมด ไม่ว่าใครเป็นคนส่ง
+        const pendingGroups = await getPendingSessionGroups();
+        const sampleWhere: any = { isDeleted: false };
+        if (pendingGroups.length > 0) sampleWhere.sessionGroup = { notIn: pendingGroups };
+
+        // ดึงพิกัดทั้งหมดออกมา โดยตึงเอาผลตรวจ WaterSample 50 แถวล่าสุด (เผื่อแตกกระจายตัวรายสารเคมี)
         const locations = await prisma.location.findMany({
             where,
             include: {
                 samples: {
-                    where: { isDeleted: false },
+                    where: sampleWhere,
                     orderBy: { collectionTime: "desc" },
-                    take: 50, // 🌟 ขยายขนาดการขุดขึ้นมาเผื่อกรณีวนลูปกระจายตัวรายสารเคมีประจำเซสชันครับบอส
+                    take: 50, // ขยายขนาดการขุดขึ้นมาเผื่อกรณีวนลูปกระจายตัวรายสารเคมีประจำเซสชันครับบอส
                     select: {
                         id: true,
                         status: true,
@@ -29,7 +35,7 @@ export async function GET(request: NextRequest) {
                         airTemperature: true,
                         rainAccumulation: true,
                         weatherCondCode: true,
-                        sessionGroup: true, // 🌟 ดึงคอลัมน์กลุ่มประจำรอบเซสชันมาทำโครงสร้างผูกสัมพันธ์
+                        sessionGroup: true, // ดึงคอลัมน์กลุ่มประจำรอบเซสชันมาทำโครงสร้างผูกสัมพันธ์
                         collector: {
                             select: {
                                 id: true,
@@ -55,7 +61,7 @@ export async function GET(request: NextRequest) {
         });
 
         const result = locations.map((loc) => {
-            // 🌟 แผนผัง Map ควบแน่นจัดกลุ่มเรคคอร์ดที่มีรหัสเซสชันกลุ่มเดียวกันให้อยู่รวมร่างกันในขวดเดียว
+            // แผนผัง Map ควบแน่นจัดกลุ่มเรคคอร์ดที่มีรหัสเซสชันกลุ่มเดียวกันให้อยู่รวมร่างกันในขวดเดียว
             const sessionGroupMap = new Map<string, any>();
 
             loc.samples.forEach((s) => {
@@ -71,7 +77,7 @@ export async function GET(request: NextRequest) {
                     }
                 });
 
-                // 🚨 หากเพิ่งเจอเลขชุดเซสชันนี้เป็นครั้งแรกในพิกัดสถานีนี้
+                // หากเพิ่งเจอเลขชุดเซสชันนี้เป็นครั้งแรกในพิกัดสถานีนี้
                 if (!sessionGroupMap.has(groupKey)) {
                     sessionGroupMap.set(groupKey, {
                         id: s.id,
@@ -98,7 +104,7 @@ export async function GET(request: NextRequest) {
                             : null,
                     });
                 } else {
-                    // 🚨 ถ้ารหัสชุดเซสชันนี้เคยถูกสร้างไปรอบก่อนหน้าแล้ว (แปลว่าสารอีกตัวส่งตามเข้ามาผูก)
+                    // ถ้ารหัสชุดเซสชันนี้เคยถูกสร้างไปรอบก่อนหน้าแล้ว (แปลว่าสารอีกตัวส่งตามเข้ามาผูก)
                     const existing = sessionGroupMap.get(groupKey);
 
                     // ออบเจกต์รวมพลัง: ยัดค่าวัดเคมีเพิ่มเสริมเข้าไปในเรคคอร์ดเซสชันเดิมทันที
@@ -106,7 +112,7 @@ export async function GET(request: NextRequest) {
                     if (currentMeasurements["phosphateVal"] !== undefined) existing.phosphateVal = currentMeasurements["phosphateVal"];
                     if (currentMeasurements["ammoniaVal"] !== undefined) existing.ammoniaVal = currentMeasurements["ammoniaVal"];
 
-                    // 🚨 คุมสถานะความปลอดภัยสูงสุดประจำกลุ่มชุดขวดตรวจ (ยึดหลักแย่สุดทับอันดีสุด)
+                    // คุมสถานะความปลอดภัยสูงสุดประจำกลุ่มชุดขวดตรวจ (ยึดหลักแย่สุดทับอันดีสุด)
                     const incomingStatus = s.status ? s.status.toUpperCase() : "SAFE";
                     if (incomingStatus === "DANGER") {
                         existing.status = "DANGER";

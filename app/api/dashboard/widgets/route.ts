@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
+import { getPendingSessionGroups } from "@/lib/review";
 
 // ตีความ "YYYY-MM-DD" จาก filter เป็นขอบเขตเวลาไทย (+07:00) ให้ตรงกับ toISODate ฝั่ง frontend
 // ป้องกัน off-by-one จากการ parse เป็น UTC เที่ยงคืน (คลาดกับเวลาไทย 7 ชม.)
@@ -16,7 +17,7 @@ function parseLocalDayEnd(dateStr: string): Date {
 
 export async function GET(request: NextRequest) {
     try {
-        // 🔒 SECURITY GUARD: บังคับต้องมี Token ที่ตรวจสอบผ่าน LINE จริง ก่อนอ่านสถิติใด ๆ
+        // SECURITY GUARD: บังคับต้องมี Token ที่ตรวจสอบผ่าน LINE จริง ก่อนอ่านสถิติใด ๆ
         const auth = await verifyAuth(request, ["admin", "officer", "collector"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         // collector ดูได้เฉพาะข้อมูลของตัวเองเท่านั้น บังคับ MINE ที่ฝั่ง server เสมอ ไม่สนใจค่าที่ client ส่งมา
         const viewMode = auth.user!.roleName === "collector" ? "MINE" : searchParams.get("viewMode") || "ALL";
-        // 🔒 ห้ามเชื่อ collectorId จาก query param (ใครก็ปลอมเป็น id ใครก็ได้) — ใช้ id จาก token ที่ยืนยันแล้วเท่านั้น
+        // ห้ามเชื่อ collectorId จาก query param (ใครก็ปลอมเป็น id ใครก็ได้) — ใช้ id จาก token ที่ยืนยันแล้วเท่านั้น
         const collectorId = auth.user!.id;
 
         const startDateParam = searchParams.get("startDate");
@@ -43,8 +44,12 @@ export async function GET(request: NextRequest) {
 
         const activeAgencies = Array.from(new Set(allLocations.map((l) => l.governingAgency).filter((agency) => agency !== null && agency !== undefined)));
 
-        // 🔒 คุมสิทธิ์การดึงข้อมูลหลัก (Base Filter Context)
+        // สถิติ/dashboard ต้องคิดจากข้อมูลที่ยืนยันแล้วเท่านั้น ซ่อน session ที่ยังรออนุมัติ (ไม่ว่า viewMode ไหน)
+        const pendingGroups = await getPendingSessionGroups();
+
+        // คุมสิทธิ์การดึงข้อมูลหลัก (Base Filter Context)
         const baseWhere: any = { isDeleted: false };
+        if (pendingGroups.length > 0) baseWhere.sessionGroup = { notIn: pendingGroups };
         if (viewMode === "MINE" && collectorId) {
             baseWhere.collectorId = collectorId;
         }
@@ -77,9 +82,10 @@ export async function GET(request: NextRequest) {
         // ค่าอัตราความปลอดภัย (Safety Rate %) ของช่วงที่เลือกบน filter — ใช้แสดงตัวเลขหลักบนการ์ดเหมือนเดิม
         const safeRateValue = totalSamples > 0 ? Number((((statusCountMap["safe"] || 0) / totalSamples) * 100).toFixed(1)) : 0;
 
-        // --- 📈 WoW / MoM ตามปฏิทินจริง — ยึด "วันนี้" เสมอ ไม่อิงช่วงวันที่ที่เลือกบน filter ---
+        // ---  WoW / MoM ตามปฏิทินจริง — ยึด "วันนี้" เสมอ ไม่อิงช่วงวันที่ที่เลือกบน filter ---
         // ขอบเขตสิทธิ์/หน่วยงานยังคงกรองตามเดิม แต่ตัดเงื่อนไขวันที่ของ filter ออก
         const scopeWhere: any = { isDeleted: false };
+        if (pendingGroups.length > 0) scopeWhere.sessionGroup = { notIn: pendingGroups };
         if (viewMode === "MINE" && collectorId) scopeWhere.collectorId = collectorId;
         if (locationId) {
             scopeWhere.locationId = locationId;
@@ -165,7 +171,7 @@ export async function GET(request: NextRequest) {
         });
         const measurementByParamId = new Map(measurementGroups.map((g) => [g.parameterId, g]));
 
-        // 🚀 ไฮไลต์: ดึงโครงสร้างพิมพ์เขียวทั้งหมดตรงจากตาราง `dashboard_widgets` ของบอส ไม่ Hardcode
+        // ไฮไลต์: ดึงโครงสร้างพิมพ์เขียวทั้งหมดตรงจากตาราง `dashboard_widgets` ของบอส ไม่ Hardcode
         const dbWidgets = await prisma.dashboardWidget.findMany({
             where: { isActive: true },
             orderBy: { id: "asc" },
@@ -251,7 +257,7 @@ export async function GET(request: NextRequest) {
                 };
             });
 
-        // --- 🏅 2. โครงสร้าง Danger Hotspots ---
+        // ---  2. โครงสร้าง Danger Hotspots ---
         const topDangerLocations = await prisma.waterSample.groupBy({
             by: ["locationId"],
             where: { ...baseWhere, status: "danger" },
@@ -284,7 +290,7 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        // --- 📍 เมื่อกรองเจาะจงสถานีเดียว (จาก search) แทนที่จะโชว์ "5 อันดับ" (ไม่มีความหมายกับตัวเลือกเดียว)
+        // ---  เมื่อกรองเจาะจงสถานีเดียว (จาก search) แทนที่จะโชว์ "5 อันดับ" (ไม่มีความหมายกับตัวเลือกเดียว)
         // ส่งรายละเอียดความเสี่ยงของสถานีนั้นแทน โดยใช้ totalSamples/statusCountMap ที่คำนวณจาก baseWhere ซึ่งกรอง locationId ไว้แล้ว
         let stationDetail: {
             stationName: string;
@@ -316,7 +322,7 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // --- 🌅 3. โครงสร้างระบบประมวลผลช่วงเวลา เช้า vs เย็น (Temporal Data Engine) ---
+        // ---  3. โครงสร้างระบบประมวลผลช่วงเวลา เช้า vs เย็น (Temporal Data Engine) ---
         // ดึงเฉพาะฟิลด์ที่กราฟรายเดือนต้องใช้จริง (เวลาเก็บ + ค่าสารแอมโมเนีย/ฟอสเฟตเท่านั้น) แทนการโหลดทุกคอลัมน์
         const timeSeriesSamples = await prisma.waterSample.findMany({
             where: baseWhere,
@@ -493,7 +499,7 @@ export async function GET(request: NextRequest) {
             rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStart)} – ${formatThaiDate(bucketRangeEnd)}` : "",
         };
 
-        // --- 🌦️ [มิติที่ 5: Correlation] สหสัมพันธ์สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
+        // ---  [มิติที่ 5: Correlation] สหสัมพันธ์สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
         // เก็บคู่จุดของแต่ละชุด (แกน × สาร) เพื่อคำนวณ Pearson r และแบ่ง density bin ฝั่ง server
         const rainNH3: { x: number; y: number }[] = [];
         const rainPO4: { x: number; y: number }[] = [];

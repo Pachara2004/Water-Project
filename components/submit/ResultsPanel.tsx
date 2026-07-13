@@ -41,8 +41,7 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                         const max = (std as any)[maxKey] ?? 1.0;
                         const isExceeded = measurement.concentrated > max;
                         const exceededPercentage = isExceeded ? Math.round(((measurement.concentrated - max) / max) * 100) : 0;
-                        const isLowConfidence = measurement.confidence !== undefined && measurement.confidence < 0.6;
-                        
+
                         const isDropdownOpen = openParamId === param.id;
 
                         return (
@@ -123,13 +122,6 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                     )}
                                 </div>
 
-                                {isLowConfidence && (
-                                    <div className="mt-2 flex flex-col gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700 leading-relaxed font-medium">
-                                        <div className="flex items-start gap-1.5">
-                                            <span>ค่า confidence ต่ำกว่า 0.60 ระบบไม่แนะนำให้ใช้ข้อมูลชุดนี้ กรุณากดกลับไปถ่ายรูปภาพของสาร {param.name.toUpperCase()} ส่งใหม่อีกครั้ง</span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         );
                     })}

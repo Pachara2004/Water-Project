@@ -6,9 +6,11 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { verifyAuth } from "@/lib/auth-guard";
+import { isLowConfidence } from "@/lib/standards";
+import { getPendingSessionGroups } from "@/lib/review";
 
 /**
- * 🔒 FILENAME SANITIZER WITH DATE STAMP
+ * FILENAME SANITIZER WITH DATE STAMP
  */
 function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw"): string {
     const now = new Date();
@@ -23,21 +25,30 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
     return `${prefix}-${dateStamp}-${crypto.randomUUID()}.${cleanExt}`;
 }
 
-// 🌐 Anti-Spam Key ผสม IP + Action ป้องกันการกดเบิ้ลส่งข้อมูล
+// Anti-Spam Key ผสม IP + Action ป้องกันการกดเบิ้ลส่งข้อมูล
 const antiSpam = new Map<string, number>();
 
 // ==========================================
-// 📥 GET /api/samples — เวอร์ชันรวมกลุ่มตาม sessionGroup พรีเมียม
+// GET /api/samples — ประวัติผลตรวจของตัวเอง เวอร์ชันรวมกลุ่มตาม sessionGroup
+// เห็นเฉพาะของตัวเอง (collectorId = ผู้ใช้ที่ยืนยันตัวตนแล้วเท่านั้น) รวมถึงรายการที่ยัง pending อยู่
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
-        const { searchParams } = new URL(request.url);
-        const locationId = searchParams.get("locationId");
-        const collectedBy = searchParams.get("collectedBy");
+        const auth = await verifyAuth(request, ["collector", "admin"]);
+        if (!auth.isValid) {
+            return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
+        }
 
+        // collector เห็นได้เฉพาะของตัวเอง (ไม่เชื่อ collectorId จาก query param — ปลอมเป็นคนอื่นได้)
+        // admin เห็นข้อมูลทุกคนได้ (ตามสิทธิ์เดิม) — toggle "เฉพาะของฉัน" ที่หน้าบ้านกรองต่อฝั่ง client เอง
         const where: any = { isDeleted: false };
-        if (locationId) where.locationId = Number(locationId);
-        if (collectedBy) where.collectorId = Number(collectedBy);
+        if (auth.user!.roleName !== "admin") {
+            where.collectorId = auth.user!.id;
+        }
+
+        // ชุด sessionGroup ที่ยัง pending อยู่ — ใช้แค่ "ติด badge" ไม่ได้กรองทิ้ง เพราะ endpoint นี้ต้อง auth แล้วเท่านั้น
+        const pendingGroups = await getPendingSessionGroups();
+        const pendingSet = new Set(pendingGroups);
 
         const samples = await prisma.waterSample.findMany({
             where,
@@ -90,6 +101,9 @@ export async function GET(request: NextRequest) {
                     isDeleted: s.isDeleted,
                     sessionGroup: s.sessionGroup,
 
+                    // ติด badge ว่า session นี้รออนุมัติอยู่หรือไม่ (สร้าง/ปฏิเสธพร้อมกันทั้ง session เสมอ ไม่ต้องอัปเดตตอน merge)
+                    reviewStatus: pendingSet.has(groupKey) ? "PENDING" : "APPROVED",
+
                     ...currentMeasurements,
 
                     location: s.location
@@ -130,7 +144,7 @@ export async function GET(request: NextRequest) {
 }
 
 // ==========================================
-// 📤 POST /api/samples — บันทึกผลตรวจแยกรายสารอิงตาม Database 100%
+// POST /api/samples — บันทึกผลตรวจแยกรายสารอิงตาม Database 100%
 // ==========================================
 export async function POST(request: NextRequest) {
     try {
@@ -235,7 +249,7 @@ export async function POST(request: NextRequest) {
 
         const parsedCollectionTime = new Date(collectionTime);
 
-        // 🌟 1. ตั้งตัวแปรสำหรับเก็บข้อมูลสภาพอากาศชุดเดียวที่จะใช้ร่วมกันทั้งกลุ่ม
+        // 1. ตั้งตัวแปรสำหรับเก็บข้อมูลสภาพอากาศชุดเดียวที่จะใช้ร่วมกันทั้งกลุ่ม
         let finalWeather = {
             airTemperature: null as number | null,
             rainAccumulation: null as number | null,
@@ -243,7 +257,7 @@ export async function POST(request: NextRequest) {
         };
 
         try {
-            // 🔍 2. ส่องเช็คก่อนว่ามีสารเคมีในเซสชันกลุ่มนี้บันทึกข้อมูลไว้ก่อนหน้าหรือยัง
+            // 2. ส่องเช็คก่อนว่า มีสารเคมีเพื่อนร่วมชุดบันทึกเซฟเข้าไปในเซสชันกลุ่มนี้ก่อนเราหรือยัง
             let existingGroupSample = null;
             if (sessionGroup) {
                 existingGroupSample = await prisma.waterSample.findFirst({
@@ -322,28 +336,46 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 💾 3. สั่งบันทึกข้อมูลลงฐานข้อมูลแถวใครแถวมันเหมือนเดิม
-        const sample = await prisma.waterSample.create({
-            data: {
-                locationId: Number(locationId),
-                collectorId: secureCollectorId,
-                collectionTime: parsedCollectionTime,
-                dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
+        // 4. ตัดสิน low-confidence ฝั่ง server เท่านั้น จาก confidence ที่พาร์สแล้วจริง ๆ ไม่เชื่อ flag จาก client
+        const needsReview = sessionGroup ? createMeasurementsData.some((m) => isLowConfidence(m.confidence)) : false;
 
-                // 🌟 ผูกค่าสภาพอากาศแบบหลอมรวมกลุ่มก้อนที่คำนวณมาได้ลง Database ครับบอส
-                airTemperature: finalWeather.airTemperature,
-                rainAccumulation: finalWeather.rainAccumulation,
-                weatherCondCode: finalWeather.weatherCondCode,
+        // 5. สั่งบันทึกข้อมูล + สร้างคำร้องตรวจสอบ (ถ้าจำเป็น) รวมใน Transaction เดียวกัน
+        //    กันเคสเซฟ sample สำเร็จแต่สร้างคำร้องพลาด ซึ่งจะทำให้ข้อมูล confidence ต่ำรั่วออกสู่สาธารณะ
+        const sample = await prisma.$transaction(async (tx) => {
+            const created = await tx.waterSample.create({
+                data: {
+                    locationId: Number(locationId),
+                    collectorId: secureCollectorId,
+                    collectionTime: parsedCollectionTime,
+                    dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
 
-                status: status.toLowerCase() as WaterStatus,
-                rawImageUrl: mainRawImageUrl,
-                analyzedPlotUrl: mainAnalyzedPlotUrl,
-                isDeleted: false,
-                sessionGroup: sessionGroup,
-                measurements: {
-                    create: createMeasurementsData,
+                    // ผูกค่าสภาพอากาศแบบหลอมรวมกลุ่มก้อนที่คำนวณมาได้ลง Database ครับบอส
+                    airTemperature: finalWeather.airTemperature,
+                    rainAccumulation: finalWeather.rainAccumulation,
+                    weatherCondCode: finalWeather.weatherCondCode,
+
+                    status: status.toLowerCase() as WaterStatus,
+                    rawImageUrl: mainRawImageUrl,
+                    analyzedPlotUrl: mainAnalyzedPlotUrl,
+                    isDeleted: false,
+                    sessionGroup: sessionGroup,
+                    measurements: {
+                        create: createMeasurementsData,
+                    },
                 },
-            },
+            });
+
+            if (needsReview && sessionGroup) {
+                // upsert แทน create: ตอนส่งแบบคู่ (2 สาร) ยิง POST แยกกันทีละสารด้วย sessionGroup เดียวกัน
+                //    สารตัวแรกที่ต่ำสร้างคำร้อง ตัวถัดไปเจอว่ามีคำร้องแล้วก็ปล่อยผ่าน (ทั้ง session pending ร่วมกันเสมอ)
+                await tx.reviewRequest.upsert({
+                    where: { sessionGroup },
+                    create: { sessionGroup, statusRequest: "pending" },
+                    update: {},
+                });
+            }
+
+            return created;
         });
 
         return NextResponse.json(sample, { status: 201 });

@@ -34,8 +34,13 @@ export function useSubmitSample() {
     });
 
     const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
+    // sessionGroup ต้อง unique จริง เพราะ ReviewRequest ผูกกับมันโดยตรง (sessionGroup @unique)
+    // ใช้ crypto.randomUUID() เป็นส่วนรับประกันความไม่ซ้ำ แทนเลขสุ่ม 3 หลักเดิมที่ชนกันได้ง่าย
     const [sessionId, setSessionId] = useState<string>(() => {
-        return `${new Date().getFullYear().toString().slice(2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 999)).padStart(3, "0")}`;
+        const now = new Date();
+        const yymm = `${now.getFullYear().toString().slice(2)}${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const uniquePart = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        return `${yymm}-${uniquePart}`;
     });
     // ── Effects ──
     useEffect(() => {
@@ -199,7 +204,7 @@ export function useSubmitSample() {
                 fd.append("collectionTime", new Date(collectionTime).toISOString());
                 if (oxygen) fd.append("oxygen", oxygen);
 
-                // 🌟 พอเปลี่ยนเป็น useState แล้ว ตรงนี้บอสพ่นชื่อตัวแปร sessionId ลงไปตรง ๆ ได้เลยครับ!
+                // พอเปลี่ยนเป็น useState แล้ว ตรงนี้บอสพ่นชื่อตัวแปร sessionId ลงไปตรง ๆ ได้เลยครับ!
                 fd.append("sessionGroup", sessionId);
 
                 const singleMeasurementPayload = [

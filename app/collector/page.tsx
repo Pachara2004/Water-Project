@@ -22,12 +22,14 @@ interface CollectorSample {
     imagePlotUrl?: string | null;
     isDeleted: boolean;
     updatedBy?: number | null;
+    // สถานะการตรวจสอบ (คนละมิติกับ status คุณภาพน้ำ) — มีค่าเฉพาะรายการที่ confidence ต่ำกว่าเกณฑ์เท่านั้น
+    reviewStatus?: "PENDING" | "APPROVED";
     location?: {
         id: number;
         name: string;
         organization: string;
     } | null;
-    // ⚡️ รองรับคุณสมบัติค่าวัดเคมีจากหลังบ้านแบบ Dynamic ทุกคีย์สารใน DB
+    // รองรับคุณสมบัติค่าวัดเคมีจากหลังบ้านแบบ Dynamic ทุกคีย์สารใน DB
     [key: string]: any; 
 }
 
@@ -98,7 +100,7 @@ export default function CollectorDashboard() {
                         isDeleted: s.isDeleted,
                         updatedBy: s.lastModifiedBy,
 
-                        // ⚡️ ดึงก้อนข้อมูลที่ผ่านการสกัด EAV Flattening จาก API มาใช้โดยตรง
+                        // ดึงก้อนข้อมูลที่ผ่านการสกัด EAV Flattening จาก API มาใช้โดยตรง
                         // เช่น phosphateVal, ammoniaVal จะหลั่งไหลเข้ามาอัตโนมัติ
                         ...s,
 
@@ -321,6 +323,7 @@ export default function CollectorDashboard() {
                                 placeholder="ค้นหา..."
                                 value={globalFilter ?? ""}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
+                                data-focus-outline="off"
                                 className="w-full py-3 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
                             />
                             <Search size={16} className="text-text-muted ml-2" />
@@ -523,8 +526,13 @@ export default function CollectorDashboard() {
                                                         </div>
 
                                                         {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
-                                                        <div className="shrink-0">
+                                                        <div className="flex flex-col items-end gap-1 shrink-0">
                                                             <StatusBadge status={sample.status} size="sm" />
+                                                            {sample.reviewStatus === "PENDING" && (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md whitespace-nowrap">
+                                                                    รออนุมัติ
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {/* แถวล่าง: ค่าสารเคมี - เอา grid และ justify-end ออกเพื่อให้ชิดซ้ายตามปกติ */}
@@ -532,7 +540,7 @@ export default function CollectorDashboard() {
                                                         {[
                                                             { key: "phosphateVal", label: "P", color: "text-teal-500" },
                                                             { key: "ammoniaVal", label: "N", color: "text-purple-500" },
-                                                            // ➕ อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย
+                                                            // อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย
                                                         ].map((indicator) => {
                                                             const value = sample[indicator.key];
                                                             if (value === undefined || value === null) return null;

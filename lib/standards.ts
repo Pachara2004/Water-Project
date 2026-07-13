@@ -35,6 +35,17 @@ export const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
 export type StatusType = "safe" | "warning" | "danger";
 
 /**
+ * เกณฑ์ความมั่นใจขั้นต่ำของผลวิเคราะห์ AI
+ * ใช้ร่วมกันทั้งฝั่ง client (แจ้งเตือนผู้ใช้) และฝั่ง server (ตัดสินสร้าง ReviewRequest)
+ * ห้ามเชื่อการตัดสินจาก client — server ต้องคำนวณซ้ำจาก confidence ที่บันทึกเสมอ
+ */
+export const CONFIDENCE_THRESHOLD = 0.6;
+
+export function isLowConfidence(confidence: number | null | undefined): boolean {
+    return confidence !== null && confidence !== undefined && confidence < CONFIDENCE_THRESHOLD;
+}
+
+/**
  * Determine the status for a single parameter against its maximum threshold
  * ปรับคำนวณจุด Warning: หากค่าน้ำเกิน 70% ของเกณฑ์สูงสุด ให้ขึ้นสถานะเฝ้าระวังทันที
  */
