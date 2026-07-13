@@ -5,10 +5,10 @@ import dynamic from "next/dynamic";
 const MapView = dynamic(() => import("@/components/map/MapView"), {
     ssr: false,
     loading: () => (
-        <div className="flex items-center justify-center h-full bg-surface-muted">
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-muted/60 backdrop-blur-xs">
             <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-text-muted font-bold">กำลังโหลดแผนที่...</span>
+                <div className="w-9 h-9 border-[3px] border-primary border-t-transparent rounded-full animate-spin will-change-transform" />
+                <span className="text-xs text-text-muted font-semibold tracking-wide">กำลังโหลดแผนที่...</span>
             </div>
         </div>
     ),
@@ -16,8 +16,8 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
 
 export default function MapPage() {
     return (
-        <div className="fixed inset-x-0 top-0 bottom-[calc(72px+env(safe-area-inset-bottom))] lg:left-50 lg:bottom-0 lg:right-0">
-            <div className="w-full h-full">
+        <div className="absolute inset-0 w-full h-full overflow-hidden">
+            <div className="w-full h-full relative">
                 <MapView mode="explorer" />
             </div>
         </div>

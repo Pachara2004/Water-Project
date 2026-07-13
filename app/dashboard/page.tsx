@@ -205,7 +205,7 @@ export default function ExecutiveAnalyticsDashboard() {
     };
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-5 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
             <div className="w-full max-w-xl md:max-w-7xl mx-auto px-4 space-y-5 pt-6">
                 <div className="space-y-3">
                     {/* Header ควบคุมส่วนบน */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import { createLocationIcon } from "../LocationPin";
 import BottomSheet, { BottomSheetLocation } from "./BottomSheet";
@@ -38,13 +38,23 @@ function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => 
     return null;
 }
 
-function MapController({ centerPos }: { centerPos: [number, number] | null }) {
+function MapController({ centerPos, selectedLocation }: { centerPos: [number, number] | null; selectedLocation: BottomSheetLocation | null }) {
     const map = useMap();
+
+    // ⚡ UX Speedup: ปรับลด duration ลงเหลือ 0.6 วินาทีเพื่อให้แผนที่ตอบสนองไวทันใจ ไม่เคลื่อนไหวช้าเกินไป
     useEffect(() => {
         if (centerPos) {
-            map.flyTo(centerPos, 13, { duration: 1.5 });
+            map.flyTo(centerPos, 13, { duration: 0.6 });
         }
     }, [centerPos, map]);
+
+    // ⚡ UX Speedup: ปรับลด duration ลงเหลือ 0.5 วินาที
+    useEffect(() => {
+        if (selectedLocation) {
+            map.flyTo([selectedLocation.lat, selectedLocation.lng], 14, { duration: 0.5 });
+        }
+    }, [selectedLocation, map]);
+
     return null;
 }
 
@@ -62,19 +72,15 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     const [selectedLocation, setSelectedLocation] = useState<BottomSheetLocation | null>(null);
     const [loading, setLoading] = useState(true);
     const [userPos, setUserPos] = useState<[number, number] | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
 
-    const leafletMapRef = useRef<L.Map | null>(null);
-
-    const [mapKey] = useState(() => `map-${mode}-${Math.random().toString(36).slice(2)}`);
-
-    // Center map on selected location
     useEffect(() => {
-        if (selectedLocation && leafletMapRef.current) {
-            leafletMapRef.current.flyTo([selectedLocation.lat, selectedLocation.lng], 14, { duration: 1 });
-        }
-    }, [selectedLocation]);
+        setIsMounted(true);
+        return () => setIsMounted(false);
+    }, []);
 
-    const handleLocateMe = () => {
+    // ⚡ Performance: ใช้ useCallback ป้องกันฟังก์ชันถูกสร้างใหม่ในหน่วยความจำโดยไม่จำเป็น
+    const handleLocateMe = useCallback(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
@@ -89,7 +95,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         } else {
             alert("เบราว์เซอร์ของคุณไม่รองรับ Geolocation");
         }
-    };
+    }, []);
 
     const fetchLocations = useCallback(async () => {
         try {
@@ -100,7 +106,6 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
 
             if (!Array.isArray(data)) data = [];
 
-            // 🎯 จุดแก้ไขหลัก: แปลงฟิลเตอร์สเตตัสเปรียบเทียบเป็นตัวพิมพ์เล็กให้ตรงเซสชันคลังข้อมูลล่าสุด
             if (statusFilter !== "ALL") {
                 const targetStatus = statusFilter.toLowerCase();
                 data = data.filter((loc: LocationData) => loc.latestSample?.status?.toLowerCase() === targetStatus);
@@ -114,33 +119,31 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         }
     }, [agencyFilter, statusFilter]);
 
-    // โหลดสถานีที่มีอยู่แล้วทั้งใน explorer และ picker (picker ใช้แสดงหมุดอ้างอิงตอนปักหมุดใหม่)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchLocations();
-        }, 0);
-        return () => clearTimeout(timer);
-    }, [mode, fetchLocations]);
+        fetchLocations();
+    }, [fetchLocations]);
 
-    useEffect(() => {
-        const currentMap = leafletMapRef.current;
-        return () => {
-            if (currentMap) {
-                const container = currentMap.getContainer();
-                if (container) {
-                    (container as unknown as { _leaflet_id: number | null })._leaflet_id = null;
-                }
-            }
-        };
-    }, []);
+    // ⚡ Performance ขั้นสุด: จำชุดข้อมูล Markers ไว้ในหน่วยความจำ
+    // จะคำนวณและเรนเดอร์หมุดใหม่ก็ต่อเมื่อข้อมูลสถานี (locations) หรือโหมดการทำงานเปลี่ยนเท่านั้น
+    // ย้ายหน้าจอ ซูมเข้าออก หรือเปิดปิด BottomSheet จะไม่เกิดภาระกับ CPU ในการลูปสร้างหมุดใหม่
+    const renderedMarkers = useMemo(() => {
+        return locations.map((loc) => (
+            <Marker
+                key={loc.id}
+                position={[loc.lat, loc.lng]}
+                icon={createLocationIcon(loc.organization, loc.latestSample?.status || null)}
+                eventHandlers={mode === "explorer" ? { click: () => setSelectedLocation(loc) } : undefined}
+            />
+        ));
+    }, [locations, mode]);
+
+    if (!isMounted) return null;
 
     const center: [number, number] = [13.2, 100.9];
     const zoom = mode === "picker" ? 10 : 9;
 
     return (
         <div className="relative w-full h-full">
-            {/* Filter Container */}
-            {/* Filter Container */}
             {mode === "explorer" && (
                 <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-3 break-all">
                     <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
@@ -148,22 +151,13 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 </div>
             )}
 
-            
-
-            <MapContainer key={mapKey} ref={leafletMapRef} center={center} zoom={zoom} className="w-full h-full" zoomControl={false} attributionControl={false}>
+            <MapContainer key={`map-container-${mode}`} center={center} zoom={zoom} className="w-full h-full" zoomControl={false} attributionControl={false}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
 
-                {locations.map((loc) => (
-                    <Marker
-                        key={loc.id}
-                        position={[loc.lat, loc.lng]}
-                        icon={createLocationIcon(loc.organization, loc.latestSample?.status || null)}
-                        eventHandlers={mode === "explorer" ? { click: () => setSelectedLocation(loc) } : undefined}
-                    />
-                ))}
+                {/* ⚡ ดึงหมุดที่บันทึกไว้ในแคชมาแสดงผลทันที */}
+                {renderedMarkers}
 
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
-
                 {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon("OTHER", null)} />}
 
                 {userPos && (
@@ -177,15 +171,14 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                         })}
                     />
                 )}
-                <MapController centerPos={userPos} />
+                <MapController centerPos={userPos} selectedLocation={selectedLocation} />
             </MapContainer>
 
-            {/* Locate Me Button */}
             {mode === "explorer" && (
                 <button
                     title="Locate Me"
                     onClick={handleLocateMe}
-                    className="absolute bottom-6 right-4 lg:bottom-8 lg:right-6 z-600 bg-surface p-3.5 rounded-full shadow-lg border border-border text-primary hover:bg-surface-subtle transition-all duration-300 active:scale-95 cursor-pointer"
+                    className="absolute bottom-6 right-4 lg:bottom-8 lg:right-6 z-600 bg-surface p-3.5 rounded-full shadow-lg border border-border text-primary hover:bg-surface-subtle transition-all duration-200 active:scale-95 will-change-transform cursor-pointer"
                 >
                     <Navigation size={18} className="fill-primary" />
                 </button>

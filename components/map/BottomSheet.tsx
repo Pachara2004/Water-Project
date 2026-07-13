@@ -2,7 +2,7 @@
 
 import { X, MapPin, Calendar, FlaskConical, ShieldCheck, ShieldX, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import StatusBadge from "./StatusBadge";
 import { getOrganizationLabel, evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
 import TimeSeriesChart, { TimeSeriesDataPoint } from "../TimeSeriesChart";
@@ -45,6 +45,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const router = useRouter();
     const { currentUser } = useAppStore();
     const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("half");
+
     const isDraggingRef = useRef(false);
     const dragStartYRef = useRef(0);
     const dragBaseHeightRef = useRef(0);
@@ -52,15 +53,26 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const lastTimeRef = useRef(0);
     const velocityRef = useRef(0);
     const sheetRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
+    const animationFrameRef = useRef<number | null>(null);
 
-    const HEIGHTS = {
-        collapsed: 120,
-        half: typeof window !== "undefined" ? window.innerHeight * 0.5 : 300,
-        full: typeof window !== "undefined" ? window.innerHeight * 0.9 : 700,
-    };
+    // ⚡ Performance: บันทึกขนาดความสูงหน้าจอคงที่ ป้องกัน Layout Shift
+    const [windowHeight, setWindowHeight] = useState(700);
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            setWindowHeight(window.innerHeight);
+        }
+    }, []);
 
-    const getSnapHeight = (snap: "collapsed" | "half" | "full"): number => HEIGHTS[snap];
+    const HEIGHTS = useMemo(
+        () => ({
+            collapsed: 120,
+            half: windowHeight * 0.5,
+            full: windowHeight * 0.85,
+        }),
+        [windowHeight],
+    );
+
+    const getSnapHeight = useCallback((snap: "collapsed" | "half" | "full"): number => HEIGHTS[snap], [HEIGHTS]);
 
     const getNearestSnapPoint = (height: number): "collapsed" | "half" | "full" => {
         const dists = {
@@ -73,7 +85,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
     const snapTo = (point: "collapsed" | "half" | "full") => {
         if (sheetRef.current) {
-            sheetRef.current.style.transition = "height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+            sheetRef.current.style.transition = "height 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
             sheetRef.current.style.height = `${getSnapHeight(point)}px`;
         }
         setSheetHeight(point);
@@ -90,32 +102,40 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         if (sheetRef.current) sheetRef.current.style.transition = "none";
     };
 
-    const handleDragMove = (clientY: number) => {
-        if (!isDraggingRef.current) return;
+    const handleDragMove = useCallback(
+        (clientY: number) => {
+            if (!isDraggingRef.current) return;
 
-        const now = Date.now();
-        const dt = now - lastTimeRef.current;
-        if (dt > 0) {
-            velocityRef.current = (lastYRef.current - clientY) / dt;
-        }
-        lastYRef.current = clientY;
-        lastTimeRef.current = now;
+            const now = Date.now();
+            const dt = now - lastTimeRef.current;
+            if (dt > 0) {
+                velocityRef.current = (lastYRef.current - clientY) / dt;
+            }
+            lastYRef.current = clientY;
+            lastTimeRef.current = now;
 
-        const delta = dragStartYRef.current - clientY;
-        const newHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, dragBaseHeightRef.current + delta));
+            const delta = dragStartYRef.current - clientY;
+            const newHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, dragBaseHeightRef.current + delta));
 
-        if (sheetRef.current) {
-            sheetRef.current.style.height = `${newHeight}px`;
-        }
-    };
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+
+            animationFrameRef.current = requestAnimationFrame(() => {
+                if (sheetRef.current) {
+                    sheetRef.current.style.height = `${newHeight}px`;
+                }
+            });
+        },
+        [HEIGHTS],
+    );
 
     const handleDragEnd = () => {
         if (!isDraggingRef.current) return;
         isDraggingRef.current = false;
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
         const currentHeight = sheetRef.current ? sheetRef.current.getBoundingClientRect().height : getSnapHeight(sheetHeight);
         const velocity = velocityRef.current;
-        const VELOCITY_THRESHOLD = 0.3;
+        const VELOCITY_THRESHOLD = 0.25;
 
         let nextPoint: "collapsed" | "half" | "full";
 
@@ -133,28 +153,72 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     };
 
     useEffect(() => {
+        return () => {
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        };
+    }, []);
+
+    useEffect(() => {
         if (sheetRef.current) {
-            sheetRef.current.style.transition = "height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+            sheetRef.current.style.transition = "height 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
             sheetRef.current.style.height = `${getSnapHeight(sheetHeight)}px`;
         }
     }, [getSnapHeight, sheetHeight]);
+
+    // ⚡ React Compiler Optimization: แปลงเป็นฟังก์ชันปกติ ให้ Compiler จัดการ Auto-Memoize ตาม Dependency จริง
+    const chartData = (() => {
+        if (!location?.recentSamples) return [];
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+        return location.recentSamples
+            .filter((s) => new Date(s.collectedAt) >= oneWeekAgo)
+            .map((sample: any) => ({
+                date: new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                    day: "numeric",
+                    month: "short",
+                }),
+                phosphate: sample.phosphateVal ?? sample.phosphateValue ?? 0,
+                ammonia: sample.ammoniaVal ?? sample.ammoniaValue ?? 0,
+                nitrate: sample.nitrateVal ?? sample.nitrateValue ?? 0,
+            }));
+    })();
+
+    // ⚡ React Compiler Optimization: แปลงลูปสารเคมีให้คลีน ไร้ปัญหา Dependency Array ขัดแย้งกัน
+    const chemicalItems = (() => {
+        const latest = location?.latestSample;
+        const samplesArr = location?.recentSamples || [];
+        const prev = samplesArr.length > 1 ? samplesArr[samplesArr.length - 2] : null;
+        if (!latest) return [];
+
+        return Object.keys(latest)
+            .filter((key) => (key.endsWith("Val") || key.endsWith("Value")) && latest[key] !== undefined && latest[key] !== null)
+            .map((key) => {
+                const currentVal = Number(latest[key]);
+                const prevVal = prev && prev[key] !== undefined && prev[key] !== null ? Number(prev[key]) : null;
+                const diff = prevVal !== null ? currentVal - prevVal : 0;
+                const cleanLabel = key.replace(/Val(ue)?$/i, "");
+
+                let colorClass = "text-teal-500";
+                if (cleanLabel.toLowerCase().includes("ammonia")) colorClass = "text-purple-500";
+                if (cleanLabel.toLowerCase().includes("nitrate")) colorClass = "text-blue-500";
+
+                return { key, currentVal, diff, displayLabel: cleanLabel.toUpperCase(), colorClass, hasPrev: !!prev };
+            });
+    })();
 
     if (!location) return null;
 
     const samplesArr = location.recentSamples || [];
     const latest = location.latestSample;
-    const prev = samplesArr.length > 1 ? samplesArr[samplesArr.length - 2] : null;
 
-    // 🔐 PII PRIVACY MATRIX: Determine what to show for collector info based on role
     const renderCollectorInfo = () => {
         if (!latest?.collector) return null;
-
         const { fullName, displayName, phone: colPhone, id: colId } = latest.collector as any;
         const colName = fullName || displayName || "เจ้าหน้าที่";
         const role = currentUser?.role;
 
         if (!currentUser || role === "guest") return null;
-
         if (role === "admin") {
             return (
                 <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
@@ -165,38 +229,24 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             );
         }
 
-        if (role === "collector") {
-            const isSelf = String(colId) === String(currentUser.id);
-            if (isSelf) {
-                return (
-                    <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
-                        <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
-                        <p className="text-md font-semibold text-black">{colName}</p>
-                        <p className="text-md font-semibold text-black">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
-                    </div>
-                );
-            } else {
-                const anonymizedName = colName && colName.length > 0 ? `${colName[0]}***` : "***";
-                return (
-                    <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
-                        <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
-                        <p className="text-xs font-bold text-black mt-1">{anonymizedName}</p>
-                    </div>
-                );
-            }
-        }
-
-        if (role === "officer") {
-            const anonymizedName = colName && colName.length > 0 ? `${colName[0]}***` : "***";
+        const isSelf = String(colId) === String(currentUser.id);
+        if (role === "collector" && isSelf) {
             return (
-                <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
+                <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
                     <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
-                    <p className="text-xs font-bold text-black mt-1">{anonymizedName}</p>
+                    <p className="text-md font-semibold text-black">{colName}</p>
+                    <p className="text-md font-semibold text-black">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
                 </div>
             );
         }
 
-        return null;
+        const anonymizedName = colName && colName.length > 0 ? `${colName[0]}***` : "***";
+        return (
+            <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
+                <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
+                <p className="text-xs font-bold text-black mt-1">{anonymizedName}</p>
+            </div>
+        );
     };
 
     const formatDate = (dateStr: string) => {
@@ -209,22 +259,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         });
     };
 
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    const chartData: TimeSeriesDataPoint[] =
-        location.recentSamples
-            ?.filter((s) => new Date(s.collectedAt) >= oneWeekAgo)
-            .map((sample: any) => ({
-                date: new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                    day: "numeric",
-                    month: "short",
-                }),
-                phosphate: sample.phosphateVal ?? sample.phosphateValue ?? 0,
-                ammonia: sample.ammoniaVal ?? sample.ammoniaValue ?? 0,
-                nitrate: sample.nitrateVal ?? sample.nitrateValue ?? 0,
-            })) || [];
-
     const statusCounts = samplesArr.reduce(
         (acc, curr) => {
             acc[curr.status] = (acc[curr.status] || 0) + 1;
@@ -234,14 +268,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     );
     const modeStatus = Object.keys(statusCounts).length > 0 ? Object.keys(statusCounts).reduce((a, b) => (statusCounts[a] > statusCounts[b] ? a : b), "SAFE") : null;
 
-    // ดึงค่าระดับสารเคมีหลักมาส่งคำนวณเกณฑ์ประเมิน
     const latestPhosphate = latest ? (latest.phosphateVal ?? latest.phosphateValue ?? null) : null;
     const latestAmmonia = latest ? (latest.ammoniaVal ?? latest.ammoniaValue ?? null) : null;
     const standardsEval = latest ? evaluateAllStandards(latestPhosphate, latestAmmonia) : null;
 
-    /* ─── Shared scrollable content ─────────────────────────────────────── */
     const renderContent = () => (
-        <div className="flex-1">
+        <div className="flex-1 ">
             <div className="flex items-start gap-3 mb-4">
                 <div className="p-2 bg-primary text-white border border-primary/10 rounded-2xl shrink-0">
                     <MapPin size={24} />
@@ -269,66 +301,37 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                     {renderCollectorInfo()}
 
-                    {/* 🧪 Chemical values — วนลูปสแกนดักจับคีย์แบบยืดหยุ่นรองรับทั้ง API แผนที่และประวัติครับบอส */}
-                    {/* 🧪 Chemical values — Dynamic Version */}
                     <div className="grid grid-cols-2 gap-2">
-                        {Object.keys(latest)
-                            // 1. กรองเอาเฉพาะคีย์ที่ลงท้ายด้วย Val หรือ Value และมีค่าอยู่จริง
-                            .filter((key) => {
-                                const isChemicalKey = key.endsWith("Val") || key.endsWith("Value");
-                                const hasValue = latest[key] !== undefined && latest[key] !== null;
-                                return isChemicalKey && hasValue;
-                            })
-                            .map((key) => {
-                                const currentVal = Number(latest[key]);
-
-                                // 2. ค้นหาค่าประวัติก่อนหน้า (prev) จากคีย์เดียวกัน
-                                const prevVal = prev && prev[key] !== undefined && prev[key] !== null ? Number(prev[key]) : null;
-                                const diff = prevVal !== null ? currentVal - prevVal : 0;
-
-                                // 3. ทำ Dynamic Label & Style ตามชื่อคีย์
-                                // เช่น "phosphateVal" -> "PHOSPHATE"
-                                const cleanLabel = key.replace(/Val(ue)?$/i, "");
-                                const displayLabel = cleanLabel.toUpperCase();
-
-                                // กำหนดธีมสีแบบ Dynamic ตามชื่อสาร (เผื่ออนาคตเพิ่มสารใหม่ จะได้มีสีไม่ซ้ำกัน)
-                                let colorClass = "text-teal-500";
-                                if (cleanLabel.toLowerCase().includes("ammonia")) colorClass = "text-purple-500";
-                                if (cleanLabel.toLowerCase().includes("nitrate")) colorClass = "text-blue-500";
-
-                                return (
-                                    <div
-                                        key={key}
-                                        className="bg-surface rounded-xl p-4 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-                                    >
-                                        <div className="flex items-center content-center justify-center gap-1 mb-1">
-                                            <FlaskConical size={16} className={colorClass} />
-                                            <span className="text-sm font-bold text-primary uppercase">{displayLabel}</span>
-                                        </div>
-                                        <div className="flex items-center content-center justify-center gap-1.5">
-                                            <span className="text-2xl font-black text-black">{currentVal.toFixed(3)}</span>
-                                            <span className="text-xs text-black font-bold">mg/L</span>
-                                        </div>
-                                        {prev && diff !== 0 && (
-                                            <div className={`flex items-center gap-1 text-xs font-black justify-center ${diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
-                                                {diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                                {diff > 0 ? "+" : ""}
-                                                {diff.toFixed(3)}
-                                            </div>
-                                        )}
+                        {chemicalItems.map((item) => (
+                            <div
+                                key={item.key}
+                                className="bg-surface rounded-xl p-4 border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200"
+                            >
+                                <div className="flex items-center content-center justify-center gap-1 mb-1">
+                                    <FlaskConical size={16} className={item.colorClass} />
+                                    <span className="text-sm font-bold text-primary uppercase">{item.displayLabel}</span>
+                                </div>
+                                <div className="flex items-center content-center justify-center gap-1.5">
+                                    <span className="text-2xl font-black text-black">{item.currentVal.toFixed(3)}</span>
+                                    <span className="text-xs text-black font-bold">mg/L</span>
+                                </div>
+                                {item.hasPrev && item.diff !== 0 && (
+                                    <div className={`flex items-center gap-1 text-xs font-black justify-center ${item.diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
+                                        {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                        {item.diff > 0 ? "+" : ""}
+                                        {item.diff.toFixed(3)}
                                     </div>
-                                );
-                            })}
+                                )}
+                            </div>
+                        ))}
                     </div>
 
-                    {/* Dissolved Oxygen Card (DO) */}
                     {latest.oxygen !== null && latest.oxygen !== undefined && (
-                        <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border hover:scale-[1.02] active:scale-[0.98] transition-all duration-300">
+                        <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border">
                             <div className="flex items-center gap-1.5">
                                 <FlaskConical size={16} className="text-blue-500" />
                                 <span className="text-sm font-bold text-primary uppercase">ค่าออกซิเจนละลายน้ำ</span>
                             </div>
-
                             <div className="flex items-baseline gap-1 text-right">
                                 <span className="text-2xl font-black text-black">{latest.oxygen.toFixed(2)}</span>
                                 <span className="text-xs text-black font-bold">mg/L</span>
@@ -336,14 +339,13 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         </div>
                     )}
 
-                    {/* Weather Details (Open-Meteo API Realtime) */}
                     {(latest.airTemperature !== null ||
                         latest.rainAccumulation !== null ||
                         latest.weatherCondCode !== null ||
                         latest.temperature !== null ||
                         latest.rainVolume !== null ||
                         latest.weatherCondition !== null) && (
-                        <div className="bg-surface border border-border rounded-2xl p-6 ">
+                        <div className="bg-surface border border-border rounded-2xl p-6">
                             <h4 className="text-xs font-semibold text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
                             <div className="grid grid-cols gap-3 text-center">
                                 {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
@@ -376,17 +378,13 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                     <div
                                         key={type}
                                         className={`flex items-center gap-3.5 text-xs font-bold px-4 py-3 rounded-xl border ${
-                                            passed ? "bg-emerald-500/5 text-emerald-700 dark:text-emerald-300 border-emerald-500/10" : "bg-red-500/5 text-red-700 dark:text-red-300 border-red-500/10"
+                                            passed ? "bg-emerald-500/5 text-emerald-700 border-emerald-500/10" : "bg-red-500/5 text-red-700 border-red-500/10"
                                         }`}
                                     >
                                         {passed ? <ShieldCheck size={16} className="text-emerald-500 shrink-0" /> : <ShieldX size={16} className="text-red-500 shrink-0" />}
                                         <span className="flex-1 truncate">{LOCATION_TYPE_LABELS[type as keyof typeof LOCATION_TYPE_LABELS]}</span>
                                         <span
-                                            className={`text-xs font-black px-2 py-0.5 rounded border ${
-                                                passed
-                                                    ? "bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-800/30"
-                                                    : "bg-red-100/70 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200/50 dark:border-red-800/30"
-                                            }`}
+                                            className={`text-xs font-black px-2 py-0.5 rounded border ${passed ? "bg-emerald-100 text-emerald-600 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}
                                         >
                                             {passed ? "ผ่าน" : "ไม่ผ่าน"}
                                         </span>
@@ -398,7 +396,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                     {samplesArr.length > 0 && (
                         <div className="bg-surface border border-border rounded-2xl p-4">
-                            <div className="flex items-center justify-center gap-1 mb-2  text-xs text-text-secondary">
+                            <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text-secondary">
                                 <Minus size={12} className="text-border" />
                                 <span className="text-sm font-semibold text-black">สถานะพบบ่อยสุด:</span>
                                 <StatusBadge status={(modeStatus ?? "").toLowerCase() as any} size="md" />
@@ -452,7 +450,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 <div className="mt-8">
                     <button
                         onClick={() => router.push(`/submit?locationId=${location.id}`)}
-                        className="w-full py-4 min-h-[48px] bg-primary hover:bg-navy-dark active:scale-[0.97] text-white font-bold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                        className="w-full py-4 min-h-[48px] bg-primary hover:bg-navy-dark active:scale-[0.97] text-white font-bold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                     >
                         <FlaskConical size={15} />
                         ส่งผลตรวจคุณภาพน้ำจุดนี้
@@ -466,10 +464,9 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         <>
             <div className="hidden" onClick={onClose} />
 
-            {/* ── Mobile: bottom sheet ──────────────────────────────────────── */}
             <div
                 ref={sheetRef}
-                className="sm:hidden fixed left-0 right-0 z-1000 bg-surface rounded-t-3xl border border-border flex flex-col"
+                className="sm:hidden fixed left-0 right-0 z-1000 bg-bg rounded-t-3xl border border-border flex flex-col will-change-[height]"
                 style={{
                     bottom: `calc(72px + env(safe-area-inset-bottom))`,
                     height: `${getSnapHeight(sheetHeight)}px`,
@@ -485,19 +482,18 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 <div className="bottom-sheet-header flex items-center justify-between px-7 pt-4 pb-3 shrink-0 select-none" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
                     <div className="flex-1 flex items-center justify-center">
                         <div
-                            className="bottom-sheet-handle h-7 text-primary flex items-center justify-center cursor-grab active:cursor-grabbing rounded-full hover:bg-primary transition-colors"
+                            className="bottom-sheet-handle h-7 text-primary flex items-center justify-center cursor-grab active:cursor-grabbing rounded-full"
                             onMouseDown={handleDragStart}
                             onTouchStart={handleDragStart}
                         >
                             <div className="w-20 h-1 rounded-full bg-secondary transition-all" />
                         </div>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8m flex items-center justify-center transition-colors active:scale-90 cursor-pointer">
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center transition-transform active:scale-90 cursor-pointer">
                         <X size={24} className="text-primary" />
                     </button>
                 </div>
                 <div
-                    ref={contentRef}
                     className="flex-1 flex flex-col overflow-y-auto scrollbar-none px-6 pb-4 pointer-events-auto"
                     style={{
                         paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
@@ -507,12 +503,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 </div>
             </div>
 
-            {/* ── Tablet / Desktop: right-side panel ───────────────────────── */}
             <div
-                className="hidden sm:flex fixed top-0 right-0 h-full z-1000
-                      w-100 lg:w-110
-                      bg-surface border-l border-border shadow-3xl
-                      flex-col animate-slide-in-right transition-colors duration-300"
+                className="hidden sm:flex fixed top-0 right-0 h-full z-1000 w-100 lg:w-110 bg-surface border-l border-border shadow-3xl flex-col animate-slide-in-right will-change-transform"
                 style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
             >
                 <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0 border-b border-border">
@@ -520,7 +512,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     <button
                         title="Close Panel"
                         onClick={onClose}
-                        className="w-9 h-9 rounded-full bg-surface-subtle hover:bg-surface-muted flex items-center justify-center border border-border transition-colors active:scale-90 cursor-pointer"
+                        className="w-9 h-9 rounded-full bg-surface-subtle hover:bg-surface-muted flex items-center justify-center border border-border transition-transform active:scale-90 cursor-pointer"
                     >
                         <X size={15} className="text-text-secondary" />
                     </button>
