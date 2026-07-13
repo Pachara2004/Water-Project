@@ -270,44 +270,55 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     {renderCollectorInfo()}
 
                     {/* 🧪 Chemical values — วนลูปสแกนดักจับคีย์แบบยืดหยุ่นรองรับทั้ง API แผนที่และประวัติครับบอส */}
+                    {/* 🧪 Chemical values — Dynamic Version */}
                     <div className="grid grid-cols-2 gap-2">
-                        {[
-                            { key: "phosphateVal", label: "Phosphate", color: "text-teal-500", bgColor: "bg-teal-500/10" },
-                            { key: "ammoniaVal", label: "Ammonia", color: "text-purple-500", bgColor: "bg-purple-500/10" },
-                        ].map((indicator) => {
-                            // ค้นหาคีย์ตัวแรกที่จับคู่เจอข้อมูลในออบเจกต์
-                            const foundKey = indicator.keys.find((k) => (latest as any)[k] !== undefined && (latest as any)[k] !== null);
-                            if (!foundKey) return null;
+                        {Object.keys(latest)
+                            // 1. กรองเอาเฉพาะคีย์ที่ลงท้ายด้วย Val หรือ Value และมีค่าอยู่จริง
+                            .filter((key) => {
+                                const isChemicalKey = key.endsWith("Val") || key.endsWith("Value");
+                                const hasValue = latest[key] !== undefined && latest[key] !== null;
+                                return isChemicalKey && hasValue;
+                            })
+                            .map((key) => {
+                                const currentVal = Number(latest[key]);
 
-                            const currentVal = (latest as any)[foundKey];
-                            const prevVal = prev ? indicator.keys.map((k) => (prev as any)[k]).find((v) => v !== undefined && v !== null) : null;
-                            const diff = prevVal !== null && prevVal !== undefined ? currentVal - Number(prevVal) : 0;
+                                // 2. ค้นหาค่าประวัติก่อนหน้า (prev) จากคีย์เดียวกัน
+                                const prevVal = prev && prev[key] !== undefined && prev[key] !== null ? Number(prev[key]) : null;
+                                const diff = prevVal !== null ? currentVal - prevVal : 0;
 
-                            const isPH = indicator.label.toLowerCase().includes("ph");
+                                // 3. ทำ Dynamic Label & Style ตามชื่อคีย์
+                                // เช่น "phosphateVal" -> "PHOSPHATE"
+                                const cleanLabel = key.replace(/Val(ue)?$/i, "");
+                                const displayLabel = cleanLabel.toUpperCase();
 
-                            return (
-                                <div
-                                    key={indicator.label}
-                                    className="bg-surface rounded-xl p-4 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-                                >
-                                    <div className="flex items-center content-center justify-center gap-1 mb-1">
-                                        <FlaskConical size={16} className={indicator.color} />
-                                        <span className="text-sm font-bold text-primary uppercase">{indicator.label}</span>
-                                    </div>
-                                    <div className="flex items-center content-center justify-center gap-1.5">
-                                        <span className="text-2xl font-black text-black">{Number(currentVal).toFixed(3)}</span>
-                                        <span className="text-xs text-black font-bold">{isPH ? "pH" : "mg/L"}</span>
-                                    </div>
-                                    {prev && diff !== 0 && (
-                                        <div className={`flex items-center gap-1  text-xs font-black justify-center ${diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
-                                            {diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                            {diff > 0 ? "+" : ""}
-                                            {diff.toFixed(3)}
+                                // กำหนดธีมสีแบบ Dynamic ตามชื่อสาร (เผื่ออนาคตเพิ่มสารใหม่ จะได้มีสีไม่ซ้ำกัน)
+                                let colorClass = "text-teal-500";
+                                if (cleanLabel.toLowerCase().includes("ammonia")) colorClass = "text-purple-500";
+                                if (cleanLabel.toLowerCase().includes("nitrate")) colorClass = "text-blue-500";
+
+                                return (
+                                    <div
+                                        key={key}
+                                        className="bg-surface rounded-xl p-4 border border-border flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+                                    >
+                                        <div className="flex items-center content-center justify-center gap-1 mb-1">
+                                            <FlaskConical size={16} className={colorClass} />
+                                            <span className="text-sm font-bold text-primary uppercase">{displayLabel}</span>
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                                        <div className="flex items-center content-center justify-center gap-1.5">
+                                            <span className="text-2xl font-black text-black">{currentVal.toFixed(3)}</span>
+                                            <span className="text-xs text-black font-bold">mg/L</span>
+                                        </div>
+                                        {prev && diff !== 0 && (
+                                            <div className={`flex items-center gap-1 text-xs font-black justify-center ${diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
+                                                {diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                                {diff > 0 ? "+" : ""}
+                                                {diff.toFixed(3)}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                     </div>
 
                     {/* Dissolved Oxygen Card (DO) */}
