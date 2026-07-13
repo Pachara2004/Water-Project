@@ -13,6 +13,13 @@ enum WaterStatus {
   danger
 }
 
+// สถานะการตรวจสอบผลตรวจที่ confidence ต่ำกว่าเกณฑ์ (คนละมิติกับ WaterStatus)
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
 model Role {
   id           Int           @id @default(autoincrement())
   roleName     String        @unique @map("role_name")
@@ -104,6 +111,8 @@ model WaterSample {
 
   measurements     WaterSampleMeasurement[]
 
+  // เชื่อมกับ ReviewRequest ผ่าน sessionGroup (string link ไม่ใช่ FK จริง — ดู ReviewRequest ด้านล่าง)
+  @@index([sessionGroup])
   @@map("samples")
 }
 
@@ -138,6 +147,26 @@ model WaterSampleMeasurement {
   // ทำ Unique Constraint ร่วมกัน เพื่อป้องกันไม่ให้สารชนิดเดียวกัน บันทึกซ้ำซ้อนใน Sample ID เดียวกัน
   @@unique([sampleId, parameterId])
   @@map("sample_measurements")
+}
+
+// คำร้องขอตรวจสอบผลตรวจที่ confidence ต่ำกว่าเกณฑ์ — 1 คำร้องต่อ 1 sessionGroup (1:1 กับการเก็บ 1 ครั้ง)
+// จงใจไม่ประกาศ @relation ไปยัง WaterSample.sessionGroup เพราะฝั่งนั้นไม่ unique (ตั้งใจให้หลายแถวใช้ sessionGroup ร่วมกัน)
+// การอ่านข้อมูลข้ามสองตารางนี้ต้อง query แยกด้วย sessionGroup เอง ดู lib/review.ts
+model ReviewRequest {
+  id            Int          @id @default(autoincrement())
+  sessionGroup  String       @unique @map("session_group")
+
+  statusRequest ReviewStatus @default(pending) @map("status_request")
+
+  reviewedById  Int?         @map("reviewed_by_id")
+  reviewedAt    DateTime?    @map("reviewed_at")
+  reviewNote    String?      @map("review_note") @db.Text
+
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@index([statusRequest])
+  @@map("review_requests")
 }
 
 model DashboardWidget {

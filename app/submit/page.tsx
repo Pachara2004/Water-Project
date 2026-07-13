@@ -2,13 +2,14 @@
 
 import { Suspense } from "react";
 import { useSubmitSample } from "@/lib/hooks/useSubmitSample";
+import { isLowConfidence } from "@/lib/standards";
 import { ImageZone } from "@/components/submit/ImageZone";
 import { LocationPicker } from "@/components/submit/LocationPicker";
 import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { DesktopSidebar, AnalyzeButton } from "@/components/submit/NavWorkflow";
 import { StepDot } from "@/components/submit/SharedAtoms";
-import { ArrowLeft, FlaskConical, Sparkles, Database, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FlaskConical, Sparkles, Database, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 
 function SubmitContent() {
     const hook = useSubmitSample();
@@ -42,22 +43,24 @@ function SubmitContent() {
         reader.readAsDataURL(file);
     };
 
-    const onConfirmSave = async () => {
+    const onConfirmSave = async (lowConfidence: boolean) => {
         const Swal = (await import("sweetalert2")).default; // เรียกใช้ Swal ตรงจากโมดูลสากลในเครื่องบอส
 
         Swal.fire({
-            title: "ยืนยันการบันทึกข้อมูล",
-            text: "คุณต้องการบันทึกผลการตรวจสอบน้ำนี้ลงฐานข้อมูล",
+            title: lowConfidence ? "ยืนยันส่งข้อมูลเพื่อรอตรวจสอบ" : "ยืนยันการบันทึกข้อมูล",
+            text: lowConfidence
+                ? "ค่า confidence ของผลตรวจต่ำกว่าเกณฑ์ ข้อมูลนี้จะถูกส่งเข้าสถานะ \"รออนุมัติ\" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน"
+                : "คุณต้องการบันทึกผลการตรวจสอบน้ำนี้ลงฐานข้อมูล",
             icon: "question",
             showCancelButton: true,
-            confirmButtonColor: "#0D9488", // สี Teal-700 ให้เข้าเซ็ตระบบบอส
+            confirmButtonColor: lowConfidence ? "#B45309" : "#0D9488", // amber สำหรับ pending / teal-700 สำหรับบันทึกปกติ
             cancelButtonColor: "#6B7280",
-            confirmButtonText: "ใช่ บันทึกข้อมูล",
+            confirmButtonText: lowConfidence ? "ใช่ ส่งเพื่อรอตรวจสอบ" : "ใช่ บันทึกข้อมูล",
             cancelButtonText: "ยกเลิก",
             allowOutsideClick: () => !Swal.isLoading(), // บล็อกไม่ให้คลิกพื้นหลังปิดตอนกำลังโหลด
         }).then((result) => {
             if (result.isConfirmed) {
-                // 🌟 เปิดสถานะหมุนโหลดตัวเต็มจอ บล็อกปุ่มกดเล่นซ้ำซ้อน
+                // เปิดสถานะหมุนโหลดตัวเต็มจอ บล็อกปุ่มกดเล่นซ้ำซ้อน
                 Swal.fire({
                     title: "กำลังบันทึกข้อมูล...",
                     text: "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล",
@@ -85,12 +88,7 @@ function SubmitContent() {
         });
     };
 
-    const hasLowConfidence = systemParameters.some((param) => {
-        const resData = results[param.id];
-        if (!resData || resData.confidence === undefined) return false;
-        // ดักทั้งกรณีส่งมาแบบ 0.6 หรือส่งมาแบบเต็ม 60
-        return resData.confidence < 0.6;
-    });
+    const hasLowConfidence = systemParameters.some((param) => isLowConfidence(results[param.id]?.confidence));
 
     const currentStep = step === "upload" ? 1 : step === "analyzing" ? 2 : 3;
 
@@ -139,34 +137,52 @@ function SubmitContent() {
                 {step === "results" && (
                     <>
                         <ResultsPanel {...hook} />
-                        {hasLowConfidence ? (
-                            /* 🔴 กรณีไม่ผ่าน: บังคับย้อนกลับ แทนที่ปุ่มบันทึกไปเลย */
-                            <button
-                                onClick={() => hook.setStep("upload")}
-                                className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all duration-200"
-                            >
-                                ย้อนกลับไปถ่ายภาพใหม่
-                            </button>
-                        ) : !saved ? (
-                            /* 🟢 กรณีผ่านหมด: แสดงปุ่มบันทึกปกติ */
-                            <button
-                                onClick={onConfirmSave} // 🌟 เปลี่ยนมาเรียกตัว Confirm ดักตรงนี้แทนครับบอส
-                                className="w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition-all duration-200"
-                            >
-                                <Database size={15} /> บันทึกลงฐานข้อมูล
-                            </button>
+                        {!saved ? (
+                            <div className="space-y-2.5">
+                                {hasLowConfidence && (
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
+                                        <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                                        <span>
+                                            ผลตรวจมีค่า confidence ต่ำกว่าเกณฑ์ หากส่งบันทึก ข้อมูลจะเข้าสู่สถานะ &quot;รออนุมัติ&quot; และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบ
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* confidence ต่ำ: ส่งได้แต่เข้าคิว pending |  ปกติ: บันทึกทันที */}
+                                <button
+                                    onClick={() => onConfirmSave(hasLowConfidence)}
+                                    className={`w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
+                                        hasLowConfidence ? "bg-amber-600 hover:bg-amber-700" : "bg-teal-700 hover:bg-teal-800"
+                                    }`}
+                                >
+                                    {hasLowConfidence ? <Clock size={15} /> : <Database size={15} />}
+                                    {hasLowConfidence ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกลงฐานข้อมูล"}
+                                </button>
+                            </div>
                         ) : (
-                            /* 🤝 บันทึกสำเร็จ */
-                            <div className="text-center p-6 border rounded-xl border-teal-500/30 bg-teal-50/60 flex flex-col items-center gap-3">
-                                <CheckCircle2 className="text-teal-600 animate-bounce" size={28} />
+                            /* บันทึก/ส่งสำเร็จ — ข้อความต่างกันตาม pending หรือไม่ */
+                            <div
+                                className={`text-center p-6 border rounded-xl flex flex-col items-center gap-3 ${
+                                    hasLowConfidence ? "border-amber-500/30 bg-amber-50/60" : "border-teal-500/30 bg-teal-50/60"
+                                }`}
+                            >
+                                {hasLowConfidence ? (
+                                    <Clock className="text-amber-600" size={28} />
+                                ) : (
+                                    <CheckCircle2 className="text-teal-600 animate-bounce" size={28} />
+                                )}
                                 <div>
-                                    <p className="text-sm font-semibold text-teal-900">บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย</p>
+                                    <p className={`text-sm font-semibold ${hasLowConfidence ? "text-amber-900" : "text-teal-900"}`}>
+                                        {hasLowConfidence ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
+                                    </p>
                                 </div>
 
-                                {/* 🌟 ปุ่มนำทางกลับสู่แดชบอร์ด /collector */}
+                                {/* ปุ่มนำทางกลับสู่แดชบอร์ด /collector */}
                                 <button
                                     onClick={() => router.push("/collector")}
-                                    className="mt-2 px-5 py-2.5 min-h-[40px] bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                                    className={`mt-2 px-5 py-2.5 min-h-[40px] text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
+                                        hasLowConfidence ? "bg-amber-600 hover:bg-amber-700" : "bg-teal-700 hover:bg-teal-800"
+                                    }`}
                                 >
                                     กลับสู่หน้าประวัติการตรวจสอบน้ำ
                                 </button>

@@ -4,11 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { MapPin, ShieldAlert, ChevronRight, Shield, Users, Phone, UserCircle2, Pencil, X, Check, AlertCircle, User } from "lucide-react";
+import { MapPin, ShieldAlert, ChevronRight, Shield, Users, Phone, UserCircle2, Pencil, X, Check, AlertCircle, User, ClipboardCheck } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/useToast";
 
 const adminMenus = [
+    {
+        href: "/manage/review-requests",
+        icon: ClipboardCheck,
+        label: "ตรวจสอบคำร้อง Confidence ต่ำ",
+        description: "อนุมัติหรือปฏิเสธผลตรวจที่ AI วิเคราะห์ได้ค่าความมั่นใจต่ำกว่าเกณฑ์",
+        badge: "Review",
+        color: "bg-primary-light text-primary border-primary/10",
+        iconBg: "bg-primary text-white",
+        available: true,
+    },
     {
         href: "/manage/locations",
         icon: MapPin,
