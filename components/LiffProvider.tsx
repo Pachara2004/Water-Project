@@ -48,11 +48,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             })
                 .then((res) => res.json())
                 .then((resData) => {
-                    setUser({
-                        ...resData,
-                        role: "guest", // ตั้งเป็น guest เพื่อให้ทดสอบแผง Onboarding เสมอ
-                        phoneNumber: null,
-                    });
+                    setUser(null);
                     setLiffLoaded(true);
                 })
                 .catch((err) => {
@@ -64,34 +60,46 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         }
 
         // ─── ท่อนเชื่อมต่อ LINE LIFF PRODUCTION ───
-        liff.init({ liffId })
-            .then(async () => {
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                    return;
-                }
-
-                const profile = await liff.getProfile();
-                const response = await fetch("/api/auth", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        accessToken: liff.getAccessToken(),
-                        name: profile.displayName,
-                    }),
-                });
-
-                if (!response.ok) throw new Error("Failed to authenticate with backend");
-
-                const resData = await response.json();
-                setUser(resData);
-                setLiffLoaded(true);
-            })
-            .catch((err) => {
-                console.error("LIFF init error", err);
-                setLiffError(err.message || "Failed to initialize LIFF");
-                setLiffLoaded(true);
+        // ─── ท่อนเชื่อมต่อ LINE LIFF PRODUCTION ───
+liff.init({ liffId })
+    .then(async () => {
+        // 🟢 ถ้า User มี Session ล็อกอินอยู่แล้ว ทำงานตามปกติ
+        if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            const response = await fetch("/api/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    accessToken: liff.getAccessToken(),
+                    name: profile.displayName,
+                }),
             });
+
+            if (!response.ok) throw new Error("Failed to authenticate with backend");
+
+            const resData = await response.json();
+            setUser(resData);
+            setLiffLoaded(true);
+            return;
+        }
+
+        // 🟡 ถ้ายังไม่ได้ล็อกอิน -> ทริกเกอร์บังคับเด้งหน้า Login LINE ทันที!
+        try {
+            liff.login();
+        } catch (loginErr) {
+            // 💡 เวย์นี้เกิดขึ่นเมื่อ User กดย้อนกลับ / ปฏิเสธการล็อกอิน / ปิดหน้าต่างล็อกอิน
+            // ระบบจะไม่ค้าง และไม่เด้งซ้ำ แต่จะปล่อยให้เป็น Guest เข้าไปใช้งานหน้าแอปต่อได้เลย
+            console.warn("User cancelled or login failed, proceeding as guest", loginErr);
+            setUser(null);
+            setLiffLoaded(true);
+        }
+    })
+    .catch((err) => {
+        console.error("LIFF init error", err);
+        // เผื่อกรณี liff init พัง ก็ปล่อยให้ใช้งานแบบ Guest ได้เช่นกันครับ
+        setUser(null);
+        setLiffLoaded(true);
+    });
     }, [setUser]);
 
     // ─── Realtime Validation Logic (Enterprise Standard) ───
