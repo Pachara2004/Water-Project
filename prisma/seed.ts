@@ -15,6 +15,7 @@ async function main() {
     console.log("🧹 Cleaning existing data...");
     await prisma.dashboardWidget.deleteMany();
     await prisma.roleRequest.deleteMany();
+    await prisma.reviewRequest.deleteMany(); // ไม่มี FK จริงกับ samples (ผูกผ่าน sessionGroup string) แต่ต้องเคลียร์ก่อน reseed กัน @unique sessionGroup ชนกัน
     await prisma.waterSampleMeasurement.deleteMany();
     await prisma.waterSample.deleteMany();
     await prisma.parameter.deleteMany();
@@ -23,7 +24,7 @@ async function main() {
     await prisma.role.deleteMany();
 
     // MySQL ไม่รีเซ็ต AUTO_INCREMENT ให้เองตอน DELETE (ต่างจาก TRUNCATE) — รีเซ็ตมือทุกตารางกันเลข id ไต่สูงขึ้นเรื่อยๆ ทุกครั้งที่ reseed
-    const tablesToResetAutoIncrement = ["dashboard_widgets", "role_requests", "sample_measurements", "samples", "parameters", "locations", "users", "roles"];
+    const tablesToResetAutoIncrement = ["dashboard_widgets", "role_requests", "review_requests", "sample_measurements", "samples", "parameters", "locations", "users", "roles"];
     for (const table of tablesToResetAutoIncrement) {
         await prisma.$executeRawUnsafe(`ALTER TABLE \`${table}\` AUTO_INCREMENT = 1`);
     }
@@ -73,7 +74,7 @@ async function main() {
 
     // ─── 5. USERS SEEDING ───
     console.log("👤 Creating users...");
-    await prisma.user.create({
+    const adminUser = await prisma.user.create({
         data: { lineUniqueId: "U_ADMIN_999", lineProfileName: "Somchai_LINE", firstName: "สมชาย", lastName: "แอดมินระบบ", phoneNumber: "0812345678", roleId: roleAdmin.id },
     });
 
@@ -182,6 +183,124 @@ async function main() {
             },
         });
     }
+
+    // ─── 9. CONFIDENCE REVIEW TEST DATA (pending / approved / rejected) ───
+    // ข้อมูลชุดนี้ไว้ทดสอบฟีเจอร์ตรวจสอบผลที่ AI วิเคราะห์ confidence ต่ำกว่าเกณฑ์ (< 0.6)
+    console.log("🔍 Generating confidence-review test scenarios (pending/approved/rejected)...");
+
+    const reviewLocation = insertedLocations[0]; // ปากแม่น้ำบางปะกง
+    const collectorA = collectors[0]; // วิชัย
+    const collectorB = collectors[1]; // มานี
+
+    // A) PENDING — เดี่ยว: 1 สาร confidence ต่ำ ยังไม่มีใครตัดสิน
+    //    ทดสอบ: /manage/review-requests แท็บ "รออนุมัติ", badge "รออนุมัติ" ในประวัติของ collectorA,
+    //    ต้องหายจากแผนที่ + dashboard
+    const sgPendingSingle = "SEED-PENDING-01";
+    await prisma.waterSample.create({
+        data: {
+            collectorId: collectorA.id,
+            locationId: reviewLocation.id,
+            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 3),
+            dissolvedOxygen: 5.2,
+            airTemperature: 29.1,
+            status: WaterStatus.warning,
+            sessionGroup: sgPendingSingle,
+            rawImageUrl: "/uploads/mock-raw.jpg",
+            analyzedPlotUrl: "/uploads/mock-plot.jpg",
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 2.1, confidence: 0.35, boundingBox: "[10,20,100,200]" }] },
+        },
+    });
+    await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingSingle, statusRequest: "pending" } });
+
+    // B) PENDING — ส่งแบบคู่: สารตัวหนึ่ง confidence ปกติ อีกตัวต่ำ แต่ "ทั้ง session" ต้อง pending ไปด้วยกัน
+    //    ทดสอบ: 2 แถวในตารางแต่รวมเป็น 1 การ์ด และทั้ง 2 สารติด badge รออนุมัติพร้อมกัน
+    const sgPendingPaired = "SEED-PENDING-02";
+    await prisma.waterSample.create({
+        data: {
+            collectorId: collectorA.id,
+            locationId: reviewLocation.id,
+            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
+            dissolvedOxygen: 6.0,
+            airTemperature: 28.4,
+            status: WaterStatus.safe,
+            sessionGroup: sgPendingPaired,
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 0.15, confidence: 0.91, boundingBox: "[10,20,100,200]" }] },
+        },
+    });
+    await prisma.waterSample.create({
+        data: {
+            collectorId: collectorA.id,
+            locationId: reviewLocation.id,
+            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
+            dissolvedOxygen: 6.0,
+            airTemperature: 28.4,
+            status: WaterStatus.warning,
+            sessionGroup: sgPendingPaired,
+            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.6, confidence: 0.42, boundingBox: "[15,25,110,210]" }] },
+        },
+    });
+    await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingPaired, statusRequest: "pending" } });
+
+    // C) PENDING — ของ collectorB เผื่อทดสอบว่า collectorA มองไม่เห็นคำร้องของคนอื่น
+    const sgPendingOther = "SEED-PENDING-03";
+    await prisma.waterSample.create({
+        data: {
+            collectorId: collectorB.id,
+            locationId: insertedLocations[1].id,
+            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 8),
+            status: WaterStatus.danger,
+            sessionGroup: sgPendingOther,
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 3.4, confidence: 0.18, boundingBox: "[10,20,100,200]" }] },
+        },
+    });
+    await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingOther, statusRequest: "pending" } });
+
+    // D) APPROVED — เคย confidence ต่ำแต่ admin ตรวจสอบแล้วยืนยันผ่าน ควรกลับมาโชว์บนแผนที่/dashboard ตามปกติ
+    const sgApproved = "SEED-APPROVED-01";
+    await prisma.waterSample.create({
+        data: {
+            collectorId: collectorB.id,
+            locationId: reviewLocation.id,
+            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
+            status: WaterStatus.safe,
+            sessionGroup: sgApproved,
+            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.05, confidence: 0.55, boundingBox: "[15,25,110,210]" }] },
+        },
+    });
+    await prisma.reviewRequest.create({
+        data: {
+            sessionGroup: sgApproved,
+            statusRequest: "approved",
+            reviewedById: adminUser.id,
+            reviewedAt: new Date(Date.now() - 1000 * 60 * 60 * 20),
+        },
+    });
+
+    // E) REJECTED — admin ปฏิเสธพร้อมเหตุผล ตัว WaterSample ถูก soft-delete (isDeleted=true) ตามพฤติกรรมจริงของระบบ
+    const sgRejected = "SEED-REJECTED-01";
+    await prisma.waterSample.create({
+        data: {
+            collectorId: collectorA.id,
+            locationId: insertedLocations[2].id,
+            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 48),
+            status: WaterStatus.danger,
+            sessionGroup: sgRejected,
+            isDeleted: true,
+            lastModifiedBy: adminUser.id,
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 4.5, confidence: 0.28, boundingBox: "[10,20,100,200]" }] },
+        },
+    });
+    await prisma.reviewRequest.create({
+        data: {
+            sessionGroup: sgRejected,
+            statusRequest: "rejected",
+            reviewedById: adminUser.id,
+            reviewedAt: new Date(Date.now() - 1000 * 60 * 60 * 40),
+            reviewNote: "ภาพเบลอ มองไม่เห็นสีของเหลวชัดเจน กรุณาถ่ายใหม่",
+        },
+    });
+
+    console.log("   ✔ Pending: 3 sessions (1 เดี่ยว + 1 คู่ + 1 ของอีกคน) | Approved: 1 | Rejected: 1");
 
     console.log("\n✅ Seeding completed successfully with exact EAV compliance!");
 }
