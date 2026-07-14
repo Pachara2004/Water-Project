@@ -8,7 +8,7 @@ import { useAppStore } from "@/lib/store";
 import { getOrganizationLabel } from "@/lib/standards";
 import { confirmDialog } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
-import { MapPin, MapPinPlus, MapPinned, Building2, Save, ShieldAlert, Plus, Pencil, Trash2, X, Check, ArrowLeft, RefreshCw, Search } from "lucide-react";
+import { MapPin, MapPinPlus, MapPinned, Building2, Save, ShieldAlert, Plus, Pencil, Trash2, X, Check, Search, FileText, ArrowLeft } from "lucide-react"; /* prettier-ignore */
 
 const MapView = dynamic(() => import("@/components/map/MapView"), {
     ssr: false,
@@ -20,7 +20,7 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
 });
 
 interface LocationItem {
-    id: number; 
+    id: number;
     name: string;
     organization: string;
     lat: number;
@@ -42,7 +42,7 @@ export default function AdminLocationsPage() {
     } | null>(null);
     const [saving, setSaving] = useState(false);
 
-    // Organization combobox (ค้นหา/กรอง dropdown หน่วยงานที่มีอยู่)
+    // Organization combobox
     const [orgSearch, setOrgSearch] = useState("");
     const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
 
@@ -57,23 +57,20 @@ export default function AdminLocationsPage() {
     const [editOrg, setEditOrg] = useState("");
     const [editSaving, setEditSaving] = useState(false);
 
-    // Delete: ยืนยันผ่าน SweetAlert แทน inline panel; ใช้ deletingId คุมสถานะ loading รายการที่กำลังลบ
+    // Delete loading state
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
-    // silent=true สำหรับ refetch หลังทำ action (เพิ่ม/แก้ไข/ลบ) เพื่อไม่ให้ list ยุบเป็น spinner
-    // ทั้งก้อน ซึ่งทำให้หน้าสั้นวูบแล้ว scroll เด้ง — โชว์ spinner เฉพาะตอนโหลดครั้งแรกเท่านั้น
     const fetchLocations = useCallback(async (silent = false) => {
         if (!silent) setIsLoading(true);
         try {
             const res = await fetch("/api/locations");
             const data = await res.json();
 
-            // โหลดแมปตัวแปรจาก Expressive Snake Case หลังบ้านเข้าหาโครงสร้างฝั่ง UI คอร์หลัก
             if (Array.isArray(data)) {
                 const mapped = data.map((l: any) => ({
                     id: l.id,
-                    name: l.name, // จากคีย์แมปฝั่ง API หลังบ้านที่แปลงเป็น name แล้ว
-                    organization: l.organization, // จากคีย์แมปฝั่ง API หลังบ้านที่แปลงเป็น organization แล้ว
+                    name: l.name,
+                    organization: l.organization,
                     lat: l.lat,
                     lng: l.lng,
                 }));
@@ -89,12 +86,8 @@ export default function AdminLocationsPage() {
     }, []);
 
     useEffect(() => {
-        // ตรวจเช็กสิทธิ์ Gate ระบบความปลอดภัยพิมพ์เล็กของ
         if (currentUser?.role === "admin") {
-            const timer = setTimeout(() => {
-                fetchLocations();
-            }, 0);
-            return () => clearTimeout(timer);
+            fetchLocations();
         }
     }, [currentUser?.role, fetchLocations]);
 
@@ -221,7 +214,6 @@ export default function AdminLocationsPage() {
         setEditOrg(loc.organization);
     };
 
-    // Role Security Gate (เปรียบเทียบสิทธิ์ตัวพิมพ์เล็ก)
     if (!currentUser || currentUser.role !== "admin") {
         return (
             <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto bg-surface-muted border-x border-border">
@@ -232,7 +224,7 @@ export default function AdminLocationsPage() {
                 <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้าการกำหนดค่าพิกัดพ้นกรอบการจัดการทั่วไป สำหรับผู้ดูแลระบบสูงสุด (System Admin) เท่านั้น</p>
                 <button
                     onClick={() => router.push("/map")}
-                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
+                    className="w-full max-w-50 py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
                 >
                     กลับไปหน้าแผนที่
                 </button>
@@ -241,7 +233,6 @@ export default function AdminLocationsPage() {
     }
 
     const uniqueOrgs = Array.from(new Set(locations.map((l) => l.organization).filter(Boolean)));
-
     const stationKeyword = stationSearch.trim().toLowerCase();
     const filteredLocations = stationKeyword
         ? locations.filter((loc) => loc.name.toLowerCase().includes(stationKeyword) || getOrganizationLabel(loc.organization).toLowerCase().includes(stationKeyword))
@@ -251,322 +242,317 @@ export default function AdminLocationsPage() {
     const orgOptions = orgKeyword ? uniqueOrgs.filter((org) => getOrganizationLabel(org).toLowerCase().includes(orgKeyword)) : uniqueOrgs;
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-[120px] relative transition-colors duration-300 overflow-hidden" onClick={() => orgDropdownOpen && setOrgDropdownOpen(false)}>
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pt-10 sm:pt-16">
-                <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
-                    <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
-                    Admin Panel
+        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
+            <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
+                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
-
-                {/* Header card */}
-                <div className="bg-surface rounded-3xl border border-border shadow-sm p-6 sm:p-8 mb-6 sm:mb-10 transition-colors duration-300">
-                    <h1 className="font-display text-lg font-bold text-text-primary leading-tight">
-                        ตั้งค่าจุดตรวจ <span className="font-display text-primary">สถานีชายฝั่ง</span>
-                    </h1>
-                    <p className="text-text-secondary text-xs mt-2 leading-relaxed">กำหนดตำแหน่งพิกัดจุดเก็บตัวอย่างน้ำเพื่อการวิเคราะห์ทางวิทยาศาสตร์ร่วมกับแผนที่ระบบ</p>
+                <div className="text-center">
+                    <h1 className="text-sm font-semibold text-primary">จัดการจุดตรวจวัดน้ำ</h1>
                 </div>
-
-                <div className="space-y-6 sm:space-y-10">
-                    {/* ══════════ SECTION 1: ADD NEW ══════════ */}
-                    <section className="bg-surface rounded-3xl p-5 sm:p-8 border border-border shadow-md space-y-6 sm:space-y-8 transition-all duration-300 relative overflow-hidden">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-primary-light text-primary rounded-full flex items-center justify-center flex-shrink-0">
-                                <MapPinPlus size={16} />
-                            </div>
-                            <h2 className="text-sm font-bold text-text-primary">Add checkpoint stations</h2>
+                <div className="w-15" />
+            </div>
+            {/* คุมขนาด Content Wrapper ให้กางกว้าง max-w-xl เท่าหน้าคอลเลกเตอร์ */}
+            <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
+                {/* ─── ส่วนฟอร์มเพิ่มสถานีใหม่ (Add New Form Card) ─── */}
+                <div className="relative w-full bg-surface rounded-2xl p-5 border border-border space-y-5">
+                    <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-primary-light text-primary rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                            <MapPinPlus size={18} />
                         </div>
-
-                        <div className="space-y-5">
-                            {/* Name */}
-                            <div className="space-y-2.5">
-                                <label className="text-sm font-bold text-text-primary block">ชื่อจุดเก็บตัวอย่าง</label>
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="เช่น หาดจอมเทียน ชลบุรี ป้อมที่ 1"
-                                    className="w-full px-5 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[48px]"
-                                />
-                            </div>
-
-                            {/* Organization — ค้นหา/กรอง dropdown หน่วยงานที่มีอยู่ */}
-                            <div className="space-y-2.5">
-                                <label className="text-sm font-bold text-text-primary flex items-center gap-1.5">
-                                    <Building2 size={14} className="text-text-secondary" />
-                                    หน่วยงานที่รับผิดชอบ
-                                </label>
-                                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                                    <input
-                                        type="text"
-                                        value={orgSearch}
-                                        onChange={(e) => {
-                                            setOrgSearch(e.target.value);
-                                            setOrgDropdownOpen(true);
-                                        }}
-                                        onFocus={() => setOrgDropdownOpen(true)}
-                                        placeholder="ค้นหาหน่วยงาน"
-                                        className="w-full pl-10 pr-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[48px]"
-                                    />
-
-                                    {orgDropdownOpen && (
-                                        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 bg-surface border border-border rounded-2xl shadow-xl py-2 max-h-56 overflow-y-auto animate-fade-in">
-                                            {orgOptions.map((org) => (
-                                                <button
-                                                    key={org}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setOrganization(org);
-                                                        setOrgSearch(getOrganizationLabel(org));
-                                                        setCustomOrg("");
-                                                        setOrgDropdownOpen(false);
-                                                    }}
-                                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
-                                                >
-                                                    <Building2 size={12} className="text-text-muted flex-shrink-0" />
-                                                    {getOrganizationLabel(org)}
-                                                </button>
-                                            ))}
-                                            {orgOptions.length === 0 && <p className="px-4 py-2.5 text-xs text-text-muted">ไม่พบหน่วยงานที่ค้นหา</p>}
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setOrganization("CUSTOM");
-                                                    setOrgSearch("");
-                                                    setOrgDropdownOpen(false);
-                                                }}
-                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1 pt-2.5"
-                                            >
-                                                <Plus size={12} className="flex-shrink-0" />
-                                                เพิ่มหน่วยงานใหม่...
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {organization === "CUSTOM" && (
-                                    <input
-                                        type="text"
-                                        value={customOrg}
-                                        onChange={(e) => setCustomOrg(e.target.value)}
-                                        placeholder="พิมพ์ชื่อหน่วยงานใหม่..."
-                                        className="w-full mt-2 px-5 py-3.5 bg-primary-light border border-primary/10 text-text-primary rounded-2xl text-xs placeholder:text-text-muted/30 focus:border-primary transition-all outline-none min-h-[48px]"
-                                    />
-                                )}
-                            </div>
-
-                            {/* Mini Map */}
-                            <div className="space-y-2.5">
-                                <label className="text-sm font-bold text-text-primary flex items-center gap-1.5">
-                                    <MapPin size={14} className="text-text-secondary" />
-                                    ปักหมุดบนแผนที่
-                                </label>
-                                {/* z-0 สร้าง stacking context ครอบ z-index ภายในของ Leaflet (400-1000) ไม่ให้ทับ dropdown ด้านบน */}
-                                <div className="w-full h-52 rounded-2xl overflow-hidden border border-border bg-surface-subtle relative z-0">
-                                    <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} />
-                                </div>
-
-                                {pickedPosition ? (
-                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary bg-surface-subtle border border-border py-2 px-4 rounded-full w-fit mt-2.5">
-                                        <MapPinned size={12} className="text-text-muted" />
-                                        LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-text-muted italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดทางภูมิศาสตร์</p>
-                                )}
-                            </div>
-
-                            {/* Submit Button */}
-                            <button
-                                onClick={handleSubmit}
-                                disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim())}
-                                className="w-full mt-6 py-4 min-h-[56px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
-                            >
-                                {saving ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        กำลังบันทึกสถานีใหม่...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save size={14} />
-                                        เพิ่มสถานีตรวจวัด
-                                    </>
-                                )}
-                            </button>
+                        <div className="transition-colors duration-300">
+                            <h1 className="text-lg font-bold text-text-primary leading-tight">
+                                ตั้งค่าจุดตรวจ<span className="text-primary">สถานี</span>
+                            </h1>
+                            <p className="text-text-secondary text-xs leading-relaxed mt-1">กำหนดตำแหน่งพิกัดจุดเก็บตัวอย่างน้ำเพื่อการวิเคราะห์ทางวิทยาศาสตร์ร่วมกับแผนที่ระบบ</p>
                         </div>
-                    </section>
-
-                    {/* ══════════ SECTION 2: EXISTING ══════════ */}
-                    <section className="space-y-7">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3.5">
-                                <div className="w-8 h-8 bg-foreground text-background rounded-xl flex items-center justify-center">
-                                    <MapPin size={15} />
-                                </div>
-                                <h2 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Saved stations</h2>
-                            </div>
-                            <span className="text-[9px] font-semibold text-primary bg-primary-light border border-primary/10 px-2.5 py-1 rounded-full uppercase tracking-wider ">
-                                {locations.length} Stations
-                            </span>
-                        </div>
-
-                        {/* Search */}
-                        <div className="relative">
-                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                    </div>
+                    <div className="space-y-4">
+                        {/* Input ชื่อสถานที่ */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">ชื่อจุดเก็บตัวอย่าง</label>
                             <input
                                 type="text"
-                                value={stationSearch}
-                                onChange={(e) => setStationSearch(e.target.value)}
-                                placeholder="ค้นหาสถานีหรือหน่วยงานที่รับผิดชอบ"
-                                className="w-full pl-10 pr-4 py-3.5 min-h-[48px] bg-surface border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 outline-none cursor-text focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="เช่น หาดจอมเทียน ชลบุรี"
+                                className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-11 font-semibold"
                             />
                         </div>
 
-                        {/* Location List */}
-                        <div className="space-y-5">
-                            {isLoading ? (
-                                <div className="bg-surface rounded-3xl p-10 text-center border border-border flex flex-col items-center justify-center gap-3">
-                                    <RefreshCw size={22} className="animate-spin text-primary" />
-                                    <span className="text-xs text-text-muted font-semibold">กำลังดาวน์โหลดข้อมูลสถานี...</span>
-                                </div>
-                            ) : filteredLocations.length === 0 ? (
-                                <div className="bg-surface rounded-3xl p-10 text-center border border-border shadow-sm">
-                                    <div className="w-14 h-14 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                        <MapPin size={20} className="text-text-muted" />
+                        {/* Dropdown หน่วยงาน */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">หน่วยงานที่รับผิดชอบ</label>
+                            <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                    type="text"
+                                    value={orgSearch}
+                                    onChange={(e) => {
+                                        setOrgSearch(e.target.value);
+                                        setOrgDropdownOpen(true);
+                                    }}
+                                    onFocus={() => setOrgDropdownOpen(true)}
+                                    placeholder="ค้นหาหรือเลือกหน่วยงาน"
+                                    className="w-full pl-4 pr-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-11 font-semibold"
+                                />
+
+                                {orgDropdownOpen && (
+                                    <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 bg-surface border border-border rounded-xl shadow-xl py-1.5 max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
+                                        {orgOptions.map((org) => (
+                                            <button
+                                                key={org}
+                                                type="button"
+                                                onClick={() => {
+                                                    setOrganization(org);
+                                                    setOrgSearch(getOrganizationLabel(org));
+                                                    setCustomOrg("");
+                                                    setOrgDropdownOpen(false);
+                                                }}
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
+                                            >
+                                                <Building2 size={13} className="text-text-muted shrink-0" />
+                                                {getOrganizationLabel(org)}
+                                            </button>
+                                        ))}
+                                        {orgOptions.length === 0 && <p className="px-4 py-2 text-xs text-text-muted">ไม่พบหน่วยงานที่ค้นหา</p>}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setOrganization("CUSTOM");
+                                                setOrgSearch("");
+                                                setOrgDropdownOpen(false);
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1"
+                                        >
+                                            <Plus size={13} className="shrink-0" />
+                                            เพิ่มหน่วยงานใหม่...
+                                        </button>
                                     </div>
-                                    <p className="text-xs font-semibold text-text-muted">ไม่พบสถานีตรวจวัดตามตัวกรองนี้</p>
+                                )}
+                            </div>
+
+                            {organization === "CUSTOM" && (
+                                <input
+                                    type="text"
+                                    value={customOrg}
+                                    onChange={(e) => setCustomOrg(e.target.value)}
+                                    placeholder="พิมพ์ชื่อหน่วยงานใหม่..."
+                                    className="w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 focus:border-primary transition-all outline-none min-h-11 font-semibold"
+                                />
+                            )}
+                        </div>
+
+                        {/* แผนที่ปักหมุด */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-text-primary flex items-center gap-1.5 uppercase tracking-wide">
+                                <MapPin size={13} className="text-text-secondary" />
+                                ปักหมุดภูมิศาสตร์บนแผนที่
+                            </label>
+                            <div className="w-full h-52 rounded-xl overflow-hidden border border-border bg-surface-subtle relative z-0">
+                                <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} />
+                            </div>
+
+                            {pickedPosition ? (
+                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary bg-surface-subtle border border-border py-1.5 px-3 rounded-md w-fit mt-2">
+                                    <MapPinned size={12} className="text-text-muted" />
+                                    LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
                                 </div>
                             ) : (
-                                filteredLocations.map((loc) => (
-                                    <div key={loc.id} className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden transition-all hover:scale-[1.01] duration-200">
-                                        <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-5">
-                                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-light text-primary border border-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                                                <MapPin size={15} className="sm:size-[16px]" />
-                                            </div>
+                                <p className="text-[11px] text-text-muted italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
+                            )}
+                        </div>
 
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-xs sm:text-sm font-semibold text-text-primary truncate">{loc.name}</h3>
-                                                <div className="flex items-center gap-1.5 sm:gap-2 mt-2 text-[9px] sm:text-xs text-text-secondary">
-                                                    <Building2 size={10} className="text-text-muted flex-shrink-0" />
-                                                    <span className="font-semibold truncate max-w-[110px] sm:max-w-none">{getOrganizationLabel(loc.organization)}</span>
-                                                    <span className="text-text-muted/30">•</span>
-                                                    <span className="text-text-muted text-[8px] sm:text-[9px] bg-surface-subtle px-1.5 py-0.5 rounded border border-border">
-                                                        {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
-                                                    </span>
+                        {/* ปุ่มบันทึกสถานี */}
+                        <button
+                            onClick={handleSubmit}
+                            disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim())}
+                            className="w-full mt-4 py-3 min-h-11 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            {saving ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>กำลังบันทึกข้อมูล...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Save size={14} />
+                                    <span>เพิ่มสถานีตรวจวัด</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                {/* ─── ส่วนแสดงรายการประวัติสถานีที่มีอยู่ (Saved Stations Card) ─── */}
+                <div className="relative w-full bg-surface rounded-2xl p-4 border border-border space-y-4">
+                    <div className="flex items-center justify-between pt-1 px-1">
+                        <div className="inline-flex items-center gap-1.5">
+                            <FileText size={18} className="text-primary" />
+                            <h2 className="text-sm text-primary font-bold tracking-wider uppercase">สถานีตรวจวัดในระบบ</h2>
+                        </div>
+                        <span className="text-xs font-bold text-primary  px-2.5 py-1">{locations.length} สถานี</span>
+                    </div>
+
+                    {/* ช่องค้นหาสถานีสไตล์เดียวกับหน้ารายการน้ำ */}
+                    <div className="relative w-full flex items-center bg-surface-subtle border border-border rounded-xl px-4 transition-all">
+                        <input
+                            type="text"
+                            value={stationSearch}
+                            onChange={(e) => setStationSearch(e.target.value)}
+                            placeholder="ค้นหาสถานีหรือหน่วยงาน..."
+                            className="w-full py-3 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted font-semibold"
+                        />
+                        <Search size={16} className="text-text-muted ml-2" />
+                    </div>
+
+                    {/* รายชื่อสถานีแมตช์สไตล์แบบการ์ดประมวลผล */}
+                    <div className="flex flex-col gap-3 pt-2">
+                        {isLoading ? (
+                            <div className="bg-surface rounded-2xl p-10 text-center border border-border flex flex-col items-center justify-center gap-2">
+                                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                <span className="text-xs text-text-muted font-semibold">กำลังดาวน์โหลดข้อมูลสถานี...</span>
+                            </div>
+                        ) : filteredLocations.length === 0 ? (
+                            <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
+                                    <MapPin size={18} />
+                                </div>
+                                <p className="text-text-primary font-bold text-xs">ไม่พบข้อมูลสถานี</p>
+                                <p className="text-[11px] text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์รายชื่อสถานีที่ตรงกับคำค้นหาในระบบครับ</p>
+                            </div>
+                        ) : (
+                            filteredLocations.map((loc) => (
+                                <div
+                                    key={loc.id}
+                                    className="bg-surface rounded-2xl p-3.5 border border-border flex items-center justify-between gap-4 transition-all hover:scale-[1.005] duration-150 min-w-0"
+                                >
+                                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                        <div className="flex-1 min-w-0 text-left">
+                                            <div className="gap-2 flex">
+                                                <MapPin size={16} />
+                                                <h4 className="font-bold text-sm text-text-primary truncate">{loc.name}</h4>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-text-secondary font-medium">
+                                                <div className="flex items-center gap-2 min-w-0 max-w-35 sm:max-w-none">
+                                                    <Building2 size={16} className="text-secondary shrink-0" />
+                                                    <span className="truncate font-semibold text-secondary">{getOrganizationLabel(loc.organization)}</span>
                                                 </div>
-                                            </div>
-
-                                            <div className="flex gap-2 sm:gap-3 flex-shrink-0">
-                                                <button
-                                                    onClick={() => openEdit(loc)}
-                                                    className="w-8 h-8 sm:w-10 sm:h-10 min-h-[32px] min-w-[32px] sm:min-h-[40px] sm:min-w-[40px] bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
-                                                >
-                                                    <Pencil size={13} className="text-text-muted group-hover:text-primary sm:size-[14px]" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(loc)}
-                                                    disabled={deletingId === loc.id}
-                                                    className="w-8 h-8 sm:w-10 sm:h-10 min-h-[32px] min-w-[32px] sm:min-h-[40px] sm:min-w-[40px] bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {deletingId === loc.id ? (
-                                                        <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <Trash2 size={13} className="text-text-muted group-hover:text-red-500 sm:size-[14px]" />
-                                                    )}
-                                                </button>
+                                                <span className="text-text-muted/30 hidden sm:inline">•</span>
+                                                <span className="text-text-muted text-[10px] bg-surface-subtle px-1.5 py-0.5 rounded-md border border-border font-mono font-semibold">
+                                                    {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </section>
-                </div>
 
-                {/* ══════════ EDIT DRAWER (MODAL) ══════════ */}
-                {editingLoc && (
-                    <>
-                        <div className="fixed inset-0 bg-black/40 z-[1000] backdrop-blur-xs transition-opacity" onClick={() => setEditingLoc(null)} />
-                        <div
-                            className="fixed bottom-0 left-0 right-0 z-[1001] bg-surface rounded-t-[32px] shadow-2xl border-t border-border max-w-lg mx-auto px-8 pt-8 space-y-8 animate-slide-up transition-colors duration-300"
-                            style={{
-                                paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
-                            }}
-                        >
-                            <div className="w-12 h-1 bg-border rounded-full mx-auto mb-6 pointer-events-none" />
-
-                            <div className="flex items-center justify-between mb-7">
-                                <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider ">Edit Station Properties</h3>
-                                <button
-                                    onClick={() => setEditingLoc(null)}
-                                    className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
-                                >
-                                    <X size={14} className="text-text-secondary" />
-                                </button>
-                            </div>
-
-                            <div className="space-y-7">
-                                <div className="space-y-3">
-                                    <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block ">ชื่อสถานีตรวจ</label>
-                                    <input
-                                        type="text"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        className="w-full px-5 py-4 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs focus:border-primary outline-none min-h-[52px]"
-                                    />
-                                </div>
-
-                                <div className="space-y-3">
-                                    <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block ">หน่วยงานหลัก</label>
-                                    <div className="relative">
-                                        <select
-                                            value={uniqueOrgs.includes(editOrg) ? editOrg : "CUSTOM"}
-                                            onChange={(e) => {
-                                                if (e.target.value !== "CUSTOM") {
-                                                    setEditOrg(e.target.value);
-                                                } else {
-                                                    setEditOrg("");
-                                                }
-                                            }}
-                                            className="w-full px-5 py-4 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs focus:border-primary outline-none min-h-[52px] appearance-none cursor-pointer"
+                                    {/* กลุ่มปุ่มจัดการด้านขวามือสไตล์ Rounded-xl กระชับ */}
+                                    <div className="flex gap-2 shrink-0">
+                                        <button
+                                            onClick={() => openEdit(loc)}
+                                            className="w-9 h-9 bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
                                         >
-                                            {uniqueOrgs.map((org) => (
-                                                <option key={org} value={org}>
-                                                    {getOrganizationLabel(org)}
-                                                </option>
-                                            ))}
-                                            <option value="CUSTOM">+ เพิ่มหน่วยงานใหม่...</option>
-                                        </select>
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-xs">▼</div>
+                                            <Pencil size={16} className="text-text-muted group-hover:text-primary" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(loc)}
+                                            disabled={deletingId === loc.id}
+                                            className="w-9 h-9 bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {deletingId === loc.id ? (
+                                                <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-xl animate-spin" />
+                                            ) : (
+                                                <Trash2 size={16} className="text-text-muted group-hover:text-red-500" />
+                                            )}
+                                        </button>
                                     </div>
-
-                                    {!uniqueOrgs.includes(editOrg) && (
-                                        <input
-                                            type="text"
-                                            value={editOrg}
-                                            onChange={(e) => setEditOrg(e.target.value)}
-                                            placeholder="พิมพ์ชื่อหน่วยงานใหม่..."
-                                            className="w-full mt-2 px-5 py-4 bg-primary-light border border-primary/10 text-text-primary rounded-2xl text-xs placeholder:text-text-muted/30 focus:border-primary transition-all outline-none min-h-[52px] animate-fade-in"
-                                        />
-                                    )}
                                 </div>
-
-                                <button
-                                    onClick={handleEdit}
-                                    disabled={editSaving || !editName.trim() || !editOrg.trim()}
-                                    className="w-full mt-6 py-4 min-h-[56px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
-                                >
-                                    {editSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
-                                    <span>บันทึกข้อมูลการแก้ไข</span>
-                                </button>
-                            </div>
-                        </div>
-                    </>
-                )}
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* Toast */}
+            {/* ─── EDIT PROFILE DRAWER (MODAL) ─── */}
+            {editingLoc && (
+                <>
+                    <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={() => setEditingLoc(null)} />
+                    <div
+                        className="fixed bottom-0 left-0 right-0 z-1001 bg-surface rounded-t-4xl border-t border-border max-w-lg mx-auto px-6 pt-6 space-y-6 animate-slide-up transition-colors duration-300"
+                        style={{
+                            paddingBottom: "calc(88px + env(safe-area-inset-bottom))",
+                        }}
+                    >
+                        <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5 pointer-events-none" />
+
+                        <div className="flex items-center justify-between mb-7">
+                            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">แก้ไขข้อมูลสถานีตรวจ</h3>
+                            <button
+                                onClick={() => setEditingLoc(null)}
+                                className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
+                            >
+                                <X size={14} className="text-text-secondary" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-text-primary uppercase tracking-wide block">ชื่อสถานีตรวจ</label>
+                                <input
+                                    type="text"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-text-primary uppercase tracking-wide block">หน่วยงานหลัก</label>
+                                <div className="relative">
+                                    <select
+                                        value={uniqueOrgs.includes(editOrg) ? editOrg : "CUSTOM"}
+                                        onChange={(e) => {
+                                            if (e.target.value !== "CUSTOM") {
+                                                setEditOrg(e.target.value);
+                                            } else {
+                                                setEditOrg("");
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 appearance-none cursor-pointer font-semibold"
+                                    >
+                                        {uniqueOrgs.map((org) => (
+                                            <option key={org} value={org}>
+                                                {getOrganizationLabel(org)}
+                                            </option>
+                                        ))}
+                                        <option value="CUSTOM">+ เพิ่มหน่วยงานใหม่...</option>
+                                    </select>
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-xs">▼</div>
+                                </div>
+
+                                {!uniqueOrgs.includes(editOrg) && (
+                                    <input
+                                        type="text"
+                                        value={editOrg}
+                                        onChange={(e) => setEditOrg(e.target.value)}
+                                        placeholder="พิมพ์ชื่อหน่วยงานใหม่..."
+                                        className="w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 focus:border-primary transition-all outline-none min-h-11 font-semibold animate-fade-in"
+                                    />
+                                )}
+                            </div>
+
+                            <button
+                                onClick={handleEdit}
+                                disabled={editSaving || !editName.trim() || !editOrg.trim()}
+                                className="w-full mt-2 py-4 min-h-13 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer active:scale-[0.98]"
+                            >
+                                {editSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
+                                <span>บันทึกข้อมูลการแก้ไข</span>
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
             {toastElement}
         </div>
     );
