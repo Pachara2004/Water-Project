@@ -22,6 +22,7 @@ export interface MeasurementResult {
     boundingBox?: any;
     isTestTube?: boolean; // AI ตรวจเจอหลอดทดลองในภาพหรือไม่
     verifiedParameterName?: string; // ชื่อสารที่ AI ตรวจยืนยัน (อาจต่างจากที่ผู้ใช้ระบุ)
+    autoSwitchedFrom?: string; // ชื่อสารเดิมที่ผู้ใช้เลือกไว้ ก่อนถูกสลับอัตโนมัติ (โหมดเดี่ยวเท่านั้น)
 }
 
 // เหตุผลที่ผลวิเคราะห์ถูกบล็อก ก่อนเข้าขั้นตอนแสดงผล/บันทึก

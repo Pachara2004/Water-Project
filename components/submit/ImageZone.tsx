@@ -82,6 +82,19 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
             </div>
             <div className="p-4">
+                {/* แถบแจ้งเตือนกรณีระบบสลับชนิดสารให้อัตโนมัติ (โหมดเดี่ยว) */}
+                {measurement?.autoSwitchedFrom && (
+                    <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
+                        <FlaskConical size={15} className="shrink-0 mt-0.5" />
+                        <div className="text-[11px] leading-relaxed font-medium">
+                            <p className="font-semibold mb-0.5">เปลี่ยนชนิดสารให้อัตโนมัติ</p>
+                            <p>
+                                เดิมเลือก {measurement.autoSwitchedFrom.toUpperCase()} แต่ระบบตรวจพบว่าสารในภาพเป็น {param.name.toUpperCase()} จึงเปลี่ยนให้อัตโนมัติ
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* แถบแจ้งเตือนกรณีผลถูกบล็อก: ไม่ใช่หลอดทดลอง หรือ สารผิดชนิด */}
                 {verifyError && (
                     <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">

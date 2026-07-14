@@ -126,7 +126,8 @@ export function useSubmitSample() {
                     ctx.strokeRect(x_min, y_min, x_max - x_min, y_max - y_min);
 
                     const confPct = aiData.confidence;
-                    const paramLabel = aiData.parameterName ? aiData.parameterName.charAt(0).toUpperCase() + aiData.parameterName.slice(1).toLowerCase() : "Vial";
+                    const labelSource = aiData.verifiedParameterName || aiData.parameterName;
+                    const paramLabel = labelSource ? labelSource.charAt(0).toUpperCase() + labelSource.slice(1).toLowerCase() : "Vial";
                     const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L confidence ${confPct}`;
                     const fs = Math.max(16, Math.floor(img.width * 0.018));
                     ctx.font = `bold ${fs}px Arial`;
@@ -151,6 +152,8 @@ export function useSubmitSample() {
         try {
             const newResults: Record<number, MeasurementResult> = {};
             const newErrors: Record<number, VerifyError> = {};
+            // การสลับ id ของภาพ/ผลลัพธ์ (โหมดเดี่ยว): จาก paramId ที่เลือกไว้ → paramId ของสารที่ AI ตรวจเจอจริง
+            const idSwitches: { fromId: number; toId: number }[] = [];
             let hasDanger = false;
             let hasWarning = false;
 
@@ -178,9 +181,10 @@ export function useSubmitSample() {
                 // ── ด่านตรวจก่อนรับผล (mirror ลำดับฝั่ง AI: เช็คหลอดทดลองก่อน แล้วค่อยเช็คชนิดสาร) ──
                 const isTestTube = data.isTestTube ?? true;
                 const verifiedName: string = data.verifiedParameterName || param.name;
+                const isMismatch = verifiedName.toLowerCase() !== param.name.toLowerCase();
 
                 if (!isTestTube) {
-                    // ด่าน 1: ไม่พบหลอดทดลองในภาพ → บังคับถ่ายใหม่
+                    // ด่าน 1: ไม่พบหลอดทดลองในภาพ → บังคับถ่ายใหม่ (ทั้งโหมดเดี่ยวและคู่)
                     newErrors[param.id] = {
                         reason: "not_test_tube",
                         detail: "ไม่พบหลอดทดลองในภาพ กรุณาถ่ายรูปที่มีขวดบรรจุสารให้ชัดเจนแล้ววิเคราะห์ใหม่",
@@ -188,24 +192,44 @@ export function useSubmitSample() {
                     continue;
                 }
 
-                if (verifiedName.toLowerCase() !== param.name.toLowerCase()) {
-                    // ด่าน 2: AI ตรวจพบว่าสารในภาพเป็นคนละชนิดกับที่ระบุ → บังคับเลือกสารใหม่
-                    const verifiedLabel = verifiedName.charAt(0).toUpperCase() + verifiedName.slice(1).toLowerCase();
-                    newErrors[param.id] = {
-                        reason: "wrong_solution",
-                        detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ไม่ตรงกับที่เลือกไว้ กรุณาเลือกสารให้ตรงหรือถ่ายภาพใหม่`,
-                    };
-                    continue;
+                // ด่าน 2: AI ตรวจพบว่าสารในภาพเป็นคนละชนิดกับที่ระบุ
+                let effectiveParam = param;
+                if (isMismatch) {
+                    if (mode === "single") {
+                        // โหมดเดี่ยว: เปลี่ยนไปใช้สารที่ AI ตรวจเจอจริงให้อัตโนมัติ แทนการบล็อก
+                        const matchedParam = systemParameters.find((p) => p.name.toLowerCase() === verifiedName.toLowerCase());
+                        if (!matchedParam) {
+                            // AI ตรวจเจอสารที่ระบบไม่รู้จัก (ไม่มีในฐานข้อมูล) — บล็อกไว้เพราะสลับให้ไม่ได้
+                            const verifiedLabel = verifiedName.charAt(0).toUpperCase() + verifiedName.slice(1).toLowerCase();
+                            newErrors[param.id] = {
+                                reason: "wrong_solution",
+                                detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ซึ่งไม่มีในระบบ กรุณาถ่ายภาพใหม่`,
+                            };
+                            continue;
+                        }
+                        effectiveParam = matchedParam;
+                        if (matchedParam.id !== param.id) {
+                            idSwitches.push({ fromId: param.id, toId: matchedParam.id });
+                        }
+                    } else {
+                        // โหมดคู่: ยังบล็อกเหมือนเดิม เพราะยังไม่มีวิธีจัดการการสลับข้าม 2 สารพร้อมกัน
+                        const verifiedLabel = verifiedName.charAt(0).toUpperCase() + verifiedName.slice(1).toLowerCase();
+                        newErrors[param.id] = {
+                            reason: "wrong_solution",
+                            detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ไม่ตรงกับที่เลือกไว้ กรุณาเลือกสารให้ตรงหรือถ่ายภาพใหม่`,
+                        };
+                        continue;
+                    }
                 }
 
-                // ผ่านด่าน → พล็อตภาพ + เก็บผลตามปกติ
+                // ผ่านด่าน → พล็อตภาพ + เก็บผลตามปกติ (คีย์ด้วย effectiveParam.id เผื่อถูกสลับสารแล้ว)
                 const plotted = await generateAiImagePlot(file, data);
                 if (plotted) {
-                    setImagePlotFiles((prev) => ({ ...prev, [param.id]: plotted }));
+                    setImagePlotFiles((prev) => ({ ...prev, [effectiveParam.id]: plotted }));
                 }
 
                 const currentStatus = (data.status?.toLowerCase() ?? "safe") as "safe" | "warning" | "danger";
-                newResults[param.id] = {
+                newResults[effectiveParam.id] = {
                     concentrated: data.concentrated,
                     status: currentStatus,
                     message: data.message || "",
@@ -213,6 +237,7 @@ export function useSubmitSample() {
                     boundingBox: data["bounding box"],
                     isTestTube,
                     verifiedParameterName: verifiedName,
+                    autoSwitchedFrom: isMismatch ? param.name : undefined,
                 };
 
                 if (currentStatus === "danger") hasDanger = true;
@@ -246,6 +271,33 @@ export function useSubmitSample() {
                 }
                 setStep("upload");
                 return;
+            }
+
+            // ย้ายไฟล์ภาพดิบ/พรีวิวจาก id เดิม (สารที่เลือกไว้) ไปที่ id ใหม่ (สารที่ AI ตรวจเจอจริง)
+            // เพื่อให้ ImageZone ของสารใหม่แสดงรูปที่เพิ่งวิเคราะห์ไปถูกต้อง
+            if (idSwitches.length > 0) {
+                setImageFiles((prev) => {
+                    const next = { ...prev };
+                    idSwitches.forEach(({ fromId, toId }) => {
+                        if (next[fromId] !== undefined) {
+                            next[toId] = next[fromId];
+                            delete next[fromId];
+                        }
+                    });
+                    return next;
+                });
+                setImagePreviews((prev) => {
+                    const next = { ...prev };
+                    idSwitches.forEach(({ fromId, toId }) => {
+                        if (next[fromId] !== undefined) {
+                            next[toId] = next[fromId];
+                            delete next[fromId];
+                        }
+                    });
+                    return next;
+                });
+                // โหมดเดี่ยวมีสารเดียวเสมอ จึงสลับตัวเลือกสารที่ active ให้ตรงกับสารที่ AI ตรวจเจอจริง
+                setSelectedParamId(idSwitches[idSwitches.length - 1].toId);
             }
 
             setResults(newResults);
