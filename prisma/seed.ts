@@ -5,6 +5,7 @@
  */
 
 import { PrismaClient, WaterStatus } from "@prisma/client";
+import { evaluateSample } from "../lib/standards";
 
 const prisma = new PrismaClient();
 
@@ -129,33 +130,34 @@ async function main() {
         // round-robin แทนสุ่มล้วน — การันตีว่าทุกสถานีมีตัวอย่างน้ำอย่างน้อย floor(samplesCount / จำนวนสถานี) ตัว ไม่ใช่แค่ "น่าจะมี"
         const randomLocation = insertedLocations[i % insertedLocations.length];
 
+        // ฝนยังคงสุ่มไว้ใช้แสดงผลสภาพอากาศเท่านั้น ไม่ผูกกับสถานะคุณภาพน้ำอีกต่อไป
         const rainVol = Math.random() > 0.6 ? parseFloat((Math.random() * 45).toFixed(2)) : 0;
-        let computedStatus: WaterStatus = WaterStatus.safe;
-        let weatherCode = 1;
+        const weatherCode = rainVol > 30 ? 7 : rainVol > 10 ? 5 : 1;
 
-        if (rainVol > 30) {
-            computedStatus = WaterStatus.danger;
-            weatherCode = 7;
-        } else if (rainVol > 10) {
-            computedStatus = WaterStatus.warning;
-            weatherCode = 5;
-        } else {
-            computedStatus = WaterStatus.safe;
-            weatherCode = 1;
-        }
+        // สุ่ม "โซนความเข้มข้น" อิงเกณฑ์จริงจาก lib/standards.ts (COMMUNITY) แทนสูตรฝนเดิม
+        // เพื่อให้ค่าที่สุ่มออกมาอยู่ในสเกลเดียวกับ phosphateMax/ammoniaMax จริง
+        const severityRoll = Math.random();
+        const severityBucket: "danger" | "warning" | "safe" = severityRoll > 0.85 ? "danger" : severityRoll > 0.6 ? "warning" : "safe";
+
+        const AMMONIA_MAX = 0.95;
+        const PHOSPHATE_MAX = 0.045;
 
         const ammoniaValue =
-            computedStatus === WaterStatus.danger
-                ? parseFloat((1.5 + Math.random() * 2).toFixed(2))
-                : computedStatus === WaterStatus.warning
-                  ? parseFloat((0.5 + Math.random() * 1).toFixed(2))
-                  : parseFloat((Math.random() * 0.4).toFixed(2));
+            severityBucket === "danger"
+                ? parseFloat((AMMONIA_MAX * (1.05 + Math.random() * 1.5)).toFixed(3))
+                : severityBucket === "warning"
+                  ? parseFloat((AMMONIA_MAX * (0.7 + Math.random() * 0.3)).toFixed(3))
+                  : parseFloat((AMMONIA_MAX * (Math.random() * 0.65)).toFixed(3));
         const phosphateValue =
-            computedStatus === WaterStatus.danger
-                ? parseFloat((0.8 + Math.random() * 1.5).toFixed(2))
-                : computedStatus === WaterStatus.warning
-                  ? parseFloat((0.2 + Math.random() * 0.6).toFixed(2))
-                  : parseFloat((Math.random() * 0.19).toFixed(2));
+            severityBucket === "danger"
+                ? parseFloat((PHOSPHATE_MAX * (1.05 + Math.random() * 1.5)).toFixed(3))
+                : severityBucket === "warning"
+                  ? parseFloat((PHOSPHATE_MAX * (0.7 + Math.random() * 0.3)).toFixed(3))
+                  : parseFloat((PHOSPHATE_MAX * (Math.random() * 0.65)).toFixed(3));
+
+        // คำนวณ status จากสูตรจริงเดียวกับที่ /api/samples ใช้ ไม่ใช่ label ที่ตั้งเอง
+        const computedStatus = evaluateSample(phosphateValue, ammoniaValue).overallStatus as WaterStatus;
+
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
         const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
 
@@ -209,7 +211,7 @@ async function main() {
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 3),
             dissolvedOxygen: 5.2,
             airTemperature: 29.1,
-            status: WaterStatus.warning,
+            status: evaluateSample(0, 2.1).overallStatus as WaterStatus,
             sessionGroup: sgPendingSingle,
             rawImageUrl: "/uploads/mock-raw.jpg",
             analyzedPlotUrl: "/uploads/mock-plot.jpg",
@@ -228,7 +230,7 @@ async function main() {
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
-            status: WaterStatus.safe,
+            status: evaluateSample(0, 0.15).overallStatus as WaterStatus,
             sessionGroup: sgPendingPaired,
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 0.15, confidence: 0.91, boundingBox: "[10,20,100,200]" }] },
         },
@@ -240,7 +242,7 @@ async function main() {
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
-            status: WaterStatus.warning,
+            status: evaluateSample(0.6, 0).overallStatus as WaterStatus,
             sessionGroup: sgPendingPaired,
             measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.6, confidence: 0.42, boundingBox: "[15,25,110,210]" }] },
         },
@@ -254,7 +256,7 @@ async function main() {
             collectorId: collectorB.id,
             locationId: insertedLocations[1].id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 8),
-            status: WaterStatus.danger,
+            status: evaluateSample(0, 3.4).overallStatus as WaterStatus,
             sessionGroup: sgPendingOther,
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 3.4, confidence: 0.18, boundingBox: "[10,20,100,200]" }] },
         },
@@ -268,9 +270,9 @@ async function main() {
             collectorId: collectorB.id,
             locationId: reviewLocation.id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
-            status: WaterStatus.safe,
+            status: evaluateSample(0.02, 0).overallStatus as WaterStatus,
             sessionGroup: sgApproved,
-            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.05, confidence: 0.55, boundingBox: "[15,25,110,210]" }] },
+            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.02, confidence: 0.55, boundingBox: "[15,25,110,210]" }] },
         },
     });
     await prisma.reviewRequest.create({
@@ -289,7 +291,7 @@ async function main() {
             collectorId: collectorA.id,
             locationId: insertedLocations[2].id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 48),
-            status: WaterStatus.danger,
+            status: evaluateSample(0, 4.5).overallStatus as WaterStatus,
             sessionGroup: sgRejected,
             isDeleted: true,
             lastModifiedBy: adminUser.id,

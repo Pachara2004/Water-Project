@@ -6,7 +6,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { verifyAuth } from "@/lib/auth-guard";
-import { isLowConfidence } from "@/lib/standards";
+import { isLowConfidence, evaluateSample } from "@/lib/standards";
 import { getPendingSessionGroups } from "@/lib/review";
 
 /**
@@ -339,6 +339,18 @@ export async function POST(request: NextRequest) {
         // 4. ตัดสิน low-confidence ฝั่ง server เท่านั้น จาก confidence ที่พาร์สแล้วจริง ๆ ไม่เชื่อ flag จาก client
         const needsReview = sessionGroup ? createMeasurementsData.some((m) => isLowConfidence(m.confidence)) : false;
 
+        // 4.1 คำนวณ status ใหม่ฝั่ง server จากค่าที่วัดได้จริง ห้ามเชื่อ status ที่ client ส่งมาตรง ๆ
+        //     (เดิมมีช่องโหว่ให้ client ปลอมค่า status ทับผลวิเคราะห์จริงได้)
+        const parameterNameById = new Map(systemParameters.map((p) => [p.id, p.name.toLowerCase()]));
+        let serverPhosphate = 0;
+        let serverAmmonia = 0;
+        for (const m of createMeasurementsData) {
+            const paramName = parameterNameById.get(m.parameterId) || "";
+            if (paramName.includes("phosphate")) serverPhosphate = m.value;
+            if (paramName.includes("ammonia")) serverAmmonia = m.value;
+        }
+        const computedStatus = evaluateSample(serverPhosphate, serverAmmonia).overallStatus;
+
         // 5. สั่งบันทึกข้อมูล + สร้างคำร้องตรวจสอบ (ถ้าจำเป็น) รวมใน Transaction เดียวกัน
         //    กันเคสเซฟ sample สำเร็จแต่สร้างคำร้องพลาด ซึ่งจะทำให้ข้อมูล confidence ต่ำรั่วออกสู่สาธารณะ
         const sample = await prisma.$transaction(async (tx) => {
@@ -354,7 +366,7 @@ export async function POST(request: NextRequest) {
                     rainAccumulation: finalWeather.rainAccumulation,
                     weatherCondCode: finalWeather.weatherCondCode,
 
-                    status: status.toLowerCase() as WaterStatus,
+                    status: computedStatus as WaterStatus,
                     rawImageUrl: mainRawImageUrl,
                     analyzedPlotUrl: mainAnalyzedPlotUrl,
                     isDeleted: false,
