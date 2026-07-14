@@ -159,6 +159,11 @@ async function main() {
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
         const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
 
+        // sessionGroup เฉพาะตัวต่อ 1 ครั้งที่เก็บตัวอย่าง (ปกติแล้วจะใช้ร่วมกันระหว่างสารในรอบเดียวกัน)
+        // ตั้งใจใส่ทุกแถวไม่ให้เป็น null — กัน query ฝั่ง map/dashboard ที่กรองด้วย sessionGroup: { notIn: ... }
+        // พลาดคัดข้อมูลทิ้งหมดตอนมี pending review (ดูรายละเอียดใน lib/review.ts)
+        const bulkSessionGroup = `SEED-BULK-${String(i + 1).padStart(4, "0")}`;
+
         // บันทึกลงตารางตามฟิลด์แวดล้อมจริงที่มีในโครงสร้างโมเดลเท่านั้น ปราศจากฟิลด์ส่วนเกิน
         await prisma.waterSample.create({
             data: {
@@ -170,6 +175,7 @@ async function main() {
                 rainAccumulation: rainVol,
                 weatherCondCode: weatherCode,
                 status: computedStatus,
+                sessionGroup: bulkSessionGroup,
                 rawImageUrl: Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null,
                 analyzedPlotUrl: Math.random() > 0.5 ? `/uploads/mock-plot.jpg` : null,
 
