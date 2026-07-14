@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 // 1. เพิ่มการอิมพอร์ตไอคอน LogOut สำหรับปุ่มออกจากระบบ
-import { MapPin, ShieldAlert, ChevronRight, Users, Phone, Pencil, X, Check, AlertCircle, User, ClipboardCheck, LogOut } from "lucide-react";
+import { MapPin, ChevronRight, Users, Phone, Pencil, X, Check, AlertCircle, User, ClipboardCheck, LogOut } from "lucide-react";
+import Image from "next/image";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/useToast";
+import Linelogo from "@/public/LINEIcon.png"; 
 // อิมพอร์ตโครงสร้าง Swal และการตั้งค่าสีจากไฟล์ config ของระบบ
 import { baseSwal, TONE_COLOR, ICON_SVG } from "@/lib/swal"; // <-- ปรับ Path ตัวนี้ให้ตรงกับที่เก็บจริงในโปรเจกต์
 
@@ -22,7 +24,7 @@ export function confirmLogoutAlert() {
         reverseButtons: true,
         didRender: (popup) => {
             popup.style.setProperty("--swal-tone", TONE_COLOR.danger);
-            popup.classList.add("app-swal--double"); 
+            popup.classList.add("app-swal--double");
         },
     });
 }
@@ -303,72 +305,79 @@ export default function ManagePage() {
 
     // 2. ฟังก์ชันจัดการออกจากระบบ (สั่ง liff.logout + เคลียร์ Store + ส่งกลับหน้าแรก)
     const handleLogout = async () => {
-    // 1. เรียก Alert ขึ้นมาถามผู้ใช้งานก่อน
-    const result = await confirmLogoutAlert();
-    
-    // ถ้าผู้ใช้กด ยกเลิก หรือ ปิดหน้าต่าง ให้หยุดทำงานทันที
-    if (!result.isConfirmed) return;
+        // 1. เรียก Alert ขึ้นมาถามผู้ใช้งานก่อน
+        const result = await confirmLogoutAlert();
 
-    // 2. ถ้าผู้ใช้กด "ออกจากระบบ" (ยืนยัน) ให้ทำตามกระบวนการเดิม
-    try {
-        if (liff.isLoggedIn()) {
-            liff.logout();
+        // ถ้าผู้ใช้กด ยกเลิก หรือ ปิดหน้าต่าง ให้หยุดทำงานทันที
+        if (!result.isConfirmed) return;
+
+        // 2. ถ้าผู้ใช้กด "ออกจากระบบ" (ยืนยัน) ให้ทำตามกระบวนการเดิม
+        try {
+            if (liff.isLoggedIn()) {
+                liff.logout();
+            }
+            setUser(null);
+            showToast("ออกจากระบบเรียบร้อยแล้ว", "success");
+            router.replace("/");
+        } catch {
+            showToast("เกิดข้อผิดพลาดในการออกจากระบบ", "danger");
         }
-        setUser(null);
-        showToast("ออกจากระบบเรียบร้อยแล้ว", "success");
-        router.replace("/");
-    } catch {
-        showToast("เกิดข้อผิดพลาดในการออกจากระบบ", "danger");
-    }
-};
+    };
 
-    if (!currentUser || currentUser.role === "guest") {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto bg-surface-muted border-x border-border">
-                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
-                    <ShieldAlert size={28} className="animate-pulse" />
-                </div>
-                <h1 className="font-display text-base font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
-                <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้านี้สำหรับเจ้าหน้าที่ปฏิบัติการ, ผู้บริหาร และผู้ดูแลระบบเท่านั้น</p>
-                <button
-                    onClick={() => router.push("/map")}
-                    className="w-full max-w-50 py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
-                >
-                    กลับไปหน้าแผนที่
-                </button>
-            </div>
-        );
-    }
-
-    const isAdmin = currentUser.role === "admin";
-
+    const isAdmin = currentUser?.role === "admin";
     return (
         <div className="min-h-dvh w-full bg-bg transition-colors duration-75">
             <div className="w-full max-w-2xl mx-auto px-4">
                 <div className="pt-8 pb-1 mb-1 p-1">
                     <h1 className="font-display text-2xl font-semibold text-black ">
-                        บัญชี
-                        <span className="text-primary">ของฉัน</span>
+                        บัญชี <span className="text-primary">ของฉัน</span>
                     </h1>
                 </div>
 
-                <div className="mb-2">
-                    <ProfileCard onEdit={() => setShowEdit(true)} />
-                </div>
-
-                {/* Admin menus */}
-                {isAdmin && (
-                    <div className="space-y-2">
-                        <div className="p-1 flex justify-between items-center gap-4">
-                            <p className="text-sm font-semibold text-primary mt-1">เมนูการจัดการ</p>
-                            <div className="shrink-0 mt-1">
-                                <ThemeToggle showLabel />
+                {/* 🟢 แก้ไขจุดที่ A: สลับการ์ดตามสถานะการเข้าสู่ระบบ */}
+                {currentUser ? (
+                    // A1. ถ้า Login แล้ว (ไม่ว่าเป็น admin, officer, collector หรือ guest) ให้โชว์การ์ดโปรไฟล์ปกติ
+                    <div className="mb-2">
+                        <ProfileCard onEdit={() => setShowEdit(true)} />
+                    </div>
+                ) : (
+                    // A2. ถ้าไม่มีสิทธิ์ หรือไม่ได้ Login -> ขึ้นเป็นการ์ดสำหรับกด Login เข้าสู่ระบบผ่าน LINE แทน
+                    <div className="mb-2 bg-card-general rounded-xl border border-border p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <button
+                            onClick={() => liff.login()}
+                            /* 
+      - bg-[#06C755] และ text-white ตามสีแบรนด์ที่กำหนด
+      - h-11 (ใกล้เคียงสเปก 44px - 48px ของปุ่มมาตรฐาน)
+      - ไม่ใส่ shadow, ไม่ใส่ border หนา เพื่อให้เป็น Flat Button ตาม Guidelines
+    */
+                            className="w-full sm:w-auto min-w-50 h-11 flex items-center bg-[#06C755] text-white rounded-md overflow-hidden active:opacity-90 transition-opacity cursor-pointer font-sans"
+                        >
+                            {/* ─── ฝั่งซ้าย: LINE Logo Container ─── */}
+                            {/* สเปกของ LINE คือโลโก้ต้องแยกบล็อกอยู่ฝั่งซ้ายสุดอย่างชัดเจน */}
+                            <div className="h-full w-12 flex items-center justify-center bg-black/10 shrink-0">
+                                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">
+                                    <path d="M24 10.304c0-5.691-5.383-10.304-12-10.304s-12 4.613-12 10.304c0 5.101 4.272 9.351 10.05 10.198.391.084.922.258 1.057.592.12.301.079.77.038 1.074l-.165 1.002c-.05.303-.243 1.186 1.047.646 1.291-.54 6.969-4.103 9.485-7.026 1.834-2.022 2.488-3.954 2.488-5.494z" />
+                                </svg>
                             </div>
-                        </div>
 
-                        {/* กลุ่มกล่องเมนูบริหารจัดการ (ใช้ Grid ครอบความสูงเท่ากัน) */}
-                        <div className="grid grid-cols-1 gap-2 items-stretch">
-                            {adminMenus.map((menu) => {
+                            {/* ─── ฝั่งขวา: ข้อความตรงกลาง ─── */}
+                            <div className="flex-1 text-center pr-12 text-sm font-bold tracking-wide">เข้าสู่ระบบด้วย LINE</div>
+                        </button>
+                    </div>
+                )}
+
+                <div className="space-y-2">
+                    <div className="p-1 flex justify-between items-center gap-4">
+                        <p className="text-sm font-semibold text-primary mt-1">เมนูการจัดการ</p>
+                        <div className="shrink-0 mt-1">
+                            <ThemeToggle showLabel />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 items-stretch">
+                        {/* 🟢 จุดที่ B: เมนูแอดมิน (โชว์เฉพาะคนที่เป็น admin เท่านั้น) */}
+                        {isAdmin &&
+                            adminMenus.map((menu) => {
                                 const Icon = menu.icon;
                                 return (
                                     <button
@@ -376,12 +385,11 @@ export default function ManagePage() {
                                         onClick={() => menu.available && router.push(menu.href)}
                                         disabled={MenuBoxDisable(menu.available)}
                                         className={`w-full h-full group flex items-start gap-4 p-4 bg-card-general rounded-md border border-border transition-all duration-75 text-left
-                                    ${menu.available ? "hover:border-primary/30 hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
+                            ${menu.available ? "hover:border-primary/30 hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
                                     >
                                         <div className={`flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-200 ${menu.available ? "group-hover:scale-105" : ""}`}>
                                             <Icon size={24} />
                                         </div>
-
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <h3 className="text-sm font-semibold text-text-primary truncate">{menu.label}</h3>
@@ -393,7 +401,6 @@ export default function ManagePage() {
                                             </div>
                                             <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
                                         </div>
-
                                         <ChevronRight
                                             size={18}
                                             className={`shrink-0 mt-1 transition-all duration-75 ${menu.available ? "text-secondary group-hover:text-primary group-hover:translate-x-0.5" : "text-text-muted/30"}`}
@@ -402,32 +409,28 @@ export default function ManagePage() {
                                 );
                             })}
 
-                            {/* ─── 3. ปุ่มออกจากระบบ (แทรกอยู่ใน Grid เดียวกันเพื่อให้ความสูงยืดเท่ากับการ์ดใบอื่น) ─── */}
+                        {/* 🟢 จุดที่ C: ปุ่มออกจากระบบ (โชว์เมื่อมีการล็อกอินเข้ามาแล้ว ไม่ว่า role ไหนก็ตาม) */}
+                        {currentUser && (
                             <button
                                 onClick={handleLogout}
                                 className="w-full h-full group flex items-start gap-4 p-4 bg-danger rounded-md border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-75 text-left cursor-pointer"
                             >
-                                <div className="flex items-center justify-center shrink-0  text-white transition-transform duration-200 group-hover:scale-105">
+                                <div className="flex items-center justify-center shrink-0 text-white transition-transform duration-200 group-hover:scale-105">
                                     <LogOut size={24} />
                                 </div>
-
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 ">
+                                    <div className="flex items-center gap-2">
                                         <h3 className="text-sm font-semibold text-white truncate">ออกจากระบบ</h3>
                                     </div>
                                 </div>
-
                                 <ChevronRight size={18} className="shrink-0 text-white group-hover:translate-x-0.5 transition-all duration-75" />
                             </button>
-                        </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
 
-            {/* Edit drawer */}
             {showEdit && <EditProfileDrawer onClose={() => setShowEdit(false)} showToast={showToast} />}
-
-            {/* Toast */}
             {toastElement}
         </div>
     );
