@@ -3,7 +3,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { alertError } from "@/lib/swal";
-import { DbParameter, LocationItem, MeasurementResult } from "@/components/submit/types";
+import { DbParameter, LocationItem, MeasurementResult, VerifyError } from "@/components/submit/types";
 
 export function useSubmitSample() {
     const searchParams = useSearchParams();
@@ -13,6 +13,11 @@ export function useSubmitSample() {
     // ── States ──
     const [systemParameters, setSystemParameters] = useState<DbParameter[]>([]);
     const [isLoadingParams, setIsLoadingParams] = useState(true);
+    // โหมดการส่ง: เดี่ยว (เลือกสารเดียว) เป็นค่าเริ่มต้น / คู่ (ส่งทุกสารพร้อมกัน)
+    const [mode, setMode] = useState<"single" | "dual">("single");
+    const [selectedParamId, setSelectedParamId] = useState<number | null>(null);
+    // เหตุผลที่ผลวิเคราะห์ของแต่ละสารถูกบล็อก (ไม่ใช่หลอดทดลอง / สารผิดชนิด)
+    const [verifyErrors, setVerifyErrors] = useState<Record<number, VerifyError>>({});
     const [imageFiles, setImageFiles] = useState<Record<number, File>>({});
     const [imagePreviews, setImagePreviews] = useState<Record<number, string>>({});
     const [imagePlotFiles, setImagePlotFiles] = useState<Record<number, File>>({});
@@ -48,11 +53,19 @@ export function useSubmitSample() {
         fetch("/api/parameters")
             .then((r) => (r.ok ? r.json() : Promise.reject()))
             .then((data) => {
-                if (Array.isArray(data)) setSystemParameters(data);
+                if (Array.isArray(data)) {
+                    setSystemParameters(data);
+                    // โหมดเดี่ยวเป็นค่าเริ่มต้น จึงตั้งสารตัวแรกให้อัตโนมัติ
+                    if (data.length > 0) setSelectedParamId((prev) => prev ?? data[0].id);
+                }
             })
             .catch((err) => console.error("Fetch Parameters Error:", err))
             .finally(() => setIsLoadingParams(false));
     }, []);
+
+    // สารที่กำลังทำงานอยู่จริงตามโหมด: คู่ = ทุกตัว / เดี่ยว = เฉพาะตัวที่เลือก
+    const activeParameters =
+        mode === "dual" ? systemParameters : systemParameters.filter((p) => p.id === selectedParamId);
 
     useEffect(() => {
         fetch("/api/locations")
@@ -131,15 +144,17 @@ export function useSubmitSample() {
 
     // ── Handlers ──
     const handleAnalyze = async () => {
-        if (systemParameters.length === 0) return;
+        if (activeParameters.length === 0) return;
         setStep("analyzing");
+        setVerifyErrors({}); // ล้างผลบล็อกรอบก่อนหน้าก่อนเริ่มวิเคราะห์ใหม่
 
         try {
             const newResults: Record<number, MeasurementResult> = {};
+            const newErrors: Record<number, VerifyError> = {};
             let hasDanger = false;
             let hasWarning = false;
 
-            for (const param of systemParameters) {
+            for (const param of activeParameters) {
                 const file = imageFiles[param.id];
                 if (!file) throw new Error(`ไม่พบไฟล์ภาพของสาร ${param.name}`);
 
@@ -159,6 +174,31 @@ export function useSubmitSample() {
                 }
 
                 const data = await res.json();
+
+                // ── ด่านตรวจก่อนรับผล (mirror ลำดับฝั่ง AI: เช็คหลอดทดลองก่อน แล้วค่อยเช็คชนิดสาร) ──
+                const isTestTube = data.isTestTube ?? true;
+                const verifiedName: string = data.verifiedParameterName || param.name;
+
+                if (!isTestTube) {
+                    // ด่าน 1: ไม่พบหลอดทดลองในภาพ → บังคับถ่ายใหม่
+                    newErrors[param.id] = {
+                        reason: "not_test_tube",
+                        detail: "ไม่พบหลอดทดลองในภาพ กรุณาถ่ายรูปที่มีขวดบรรจุสารให้ชัดเจนแล้ววิเคราะห์ใหม่",
+                    };
+                    continue;
+                }
+
+                if (verifiedName.toLowerCase() !== param.name.toLowerCase()) {
+                    // ด่าน 2: AI ตรวจพบว่าสารในภาพเป็นคนละชนิดกับที่ระบุ → บังคับเลือกสารใหม่
+                    const verifiedLabel = verifiedName.charAt(0).toUpperCase() + verifiedName.slice(1).toLowerCase();
+                    newErrors[param.id] = {
+                        reason: "wrong_solution",
+                        detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ไม่ตรงกับที่เลือกไว้ กรุณาเลือกสารให้ตรงหรือถ่ายภาพใหม่`,
+                    };
+                    continue;
+                }
+
+                // ผ่านด่าน → พล็อตภาพ + เก็บผลตามปกติ
                 const plotted = await generateAiImagePlot(file, data);
                 if (plotted) {
                     setImagePlotFiles((prev) => ({ ...prev, [param.id]: plotted }));
@@ -171,10 +211,41 @@ export function useSubmitSample() {
                     message: data.message || "",
                     confidence: data.confidence,
                     boundingBox: data["bounding box"],
+                    isTestTube,
+                    verifiedParameterName: verifiedName,
                 };
 
                 if (currentStatus === "danger") hasDanger = true;
                 if (currentStatus === "warning") hasWarning = true;
+            }
+
+            // ถ้ามีสารตัวใดไม่ผ่านด่าน → บล็อกทั้ง batch: ไม่เข้าหน้าผลลัพธ์ กลับไปหน้ากรอกข้อมูล
+            if (Object.keys(newErrors).length > 0) {
+                setVerifyErrors(newErrors);
+                // เคลียร์รูปเฉพาะตัวที่ไม่ใช่หลอดทดลอง (ภาพใช้ไม่ได้ ต้องถ่ายใหม่)
+                // ส่วน wrong_solution คงรูปไว้ เพราะผู้ใช้อาจแค่เลือกชนิดสารผิด
+                const toClear = Object.entries(newErrors)
+                    .filter(([, e]) => e.reason === "not_test_tube")
+                    .map(([id]) => Number(id));
+                if (toClear.length > 0) {
+                    setImageFiles((prev) => {
+                        const next = { ...prev };
+                        toClear.forEach((id) => delete next[id]);
+                        return next;
+                    });
+                    setImagePreviews((prev) => {
+                        const next = { ...prev };
+                        toClear.forEach((id) => delete next[id]);
+                        return next;
+                    });
+                    setImagePlotFiles((prev) => {
+                        const next = { ...prev };
+                        toClear.forEach((id) => delete next[id]);
+                        return next;
+                    });
+                }
+                setStep("upload");
+                return;
             }
 
             setResults(newResults);
@@ -191,7 +262,7 @@ export function useSubmitSample() {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
 
         try {
-            for (const param of systemParameters) {
+            for (const param of activeParameters) {
                 const resData = results[param.id];
                 const rawFile = imageFiles[param.id];
                 const plotFile = imagePlotFiles[param.id];
@@ -248,6 +319,13 @@ export function useSubmitSample() {
 
     return {
         systemParameters,
+        activeParameters,
+        mode,
+        setMode,
+        selectedParamId,
+        setSelectedParamId,
+        verifyErrors,
+        setVerifyErrors,
         isLoadingParams,
         imageFiles,
         setImageFiles,

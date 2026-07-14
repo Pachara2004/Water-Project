@@ -8,7 +8,10 @@ import { prisma } from "@/lib/prisma";
  * เพื่อกันไม่ให้เกณฑ์การซ่อนข้อมูล pending เพี้ยนไปคนละแบบระหว่างจุดต่าง ๆ (map / dashboard / ประวัติ)
  *
  * การใช้งานต่างกันตาม surface:
- * - แผนที่ / dashboard (ข้อมูลรวมทุกคน): ใช้ผลลัพธ์นี้เป็น `sessionGroup: { notIn: pendingGroups } ` เพื่อซ่อน pending ทั้งหมด
+ * - แผนที่ / dashboard (ข้อมูลรวมทุกคน): ซ่อน pending ทั้งหมดด้วย
+ *     `OR: [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }]`
+ *     ⚠️ อย่าใช้ `sessionGroup: { notIn: pendingGroups }` เดี่ยว ๆ — SQL `NOT IN (...)` จะคัดแถวที่
+ *     sessionGroup เป็น NULL (ข้อมูลส่งเดี่ยวส่วนใหญ่) ทิ้งทั้งหมด ทำให้ map/dashboard ว่างเปล่า
  * - ประวัติของ collector เอง (scope ด้วย collectorId อยู่แล้ว): ใช้ผลลัพธ์นี้แค่ "ติด badge" ว่ารายการไหนรออนุมัติ ไม่ใช้กรองทิ้ง
  */
 export async function getPendingSessionGroups(): Promise<string[]> {

@@ -1,8 +1,8 @@
 // components/submit/ImageZone.tsx
 import { useRef, useState } from "react"; // 🌟 เพิ่ม useState เข้ามาจัดการสลับโหมดภาพครับบอส
-import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye } from "lucide-react"; // 🌟 Import ไอคอน Eye เพิ่มเข้ามาครับบอส
+import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical } from "lucide-react"; // 🌟 Import ไอคอน Eye เพิ่มเข้ามาครับบอส
 import { alertError, errorToast } from "@/lib/swal";
-import { DbParameter, MeasurementResult } from "./types";
+import { DbParameter, MeasurementResult, VerifyError } from "./types";
 import { SectionHead } from "./SharedAtoms";
 
 interface ImageZoneProps {
@@ -11,6 +11,7 @@ interface ImageZoneProps {
     preview?: string;
     plotFile?: File | string; // 🌟 ขยายให้รองรับทั้ง File (บลอบหน้าฟอร์ม) และ string (URL หน้าประวัติ) ครับบอส
     measurement?: MeasurementResult;
+    verifyError?: VerifyError; // เหตุผลที่สารตัวนี้ถูกบล็อก (ไม่ใช่หลอดทดลอง / สารผิดชนิด)
     onImageFilesChange: (file: File) => void;
     onNearestLocationsUpdate: (locations: any[]) => void;
     allLocations: any[];
@@ -18,7 +19,7 @@ interface ImageZoneProps {
 }
 
 // 🌟 1. ดึง measurement ออกมาจากพารามิเตอร์ Props ตรงนี้แล้ว
-export function ImageZone({ param, step, preview, plotFile, measurement, onImageFilesChange, onNearestLocationsUpdate, allLocations, setIsRecommending }: ImageZoneProps) {
+export function ImageZone({ param, step, preview, plotFile, measurement, verifyError, onImageFilesChange, onNearestLocationsUpdate, allLocations, setIsRecommending }: ImageZoneProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // 🌟 2. เพิ่ม State สำหรับสลับโหมดดูภาพดิบ (raw) หรือ ภาพพล็อต AI (analyzed)
@@ -76,11 +77,22 @@ export function ImageZone({ param, step, preview, plotFile, measurement, onImage
 
     return (
         /* 🌟 5. เพิ่ม Dynamic Class บนกรอบ Section: ถ้าไม่ผ่านเปลี่ยนเป็นขอบแดง-พื้นแดงจาง ถ้าผ่านเปลี่ยนเป็นขอบเขียว-พื้นเขียวจาง */
-        <section className={`rounded-xl overflow-hidden border border-border transition-all duration-300 bg-surface`}>
+        <section className={`rounded-xl overflow-hidden border transition-all duration-300 bg-surface ${verifyError ? "border-red-400 ring-1 ring-red-300" : "border-border"}`}>
             <div className="text-sm font-semibold ">
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
             </div>
             <div className="p-4">
+                {/* แถบแจ้งเตือนกรณีผลถูกบล็อก: ไม่ใช่หลอดทดลอง หรือ สารผิดชนิด */}
+                {verifyError && (
+                    <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">
+                        {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}
+                        <div className="text-[11px] leading-relaxed font-medium">
+                            <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "ต้องถ่ายภาพใหม่" : "สารไม่ตรงชนิด"}</p>
+                            <p>{verifyError.detail}</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* แถบระบุสถานะประเมินผลลัพธ์ย้อนหลัง */}
                 {hasConf && (
                     <div

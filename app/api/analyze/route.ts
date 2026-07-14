@@ -76,10 +76,15 @@ export async function POST(request: NextRequest) {
         // แกะผลลัพธ์จากสเปกใหม่ของทีม AI
         const aiResult = await aiResponse.json();
 
+        // ชื่อสารที่ AI ตรวจสอบยืนยันแล้ว (Stage 2 safeguard อาจสลับชนิดสารให้อัตโนมัติ)
+        // ใช้ค่านี้เป็นฐานคำนวณ status เพื่อกันเหนียว กรณี AI แก้ชนิดสารต่างจากที่ผู้ใช้ขอ
+        const verifiedParameterName: string = aiResult.parameterName || dbParam.name;
+
         // 2. คำนวณสถานะความปลอดภัยแบบ Dynamic เพื่อรักษาระบบเดิม
         const currentParamName = dbParam.name.toLowerCase();
-        const targetPhosphate = currentParamName.includes("phosphate") ? aiResult.concentrated : 0;
-        const targetAmmonia = currentParamName.includes("ammonia") ? aiResult.concentrated : 0;
+        const verifiedNameLower = verifiedParameterName.toLowerCase();
+        const targetPhosphate = verifiedNameLower.includes("phosphate") ? aiResult.concentrated : 0;
+        const targetAmmonia = verifiedNameLower.includes("ammonia") ? aiResult.concentrated : 0;
 
         // เรียกใช้งานเกณฑ์มาตรฐานกลางในเว็บแอป (เปิดช่องทางสำหรับปรับปรุงโมดูลรวมสารในอนาคต)
         const evalResult = evaluateSample(targetPhosphate, targetAmmonia);
@@ -93,12 +98,14 @@ export async function POST(request: NextRequest) {
         // 3. คืนค่าผลลัพธ์ผ่าน JSON กลับไปให้หน้าบ้าน (Frontend)
         return NextResponse.json({
             parameterId: dbParam.id,
-            parameterName: currentParamName,
+            parameterName: currentParamName, // ชื่อสารที่ผู้ใช้ระบุ (คงไว้เพื่อ label ภาพพล็อต)
+            verifiedParameterName, // ชื่อสารที่ AI ตรวจยืนยัน ใช้เทียบว่าตรงกับที่ผู้ใช้ระบุไหม
+            isTestTube: aiResult.is_test_tube ?? true, // ตรวจเจอหลอดทดลองในภาพหรือไม่
             concentrated: aiResult.concentrated,
-            status: evalResult.overallStatus, 
-            confidence: aiResult.confidence, 
-            "bounding box": boundingBox, 
-            message: aiMessage, 
+            status: evalResult.overallStatus,
+            confidence: aiResult.confidence,
+            "bounding box": boundingBox,
+            message: aiMessage,
         });
     } catch (error) {
         console.error("POST /api/analyze error:", error);

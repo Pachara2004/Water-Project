@@ -20,4 +20,14 @@ export interface MeasurementResult {
     message: string;
     confidence?: number;
     boundingBox?: any;
+    isTestTube?: boolean; // AI ตรวจเจอหลอดทดลองในภาพหรือไม่
+    verifiedParameterName?: string; // ชื่อสารที่ AI ตรวจยืนยัน (อาจต่างจากที่ผู้ใช้ระบุ)
+}
+
+// เหตุผลที่ผลวิเคราะห์ถูกบล็อก ก่อนเข้าขั้นตอนแสดงผล/บันทึก
+export type VerifyErrorReason = "not_test_tube" | "wrong_solution";
+
+export interface VerifyError {
+    reason: VerifyErrorReason;
+    detail: string;
 }
