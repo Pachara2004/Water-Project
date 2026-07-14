@@ -1,5 +1,6 @@
 "use client";
 
+import { COLOR_PANEL } from "recharts/types/util/Constants";
 import Swal from "sweetalert2";
 
 /* Dialog กลางของแอปตาม prototype: การ์ดขาวมุมโค้ง ไอคอนวงกลมทึบ
@@ -9,14 +10,13 @@ import Swal from "sweetalert2";
    - primary = action เชิงบวก ความเสี่ยงต่ำ (อนุมัติคำร้องที่ผู้ใช้ขอเอง) */
 export type SwalTone = "danger" | "warning" | "primary";
 
-const TONE_COLOR: Record<SwalTone, string> = {
-    danger: "#F43F5E",
-    // เดิม #F9A825 ให้ contrast กับไอคอน/ปุ่มตัวอักษรขาวแค่ 1.97:1 ไม่ผ่านเกณฑ์ non-text 3:1 ของ WCAG
+export const TONE_COLOR: Record<SwalTone, string> = {
+    danger: "#B91C1C",
     warning: "#B45309",
     primary: "var(--color-primary, #06647F)",
 };
 
-const ICON_SVG = {
+export const ICON_SVG = {
     info: `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="11" x2="12" y2="17"/><circle cx="12" cy="7.5" r="0.5" fill="#fff" stroke-width="2"/></svg>`,
     question: `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M9 9a3 3 0 1 1 4.6 2.5c-.9.6-1.6 1.2-1.6 2.3"/><circle cx="12" cy="17" r="0.5" fill="#fff" stroke-width="2"/></svg>`,
     check: `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4 10-10"/></svg>`,
@@ -25,7 +25,7 @@ const ICON_SVG = {
 
 /* heightAuto: false กัน layout พังใน LINE LIFF (100dvh)
    scrollbarPadding: false ทำงานคู่กับ scroll-lock fix ใน globals.css */
-const baseSwal = Swal.mixin({
+export const baseSwal = Swal.mixin({
     background: "var(--color-surface, #ffffff)",
     color: "var(--color-text-primary, #112A33)",
     heightAuto: false,

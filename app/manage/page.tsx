@@ -8,6 +8,24 @@ import { useAppStore } from "@/lib/store";
 import { MapPin, ShieldAlert, ChevronRight, Users, Phone, Pencil, X, Check, AlertCircle, User, ClipboardCheck, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/useToast";
+// อิมพอร์ตโครงสร้าง Swal และการตั้งค่าสีจากไฟล์ config ของระบบ
+import { baseSwal, TONE_COLOR, ICON_SVG } from "@/lib/swal"; // <-- ปรับ Path ตัวนี้ให้ตรงกับที่เก็บจริงในโปรเจกต์
+
+// ฟังก์ชันสำหรับเรียก Alert ถามยืนยันการออกจากระบบ
+export function confirmLogoutAlert() {
+    return baseSwal.fire({
+        title: "ต้องการออกจากระบบใช่หรือไม่",
+        iconHtml: ICON_SVG.cross,
+        showCancelButton: true,
+        confirmButtonText: "ออกจากระบบ",
+        cancelButtonText: "ยกเลิก",
+        reverseButtons: true,
+        didRender: (popup) => {
+            popup.style.setProperty("--swal-tone", TONE_COLOR.danger);
+            popup.classList.add("app-swal--double"); 
+        },
+    });
+}
 
 const adminMenus = [
     {
@@ -284,18 +302,25 @@ export default function ManagePage() {
     const { showToast, toastElement } = useToast();
 
     // 2. ฟังก์ชันจัดการออกจากระบบ (สั่ง liff.logout + เคลียร์ Store + ส่งกลับหน้าแรก)
-    const handleLogout = () => {
-        try {
-            if (liff.isLoggedIn()) {
-                liff.logout();
-            }
-            setUser(null);
-            showToast("ออกจากระบบเรียบร้อยแล้ว", "success");
-            router.replace("/");
-        } catch {
-            showToast("เกิดข้อผิดพลาดในการออกจากระบบ", "danger");
+    const handleLogout = async () => {
+    // 1. เรียก Alert ขึ้นมาถามผู้ใช้งานก่อน
+    const result = await confirmLogoutAlert();
+    
+    // ถ้าผู้ใช้กด ยกเลิก หรือ ปิดหน้าต่าง ให้หยุดทำงานทันที
+    if (!result.isConfirmed) return;
+
+    // 2. ถ้าผู้ใช้กด "ออกจากระบบ" (ยืนยัน) ให้ทำตามกระบวนการเดิม
+    try {
+        if (liff.isLoggedIn()) {
+            liff.logout();
         }
-    };
+        setUser(null);
+        showToast("ออกจากระบบเรียบร้อยแล้ว", "success");
+        router.replace("/");
+    } catch {
+        showToast("เกิดข้อผิดพลาดในการออกจากระบบ", "danger");
+    }
+};
 
     if (!currentUser || currentUser.role === "guest") {
         return (
