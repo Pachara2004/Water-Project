@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { MapPin, ShieldAlert, ChevronRight, Shield, Users, Phone, UserCircle2, Pencil, X, Check, AlertCircle, User, ClipboardCheck } from "lucide-react";
+// 1. เพิ่มการอิมพอร์ตไอคอน LogOut สำหรับปุ่มออกจากระบบ
+import { MapPin, ShieldAlert, ChevronRight, Users, Phone, Pencil, X, Check, AlertCircle, User, ClipboardCheck, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/useToast";
 
@@ -12,30 +13,30 @@ const adminMenus = [
     {
         href: "/manage/review-requests",
         icon: ClipboardCheck,
-        label: "ตรวจสอบคำร้อง Confidence ต่ำ",
-        description: "อนุมัติหรือปฏิเสธผลตรวจที่ AI วิเคราะห์ได้ค่าความมั่นใจต่ำกว่าเกณฑ์",
+        label: "ตรวจสอบข้อมูลรอการยืนยัน",
+        description: "ตรวจสอบผลการวิเคราะห์จากระบบที่จำเป็นต้องให้เจ้าหน้าที่ยืนยันซ้ำ",
         badge: "Review",
-        color: "bg-primary-light text-primary border-primary/10",
+        color: "bg-primary text-primary border-primary/10",
         iconBg: "bg-primary text-white",
         available: true,
     },
     {
         href: "/manage/locations",
         icon: MapPin,
-        label: "จัดการสถานีตรวจวัด",
-        description: "เพิ่ม แก้ไข หรือลบจุดเก็บตัวอย่างน้ำบนแผนที่",
+        label: "จัดการจุดตรวจวัดน้ำ",
+        description: "เพิ่ม แก้ไข หรือลบพิกัดจุดเก็บตัวอย่างน้ำบนแผนที่",
         badge: "Locations",
-        color: "bg-primary-light text-primary border-primary/10",
+        color: "bg-primary text-primary border-primary/10",
         iconBg: "bg-primary text-white",
         available: true,
     },
     {
         href: "/manage/users",
         icon: Users,
-        label: "จัดการผู้ใช้งาน",
-        description: "กำหนดสิทธิ์และบทบาทของผู้ใช้ในระบบ",
+        label: "จัดการบัญชีผู้ใช้งาน",
+        description: "จัดการข้อมูลผู้ใช้งานและกำหนดสิทธิ์การเข้าถึงระบบ",
         badge: "Users",
-        color: "bg-primary-light text-primary border-primary/10",
+        color: "bg-primary text-primary border-primary/10",
         iconBg: "bg-primary text-white",
         available: true,
     },
@@ -47,20 +48,6 @@ const ROLE_LABEL: Record<string, string> = {
     officer: "ผู้บริหาร",
     admin: "ผู้ดูแลระบบ",
     guest: "ผู้ใช้งานทั่วไป",
-};
-
-const ROLE_COLOR: Record<string, string> = {
-    collector: "text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20",
-    officer: "text-violet-600 bg-violet-50 border-violet-200 dark:text-violet-400 dark:bg-violet-500/10 dark:border-violet-500/20",
-    admin: "text-primary bg-primary-light border-primary/10",
-    guest: "text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-gray-500/10 dark:border-gray-500/20",
-};
-
-const ROLE_DOT: Record<string, string> = {
-    collector: "bg-blue-500",
-    officer: "bg-violet-500",
-    admin: "bg-primary",
-    guest: "bg-gray-400",
 };
 
 const NAME_RE = /^[ก-๙a-zA-Z0-9\s\-'.]+$/;
@@ -80,13 +67,6 @@ function validatePhone(v: string): string {
     if (!clean) return "กรุณากรอกเบอร์โทรศัพท์";
     if (!PHONE_RE.test(clean)) return "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)";
     return "";
-}
-
-function getInitials(firstName: string | null, lineName: string) {
-    if (firstName && firstName.trim()) {
-        return firstName.trim().slice(0, 2).toUpperCase();
-    }
-    return lineName.trim().slice(0, 2).toUpperCase();
 }
 
 function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showToast: (message: string, variant?: "success" | "danger") => void }) {
@@ -122,8 +102,6 @@ function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showTo
         setSaving(true);
         setServerError("");
         try {
-            // ยิงไปที่ /api/profile (แก้เฉพาะข้อมูลส่วนตัว ไม่ยุ่งกับ role)
-            // แนบ LINE token ให้หลังบ้านแกะ userId จาก token เอง กัน IDOR
             const res = await fetch("/api/profile", {
                 method: "PATCH",
                 headers: {
@@ -144,7 +122,6 @@ function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showTo
                 return;
             }
 
-            // Update Zustand store ให้ UI ทุกที่สะท้อนทันที
             if (data.success) {
                 setUser(data.user);
             }
@@ -175,7 +152,8 @@ function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showTo
 
                 <div className="flex items-center justify-between mb-7">
                     <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">แก้ไขข้อมูลส่วนตัว</h3>
-                    <button title="button"
+                    <button
+                        title="button"
                         onClick={onClose}
                         className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
                     >
@@ -237,7 +215,7 @@ function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showTo
 
                     {serverError && (
                         <div className="flex items-center gap-2 px-4 py-3 bg-danger/10 border border-danger/20 rounded-2xl animate-fade-in">
-                            <AlertCircle size={14} className="text-danger flex-shrink-0" />
+                            <AlertCircle size={14} className="text-danger shrink-0" />
                             <p className="text-xs text-danger font-semibold">{serverError}</p>
                         </div>
                     )}
@@ -245,7 +223,7 @@ function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showTo
                     <button
                         onClick={handleSave}
                         disabled={saving || !isDirty}
-                        className="w-full mt-2 py-4 min-h-[52px] bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98]"
+                        className="w-full mt-2 py-4 min-h-13 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98]"
                     >
                         {saving ? (
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -267,56 +245,58 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
 
     const role = currentUser.role;
     const roleLabel = ROLE_LABEL[role] ?? role;
-    const roleColor = ROLE_COLOR[role] ?? "";
-    const roleDot = ROLE_DOT[role] ?? "bg-text-muted";
-
     const userDisplayName = currentUser.firstName ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim() : currentUser.lineProfileName;
 
     return (
-        <div className="bg-surface rounded-3xl border border-border p-5 sm:p-6">
-            <div className="flex items-center gap-4">
-                {/* Avatar */}
-                <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-sm font-semibold shrink-0 select-none">
-                    {getInitials(currentUser.firstName, currentUser.lineProfileName)}
+        <div className="bg-card-general rounded-xl border border-border p-4">
+            <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-start gap-4 p-2 pb-0">
+                    <h2 className="text-xl font-semibold text-black truncate flex-1">{userDisplayName}</h2>
+
+                    <button
+                        onClick={onEdit}
+                        className="w-26 gap-1 h-9 text-sm shrink-0 flex items-center justify-center rounded-md bg-surface-subtle border border-border text-text-muted transition-all duration-75 cursor-pointer hover:bg-surface-hover active:scale-[0.97]"
+                        title="แก้ไขข้อมูลส่วนตัว"
+                    >
+                        <Pencil size={16} /> แก้ไขข้อมูล
+                    </button>
                 </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                    <h2 className="text-base font-semibold text-text-primary truncate">{userDisplayName}</h2>
-
-                    <span className={`inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${roleColor}`}>
-                        {roleLabel}
-                    </span>
-
+                <div className="p-2 pt-0">
                     {currentUser.phoneNumber ? (
-                        <p className="flex items-center gap-1.5 mt-2 text-xs text-text-muted font-mono">
-                            <Phone size={10} />
-                            {currentUser.phoneNumber}
-                        </p>
+                        <p className="flex items-center gap-1.5 mt-[-10] text-sm text-text-muted">{currentUser.phoneNumber}</p>
                     ) : (
-                        <p className="mt-2 text-xs text-text-muted/50 italic">ยังไม่ได้ระบุเบอร์โทร</p>
+                        <p className="mt-1 text-sm text-text-muted/50 italic">ยังไม่ได้ระบุเบอร์โทร</p>
                     )}
+                    <div>
+                        <span className="inline-flex items-center text-sm font-semibold text-text-secondary">ตำแหน่ง: {roleLabel}</span>
+                    </div>
                 </div>
-
-                <button
-                    onClick={onEdit}
-                    className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 text-text-muted hover:text-primary transition-all duration-200 cursor-pointer active:scale-[0.92] group"
-                    title="แก้ไขข้อมูลส่วนตัว"
-                >
-                    <Pencil size={14} className="group-hover:scale-110 transition-transform" />
-                </button>
             </div>
         </div>
     );
 }
 
 export default function ManagePage() {
-    const { currentUser } = useAppStore();
+    const { currentUser, setUser } = useAppStore(); // ดึง setUser มาใช้เคลียร์สเตทเมื่อล็อกเอาต์
     const router = useRouter();
     const [showEdit, setShowEdit] = useState(false);
     const { showToast, toastElement } = useToast();
 
-    // ดักตรวจสอบบทบาทความปลอดภัยสิทธิ์ทั่วไปตัวพิมพ์เล็ก
+    // 2. ฟังก์ชันจัดการออกจากระบบ (สั่ง liff.logout + เคลียร์ Store + ส่งกลับหน้าแรก)
+    const handleLogout = () => {
+        try {
+            if (liff.isLoggedIn()) {
+                liff.logout();
+            }
+            setUser(null);
+            showToast("ออกจากระบบเรียบร้อยแล้ว", "success");
+            router.replace("/");
+        } catch {
+            showToast("เกิดข้อผิดพลาดในการออกจากระบบ", "danger");
+        }
+    };
+
     if (!currentUser || currentUser.role === "guest") {
         return (
             <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto bg-surface-muted border-x border-border">
@@ -338,91 +318,82 @@ export default function ManagePage() {
     const isAdmin = currentUser.role === "admin";
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-30 transition-colors duration-300">
-            <div className="w-full max-w-2xl mx-auto px-4 sm:px-8">
-                {/* Header */}
-                <div className="pt-10 sm:pt-16 pb-8 sm:pb-10 border-b border-border mb-8">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shrink-0">
-                                {isAdmin ? <Shield size={22} className="text-white" /> : <UserCircle2 size={22} className="text-white" />}
-                            </div>
-                            <div>
-                                <h1 className="font-display text-base font-semibold text-text-primary leading-tight">
-                                    {isAdmin ? (
-                                        <>
-                                            Admin <span className="text-primary">Panel</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            บัญชี
-                                            <span className="text-primary">ของฉัน</span>
-                                        </>
-                                    )}
-                                </h1>
-                                <p className="text-xs text-text-secondary mt-0.5">{isAdmin ? "ศูนย์ควบคุมระบบตรวจวัดคุณภาพน้ำชายฝั่ง" : "ข้อมูลและการตั้งค่าส่วนตัว"}</p>
-                            </div>
-                        </div>
-
-                        <div className="shrink-0 mt-1">
-                            <ThemeToggle showLabel />
-                        </div>
-                    </div>
+        <div className="min-h-dvh w-full bg-bg transition-colors duration-75">
+            <div className="w-full max-w-2xl mx-auto px-4">
+                <div className="pt-8 pb-1 mb-1 p-1">
+                    <h1 className="font-display text-2xl font-semibold text-black ">
+                        บัญชี
+                        <span className="text-primary">ของฉัน</span>
+                    </h1>
                 </div>
 
-                {/* Profile card */}
-                <div className="mb-5">
-                    <p className="text-sm font-semibold text-text-muted mb-4">ข้อมูลของฉัน</p>
+                <div className="mb-2">
                     <ProfileCard onEdit={() => setShowEdit(true)} />
                 </div>
 
                 {/* Admin menus */}
                 {isAdmin && (
-                    <div className="space-y-3">
-                        <p className="text-sm font-semibold text-text-muted uppercase tracking-wider px-1 mb-5">เมนูการจัดการ</p>
+                    <div className="space-y-2">
+                        <div className="p-1 flex justify-between items-center gap-4">
+                            <p className="text-sm font-semibold text-primary mt-1">เมนูการจัดการ</p>
+                            <div className="shrink-0 mt-1">
+                                <ThemeToggle showLabel />
+                            </div>
+                        </div>
 
-                        {adminMenus.map((menu) => {
-                            const Icon = menu.icon;
-                            return (
-                                <button
-                                    key={menu.href}
-                                    onClick={() => menu.available && router.push(menu.href)}
-                                    disabled={MenuBoxDisable(menu.available)}
-                                    className={`w-full group flex items-center gap-4 p-5 sm:p-6 bg-surface rounded-2xl border border-border transition-all duration-200 text-left
-                    ${menu.available ? "hover:border-primary/30  hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
-                                >
-                                    <div
-                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform duration-200 ${menu.iconBg} ${menu.available ? "group-hover:scale-105" : ""}`}
+                        {/* กลุ่มกล่องเมนูบริหารจัดการ (ใช้ Grid ครอบความสูงเท่ากัน) */}
+                        <div className="grid grid-cols-1 gap-2 items-stretch">
+                            {adminMenus.map((menu) => {
+                                const Icon = menu.icon;
+                                return (
+                                    <button
+                                        key={menu.href}
+                                        onClick={() => menu.available && router.push(menu.href)}
+                                        disabled={MenuBoxDisable(menu.available)}
+                                        className={`w-full h-full group flex items-start gap-4 p-4 bg-card-general rounded-md border border-border transition-all duration-75 text-left
+                                    ${menu.available ? "hover:border-primary/30 hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
                                     >
-                                        <Icon size={20} />
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="text-sm font-semibold text-text-primary truncate">{menu.label}</h3>
-                                            {!menu.available && (
-                                                <span className="text-xs font-semibold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
-                                                    เร็วๆ นี้
-                                                </span>
-                                            )}
+                                        <div className={`flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-200 ${menu.available ? "group-hover:scale-105" : ""}`}>
+                                            <Icon size={24} />
                                         </div>
-                                        <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
-                                        {menu.available && (
-                                            <span className={`inline-block mt-2 text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${menu.color}`}>{menu.badge}</span>
-                                        )}
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="text-sm font-semibold text-text-primary truncate">{menu.label}</h3>
+                                                {!menu.available && (
+                                                    <span className="text-xs font-semibold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                                        เร็วๆ นี้
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
+                                        </div>
+
+                                        <ChevronRight
+                                            size={18}
+                                            className={`shrink-0 mt-1 transition-all duration-75 ${menu.available ? "text-secondary group-hover:text-primary group-hover:translate-x-0.5" : "text-text-muted/30"}`}
+                                        />
+                                    </button>
+                                );
+                            })}
+
+                            {/* ─── 3. ปุ่มออกจากระบบ (แทรกอยู่ใน Grid เดียวกันเพื่อให้ความสูงยืดเท่ากับการ์ดใบอื่น) ─── */}
+                            <button
+                                onClick={handleLogout}
+                                className="w-full h-full group flex items-start gap-4 p-4 bg-danger rounded-md border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-75 text-left cursor-pointer"
+                            >
+                                <div className="flex items-center justify-center shrink-0  text-white transition-transform duration-200 group-hover:scale-105">
+                                    <LogOut size={24} />
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 ">
+                                        <h3 className="text-sm font-semibold text-white truncate">ออกจากระบบ</h3>
                                     </div>
+                                </div>
 
-                                    <ChevronRight
-                                        size={16}
-                                        className={`flex-shrink-0 transition-all duration-200 ${menu.available ? "text-text-muted group-hover:text-primary group-hover:translate-x-0.5" : "text-text-muted/30"}`}
-                                    />
-                                </button>
-                            );
-                        })}
-
-                        <div className="mt-10 p-4 bg-surface rounded-2xl border border-border flex items-start gap-3">
-                            <ShieldAlert size={20} className="text-text-muted flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-text-muted leading-relaxed">การเปลี่ยนแปลงใดๆ ในหน้านี้จะมีผลต่อข้อมูลระบบทันที กรุณาดำเนินการด้วยความระมัดระวัง</p>
+                                <ChevronRight size={18} className="shrink-0 text-white group-hover:translate-x-0.5 transition-all duration-75" />
+                            </button>
                         </div>
                     </div>
                 )}
@@ -437,7 +408,6 @@ export default function ManagePage() {
     );
 }
 
-// Helper ป้องกันปุ่มแอดมินเพี้ยนกรณีพิเศษ
 function MenuBoxDisable(status: boolean) {
     return !status;
 }

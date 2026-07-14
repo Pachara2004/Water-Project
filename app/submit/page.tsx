@@ -8,8 +8,7 @@ import { LocationPicker } from "@/components/submit/LocationPicker";
 import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { DesktopSidebar, AnalyzeButton } from "@/components/submit/NavWorkflow";
-import { StepDot } from "@/components/submit/SharedAtoms";
-import { ArrowLeft, FlaskConical, Sparkles, Database, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { ArrowLeft, Database, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 
 function SubmitContent() {
     const hook = useSubmitSample();
@@ -26,7 +25,6 @@ function SubmitContent() {
         step,
         results,
         router,
-        sessionId,
         saved,
         handleSave,
     } = hook;
@@ -90,21 +88,19 @@ function SubmitContent() {
 
     const hasLowConfidence = systemParameters.some((param) => isLowConfidence(results[param.id]?.confidence));
 
-    const currentStep = step === "upload" ? 1 : step === "analyzing" ? 2 : 3;
-
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-5 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Bar ── */}
             <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-text-secondary min-h-11">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text-secondary min-h-11">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
-                    <h1 className="text-sm font-semibold text-text-primary">ส่งตรวจคุณภาพน้ำ</h1>
+                    <h1 className="text-sm font-semibold text-primary">ส่งตรวจคุณภาพน้ำ</h1>
                 </div>
-                <div className="w-10" />
+                <div className="w-15" />
             </div>
 
             {/* MOBILE VIEW COMPONENT */}
@@ -151,7 +147,7 @@ function SubmitContent() {
                                 {/* confidence ต่ำ: ส่งได้แต่เข้าคิว pending |  ปกติ: บันทึกทันที */}
                                 <button
                                     onClick={() => onConfirmSave(hasLowConfidence)}
-                                    className={`w-full py-3.5 min-h-[52px] rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
+                                    className={`w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
                                         hasLowConfidence ? "bg-amber-600 hover:bg-amber-700" : "bg-teal-700 hover:bg-teal-800"
                                     }`}
                                 >
@@ -180,7 +176,7 @@ function SubmitContent() {
                                 {/* ปุ่มนำทางกลับสู่แดชบอร์ด /collector */}
                                 <button
                                     onClick={() => router.push("/collector")}
-                                    className={`mt-2 px-5 py-2.5 min-h-[40px] text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
+                                    className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
                                         hasLowConfidence ? "bg-amber-600 hover:bg-amber-700" : "bg-teal-700 hover:bg-teal-800"
                                     }`}
                                 >
@@ -194,7 +190,7 @@ function SubmitContent() {
 
             {/* DESKTOP VIEW COMPONENT */}
             <div className="hidden md:block m-4">
-                <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-[600px]">
+                <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-150">
                     <DesktopSidebar {...hook} />
                     <div className="flex flex-col flex-1 border-r border-border p-4 gap-4 max-h-[70vh] overflow-y-auto">
                         {systemParameters.map((param) => (
