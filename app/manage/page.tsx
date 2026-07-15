@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
@@ -29,6 +29,7 @@ export function confirmLogoutAlert() {
     });
 }
 
+// countKey เชื่อมกับผลลัพธ์ /api/manage/pending-count เพื่อบอกว่าเมนูไหนมีคำร้องค้างอยู่
 const adminMenus = [
     {
         href: "/manage/review-requests",
@@ -39,6 +40,7 @@ const adminMenus = [
         color: "bg-primary text-primary border-primary/10",
         iconBg: "bg-primary text-white",
         available: true,
+        countKey: "reviewPendingCount" as const,
     },
     {
         href: "/manage/locations",
@@ -49,6 +51,7 @@ const adminMenus = [
         color: "bg-primary text-primary border-primary/10",
         iconBg: "bg-primary text-white",
         available: true,
+        countKey: null,
     },
     {
         href: "/manage/users",
@@ -59,6 +62,7 @@ const adminMenus = [
         color: "bg-primary text-primary border-primary/10",
         iconBg: "bg-primary text-white",
         available: true,
+        countKey: "rolePendingCount" as const,
     },
 ];
 
@@ -303,6 +307,29 @@ export default function ManagePage() {
     const [showEdit, setShowEdit] = useState(false);
     const { showToast, toastElement } = useToast();
 
+    // จำนวนคำร้องค้างต่อเมนู (ตรวจสอบ confidence ต่ำ / ขอสิทธิ์ผู้ใช้) — ใช้ป้อนจุดแดงบนเมนูแอดมิน
+    const [pendingCounts, setPendingCounts] = useState<{ reviewPendingCount: number; rolePendingCount: number }>({ reviewPendingCount: 0, rolePendingCount: 0 });
+
+    const fetchPendingCounts = useCallback(async () => {
+        if (currentUser?.role !== "admin") return;
+        const token = liff.getAccessToken();
+        if (!token) return;
+        try {
+            const res = await fetch("/api/manage/pending-count", { headers: { Authorization: `Bearer ${token}` } });
+            if (!res.ok) return;
+            const data = await res.json();
+            setPendingCounts({ reviewPendingCount: data.reviewPendingCount ?? 0, rolePendingCount: data.rolePendingCount ?? 0 });
+        } catch (err) {
+            console.error("Failed to fetch pending counts:", err);
+        }
+    }, [currentUser?.role]);
+
+    useEffect(() => {
+        fetchPendingCounts();
+        window.addEventListener("focus", fetchPendingCounts);
+        return () => window.removeEventListener("focus", fetchPendingCounts);
+    }, [fetchPendingCounts]);
+
     // 2. ฟังก์ชันจัดการออกจากระบบ (สั่ง liff.logout + เคลียร์ Store + ส่งกลับหน้าแรก)
     const handleLogout = async () => {
         // 1. เรียก Alert ขึ้นมาถามผู้ใช้งานก่อน
@@ -379,6 +406,7 @@ export default function ManagePage() {
                         {isAdmin &&
                             adminMenus.map((menu) => {
                                 const Icon = menu.icon;
+                                const pendingCount = menu.countKey ? pendingCounts[menu.countKey] : 0;
                                 return (
                                     <button
                                         key={menu.href}
@@ -396,6 +424,11 @@ export default function ManagePage() {
                                                 {!menu.available && (
                                                     <span className="text-xs font-semibold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                                                         เร็วๆ นี้
+                                                    </span>
+                                                )}
+                                                {pendingCount > 0 && (
+                                                    <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                                        {pendingCount} รายการ
                                                     </span>
                                                 )}
                                             </div>

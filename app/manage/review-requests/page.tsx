@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store";
 import { confirmDialog, alertError } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
 import { isLowConfidence, CONFIDENCE_THRESHOLD } from "@/lib/standards";
+import { refreshNavDots } from "@/lib/navEvents";
 import { ArrowLeft, ShieldAlert, ClipboardCheck, RefreshCw, MapPin, User, Calendar, Check, X, ImageOff, AlertCircle } from "lucide-react";
 
 type ReviewStatusFilter = "pending" | "approved" | "rejected";
@@ -119,6 +120,7 @@ export default function AdminReviewRequestsPage() {
 
             showToast(`อนุมัติผลตรวจของ "${item.location?.name ?? "จุดตรวจ"}" แล้ว`, "success");
             fetchRequests(tab, true);
+            refreshNavDots();
         } catch (err) {
             alertError("อนุมัติไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
         } finally {
@@ -147,6 +149,7 @@ export default function AdminReviewRequestsPage() {
             showToast(`ปฏิเสธผลตรวจของ "${rejectTarget.location?.name ?? "จุดตรวจ"}" แล้ว`, "danger");
             setRejectTarget(null);
             fetchRequests(tab, true);
+            refreshNavDots();
         } catch (err) {
             alertError("ปฏิเสธไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
         } finally {

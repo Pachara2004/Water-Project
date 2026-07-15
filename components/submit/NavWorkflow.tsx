@@ -28,8 +28,8 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step, sys
     );
 }
 
-export function AnalyzeButton({ systemParameters, imageFiles, currentLocationId, isRecommending, handleAnalyze }: any) {
-    const isAllImagesUploaded = systemParameters.length > 0 && systemParameters.every((p: any) => imageFiles[p.id] !== undefined);
+export function AnalyzeButton({ activeParameters, imageFiles, currentLocationId, isRecommending, handleAnalyze }: any) {
+    const isAllImagesUploaded = activeParameters.length > 0 && activeParameters.every((p: any) => imageFiles[p.id] !== undefined);
     return (
         <button
             onClick={handleAnalyze}

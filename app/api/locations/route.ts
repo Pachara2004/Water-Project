@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
         // ข้อมูลสาธารณะ (ทุกคนเห็น) — ต้องซ่อน session ที่ยังรออนุมัติออกทั้งหมด ไม่ว่าใครเป็นคนส่ง
         const pendingGroups = await getPendingSessionGroups();
         const sampleWhere: any = { isDeleted: false };
-        if (pendingGroups.length > 0) sampleWhere.sessionGroup = { notIn: pendingGroups };
+        // ⚠️ ต้องปล่อยแถวที่ sessionGroup = null ผ่านด้วย! (ข้อมูลส่งเดี่ยวส่วนใหญ่ไม่มี sessionGroup)
+        // SQL `NOT IN (...)` ให้ผลเป็น NULL (ไม่ใช่ TRUE) กับแถวที่คอลัมน์เป็น NULL → แถวพวกนั้นถูกคัดทิ้งหมด
+        // จึงต้อง OR เงื่อนไข sessionGroup IS NULL เข้าไปเพื่อไม่ให้ข้อมูลปกติหายเมื่อมี pending อย่างน้อย 1 รายการ
+        if (pendingGroups.length > 0) {
+            sampleWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
+        }
 
         // ดึงพิกัดทั้งหมดออกมา โดยตึงเอาผลตรวจ WaterSample 50 แถวล่าสุด (เผื่อแตกกระจายตัวรายสารเคมี)
         const locations = await prisma.location.findMany({
