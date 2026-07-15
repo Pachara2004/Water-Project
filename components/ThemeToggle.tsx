@@ -39,15 +39,15 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
         return (
             <button
                 onClick={toggleTheme}
-                className="flex items-center gap-2.5 h-10 px-4 rounded-2xl bg-surface border border-border text-text-primary shadow-sm hover:border-primary/30 hover:shadow-md transition-all duration-300 active:scale-[0.96] cursor-pointer relative overflow-hidden"
+                className="flex items-center gap-2.5 h-10 px-5 rounded-md bg-card-general border border-border text-text-primary   transition-all duration-75 active:scale-[0.96] cursor-pointer relative overflow-hidden"
                 aria-label="Toggle Light/Dark Theme"
             >
                 {/* Icon */}
-                <div className="relative w-4 h-4 flex-shrink-0">
-                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isDark ? "rotate-0 opacity-100 scale-100" : "rotate-90 opacity-0 scale-50"}`}>
+                <div className="relative w-4 h-4 shrink-0">
+                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-75 ${isDark ? "rotate-0 opacity-100 scale-100" : "rotate-90 opacity-0 scale-50"}`}>
                         <Sun size={16} className="text-amber-500 fill-amber-500/20" />
                     </div>
-                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${!isDark ? "rotate-0 opacity-100 scale-100" : "-rotate-90 opacity-0 scale-50"}`}>
+                    <div className={`absolute inset-0 flex items-center justify-center transition-all duration-75 ${!isDark ? "rotate-0 opacity-100 scale-100" : "-rotate-90 opacity-0 scale-50"}`}>
                         <Moon size={16} className="text-indigo-500 fill-indigo-500/10" />
                     </div>
                 </div>

@@ -20,10 +20,10 @@ export default function Navbar() {
     const userRole = currentUser?.role;
 
     const navItems = useMemo(() => {
+        // 1. เริ่มต้นด้วย แผนที่ เป็นรายการแรกเสมอ
         const items = [{ href: "/map", label: "แผนที่พิกัดสถานี", icon: Map }];
 
-        if (!userRole) return items;
-
+        // 2. ถ้ามี Role ระดับต่างๆ ให้สอดแทรกเมนูการทำงานเข้าไปตรงกลางก่อน
         if (userRole === "collector" || userRole === "admin") {
             items.push({
                 href: "/collector",
@@ -40,13 +40,12 @@ export default function Navbar() {
             });
         }
 
-        if (userRole === "admin" || userRole === "collector" || userRole === "officer") {
-            items.push({
-                href: "/manage",
-                label: "จัดการข้อมูล",
-                icon: Settings,
-            });
-        }
+        // 3. การันตี Push "จัดการข้อมูล" (ตั้งค่า) ปิดท้ายแถวเสมอ ไม่ว่าจะมีสิทธิ์ใดๆ หรือไม่มีสิทธิ์ก็ตาม
+        items.push({
+            href: "/manage",
+            label: "จัดการข้อมูล",
+            icon: Settings,
+        });
 
         return items;
     }, [userRole]);
