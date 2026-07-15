@@ -16,7 +16,11 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
 
 export default function MapPage() {
     return (
-        <div className="absolute inset-0 w-full h-full overflow-hidden">
+        /* 
+          เปลี่ยนจาก absolute inset-0 เป็น fixed w-full 
+          และสั่ง h-[calc(100dvh-72px-env(safe-area-inset-bottom))] เพื่อตัดความสูงเมนูด้านล่างออกให้พอดีเป๊ะ 
+        */
+        <div className="fixed top-0 left-0 w-full h-[calc(100dvh-72px-env(safe-area-inset-bottom))] lg:h-dvh lg:w-[calc(100%-200px)] lg:left-50 overflow-hidden">
             <div className="w-full h-full relative">
                 <MapView mode="explorer" />
             </div>

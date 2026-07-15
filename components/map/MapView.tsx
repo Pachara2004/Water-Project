@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import { createLocationIcon } from "../LocationPin";
 import BottomSheet, { BottomSheetLocation } from "./BottomSheet";
@@ -41,17 +41,25 @@ function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => 
 function MapController({ centerPos, selectedLocation }: { centerPos: [number, number] | null; selectedLocation: BottomSheetLocation | null }) {
     const map = useMap();
 
-    // ⚡ UX Speedup: ปรับลด duration ลงเหลือ 0.6 วินาทีเพื่อให้แผนที่ตอบสนองไวทันใจ ไม่เคลื่อนไหวช้าเกินไป
     useEffect(() => {
         if (centerPos) {
-            map.flyTo(centerPos, 13, { duration: 0.6 });
+            // ใช้ setTimeout เล็กน้อย (100ms) เพื่อรอให้ Leaflet ผูก Container และสิทธิ์ Zoom บนหน้าจอเสร็จเรียบร้อย
+            const timer = setTimeout(() => {
+                // บินไปที่พิกัดผู้ใช้ พร้อมปรับระดับความซูมเข้าไปใกล้ๆ (เช่น ระดับ 15 หรือ 16 เพื่อให้เห็นพิกัดตัวเองชัดเจน)
+                map.flyTo(centerPos, 15, {
+                    animate: true,
+                    duration: 0.8, // ความเร็วในการเลื่อนหน้าจอ
+                });
+            }, 100);
+
+            return () => clearTimeout(timer);
         }
     }, [centerPos, map]);
 
-    // ⚡ UX Speedup: ปรับลด duration ลงเหลือ 0.5 วินาที
+    // การเลื่อนเมื่อกดเลือกสถานที่จากด้านล่าง (คงเดิม)
     useEffect(() => {
         if (selectedLocation) {
-            map.flyTo([selectedLocation.lat, selectedLocation.lng], 14, { duration: 0.5 });
+            map.flyTo([selectedLocation.lat, selectedLocation.lng], 15, { duration: 0.5 });
         }
     }, [selectedLocation, map]);
 
@@ -70,7 +78,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     const [statusFilter, setStatusFilter] = useState("ALL");
 
     const [selectedLocation, setSelectedLocation] = useState<BottomSheetLocation | null>(null);
-    const [loading, setLoading] = useState(true);
+    
     const [userPos, setUserPos] = useState<[number, number] | null>(null);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -79,7 +87,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         return () => setIsMounted(false);
     }, []);
 
-    // ⚡ Performance: ใช้ useCallback ป้องกันฟังก์ชันถูกสร้างใหม่ในหน่วยความจำโดยไม่จำเป็น
+    // ฟังก์ชันดึงพิกัด (คงเดิม)
     const handleLocateMe = useCallback(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -97,9 +105,15 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         }
     }, []);
 
+    useEffect(() => {
+        if (isMounted) {
+            handleLocateMe();
+        }
+    }, [isMounted, handleLocateMe]);
+
+    // ฟังก์ชัน fetch ข้อมูลสถานีน้ำ (คงเดิม)[cite: 10]
     const fetchLocations = useCallback(async () => {
         try {
-            setLoading(true);
             const params = agencyFilter !== "ALL" ? `?org=${agencyFilter}` : "";
             const res = await fetch(`/api/locations${params}`);
             let data = await res.json();
@@ -114,8 +128,6 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             setLocations(data);
         } catch (err) {
             console.error("Failed to fetch locations:", err);
-        } finally {
-            setLoading(false);
         }
     }, [agencyFilter, statusFilter]);
 
@@ -123,9 +135,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         fetchLocations();
     }, [fetchLocations]);
 
-    // ⚡ Performance ขั้นสุด: จำชุดข้อมูล Markers ไว้ในหน่วยความจำ
-    // จะคำนวณและเรนเดอร์หมุดใหม่ก็ต่อเมื่อข้อมูลสถานี (locations) หรือโหมดการทำงานเปลี่ยนเท่านั้น
-    // ย้ายหน้าจอ ซูมเข้าออก หรือเปิดปิด BottomSheet จะไม่เกิดภาระกับ CPU ในการลูปสร้างหมุดใหม่
+    // แคชชิ่ง Markers (คงเดิม)[cite: 10]
     const renderedMarkers = useMemo(() => {
         return locations.map((loc) => (
             <Marker
@@ -139,6 +149,9 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
 
     if (!isMounted) return null;
 
+    /* 
+       พอพิกัด GPS ของเบราว์เซอร์โหลดมาได้สำเร็จ แผนที่จะรัน MapController ทำเอฟเฟกต์ flyTo โผบินไปหาพิกัดผู้ใช้โดยอัตโนมัติครับ
+    */
     const center: [number, number] = [13.2, 100.9];
     const zoom = mode === "picker" ? 10 : 9;
 
@@ -154,7 +167,6 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             <MapContainer key={`map-container-${mode}`} center={center} zoom={zoom} className="w-full h-full" zoomControl={false} attributionControl={false}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
 
-                {/* ⚡ ดึงหมุดที่บันทึกไว้ในแคชมาแสดงผลทันที */}
                 {renderedMarkers}
 
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
@@ -178,7 +190,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 <button
                     title="Locate Me"
                     onClick={handleLocateMe}
-                    className="absolute bottom-6 right-4 lg:bottom-8 lg:right-6 z-600 bg-surface p-3.5 rounded-full shadow-lg border border-border text-primary hover:bg-surface-subtle transition-all duration-200 active:scale-95 will-change-transform cursor-pointer"
+                    className="absolute bottom-8 right-4 z-600 bg-card-general p-3.5 rounded-full border border-border text-primary transition-all duration-75 active:scale-95 will-change-transform cursor-pointer"
                 >
                     <Navigation size={18} className="fill-primary" />
                 </button>
