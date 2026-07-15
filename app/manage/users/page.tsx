@@ -24,7 +24,6 @@ interface UserItem {
     requestedRole: Role | null;
 }
 
-
 const ROLE_OPTIONS: Role[] = ["guest", "collector", "officer", "admin"];
 
 function formatDate(iso: string) {
@@ -70,6 +69,29 @@ export default function AdminUsersPage() {
             console.error(e);
         }
     }, []);
+
+    const ROLE_CONFIG: Record<Role, { label: string; color: string; dot: string }> = {
+        guest: {
+            label: "General",
+            color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
+            dot: "bg-emerald-500",
+        },
+        collector: {
+            label: "Collector",
+            color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
+            dot: "bg-violet-500",
+        },
+        officer: {
+            label: "Officer",
+            color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+            dot: "bg-amber-500",
+        },
+        admin: {
+            label: "Admin",
+            color: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
+            dot: "bg-red-500",
+        },
+    };
 
     const fetchUsers = useCallback(async (keyword: string) => {
         setLoading(true);
@@ -430,7 +452,6 @@ export default function AdminUsersPage() {
                                                     </div>
                                                 )}
                                             </div>
-
 
                                             {/* เคสที่ 1: รายการทั่วไป (ไม่ใช่ Queue อนุมัติ) -> โชว์ปุ่ม "จัดการสิทธิ์" เต็มความกว้างด้านล่าง */}
                                             {!(tab === "queue" && user.pendingRequestId && user.requestedRole) && (
