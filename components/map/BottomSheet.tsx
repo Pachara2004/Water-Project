@@ -214,39 +214,38 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
     const renderCollectorInfo = () => {
         if (!latest?.collector) return null;
-        const { fullName, displayName, phone: colPhone, id: colId } = latest.collector as any;
+        const { fullName, displayName, phone: colPhone } = latest.collector as any;
         const colName = fullName || displayName || "เจ้าหน้าที่";
         const role = currentUser?.role;
 
         if (!currentUser || role === "guest") return null;
+
+        // ของ Officer: ตัดผู้บันทึกออก
+        if (role === "officer") return null;
+
+        // ของ admin: เห็นเหมือนเดิมทุกอย่าง
         if (role === "admin") {
             return (
                 <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
                     <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
                     <p className="text-md font-semibold text-black">{colName}</p>
-                    <p className="text-md font-semibold text-black">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
+                    <p className="text-sm font-semibold text-text-muted mt-0.5">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
                 </div>
             );
         }
 
-        const isSelf = String(colId) === String(currentUser.id);
-        if (role === "collector" && isSelf) {
+        // ของ collector: เปลี่ยนเป็นผู้บันทึกล่าสุด แสดงแค่ชื่อและเซนเซอร์ชื่อตัวหลัง
+        if (role === "collector") {
+            const anonymizedName = colName && colName.length > 0 ? `${colName.slice(0, 5)}***` : "***";
             return (
                 <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
-                    <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
-                    <p className="text-md font-semibold text-black">{colName}</p>
-                    <p className="text-md font-semibold text-black">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
+                    <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกล่าสุด</span>
+                    <p className="text-sm font-bold text-black mt-0.5">{anonymizedName}</p>
                 </div>
             );
         }
 
-        const anonymizedName = colName && colName.length > 0 ? `${colName[0]}***` : "***";
-        return (
-            <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-1 mt-4">
-                <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
-                <p className="text-xs font-bold text-black mt-1">{anonymizedName}</p>
-            </div>
-        );
+        return null;
     };
 
     const formatDate = (dateStr: string) => {
@@ -301,32 +300,34 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                     {renderCollectorInfo()}
 
-                    <div className="grid grid-cols-2 gap-2">
-                        {chemicalItems.map((item) => (
-                            <div
-                                key={item.key}
-                                className="bg-surface rounded-xl p-4 border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200"
-                            >
-                                <div className="flex items-center content-center justify-center gap-1 mb-1">
-                                    <FlaskConical size={16} className={item.colorClass} />
-                                    <span className="text-sm font-bold text-primary uppercase">{item.displayLabel}</span>
-                                </div>
-                                <div className="flex items-center content-center justify-center gap-1.5">
-                                    <span className="text-2xl font-black text-black">{item.currentVal.toFixed(3)}</span>
-                                    <span className="text-xs text-black font-bold">mg/L</span>
-                                </div>
-                                {item.hasPrev && item.diff !== 0 && (
-                                    <div className={`flex items-center gap-1 text-xs font-black justify-center ${item.diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
-                                        {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                        {item.diff > 0 ? "+" : ""}
-                                        {item.diff.toFixed(3)}
+                    {currentUser?.role !== "guest" && (
+                        <div className="grid grid-cols-2 gap-2">
+                            {chemicalItems.map((item) => (
+                                <div
+                                    key={item.key}
+                                    className="bg-surface rounded-xl p-4 border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200"
+                                >
+                                    <div className="flex items-center content-center justify-center gap-1 mb-1">
+                                        <FlaskConical size={16} className={item.colorClass} />
+                                        <span className="text-sm font-bold text-primary uppercase">{item.displayLabel}</span>
                                     </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                                    <div className="flex items-center content-center justify-center gap-1.5">
+                                        <span className="text-2xl font-black text-black">{item.currentVal.toFixed(3)}</span>
+                                        <span className="text-xs text-black font-bold">mg/L</span>
+                                    </div>
+                                    {item.hasPrev && item.diff !== 0 && (
+                                        <div className={`flex items-center gap-1 text-xs font-black justify-center ${item.diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
+                                            {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                            {item.diff > 0 ? "+" : ""}
+                                            {item.diff.toFixed(3)}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
-                    {latest.oxygen !== null && latest.oxygen !== undefined && (
+                    {currentUser?.role !== "guest" && latest.oxygen !== null && latest.oxygen !== undefined && (
                         <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border">
                             <div className="flex items-center gap-1.5">
                                 <FlaskConical size={16} className="text-blue-500" />
@@ -339,36 +340,37 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         </div>
                     )}
 
-                    {(latest.airTemperature !== null ||
-                        latest.rainAccumulation !== null ||
-                        latest.weatherCondCode !== null ||
-                        latest.temperature !== null ||
-                        latest.rainVolume !== null ||
-                        latest.weatherCondition !== null) && (
-                        <div className="bg-surface border border-border rounded-2xl p-6">
-                            <h4 className="text-xs font-semibold text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
-                            <div className="grid grid-cols gap-3 text-center">
-                                {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
-                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                        <span className="text-xs font-bold text-secondary block uppercase">อุณหภูมิ</span>
-                                        <span className="text-xl font-bold text-black mt-1 block">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
-                                    </div>
-                                )}
-                                {((latest.rainAccumulation !== null && latest.rainAccumulation !== undefined) || latest.rainVolume !== null) && (
-                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                        <span className="text-xs font-bold text-secondary block uppercase">ปริมาณฝน</span>
-                                        <span className="text-xl font-bold text-black mt-1 block">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
-                                    </div>
-                                )}
-                                {((latest.weatherCondCode !== null && latest.weatherCondCode !== undefined) || latest.weatherCondition !== null) && (
-                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                        <span className="text-xs font-bold text-secondary block uppercase">สภาพอากาศ</span>
-                                        <span className="text-xl font-bold text-black mt-1 block truncate">{getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}</span>
-                                    </div>
-                                )}
+                    {(currentUser?.role !== "guest" || !currentUser?.role) &&
+                        (latest.airTemperature !== null ||
+                            latest.rainAccumulation !== null ||
+                            latest.weatherCondCode !== null ||
+                            latest.temperature !== null ||
+                            latest.rainVolume !== null ||
+                            latest.weatherCondition !== null) && (
+                            <div className="bg-surface border border-border rounded-2xl p-6">
+                                <h4 className="text-xs font-semibold text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
+                                <div className="grid grid-cols gap-3 text-center">
+                                    {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
+                                        <div className="bg-surface-subtle p-3 rounded-xl border border-border">
+                                            <span className="text-xs font-bold text-secondary block uppercase">อุณหภูมิ</span>
+                                            <span className="text-xl font-bold text-black mt-1 block">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                        </div>
+                                    )}
+                                    {((latest.rainAccumulation !== null && latest.rainAccumulation !== undefined) || latest.rainVolume !== null) && (
+                                        <div className="bg-surface-subtle p-3 rounded-xl border border-border">
+                                            <span className="text-xs font-bold text-secondary block uppercase">ปริมาณฝน</span>
+                                            <span className="text-xl font-bold text-black mt-1 block">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                        </div>
+                                    )}
+                                    {((latest.weatherCondCode !== null && latest.weatherCondCode !== undefined) || latest.weatherCondition !== null) && (
+                                        <div className="bg-surface-subtle p-3 rounded-xl border border-border">
+                                            <span className="text-xs font-bold text-secondary block uppercase">สภาพอากาศ</span>
+                                            <span className="text-xl font-bold text-black mt-1 block truncate">{getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
                     {standardsEval && (
                         <div className="bg-surface text-center border border-border rounded-2xl p-6">
@@ -419,9 +421,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                     })}
                                                 </span>
                                                 <div className="flex items-center gap-4">
-                                                    <span className="text-xs text-black bg-surface px-1.5 py-0.5 border border-border rounded">
-                                                        P: {pVal ? Number(pVal).toFixed(2) : "-"} | A: {aVal ? Number(aVal).toFixed(2) : "-"}
-                                                    </span>
+                                                    {(currentUser?.role !== "guest" || !currentUser?.role) && (
+                                                        <span className="text-xs text-black bg-surface px-1.5 py-0.5 border border-border rounded">
+                                                            P: {pVal ? Number(pVal).toFixed(2) : "-"} | A: {aVal ? Number(aVal).toFixed(2) : "-"}
+                                                        </span>
+                                                    )}
+
                                                     <StatusBadge status={s.status.toLowerCase() as any} size="md" />
                                                 </div>
                                             </div>
@@ -440,7 +445,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 </div>
             )}
 
-            {chartData.length > 0 && (
+            {(currentUser?.role !== "guest" || !currentUser?.role) && chartData.length > 0 && (
                 <div className="bg-surface rounded-2xl">
                     <TimeSeriesChart data={chartData} />
                 </div>

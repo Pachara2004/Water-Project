@@ -8,7 +8,6 @@ interface StatusFilterBarProps {
     onChange: (value: string) => void;
 }
 
-// ⚡ Performance: ยกตัวแปรสแตติกออกนอกฟังก์ชัน จะได้ไม่ต้องถูกสร้างในเมมโมรี่ใหม่ทุกรอบของการเรนเดอร์
 const STATUS_OPTIONS = [
     { value: "ALL", label: "ทุกสถานะ" },
     { value: "safe", label: "ปลอดภัย" },
@@ -20,7 +19,6 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // ⚡ Performance: ครอบ Memoization เพื่อไม่ให้เกิดการวนลูปเช็กค่าคอมพิวติ้งโดยไม่จำเป็น
     const currentOption = useMemo(() => {
         const lowerValue = value.toLowerCase();
         return STATUS_OPTIONS.find((o) => o.value.toLowerCase() === lowerValue) || STATUS_OPTIONS[0];
@@ -67,7 +65,7 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
                                         setIsOpen(false);
                                     }}
                                     className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center gap-2.5 cursor-pointer
-                                ${isSelected ? "text-primary bg-primary/5" : "text-black hover:bg-surface-subtle"}`}
+                                ${isSelected ? "text-primary bg-bg" : "text-black hover:bg-surface-subtle"}`}
                                 >
                                     <span className={`rounded-full shrink-0 transition-all ${isSelected ? "scale-110 opacity-100" : "scale-90 opacity-60"}`} />
                                     <span className="font-semibold truncate">{option.label}</span>
