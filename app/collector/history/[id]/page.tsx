@@ -133,13 +133,13 @@ export default function CollectorHistoryDetailPage() {
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "collector" && currentUser.role !== "admin") router.push("/map");
+        if (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") router.push("/map");
     }, [currentUser, router]);
 
     useEffect(() => {
         let cancelled = false;
         async function fetchSample() {
-            if (!currentUser || (currentUser.role !== "collector" && currentUser.role !== "admin") || !params.id) return;
+            if (!currentUser || (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") || !params.id) return;
             try {
                 setLoading(true);
                 setError(null);

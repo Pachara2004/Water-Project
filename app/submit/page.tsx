@@ -9,7 +9,8 @@ import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { DesktopSidebar, AnalyzeButton } from "@/components/submit/NavWorkflow";
 import { StepDot } from "@/components/submit/SharedAtoms";
-import { ArrowLeft, FlaskConical, Sparkles, Database, CheckCircle2, AlertCircle, Clock, Layers, Droplet } from "lucide-react";
+import { SubmitSteps } from "@/components/submit/SubmitSteps";
+import { ArrowLeft, FlaskConical, Sparkles, Database, CheckCircle2, AlertCircle, Clock, Layers, Droplet, RotateCcw } from "lucide-react";
 import type { DbParameter } from "@/components/submit/types";
 
 // ── ตัวเลือกโหมดการส่ง: เดี่ยว (เลือกสารเดียว) / คู่ (ส่งทุกสารพร้อมกัน) ──
@@ -104,7 +105,9 @@ function SubmitContent() {
         results,
         router,
         saved,
+        savedSampleId,
         handleSave,
+        resetToUpload,
     } = hook;
 
     // จองพื้นที่ scrollbar ไว้ล่วงหน้าเฉพาะหน้านี้ กัน layout ขยับตอน popup ยืนยันล็อกการ scroll
@@ -187,6 +190,24 @@ function SubmitContent() {
     };
 
     const hasLowConfidence = activeParameters.some((param) => isLowConfidence(results[param.id]?.confidence));
+    const hasAutoSwitch = Object.values(results).some((r) => r.autoSwitchedFrom);
+
+    const onResetClick = async () => {
+        const Swal = (await import("sweetalert2")).default;
+        const result = await Swal.fire({
+            title: "เริ่มถ่ายภาพใหม่?",
+            text: "ผลวิเคราะห์และรูปภาพชุดนี้จะถูกล้างทิ้ง แล้วกลับไปเริ่มถ่ายภาพใหม่ (สถานีและเวลาที่เลือกไว้จะยังคงอยู่)",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#0D9488",
+            cancelButtonColor: "#6B7280",
+            confirmButtonText: "ใช่ เริ่มใหม่",
+            cancelButtonText: "ยกเลิก",
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+        if (result.isConfirmed) resetToUpload();
+    };
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
@@ -205,6 +226,7 @@ function SubmitContent() {
 
             {/* MOBILE VIEW COMPONENT */}
             <div className="md:hidden px-4 pb-24 space-y-4 mt-3">
+                <SubmitSteps step={step} />
                 {step === "upload" && !isLoadingParams && (
                     <ModeSelector
                         mode={mode}
@@ -255,6 +277,13 @@ function SubmitContent() {
                                     </div>
                                 )}
 
+                                {hasAutoSwitch && (
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-blue-50 border border-blue-200 text-[11px] text-blue-700 leading-relaxed font-medium">
+                                        <FlaskConical size={14} className="shrink-0 mt-0.5" />
+                                        <span>ระบบเปลี่ยนชนิดสารให้อัตโนมัติ ถ้าผลลัพธ์นี้ไม่ใช่สิ่งที่ต้องการบันทึก กด &quot;เริ่มใหม่&quot; ด้านล่างเพื่อถ่ายภาพใหม่ได้</span>
+                                    </div>
+                                )}
+
                                 {/* confidence ต่ำ: ส่งได้แต่เข้าคิว pending |  ปกติ: บันทึกทันที */}
                                 <button
                                     onClick={() => onConfirmSave(hasLowConfidence)}
@@ -264,6 +293,14 @@ function SubmitContent() {
                                 >
                                     {hasLowConfidence ? <Clock size={15} /> : <Database size={15} />}
                                     {hasLowConfidence ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกลงฐานข้อมูล"}
+                                </button>
+
+                                {/* ทางออกสำรอง — ผลลัพธ์นี้ไม่ใช่สิ่งที่ต้องการ กลับไปถ่ายใหม่ได้โดยไม่ต้องออกจากหน้า */}
+                                <button
+                                    onClick={onResetClick}
+                                    className="w-full py-2.5 min-h-10 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-text-secondary border border-border bg-surface hover:bg-surface-subtle transition-all duration-200"
+                                >
+                                    <RotateCcw size={13} /> ไม่ใช่สารที่ต้องการ · เริ่มใหม่
                                 </button>
                             </div>
                         ) : (
@@ -284,14 +321,14 @@ function SubmitContent() {
                                     </p>
                                 </div>
 
-                                {/* ปุ่มนำทางกลับสู่แดชบอร์ด /collector */}
+                                {/* ปุ่มนำทาง — ถ้าเก็บ id ของ sample ที่เพิ่งบันทึกได้ พาไปหน้ารายละเอียดชุดนี้ตรง ๆ ไม่งั้น fallback กลับหน้ารวมประวัติ */}
                                 <button
-                                    onClick={() => router.push("/collector")}
+                                    onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                     className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
                                         hasLowConfidence ? "bg-amber-600 hover:bg-amber-700" : "bg-teal-700 hover:bg-teal-800"
                                     }`}
                                 >
-                                    กลับสู่หน้าประวัติการตรวจสอบน้ำ
+                                    {savedSampleId ? "ดูผลการตรวจของชุดนี้" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
                                 </button>
                             </div>
                         )}

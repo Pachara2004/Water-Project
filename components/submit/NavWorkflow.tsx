@@ -1,6 +1,6 @@
 // components/submit/NavWorkflow.tsx
 import { Loader2, Camera, Sparkles, MapPin, Database, CheckCircle2 } from "lucide-react";
-import { StepDot } from "./SharedAtoms";
+import { SubmitSteps } from "./SubmitSteps";
 
 export function DesktopSidebar({ sessionId, locationName, currentUser, step, systemParameters, results }: any) {
     return (
@@ -22,7 +22,7 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step, sys
             </div>
             <div className="px-4 py-4 flex-1">
                 <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-3">Workflow</p>
-                {/* ขั้นตอน Workflow 1, 2, 3 ดึงแกน StepDot มาประกบตรงนี้ตามปกติ */}
+                <SubmitSteps step={step} orientation="vertical" />
             </div>
         </aside>
     );

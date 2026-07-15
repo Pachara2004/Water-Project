@@ -1,9 +1,20 @@
 // components/submit/ImageZone.tsx
 import { useRef, useState } from "react"; // 🌟 เพิ่ม useState เข้ามาจัดการสลับโหมดภาพครับบอส
-import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical } from "lucide-react"; // 🌟 Import ไอคอน Eye เพิ่มเข้ามาครับบอส
+import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X } from "lucide-react"; // 🌟 Import ไอคอน Eye เพิ่มเข้ามาครับบอส
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult, VerifyError } from "./types";
 import { SectionHead } from "./SharedAtoms";
+
+// รูปตัวอย่างสีของเหลวชุดทดสอบต่อสาร — โชว์ใน popup ตอนกด tooltip ข้างชื่อสาร
+const PARAM_EXAMPLE_IMAGE: Record<string, string> = {
+    ammonia: "/testkit-examples/ammonia.jpg",
+    phosphate: "/testkit-examples/phosphate.jpg",
+};
+
+function matchParamKey(name: string, table: Record<string, string>): string | null {
+    const n = name.toLowerCase();
+    return Object.keys(table).find((key) => n.includes(key)) ?? null;
+}
 
 interface ImageZoneProps {
     param: DbParameter;
@@ -24,6 +35,11 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
 
     // 🌟 2. เพิ่ม State สำหรับสลับโหมดดูภาพดิบ (raw) หรือ ภาพพล็อต AI (analyzed)
     const [viewMode, setViewMode] = useState<"raw" | "analyzed">("analyzed");
+    // เปิด/ปิด popup ตัวอย่างรูปสีของเหลวชุดทดสอบ (กดปุ่ม info ข้างชื่อสาร)
+    const [showExampleModal, setShowExampleModal] = useState(false);
+
+    const paramKey = matchParamKey(param.name, PARAM_EXAMPLE_IMAGE);
+    const exampleImage = paramKey ? PARAM_EXAMPLE_IMAGE[paramKey] : null;
 
     // 🌟 3. ประกาศและคำนวณสเตตัสความเชื่อมั่นของสารตัวนี้ (ดักจับทั้งกรณีเลข 0.6 และ 60)
     const hasConf = measurement?.confidence !== undefined;
@@ -78,8 +94,40 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
     return (
         /* 🌟 5. เพิ่ม Dynamic Class บนกรอบ Section: ถ้าไม่ผ่านเปลี่ยนเป็นขอบแดง-พื้นแดงจาง ถ้าผ่านเปลี่ยนเป็นขอบเขียว-พื้นเขียวจาง */
         <section className={`rounded-xl overflow-hidden border transition-all duration-300 bg-surface ${verifyError ? "border-red-400 ring-1 ring-red-300" : "border-border"}`}>
-            <div className="text-sm font-semibold ">
+            <div className="text-sm font-semibold relative">
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
+                {exampleImage && (
+                    <button
+                        type="button"
+                        onClick={() => setShowExampleModal((v) => !v)}
+                        aria-label={`ดูตัวอย่างสี ${param.name}`}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                    >
+                        <Info size={15} />
+                    </button>
+                )}
+
+                {/* Popover ตัวอย่างสีของเหลวชุดทดสอบ — โผล่ใกล้ปุ่ม info โดยตรง ไม่ใช่ bottom-sheet */}
+                {showExampleModal && exampleImage && (
+                    <>
+                        {/* เลเยอร์โปร่งใสจับคลิกข้างนอกเพื่อปิด ไม่มี backdrop มืด */}
+                        <div className="fixed inset-0 z-[1000]" onClick={() => setShowExampleModal(false)} />
+                        <div className="absolute left-0 right-0 top-full mt-2 z-[1001] bg-surface border border-border rounded-xl shadow-lg p-2.5 animate-fade-in">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-semibold text-text-primary uppercase tracking-wider">ตัวอย่างสี {param.name.toUpperCase()}</span>
+                                <button
+                                    onClick={() => setShowExampleModal(false)}
+                                    className="w-5 h-5 rounded-full flex items-center justify-center text-text-muted hover:bg-surface-subtle transition-colors cursor-pointer shrink-0"
+                                >
+                                    <X size={11} />
+                                </button>
+                            </div>
+                            <div className="rounded-lg overflow-hidden border border-border bg-surface-subtle">
+                                <img src={exampleImage} alt={`ตัวอย่างสี ${param.name}`} className="w-full h-auto object-contain" />
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
             <div className="p-4">
                 {/* แถบแจ้งเตือนกรณีระบบสลับชนิดสารให้อัตโนมัติ (โหมดเดี่ยว) */}

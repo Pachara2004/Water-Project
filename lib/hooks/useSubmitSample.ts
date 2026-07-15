@@ -28,6 +28,8 @@ export function useSubmitSample() {
     const [results, setResults] = useState<Record<number, MeasurementResult>>({});
     const [overallStatus, setOverallStatus] = useState<"safe" | "warning" | "danger">("safe");
     const [saved, setSaved] = useState(false);
+    // id ของ sample ตัวแรกที่บันทึกสำเร็จในรอบนี้ — ใช้พาไปหน้ารายละเอียดของชุดนี้โดยตรงหลังบันทึกเสร็จ
+    const [savedSampleId, setSavedSampleId] = useState<number | null>(null);
     const [isRecommending, setIsRecommending] = useState(false);
     const [nearestLocations, setNearestLocations] = useState<LocationItem[]>([]);
     const [allLocations, setAllLocations] = useState<LocationItem[]>([]);
@@ -41,12 +43,13 @@ export function useSubmitSample() {
     const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
     // sessionGroup ต้อง unique จริง เพราะ ReviewRequest ผูกกับมันโดยตรง (sessionGroup @unique)
     // ใช้ crypto.randomUUID() เป็นส่วนรับประกันความไม่ซ้ำ แทนเลขสุ่ม 3 หลักเดิมที่ชนกันได้ง่าย
-    const [sessionId, setSessionId] = useState<string>(() => {
+    const generateSessionId = () => {
         const now = new Date();
         const yymm = `${now.getFullYear().toString().slice(2)}${String(now.getMonth() + 1).padStart(2, "0")}`;
         const uniquePart = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
         return `${yymm}-${uniquePart}`;
-    });
+    };
+    const [sessionId, setSessionId] = useState<string>(generateSessionId);
     // ── Effects ──
     useEffect(() => {
         setIsLoadingParams(true);
@@ -322,6 +325,8 @@ export function useSubmitSample() {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
 
         try {
+            let firstSavedId: number | null = null;
+
             for (const param of activeParameters) {
                 const resData = results[param.id];
                 const rawFile = imageFiles[param.id];
@@ -362,13 +367,34 @@ export function useSubmitSample() {
                     const errData = await res.json();
                     throw new Error(errData.error || `เกิดข้อผิดพลาดในการบันทึกสาร ${param.name}`);
                 }
+
+                // เก็บ id ของ sample ตัวแรกที่บันทึกสำเร็จในชุดนี้ ไว้พาไปหน้ารายละเอียดโดยตรงหลังบันทึกเสร็จ
+                if (firstSavedId === null) {
+                    const savedData = await res.json();
+                    if (savedData?.id) firstSavedId = savedData.id;
+                }
             }
 
+            if (firstSavedId !== null) setSavedSampleId(firstSavedId);
             setSaved(true);
         } catch (err: any) {
             console.error("Save failed:", err);
             // ... ลอจิก Swal แจ้งเตือนข้อผิดพลาดตามเดิม
         }
+    };
+
+    // เคลียร์ผลวิเคราะห์/รูป/ข้อผิดพลาดทั้งหมด กลับไปเริ่มถ่ายภาพใหม่ — ใช้เมื่อผลลัพธ์ไม่ใช่สิ่งที่ต้องการบันทึก
+    // คงค่าสถานี/เวลา/โหมดไว้ตามเดิม (ไม่ต้องกรอกซ้ำ) แต่ออก sessionGroup ใหม่เพราะเป็นการเก็บตัวอย่างรอบใหม่จริง ๆ
+    const resetToUpload = () => {
+        setResults({});
+        setImageFiles({});
+        setImagePreviews({});
+        setImagePlotFiles({});
+        setVerifyErrors({});
+        setSaved(false);
+        setSavedSampleId(null);
+        setSessionId(generateSessionId());
+        setStep("upload");
     };
 
     const clearLocation = () => {
@@ -407,6 +433,7 @@ export function useSubmitSample() {
         results,
         overallStatus,
         saved,
+        savedSampleId,
         isRecommending,
         setIsRecommending,
         nearestLocations,
@@ -421,6 +448,7 @@ export function useSubmitSample() {
         sessionId,
         handleAnalyze,
         handleSave,
+        resetToUpload,
         clearLocation,
     };
 }

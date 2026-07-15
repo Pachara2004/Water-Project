@@ -173,6 +173,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 
+        // collector ดูได้เฉพาะของตัวเองเท่านั้น (กัน IDOR — เดา/พิมพ์ ID คนอื่นแล้วเปิดดูได้)
+        // admin/officer เป็นสิทธิ์อ่านทุกคนอยู่แล้วตามที่ตั้งใจ ไม่ต้องเช็คเจ้าของ
+        if (auth.user!.roleName === "collector" && mainSample.collectorId !== auth.user!.id) {
+            return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
+        }
+
         let allMeasurements = [...mainSample.measurements];
 
         // 🌟 สร้างแผนผังสำหรับผูกเก็บ URL รูปภาพแยกตามไอดีสารเคมี (Parameter ID)

@@ -29,20 +29,21 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
 const antiSpam = new Map<string, number>();
 
 // ==========================================
-// GET /api/samples — ประวัติผลตรวจของตัวเอง เวอร์ชันรวมกลุ่มตาม sessionGroup
-// เห็นเฉพาะของตัวเอง (collectorId = ผู้ใช้ที่ยืนยันตัวตนแล้วเท่านั้น) รวมถึงรายการที่ยัง pending อยู่
+// GET /api/samples — ประวัติผลตรวจ เวอร์ชันรวมกลุ่มตาม sessionGroup
+// collector เห็นเฉพาะของตัวเอง (collectorId = ผู้ใช้ที่ยืนยันตัวตนแล้วเท่านั้น) รวมถึงรายการที่ยัง pending อยู่
+// admin/officer เห็นข้อมูลทุกคนได้ (officer เป็นสิทธิ์อ่านอย่างเดียว ไม่มีปุ่มแก้ไข/ส่งตรวจฝั่งหน้าบ้าน)
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
-        const auth = await verifyAuth(request, ["collector", "admin"]);
+        const auth = await verifyAuth(request, ["collector", "admin", "officer"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
         // collector เห็นได้เฉพาะของตัวเอง (ไม่เชื่อ collectorId จาก query param — ปลอมเป็นคนอื่นได้)
-        // admin เห็นข้อมูลทุกคนได้ (ตามสิทธิ์เดิม) — toggle "เฉพาะของฉัน" ที่หน้าบ้านกรองต่อฝั่ง client เอง
+        // admin/officer เห็นข้อมูลทุกคนได้ — toggle "เฉพาะของฉัน" ที่หน้าบ้านกรองต่อฝั่ง client เอง (เฉพาะ admin)
         const where: any = { isDeleted: false };
-        if (auth.user!.roleName !== "admin") {
+        if (auth.user!.roleName === "collector") {
             where.collectorId = auth.user!.id;
         }
 
