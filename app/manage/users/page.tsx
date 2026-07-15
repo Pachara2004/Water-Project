@@ -462,7 +462,7 @@ export default function AdminUsersPage() {
                                                                                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors text-left cursor-pointer
                                                     ${isCurrent ? "text-text-muted bg-surface-subtle cursor-not-allowed opacity-40" : "text-text-primary hover:bg-surface-subtle"}`}
                                                                             >
-                                                                                <span className={`w-2 h-2 rounded-full shrink-0 ${rc.dot}`} />
+                                                                                <span className={`w-2 h-2 rounded-full shrink-0 ${rc}`} />
                                                                                 <span>{rc}</span>
                                                                                 {isCurrent && <CheckCircle2 size={12} className="ml-auto text-emerald-500" />}
                                                                             </button>
