@@ -42,8 +42,8 @@ export default function RootLayout({
             <body>
                 <LiffProvider>
                     <main className="min-h-screen lg:pl-50 pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
+                    <Navbar />
                 </LiffProvider>
-                <Navbar />
             </body>
         </html>
     );
