@@ -114,22 +114,27 @@ export function useSubmitSample() {
                 if (!canvas) return resolve(null);
                 const ctx = canvas.getContext("2d");
                 if (!ctx) return resolve(null);
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+
+                //    จำกัดด้านที่ยาวสุดของ canvas: รูปจากมือถือความละเอียดสูง (เช่น 4000px+) ทำให้ canvas.toBlob()
+                const MAX_DIM = 2000;
+                const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                 const box = aiData["bounding box"];
                 if (box?.length === 4) {
-                    const [x_min, y_min, x_max, y_max] = box;
+                    // พิกัด bounding box อยู่ในสเปซของรูปต้นฉบับ ต้องคูณ scale ให้ตรงกับ canvas ที่ย่อแล้ว
+                    const [x_min, y_min, x_max, y_max] = box.map((v: number) => v * scale);
                     ctx.strokeStyle = "#28a745";
-                    ctx.lineWidth = Math.max(4, img.width * 0.005);
+                    ctx.lineWidth = Math.max(4, canvas.width * 0.005);
                     ctx.strokeRect(x_min, y_min, x_max - x_min, y_max - y_min);
-
+                    
                     const confPct = aiData.confidence;
                     const labelSource = aiData.verifiedParameterName || aiData.parameterName;
                     const paramLabel = labelSource ? labelSource.charAt(0).toUpperCase() + labelSource.slice(1).toLowerCase() : "Vial";
                     const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L confidence ${confPct}`;
-                    const fs = Math.max(16, Math.floor(img.width * 0.018));
+                    const fs = Math.max(16, Math.floor(canvas.width * 0.018));
                     ctx.font = `bold ${fs}px Arial`;
                     const tw = ctx.measureText(label).width,
                         lh = fs * 1.4;
@@ -138,8 +143,11 @@ export function useSubmitSample() {
                     ctx.fillStyle = "white";
                     ctx.fillText(label, x_min + 10, y_min - lh * 0.3);
                 }
-                canvas.toBlob((blob) => resolve(blob ? new File([blob], `plotted-${file.name}`, { type: "image/png" }) : null), "image/png");
+                // ส่งออกเป็น JPEG (เบากว่า PNG และตรงกับนามสกุล .jpg) ลดโอกาส toBlob ล้มบนมือถือลงอีก
+                const outName = `plotted-${file.name.replace(/\.[^.]+$/, "")}.jpg`;
+                canvas.toBlob((blob) => resolve(blob ? new File([blob], outName, { type: "image/jpeg" }) : null), "image/jpeg", 0.9);
             };
+            img.onerror = () => resolve(null);
             img.src = URL.createObjectURL(file);
         });
 
