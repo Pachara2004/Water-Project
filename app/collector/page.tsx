@@ -10,6 +10,7 @@ import { Camera, FileText, FlaskConical, MapPin, Calendar, Beaker, ImageOff, Sea
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
 import StatusBadge from "@/components/map/StatusBadge";
+import NotificationBell from "@/components/NotificationBell";
 
 // 1. แก้ไขโครงสร้าง Interface ด้านบนสุด
 interface CollectorSample {
@@ -328,13 +329,14 @@ export default function CollectorDashboard() {
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
                 {/* Header Welcome Card */}
                 <div className="relative w-full rounded-2xl bg-surface p-5 border border-border  flex flex-col gap-4">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-3">
                         <div>
                             <h1 className="text-lg font-bold tracking-tight text-text-primary">
                                 ศูนย์ข้อมูล<span className="text-primary font-extrabold">ตรวจสอบคุณภาพน้ำ</span>
                             </h1>
                             <p className="text-text-primary font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
+                        <NotificationBell />
                     </div>
 
                     <button

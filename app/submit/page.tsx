@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSubmitSample } from "@/lib/hooks/useSubmitSample";
 import { isLowConfidence } from "@/lib/standards";
 import { ImageZone } from "@/components/submit/ImageZone";
@@ -107,6 +107,12 @@ function SubmitContent() {
         handleSave,
     } = hook;
 
+    // จองพื้นที่ scrollbar ไว้ล่วงหน้าเฉพาะหน้านี้ กัน layout ขยับตอน popup ยืนยันล็อกการ scroll
+    useEffect(() => {
+        document.documentElement.classList.add("reserve-scrollbar-gutter");
+        return () => document.documentElement.classList.remove("reserve-scrollbar-gutter");
+    }, []);
+
     const handleImageSelect = async (paramId: number, file: File) => {
         // อัปเดตไฟล์ดิบ
         setImageFiles((prev) => ({ ...prev, [paramId]: file }));
@@ -142,6 +148,10 @@ function SubmitContent() {
             confirmButtonText: lowConfidence ? "ใช่ ส่งเพื่อรอตรวจสอบ" : "ใช่ บันทึกข้อมูล",
             cancelButtonText: "ยกเลิก",
             allowOutsideClick: () => !Swal.isLoading(), // บล็อกไม่ให้คลิกพื้นหลังปิดตอนกำลังโหลด
+            // heightAuto/scrollbarPadding: false กัน layout กระตุก/scroll ขยับใน LINE LIFF (100dvh)
+            // ต้องระบุซ้ำที่นี่เพราะไฟล์นี้ import sweetalert2 ตรง ไม่ได้ผ่าน baseSwal mixin ใน lib/swal.ts
+            heightAuto: false,
+            scrollbarPadding: false,
         }).then((result) => {
             if (result.isConfirmed) {
                 // เปิดสถานะหมุนโหลดตัวเต็มจอ บล็อกปุ่มกดเล่นซ้ำซ้อน
@@ -150,6 +160,8 @@ function SubmitContent() {
                     text: "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล",
                     allowOutsideClick: false,
                     allowEscapeKey: false,
+                    heightAuto: false,
+                    scrollbarPadding: false,
                     didOpen: () => {
                         Swal.showLoading(); // สั่งให้สปินเนอร์ของ Swal หมุนทำงานค้างไว้
                     },
@@ -166,6 +178,8 @@ function SubmitContent() {
                             text: err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง",
                             icon: "error",
                             confirmButtonColor: "#0D9488",
+                            heightAuto: false,
+                            scrollbarPadding: false,
                         });
                     });
             }

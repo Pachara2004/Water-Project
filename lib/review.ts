@@ -21,3 +21,29 @@ export async function getPendingSessionGroups(): Promise<string[]> {
     });
     return rows.map((r) => r.sessionGroup);
 }
+
+/**
+ * คืนคำร้องที่ถูก "ปฏิเสธ" ทั้งหมดที่เป็นของ collector คนนี้ (สำหรับกระดิ่งแจ้งเตือน)
+ *
+ * เชื่อมความเป็นเจ้าของผ่าน sessionGroup → WaterSample.collectorId เหมือน read path อื่น ๆ
+ * (ReviewRequest ไม่มี FK ตรงไปยัง collector — ดูคอมเมนต์ใน schema.prisma)
+ *
+ * หมายเหตุ: sample ในกลุ่มที่ถูกปฏิเสธถูก soft-delete แล้ว จึง "ไม่กรอง isDeleted" ตอนหา
+ * ความเป็นเจ้าของ — แต่ปลอดภัยเพราะกรองด้วย collectorId + intersect กับคำร้องที่ rejected เท่านั้น
+ */
+export async function getRejectedReviewsForCollector(collectorId: number) {
+    // 1. หา sessionGroup ทั้งหมดที่ collector คนนี้เป็นเจ้าของ (รวมที่ถูก soft-delete)
+    const ownGroups = await prisma.waterSample.findMany({
+        where: { collectorId, sessionGroup: { not: null } },
+        select: { sessionGroup: true },
+        distinct: ["sessionGroup"],
+    });
+    const groupKeys = ownGroups.map((g) => g.sessionGroup).filter((g): g is string => g !== null);
+    if (groupKeys.length === 0) return [];
+
+    // 2. คัดเฉพาะคำร้องที่ถูกปฏิเสธในกลุ่มเหล่านั้น (ใหม่สุดขึ้นก่อน)
+    return prisma.reviewRequest.findMany({
+        where: { statusRequest: "rejected", sessionGroup: { in: groupKeys } },
+        orderBy: { reviewedAt: "desc" },
+    });
+}
