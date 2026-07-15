@@ -162,6 +162,8 @@ model ReviewRequest {
   reviewedById  Int?         @map("reviewed_by_id")
   reviewedAt    DateTime?    @map("reviewed_at")
   reviewNote    String?      @map("review_note") @db.Text
+  
+  acknowledgedAt DateTime?   @map("acknowledged_at")  // null = ยังไม่อ่าน | มีค่า = รับทราบแล้ว
 
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")

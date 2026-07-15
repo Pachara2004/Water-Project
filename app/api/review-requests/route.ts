@@ -32,8 +32,10 @@ export async function GET(request: NextRequest) {
         const sessionGroups = reviewRequests.map((r) => r.sessionGroup);
 
         // ดึงข้อมูล sample ที่เกี่ยวข้องทั้งหมดมาครั้งเดียว (กัน N+1 ต่อคำร้อง)
+        // ไม่กรอง isDeleted ตรงนี้ เพราะคำร้องที่ถูกปฏิเสธจะ soft-delete sample ทิ้งไปแล้ว
+        // (ขอบเขตปลอดภัยอยู่แล้วจาก sessionGroups ที่มาจาก reviewRequests ของ status ที่ระบุ)
         const samples = await prisma.waterSample.findMany({
-            where: { sessionGroup: { in: sessionGroups }, isDeleted: false },
+            where: { sessionGroup: { in: sessionGroups } },
             include: {
                 location: { select: { id: true, stationName: true, governingAgency: true } },
                 collector: { select: { id: true, lineProfileName: true, firstName: true, lastName: true } },

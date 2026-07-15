@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSubmitSample } from "@/lib/hooks/useSubmitSample";
 import { isLowConfidence } from "@/lib/standards";
 import { ImageZone } from "@/components/submit/ImageZone";
@@ -8,12 +8,90 @@ import { LocationPicker } from "@/components/submit/LocationPicker";
 import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { DesktopSidebar, AnalyzeButton } from "@/components/submit/NavWorkflow";
-import { ArrowLeft, Database, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { StepDot } from "@/components/submit/SharedAtoms";
+import { ArrowLeft, FlaskConical, Sparkles, Database, CheckCircle2, AlertCircle, Clock, Layers, Droplet } from "lucide-react";
+import type { DbParameter } from "@/components/submit/types";
+
+// ── ตัวเลือกโหมดการส่ง: เดี่ยว (เลือกสารเดียว) / คู่ (ส่งทุกสารพร้อมกัน) ──
+function ModeSelector({
+    mode,
+    setMode,
+    systemParameters,
+    selectedParamId,
+    setSelectedParamId,
+    onReset,
+}: {
+    mode: "single" | "dual";
+    setMode: (m: "single" | "dual") => void;
+    systemParameters: DbParameter[];
+    selectedParamId: number | null;
+    setSelectedParamId: (id: number) => void;
+    onReset: () => void;
+}) {
+    const switchMode = (m: "single" | "dual") => {
+        if (m === mode) return;
+        setMode(m);
+        onReset(); // ล้างสถานะบล็อกเมื่อเปลี่ยนโหมด
+    };
+
+    return (
+        <section className="rounded-xl border border-border bg-surface p-3 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+                <button
+                    onClick={() => switchMode("single")}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 min-h-11 rounded-lg text-xs font-semibold border transition-all ${
+                        mode === "single" ? "bg-teal-700 text-white border-teal-700" : "bg-surface-subtle text-text-secondary border-border hover:border-teal-500/50"
+                    }`}
+                >
+                    <Droplet size={14} /> ส่งเดี่ยว
+                </button>
+                <button
+                    onClick={() => switchMode("dual")}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 min-h-11 rounded-lg text-xs font-semibold border transition-all ${
+                        mode === "dual" ? "bg-teal-700 text-white border-teal-700" : "bg-surface-subtle text-text-secondary border-border hover:border-teal-500/50"
+                    }`}
+                >
+                    <Layers size={14} /> ส่งคู่
+                </button>
+            </div>
+
+            {/* โหมดเดี่ยว: ให้เลือกว่าจะส่งสารตัวไหน */}
+            {mode === "single" && (
+                <div className="space-y-1.5">
+                    <p className="text-[11px] font-medium text-text-muted">เลือกสารที่จะส่งตรวจ</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        {systemParameters.map((p) => (
+                            <button
+                                key={p.id}
+                                onClick={() => {
+                                    setSelectedParamId(p.id);
+                                    onReset();
+                                }}
+                                className={`py-2 min-h-10 rounded-lg text-xs font-semibold border transition-all ${
+                                    selectedParamId === p.id ? "bg-teal-50 text-teal-800 border-teal-500 dark:bg-teal-950/40 dark:text-teal-200" : "bg-surface-subtle text-text-secondary border-border hover:border-teal-500/50"
+                                }`}
+                            >
+                                {p.name.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </section>
+    );
+}
 
 function SubmitContent() {
     const hook = useSubmitSample();
     const {
         systemParameters,
+        activeParameters,
+        mode,
+        setMode,
+        selectedParamId,
+        setSelectedParamId,
+        verifyErrors,
+        setVerifyErrors,
         isLoadingParams,
         imagePreviews,
         imagePlotFiles,
@@ -29,9 +107,23 @@ function SubmitContent() {
         handleSave,
     } = hook;
 
+    // จองพื้นที่ scrollbar ไว้ล่วงหน้าเฉพาะหน้านี้ กัน layout ขยับตอน popup ยืนยันล็อกการ scroll
+    useEffect(() => {
+        document.documentElement.classList.add("reserve-scrollbar-gutter");
+        return () => document.documentElement.classList.remove("reserve-scrollbar-gutter");
+    }, []);
+
     const handleImageSelect = async (paramId: number, file: File) => {
         // อัปเดตไฟล์ดิบ
         setImageFiles((prev) => ({ ...prev, [paramId]: file }));
+
+        // เลือกรูปใหม่ให้สารตัวนี้ = เคลียร์สถานะบล็อกของสารตัวนั้นทิ้ง
+        setVerifyErrors((prev) => {
+            if (!prev[paramId]) return prev;
+            const next = { ...prev };
+            delete next[paramId];
+            return next;
+        });
 
         // แตก Base64 สำหรับทำ Preview บนหน้าจอ
         const reader = new FileReader();
@@ -56,6 +148,10 @@ function SubmitContent() {
             confirmButtonText: lowConfidence ? "ใช่ ส่งเพื่อรอตรวจสอบ" : "ใช่ บันทึกข้อมูล",
             cancelButtonText: "ยกเลิก",
             allowOutsideClick: () => !Swal.isLoading(), // บล็อกไม่ให้คลิกพื้นหลังปิดตอนกำลังโหลด
+            // heightAuto/scrollbarPadding: false กัน layout กระตุก/scroll ขยับใน LINE LIFF (100dvh)
+            // ต้องระบุซ้ำที่นี่เพราะไฟล์นี้ import sweetalert2 ตรง ไม่ได้ผ่าน baseSwal mixin ใน lib/swal.ts
+            heightAuto: false,
+            scrollbarPadding: false,
         }).then((result) => {
             if (result.isConfirmed) {
                 // เปิดสถานะหมุนโหลดตัวเต็มจอ บล็อกปุ่มกดเล่นซ้ำซ้อน
@@ -64,6 +160,8 @@ function SubmitContent() {
                     text: "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล",
                     allowOutsideClick: false,
                     allowEscapeKey: false,
+                    heightAuto: false,
+                    scrollbarPadding: false,
                     didOpen: () => {
                         Swal.showLoading(); // สั่งให้สปินเนอร์ของ Swal หมุนทำงานค้างไว้
                     },
@@ -80,13 +178,15 @@ function SubmitContent() {
                             text: err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง",
                             icon: "error",
                             confirmButtonColor: "#0D9488",
+                            heightAuto: false,
+                            scrollbarPadding: false,
                         });
                     });
             }
         });
     };
 
-    const hasLowConfidence = systemParameters.some((param) => isLowConfidence(results[param.id]?.confidence));
+    const hasLowConfidence = activeParameters.some((param) => isLowConfidence(results[param.id]?.confidence));
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
@@ -105,10 +205,20 @@ function SubmitContent() {
 
             {/* MOBILE VIEW COMPONENT */}
             <div className="md:hidden px-4 pb-24 space-y-4 mt-3">
+                {step === "upload" && !isLoadingParams && (
+                    <ModeSelector
+                        mode={mode}
+                        setMode={setMode}
+                        systemParameters={systemParameters}
+                        selectedParamId={selectedParamId}
+                        setSelectedParamId={setSelectedParamId}
+                        onReset={() => setVerifyErrors({})}
+                    />
+                )}
                 {isLoadingParams ? (
                     <div className="text-center text-xs py-8 text-text-muted">กำลังโหลดข้อมูลสารเคมี...</div>
                 ) : (
-                    systemParameters.map((param) => (
+                    activeParameters.map((param) => (
                         <ImageZone
                             key={param.id}
                             param={param}
@@ -116,6 +226,7 @@ function SubmitContent() {
                             preview={imagePreviews[param.id]}
                             plotFile={imagePlotFiles[param.id]}
                             measurement={results[param.id]}
+                            verifyError={verifyErrors[param.id]}
                             onImageFilesChange={(file) => handleImageSelect(param.id, file)}
                             onNearestLocationsUpdate={setNearestLocations}
                             allLocations={allLocations}
@@ -193,7 +304,17 @@ function SubmitContent() {
                 <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-150">
                     <DesktopSidebar {...hook} />
                     <div className="flex flex-col flex-1 border-r border-border p-4 gap-4 max-h-[70vh] overflow-y-auto">
-                        {systemParameters.map((param) => (
+                        {step === "upload" && !isLoadingParams && (
+                            <ModeSelector
+                                mode={mode}
+                                setMode={setMode}
+                                systemParameters={systemParameters}
+                                selectedParamId={selectedParamId}
+                                setSelectedParamId={setSelectedParamId}
+                                onReset={() => setVerifyErrors({})}
+                            />
+                        )}
+                        {activeParameters.map((param) => (
                             <ImageZone
                                 key={param.id}
                                 param={param}
@@ -201,6 +322,7 @@ function SubmitContent() {
                                 preview={imagePreviews[param.id]}
                                 plotFile={imagePlotFiles[param.id]}
                                 measurement={results[param.id]}
+                                verifyError={verifyErrors[param.id]}
                                 onImageFilesChange={(file) => handleImageSelect(param.id, file)}
                                 onNearestLocationsUpdate={setNearestLocations}
                                 allLocations={allLocations}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { confirmDialog } from "@/lib/swal";
+import { refreshNavDots } from "@/lib/navEvents";
 import { useToast } from "@/components/useToast";
 import { useAppStore } from "@/lib/store";
 import { ArrowLeft, ShieldAlert, SquareChevronUp, Users, UserCog, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, Search, ArrowUp, ArrowDown } from "lucide-react";
@@ -191,6 +192,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, pendingRequestId: null, requestedRole: null } : u)));
                 fetchStats();
+                refreshNavDots();
                 showToast(`ปฏิเสธคำร้องของ ${displayName} แล้ว`, "danger");
             }
         } catch (e) {
@@ -222,6 +224,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers((prev) => prev.map((u) => (u.pendingRequestId !== null ? { ...u, pendingRequestId: null, requestedRole: null } : u)));
                 fetchStats();
+                refreshNavDots();
                 showToast(`ปฏิเสธคำร้องทั้งหมด ${queue.length} รายการแล้ว`, "danger");
             }
         } catch (e) {

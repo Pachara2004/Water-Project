@@ -49,7 +49,9 @@ export async function GET(request: NextRequest) {
 
         // คุมสิทธิ์การดึงข้อมูลหลัก (Base Filter Context)
         const baseWhere: any = { isDeleted: false };
-        if (pendingGroups.length > 0) baseWhere.sessionGroup = { notIn: pendingGroups };
+        // ต้องปล่อยแถว sessionGroup = null ผ่าน (ข้อมูลส่งเดี่ยวส่วนใหญ่ไม่มี sessionGroup)
+        // เพราะ SQL `NOT IN (...)` คัดแถวที่คอลัมน์เป็น NULL ทิ้งหมด → dashboard ว่างเปล่าเมื่อมี pending
+        if (pendingGroups.length > 0) baseWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
         if (viewMode === "MINE" && collectorId) {
             baseWhere.collectorId = collectorId;
         }
@@ -85,7 +87,7 @@ export async function GET(request: NextRequest) {
         // ---  WoW / MoM ตามปฏิทินจริง — ยึด "วันนี้" เสมอ ไม่อิงช่วงวันที่ที่เลือกบน filter ---
         // ขอบเขตสิทธิ์/หน่วยงานยังคงกรองตามเดิม แต่ตัดเงื่อนไขวันที่ของ filter ออก
         const scopeWhere: any = { isDeleted: false };
-        if (pendingGroups.length > 0) scopeWhere.sessionGroup = { notIn: pendingGroups };
+        if (pendingGroups.length > 0) scopeWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
         if (viewMode === "MINE" && collectorId) scopeWhere.collectorId = collectorId;
         if (locationId) {
             scopeWhere.locationId = locationId;

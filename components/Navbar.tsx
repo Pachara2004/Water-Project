@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Map, Settings, FileScan, BarChart2, User } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import liff from "@line/liff";
+import { onNavDotsRefresh } from "@/lib/navEvents";
 
 // ดึงการประกาศ Mapping ข้อความออกมาข้างนอก เพื่อไม่ให้สร้างขึ้นใหม่ทุกรอบการเรนเดอร์
 const MOBILE_LABEL_MAP: Record<string, string> = {
@@ -19,9 +21,47 @@ export default function Navbar() {
     const currentUser = useAppStore((state) => state.currentUser);
     const userRole = currentUser?.role;
 
+    // จุดแดงแจ้งเตือน: "ตรวจคุณภาพน้ำ" = มีรายการถูกปฏิเสธที่ยังไม่รับทราบของตัวเอง
+    //                    "จัดการข้อมูล" = admin มีคำร้องค้าง (ตรวจสอบ confidence ต่ำ + ขอสิทธิ์ผู้ใช้)
+    const [hasUnreadRejection, setHasUnreadRejection] = useState(false);
+    const [hasPendingManageQueue, setHasPendingManageQueue] = useState(false);
+
+    const fetchDots = useCallback(async () => {
+        if (!currentUser) return;
+        const token = liff.getAccessToken();
+        if (!token) return;
+
+        if (userRole === "collector" || userRole === "admin") {
+            fetch("/api/notifications", { headers: { Authorization: `Bearer ${token}` } })
+                .then((res) => (res.ok ? res.json() : null))
+                .then((data) => setHasUnreadRejection(!!data && data.unreadCount > 0))
+                .catch(() => {});
+        }
+
+        if (userRole === "admin") {
+            fetch("/api/manage/pending-count", { headers: { Authorization: `Bearer ${token}` } })
+                .then((res) => (res.ok ? res.json() : null))
+                .then((data) => setHasPendingManageQueue(!!data && data.pendingCount > 0))
+                .catch(() => {});
+        }
+    }, [currentUser, userRole]);
+
+    // โหลดตอน mount/เปลี่ยน user + รีเฟรชเมื่อกลับมาโฟกัสหน้าจอ (เช่น สลับแท็บกลับมา)
+    // + รีเฟรชทันทีเมื่อหน้าอื่นสั่ง refreshNavDots() หลังอนุมัติ/ปฏิเสธ/รับทราบสำเร็จ
+    // (Navbar อยู่ใน layout ไม่ remount ตอนเปลี่ยนหน้า เลยต้องพึ่ง event นี้แทนการ mount ใหม่)
+    useEffect(() => {
+        fetchDots();
+        window.addEventListener("focus", fetchDots);
+        const offNavDotsRefresh = onNavDotsRefresh(fetchDots);
+        return () => {
+            window.removeEventListener("focus", fetchDots);
+            offNavDotsRefresh();
+        };
+    }, [fetchDots]);
+
     const navItems = useMemo(() => {
         // 1. เริ่มต้นด้วย แผนที่ เป็นรายการแรกเสมอ
-        const items = [{ href: "/map", label: "แผนที่พิกัดสถานี", icon: Map }];
+        const items: { href: string; label: string; icon: typeof Map; showDot?: boolean }[] = [{ href: "/map", label: "แผนที่พิกัดสถานี", icon: Map }];
 
         // 2. ถ้ามี Role ระดับต่างๆ ให้สอดแทรกเมนูการทำงานเข้าไปตรงกลางก่อน
         if (userRole === "collector" || userRole === "admin") {
@@ -29,6 +69,7 @@ export default function Navbar() {
                 href: "/collector",
                 label: "ตรวจคุณภาพน้ำ",
                 icon: FileScan,
+                showDot: hasUnreadRejection,
             });
         }
 
@@ -45,10 +86,11 @@ export default function Navbar() {
             href: "/manage",
             label: "จัดการข้อมูล",
             icon: Settings,
+            showDot: hasPendingManageQueue,
         });
 
         return items;
-    }, [userRole]);
+    }, [userRole, hasUnreadRejection, hasPendingManageQueue]);
 
     return (
         <>
@@ -69,7 +111,10 @@ export default function Navbar() {
                                 }`}
                             >
                                 {isActive && <div className="absolute inset-x-0 inset-y-1 bg-primary/20 rounded-2xl shadow-sm" />}
-                                <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-75 ${isActive ? "-translate-y-0.5 text-primary" : ""}`} />
+                                <div className="relative">
+                                    <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-75 ${isActive ? "-translate-y-0.5 text-primary" : ""}`} />
+                                    {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface" />}
+                                </div>
                                 <span className={`text-xs mt-1 transition-all duration-75 whitespace-nowrap ${isActive ? "text-primary" : "font-medium"}`}>{displayLabel}</span>
                             </Link>
                         );
@@ -97,7 +142,12 @@ export default function Navbar() {
                                         isActive ? "bg-primary text-white" : "hover:bg-secondary hover:text-text-primary"
                                     }`}
                                 >
-                                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" />
+                                    <div className="relative shrink-0">
+                                        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-150 group-hover:translate-x-0.5" />
+                                        {item.showDot && (
+                                            <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border-2 ${isActive ? "border-primary" : "border-surface"}`} />
+                                        )}
+                                    </div>
                                     <span className="whitespace-nowrap truncate">{item.label}</span>
                                 </Link>
                             );
