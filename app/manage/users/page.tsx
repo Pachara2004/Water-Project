@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { confirmDialog } from "@/lib/swal";
 import { refreshNavDots } from "@/lib/navEvents";
 import { useToast } from "@/components/useToast";
 import { useAppStore } from "@/lib/store";
-import { ArrowLeft, ShieldAlert, Users, UserCog, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, Search } from "lucide-react";
+import { ArrowLeft, ShieldAlert, SquareChevronUp, Users, UserCog, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, Search, ArrowUp, ArrowDown } from "lucide-react";
 
 type Role = "guest" | "collector" | "officer" | "admin";
 
@@ -24,28 +24,6 @@ interface UserItem {
     requestedRole: Role | null;
 }
 
-const ROLE_CONFIG: Record<Role, { label: string; color: string; dot: string }> = {
-    guest: {
-        label: "General",
-        color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
-        dot: "bg-emerald-500",
-    },
-    collector: {
-        label: "Collector",
-        color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
-        dot: "bg-violet-500",
-    },
-    officer: {
-        label: "Officer",
-        color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
-        dot: "bg-amber-500",
-    },
-    admin: {
-        label: "Admin",
-        color: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
-        dot: "bg-red-500",
-    },
-};
 
 const ROLE_OPTIONS: Role[] = ["guest", "collector", "officer", "admin"];
 
@@ -55,20 +33,6 @@ function formatDate(iso: string) {
         month: "short",
         year: "numeric",
     });
-}
-
-function getInitials(fullName: string, lineName: string) {
-    if (fullName && fullName.trim() && fullName !== "ยังไม่ลงทะเบียนข้อมูล") {
-        return fullName.trim().slice(0, 2).toUpperCase();
-    }
-    return lineName.trim().slice(0, 2).toUpperCase();
-}
-
-const AVATAR_COLORS = ["bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-rose-500", "bg-amber-500", "bg-cyan-500", "bg-indigo-500"];
-function avatarColor(name: string) {
-    let hash = 0;
-    for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) & 0xffff;
-    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
 export default function AdminUsersPage() {
@@ -86,21 +50,19 @@ export default function AdminUsersPage() {
     const [rejectingAll, setRejectingAll] = useState(false);
     const [stats, setStats] = useState({ total: 0, staff: 0, pending: 0 });
 
-    // จองพื้นที่ scrollbar ไว้ล่วงหน้าเฉพาะหน้านี้ กัน layout ขยับตอน popup ยืนยันล็อกการ scroll
+    // สเตทสำหรับควบคุมทิศทางการเรียงลำดับ (เลียนแบบ Collector)
+    const [isDesc, setIsDesc] = useState(true);
+
     useEffect(() => {
         document.documentElement.classList.add("reserve-scrollbar-gutter");
         return () => document.documentElement.classList.remove("reserve-scrollbar-gutter");
     }, []);
 
-    // ยอดสรุปทั้งหมด/เจ้าหน้าที่/รออนุมัติ ดึงแยกจาก endpoint ที่ COUNT ล้วนๆ ไม่ผูกกับคำค้นหา
-    // และไม่ต้องโหลดข้อมูลผู้ใช้ทั้งชุดมาคำนวณเอง จึงยัง scale ได้แม้ผู้ใช้ในระบบเยอะขึ้นมาก
     const fetchStats = useCallback(async () => {
         try {
             const res = await fetch("/api/users/stats", {
                 method: "GET",
-                headers: {
-                    Authorization: `Bearer ${liff.getAccessToken()}`,
-                },
+                headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
             });
             const data = await res.json();
             if (res.ok) setStats(data);
@@ -117,9 +79,7 @@ export default function AdminUsersPage() {
 
             const res = await fetch(`/api/users?${params.toString()}`, {
                 method: "GET",
-                headers: {
-                    Authorization: `Bearer ${liff.getAccessToken()}`,
-                },
+                headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
             });
             const data = await res.json();
             setUsers(Array.isArray(data) ? data : []);
@@ -130,7 +90,6 @@ export default function AdminUsersPage() {
         }
     }, []);
 
-    // โหลดครั้งแรก (ดักตรวจสิทธิ์ผ่านพิมพ์เล็ก "admin")
     useEffect(() => {
         if (currentUser?.role === "admin") {
             fetchUsers("");
@@ -138,7 +97,6 @@ export default function AdminUsersPage() {
         }
     }, [currentUser?.role, fetchUsers, fetchStats]);
 
-    // debounce search 400ms — ยิงหา backend เฉพาะรายการ ไม่กระทบยอดสรุป (stats แยก endpoint แล้ว)
     useEffect(() => {
         const timer = setTimeout(() => {
             if (currentUser?.role === "admin") fetchUsers(search);
@@ -167,9 +125,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
                 fetchStats();
-                if (user) {
-                    showToast(`อัปเดตสิทธิ์ ${name} เป็น ${ROLE_CONFIG[role].label} สำเร็จ`, "success");
-                }
+                showToast(`อัปเดตสิทธิ์ ${name} เป็น ${[role]} สำเร็จ`, "success");
             }
         } catch (e) {
             console.error(e);
@@ -180,7 +136,12 @@ export default function AdminUsersPage() {
 
     const handleApprove = async (user: UserItem, displayName: string) => {
         if (!user.pendingRequestId || !user.requestedRole) return;
-        const confirmed = await confirmDialog({ title: "ยืนยันอนุมัติคำร้อง?", text: `อนุมัติ ${displayName} เป็นสิทธิ์ ${ROLE_CONFIG[user.requestedRole].label}`, confirmText: "อนุมัติ", tone: "primary" });
+        const confirmed = await confirmDialog({
+            title: "ยืนยันอนุมัติคำร้อง?",
+            text: `อนุมัติ ${displayName} เป็นสิทธิ์ ${[user.requestedRole]}`,
+            confirmText: "อนุมัติ",
+            tone: "primary",
+        });
         if (!confirmed) return;
 
         setUpdating(user.id);
@@ -189,7 +150,6 @@ export default function AdminUsersPage() {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    // 🔥 ปรับเติม Token ยืนยันสิทธิ์ในการ Approve ตั๋วคำร้อง
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
@@ -201,8 +161,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: user.requestedRole!, pendingRequestId: null, requestedRole: null } : u)));
                 fetchStats();
-                refreshNavDots();
-                showToast(`อนุมัติ ${displayName} เป็นสิทธิ์ ${ROLE_CONFIG[user.requestedRole!].label} สำเร็จ`, "success");
+                showToast(`อนุมัติ ${displayName} เป็นสิทธิ์ ${[user.requestedRole!]} สำเร็จ`, "success");
             }
         } catch (e) {
             console.error(e);
@@ -222,7 +181,6 @@ export default function AdminUsersPage() {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    // 🔥 ปรับเติม Token ยืนยันสิทธิ์ในการ Reject ปฏิเสธตั๋วคำร้อง
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
@@ -245,7 +203,12 @@ export default function AdminUsersPage() {
     };
 
     const handleRejectAll = async () => {
-        const confirmed = await confirmDialog({ title: "ปฏิเสธคำร้องทั้งหมด?", text: `คำร้องขอสิทธิ์ที่รออนุมัติทั้ง ${queue.length} รายการจะถูกปฏิเสธ ไม่สามารถย้อนกลับได้`, confirmText: "ปฏิเสธทั้งหมด", tone: "danger" });
+        const confirmed = await confirmDialog({
+            title: "ปฏิเสธคำร้องทั้งหมด?",
+            text: `คำร้องขอสิทธิ์ที่รออนุมัติทั้ง ${queue.length} รายการจะถูกปฏิเสธ ไม่สามารถย้อนกลับได้`,
+            confirmText: "ปฏิเสธทั้งหมด",
+            tone: "danger",
+        });
         if (!confirmed) return;
 
         setRejectingAll(true);
@@ -271,7 +234,19 @@ export default function AdminUsersPage() {
         }
     };
 
-    // Security Gate บังคับดีดหน้าเตือนหากไม่ได้สิทธิ์ตัวพิมพ์เล็ก "admin"
+    const staffUsers = users.filter((u) => u.role !== "guest");
+    const queue = users.filter((u) => u.pendingRequestId !== null);
+
+    // คำนวณลำดับข้อมูลแบบ Client Sorting (เลียนแบบ Collector)
+    const processedUsers = useMemo(() => {
+        const base = tab === "queue" ? queue : tab === "staff" ? staffUsers : users;
+        return [...base].sort((a, b) => {
+            const timeA = new Date(a.registeredAt).getTime();
+            const timeB = new Date(b.registeredAt).getTime();
+            return isDesc ? timeB - timeA : timeA - timeB;
+        });
+    }, [tab, users, queue, staffUsers, isDesc]);
+
     if (!currentUser || currentUser.role !== "admin") {
         return (
             <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto">
@@ -287,267 +262,263 @@ export default function AdminUsersPage() {
         );
     }
 
-    const staffUsers = users.filter((u) => u.role !== "guest");
-    const queue = users.filter((u) => u.pendingRequestId !== null);
-    const filtered = tab === "queue" ? queue : tab === "staff" ? staffUsers : users;
-
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-[120px] transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
-            <div className="w-full max-w-2xl mx-auto px-4 sm:px-8">
-                {/* Header */}
-                <div className="pt-10 sm:pt-16 pb-8 border-b border-border mb-6">
-                    <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
-                        <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
-                        Admin Panel
-                    </button>
+        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
+            {/* Top Back Navigation Navbar */}
+            <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
+                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
+                </button>
+                <div className="text-center">
+                    <h1 className="text-sm font-semibold text-primary">จัดการผู้ใช้งาน</h1>
+                </div>
+                <div className="w-15" />
+            </div>
 
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
-                                <Users size={22} className="text-white" />
-                            </div>
-                            <div>
-                                <h1 className="font-display text-base font-semibold text-text-primary leading-tight">
-                                    จัดการ <span className="text-primary">ผู้ใช้งาน</span>
-                                </h1>
-                                <p className="text-xs text-text-secondary mt-0.5">อนุมัติสิทธิ์และจัดการบทบาทผู้ใช้ในระบบ</p>
-                            </div>
+            <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
+                {/* ─── 1. Header Welcome Card ─── */}
+                <div className="relative w-full rounded-2xl bg-surface p-5 border border-border flex flex-col gap-4">
+                    <div className="flex justify-between items-start w-full">
+                        <div>
+                            <h1 className="text-xl font-bold tracking-tight text-text-primary">
+                                จัดการ<span className="text-primary font-bold">ผู้ใช้งานในระบบ</span>
+                            </h1>
+                            <p className="text-black font-medium text-xs mt-0.5">อนุมัติสิทธิ์และจัดการบทบาทผู้ใช้งาน</p>
                         </div>
-                        <button
-                            title="buuton"
-                            onClick={() => {
-                                fetchUsers(search);
-                                fetchStats();
-                            }}
-                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-surface border border-border hover:border-primary/30 text-text-muted hover:text-primary transition-all cursor-pointer flex-shrink-0 mt-1"
-                        >
-                            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                        </button>
                     </div>
 
-                    {/* Stats row */}
-                    <div className="flex gap-3 mt-6">
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-3 gap-2">
                         {[
-                            { label: "ทั้งหมด", value: stats.total, color: "text-text-primary" },
-                            { label: "เจ้าหน้าที่", value: stats.staff, color: "text-blue-600 dark:text-blue-400" },
-                            { label: "รอการอนุมัติ", value: stats.pending, color: stats.pending > 0 ? "text-amber-600 dark:text-amber-400" : "text-text-primary" },
+                            { label: "ทั้งหมด", value: stats.total },
+                            { label: "เจ้าหน้าที่", value: stats.staff },
+                            { label: "รออนุมัติ", value: stats.pending },
                         ].map((s) => (
-                            <div key={s.label} className="flex-1 bg-surface rounded-2xl border border-border px-4 py-3 text-center">
-                                <div className={`text-base font-semibold ${s.color}`}>{s.value}</div>
-                                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-0.5">{s.label}</div>
+                            <div key={s.label} className="bg-card-summary rounded-xl border border-border p-3 text-center">
+                                <div className="text-xl font-bold text-white">{s.value}</div>
+                                <div className="text-xs font-semibold text-white mt-0.5">{s.label}</div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="grid grid-cols-3 gap-1 mb-4 p-1 bg-surface-subtle border border-border rounded-2xl">
-                    {(["all", "staff", "queue"] as const).map((t) => (
-                        <button
-                            key={t}
-                            onClick={() => setTab(t)}
-                            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap ${
-                                tab === t ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text-primary"
-                            }`}
-                        >
-                            {t === "all" && (
-                                <>
-                                    <Users size={13} className="flex-shrink-0" />
-                                    ทั้งหมด
-                                </>
-                            )}
-                            {t === "staff" && (
-                                <>
-                                    <UserCog size={13} className="flex-shrink-0" />
-                                    เจ้าหน้าที่
-                                </>
-                            )}
-                            {t === "queue" && (
-                                <>
-                                    <Clock size={13} className="flex-shrink-0" />
-                                    รออนุมัติ
-                                </>
-                            )}
-                        </button>
-                    ))}
-                </div>
+                {/* ─── 2. โซนกล่องค้นหาและฟิลเตอร์ควบคุม (ทรง Collector) ─── */}
+                <div className="relative w-full bg-surface rounded-2xl p-4 border border-border space-y-4">
+                    {/* ส่วนหัวแสดงกลุ่มงานและปุ่มเคลียร์คำร้อง */}
+                    <div className="flex items-center justify-between gap-3 pt-1 px-0.5">
+                        <div className="inline-flex items-center gap-1.5">
+                            <Users size={18} className="text-primary" />
+                            <h2 className="text-sm uppercase text-primary font-bold tracking-wider">บัญชีผู้ใช้งาน</h2>
+                        </div>
 
-                {/* Search */}
-                <div className="relative mb-5">
-                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="ค้นหาชื่อ หรือชื่อไลน์ไอดีผู้ใช้..."
-                        className="w-full pl-10 pr-4 py-3 bg-surface border border-border text-text-primary rounded-2xl text-sm placeholder:text-text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all min-h-[44px]"
-                    />
-                </div>
-
-                {/* Reject all — เฉพาะ tab รออนุมัติ */}
-                {tab === "queue" && queue.length > 0 && (
-                    <div className="flex items-center justify-between mb-3 px-1">
-                        <p className="text-xs font-semibold text-text-muted">ตรวจสอบคำร้องแต่ละรายการด้านล่าง</p>
-                        <button
-                            onClick={handleRejectAll}
-                            disabled={rejectingAll}
-                            className="flex items-center gap-1.5 px-3 py-2 min-h-[36px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-semibold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all disabled:opacity-40 cursor-pointer"
-                        >
-                            {rejectingAll ? <RefreshCw size={12} className="animate-spin" /> : <XCircle size={12} />}
-                            ปฏิเสธทั้งหมด
-                        </button>
+                        {tab === "queue" && processedUsers.length > 0 && (
+                            <button
+                                onClick={handleRejectAll}
+                                disabled={rejectingAll}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-bg-danger border border-border-danger text-text-danger transition-all cursor-pointer shrink-0"
+                            >
+                                {rejectingAll ? <RefreshCw size={11} className="animate-spin" /> : <XCircle size={11} />}
+                                ปฏิเสธทั้งหมด
+                            </button>
+                        )}
                     </div>
-                )}
 
-                {/* List */}
-                <div className="space-y-3">
-                    {loading ? (
-                        <div className="bg-surface rounded-3xl p-10 text-center border border-border flex flex-col items-center justify-center gap-3">
-                            <RefreshCw size={22} className="animate-spin text-primary" />
-                            <span className="text-xs text-text-muted font-semibold">กำลังโหลดข้อมูลผู้ใช้...</span>
-                        </div>
-                    ) : filtered.length === 0 ? (
-                        <div className="bg-surface rounded-3xl p-10 text-center border border-border">
-                            <div className="w-14 h-14 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                {tab === "queue" ? <CheckCircle2 size={20} className="text-emerald-500" /> : <Users size={20} className="text-text-muted" />}
+                    {/* Input ค้นหา ทรงรีมน */}
+                    <div className="relative w-full flex items-center bg-surface-subtle border border-border rounded-xl px-4 transition-all">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="ค้นหาชื่อ..."
+                            className="w-full py-3 bg-transparent text-xs text-black outline-hidden placeholder:text-secondary"
+                        />
+                        <Search size={16} className="text-text-muted ml-2" />
+                    </div>
+
+                    {/* Navigation Tabs */}
+                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-surface-subtle border border-border rounded-xl">
+                        {(["all", "staff", "queue"] as const).map((t) => (
+                            <button
+                                key={t}
+                                onClick={() => setTab(t)}
+                                className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                                    tab === t ? "bg-primary text-white shadow-xs" : "text-black hover:text-text-primary"
+                                }`}
+                            >
+                                {t === "all" && <Users size={12} />}
+                                {t === "staff" && <UserCog size={12} />}
+                                {t === "queue" && <Clock size={12} />}
+                                <span>{t === "all" ? "ทั้งหมด" : t === "staff" ? "เจ้าหน้าที่" : "รออนุมัติ"}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* แถบสรุปผลลัพธ์และปุ่มสลับการเรียงลำดับ */}
+                    <div className="flex items-center justify-between text-xs text-black px-0.5 pt-1 border-t border-border">
+                        <div className="text-black">พบ {processedUsers.length} บัญชี</div>
+
+                        <div onClick={() => setIsDesc(!isDesc)} className="flex items-center gap-1 cursor-pointer hover:text-text-primary text-black transition-colors py-0.5 select-none">
+                            <span>{isDesc ? "ลงทะเบียนล่าสุด" : "ลงทะเบียนเก่าสุด"}</span>
+                            <div className="flex items-center text-black">
+                                {isDesc ? <ArrowDown size={12} className="text-black font-bold" /> : <ArrowUp size={12} className="text-text-primary font-bold" />}
                             </div>
-                            <p className="text-sm font-semibold text-text-muted">{tab === "queue" ? "ไม่มีผู้ใช้รอการอนุมัติ" : tab === "staff" ? "ไม่พบเจ้าหน้าที่ที่ค้นหา" : "ไม่พบผู้ใช้ที่ค้นหา"}</p>
                         </div>
-                    ) : (
-                        filtered.map((user) => {
-                            const cfg = ROLE_CONFIG[user.role];
-                            const isUpdating = updating === user.id;
-                            const isOpen = openDropdown === user.id;
+                    </div>
 
-                            const displayName = user.fullName !== "ยังไม่ลงทะเบียนข้อมูล" ? user.fullName : user.lineProfileName;
+                    {/* ─── 3. Content Core Render (List รายการ) ─── */}
+                    <div className="space-y-3 pt-2">
+                        {loading ? (
+                            <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center gap-3">
+                                <RefreshCw size={20} className="animate-spin text-primary" />
+                                <span className="text-xs text-text-muted font-bold">กำลังโหลดข้อมูลผู้ใช้...</span>
+                            </div>
+                        ) : processedUsers.length === 0 ? (
+                            <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
+                                    {tab === "queue" ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Users size={18} />}
+                                </div>
+                                <p className="text-text-primary font-bold text-xs">{tab === "queue" ? "ไม่มีผู้ใช้รอการอนุมัติ" : "ไม่พบข้อมูลผู้ใช้งาน"}</p>
+                                <p className="text-xs text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบรายชื่อผู้ใช้งานระบบตามคำค้นหาหรือตัวเลือกแท็บที่เลือกอยู่ในขณะนี้ครับ</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {processedUsers.map((user) => {
+                                    const cfg = [user.role];
+                                    const isUpdating = updating === user.id;
+                                    const isOpen = openDropdown === user.id;
+                                    const displayName = user.fullName !== "ยังไม่ลงทะเบียนข้อมูล" ? user.fullName : user.lineProfileName;
 
-                            return (
-                                <div
-                                    key={user.id}
-                                    className="bg-surface rounded-2xl border border-border shadow-sm overflow-visible transition-all duration-200 hover:border-border/80 hover:shadow-md"
-                                >
-                                    <div className="p-4 sm:p-5 flex items-center flex-wrap sm:flex-nowrap gap-4">
-                                        {/* Avatar */}
-                                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white text-xs font-semibold ${avatarColor(displayName)}`}>
-                                            {getInitials(user.fullName, user.lineProfileName)}
-                                        </div>
-
-                                        {/* Info */}
-                                        <div className="flex-1 min-w-[140px]">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-sm font-semibold text-text-primary truncate min-w-0">{displayName}</h3>
-                                                <span className={`inline-flex items-center justify-center text-xs font-semibold leading-none px-2 py-1 rounded-full border flex-shrink-0 ${cfg.color}`}>
-                                                    {cfg.label}
-                                                </span>
+                                    return (
+                                        /* แก้ไข: การ์ดหลักชั้นเดียว ไม่มีการ์ดนอกมาครอบซ้อนแล้ว */
+                                        <div key={user.id} className="bg-surface rounded-xl p-3 border border-border transition-all flex flex-col">
+                                            {/* ── ส่วนบน: ชื่อผู้ใช้งาน ── */}
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="px-2 pb-2 text-sm font-semibold text-black truncate max-w-35 sm:max-w-none">{displayName}</h3>
                                             </div>
-                                            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-text-muted overflow-hidden whitespace-nowrap">
-                                                {user.phoneNumber && (
-                                                    <>
-                                                        <span className="flex items-center gap-1 font-mono">
-                                                            <Phone size={9} />
-                                                            {user.phoneNumber}
-                                                        </span>
-                                                        <span>·</span>
-                                                    </>
-                                                )}
-                                                <span className="flex items-center gap-1">
-                                                    <CalendarDays size={9} />
-                                                    {formatDate(user.registeredAt)}
-                                                </span>
-                                                {user.samplesCount > 0 && (
-                                                    <>
-                                                        <span>·</span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Layers size={9} />
-                                                            {user.samplesCount} ตัวอย่างน้ำ
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
 
-                                        {/* Action: เปลี่ยนสิทธิ์ (tab อื่นๆ) — ปุ่มอนุมัติ/ปฏิเสธของ tab รออนุมัติอยู่ด้านล่างการ์ด */}
-                                        {/* บนมือถือตกลงมาเป็นแถวเต็มความกว้าง กันชื่อ/ข้อมูลถูกบีบจนตัดจนอ่านไม่ออก */}
-                                        {!(tab === "queue" && user.pendingRequestId && user.requestedRole) && (
-                                            <div className="relative flex-shrink-0 w-full sm:w-auto order-last sm:order-none" onClick={(e) => e.stopPropagation()}>
-                                                {isUpdating ? (
-                                                    <div className="w-9 h-9 flex items-center justify-center ml-auto">
-                                                        <RefreshCw size={14} className="animate-spin text-primary" />
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <button
-                                                            onClick={() => setOpenDropdown(isOpen ? null : user.id)}
-                                                            className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[160px] px-3 py-2 bg-surface-subtle hover:bg-surface-muted border border-border rounded-xl text-sm font-semibold text-text-secondary transition-all cursor-pointer min-h-[36px]"
-                                                        >
-                                                            เปลี่ยนสิทธิ์
-                                                            <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-                                                        </button>
-
-                                                        {isOpen && (
-                                                            <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-surface border border-border rounded-2xl shadow-xl py-2 animate-fade-in">
-                                                                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider px-4 pt-1 pb-2 border-b border-border mb-1">เลือกบทบาท</p>
-                                                                {ROLE_OPTIONS.map((r) => {
-                                                                    const rc = ROLE_CONFIG[r];
-                                                                    const isCurrent = user.role === r;
-                                                                    return (
-                                                                        <button
-                                                                            key={r}
-                                                                            onClick={() => !isCurrent && handleRoleChange(user.id, r)}
-                                                                            disabled={isCurrent}
-                                                                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors text-left cursor-pointer
-                                  ${isCurrent ? "text-text-muted cursor-not-allowed opacity-50" : "text-text-primary hover:bg-surface-subtle"}`}
-                                                                        >
-                                                                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${rc.dot}`} />
-                                                                            {rc.label}
-                                                                            {isCurrent && <CheckCircle2 size={12} className="ml-auto text-emerald-500" />}
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action: อนุมัติ/ปฏิเสธ — เฉพาะ tab รออนุมัติ วางเต็มความกว้างด้านล่างการ์ด */}
-                                    {tab === "queue" && user.pendingRequestId && user.requestedRole && (
-                                        <div className="px-4 sm:px-5 pb-4 flex gap-2 border-t border-border/50 pt-3" onClick={(e) => e.stopPropagation()}>
-                                            {isUpdating ? (
-                                                <div className="w-full flex items-center justify-center py-1.5">
-                                                    <RefreshCw size={14} className="animate-spin text-primary" />
+                                            {/* ── ส่วนกลาง: ข้อมูลประวัติ จัดเป็น Grid 2 คอลัมน์ เว้นระยะเท่ากัน Gap-3 ── */}
+                                            <div className="grid grid-cols-2 gap-1 w-full text-xs text-text-muted mb-2">
+                                                {/* แสดงเฉพาะสิทธิ์ปัจจุบันในส่วนข้อมูล (ถ้าเป็น Queue ก็โชว์แค่สิทธิ์ปัจจุบันก่อนเปลี่ยน) */}
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                    -
+                                                    <SquareChevronUp size={11} className="text-black shrink-0" />
+                                                    <span className="text-black font-normal">สิทธิ์ปัจจุบัน: {cfg}</span>
                                                 </div>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleApprove(user, displayName)}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-primary hover:bg-navy-dark text-white text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
-                                                    >
-                                                        <CheckCircle2 size={13} />
-                                                        อนุมัติเป็น {ROLE_CONFIG[user.requestedRole].label}
-                                                    </button>
 
-                                                    <button
-                                                        onClick={() => handleReject(user, displayName)}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-[40px] bg-red-50 border border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs font-semibold rounded-xl hover:bg-red-100 hover:border-red-300 dark:hover:bg-red-500/15 dark:hover:border-red-500/30 transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
-                                                    >
-                                                        <XCircle size={13} />
-                                                        ปฏิเสธ
-                                                    </button>
-                                                </>
+                                                {/* คอลัมน์ที่ 2: เบอร์โทรศัพท์ (ถ้ามี) */}
+                                                {user.phoneNumber && (
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                        -
+                                                        <Phone size={11} className="text-black shrink-0" />
+                                                        <span className="">{user.phoneNumber}</span>
+                                                    </div>
+                                                )}
+
+                                                {/* คอลัมน์ที่ 3: วันที่ลงทะเบียน */}
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                    -
+                                                    <CalendarDays size={11} className="text-black shrink-0" />
+                                                    <span className="">{formatDate(user.registeredAt)}</span>
+                                                </div>
+
+                                                {/* คอลัมน์ที่ 4: จำนวนตัวอย่างน้ำ */}
+                                                {user.samplesCount > 0 && (
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                        -
+                                                        <Layers size={11} className="text-black shrink-0" />
+                                                        <span className="">{user.samplesCount} ตัวอย่าง</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+
+                                            {/* เคสที่ 1: รายการทั่วไป (ไม่ใช่ Queue อนุมัติ) -> โชว์ปุ่ม "จัดการสิทธิ์" เต็มความกว้างด้านล่าง */}
+                                            {!(tab === "queue" && user.pendingRequestId && user.requestedRole) && (
+                                                <div className="w-full pt-1 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                                                    {isUpdating ? (
+                                                        <div className="w-full flex items-center justify-center py-2">
+                                                            <RefreshCw size={14} className="animate-spin text-primary" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-1.5 w-full">
+                                                            <button
+                                                                onClick={() => setOpenDropdown(isOpen ? null : user.id)}
+                                                                className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-surface-subtle hover:bg-surface-muted border border-border rounded-xl text-xs font-bold text-text-secondary transition-all cursor-pointer min-h-9.5"
+                                                            >
+                                                                <span>จัดการสิทธิ์การใช้งาน</span>
+                                                                <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                                                            </button>
+
+                                                            {isOpen && (
+                                                                <div className="w-full bg-surface border border-border rounded-xl p-1 shadow-sm flex flex-col gap-1">
+                                                                    {ROLE_OPTIONS.map((r) => {
+                                                                        const rc = [r];
+                                                                        const isCurrent = user.role === r;
+                                                                        return (
+                                                                            <button
+                                                                                key={r}
+                                                                                onClick={() => !isCurrent && handleRoleChange(user.id, r)}
+                                                                                disabled={isCurrent}
+                                                                                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors text-left cursor-pointer
+                                                    ${isCurrent ? "text-text-muted bg-surface-subtle cursor-not-allowed opacity-40" : "text-text-primary hover:bg-surface-subtle"}`}
+                                                                            >
+                                                                                <span className={`w-2 h-2 rounded-full shrink-0 ${rc.dot}`} />
+                                                                                <span>{rc}</span>
+                                                                                {isCurrent && <CheckCircle2 size={12} className="ml-auto text-emerald-500" />}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* เคสที่ 2: รายการในคิวรออนุมัติ -> ย้าย "สิทธิ์ที่ต้องการ" มาพาดไว้เหนือกลุ่มปุ่มกดอนุมัติโดยตรง */}
+                                            {tab === "queue" && user.pendingRequestId && user.requestedRole && (
+                                                <div className="w-full flex flex-col gap-2.5 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                                                    {/* ชิปแสดงสิทธิ์ที่ต้องการ ย้ายมาดักสายตาแอดมินตรงนี้เพื่อให้ดูง่ายขึ้นมาก */}
+                                                    <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-md text-xs font-semibold text-primary border border-primary/20 w-full">
+                                                        <span className="text-white font-normal">สิทธิ์ที่ร้องขอเปลี่ยนเป็น: {[user.requestedRole]}</span>
+                                                    </div>
+
+                                                    {/* แถวกลุ่มปุ่มกด อนุมัติ / ปฏิเสธ */}
+                                                    {isUpdating ? (
+                                                        <div className="w-full flex items-center justify-center py-2">
+                                                            <RefreshCw size={14} className="animate-spin text-primary" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex gap-2 w-full">
+                                                            <button
+                                                                onClick={() => handleApprove(user, displayName)}
+                                                                className="flex-1 flex items-center rounded-md justify-center gap-1.5 py-2.5 min-h-9.5 bg-primary  text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                                            >
+                                                                <CheckCircle2 size={13} />
+                                                                อนุมัติสิทธิ์
+                                                            </button>
+
+                                                            <button
+                                                                onClick={() => handleReject(user, displayName)}
+                                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-9.5 bg-bg-danger border border-border-danger text-text-danger text-xs font-bold rounded-md transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                                            >
+                                                                <XCircle size={13} />
+                                                                ปฏิเสธ
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })
-                    )}
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Toast */}
+            {/* Toast Component */}
             {toastElement}
         </div>
     );

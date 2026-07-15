@@ -25,6 +25,10 @@
     --color-danger: var(--color-danger);
     --color-danger-hover: var(--color-danger-hover);
 
+    --color-bg-danger: var(--color-bg-danger);
+    --color-border-danger: var(--color-border-danger);
+    --color-text-danger: var(--text-danger);
+
     --color-surface: var(--color-surface);
     --color-surface-muted: var(--color-surface-muted);
     --color-surface-subtle: var(--color-surface-subtle);
@@ -71,7 +75,7 @@
 
     --color-card-white: #ffffff;
     --color-card-general: #ffffff;
-    --color-card-summary: #06647F;
+    --color-card-summary: #06647f;
 
     --color-primary: #06647f;
     --color-primary-light: #f1f5f9;
@@ -82,8 +86,12 @@
     /* Semantic Standards */
     --color-safe: #10b981;
     --color-warning: #f59e0b;
-    --color-danger: #B91C1C;
-    --color-danger-hover: #B91C1C;
+    --color-danger: #b91c1c;
+    --color-danger-hover: #b91c1c;
+
+    --color-bg-danger: #fef2f2;
+    --color-border-danger: #fecaca;
+    --color-text-danger: #b91c1c;
 
     /* Surfaces & Texts */
     --color-surface: #ffffff;

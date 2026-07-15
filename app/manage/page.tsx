@@ -9,7 +9,7 @@ import { MapPin, ChevronRight, Users, Phone, Pencil, X, Check, AlertCircle, User
 import Image from "next/image";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/useToast";
-import Linelogo from "@/public/LINEIcon.png"; 
+import Linelogo from "@/public/LINEIcon.png";
 // อิมพอร์ตโครงสร้าง Swal และการตั้งค่าสีจากไฟล์ config ของระบบ
 import { baseSwal, TONE_COLOR, ICON_SVG } from "@/lib/swal"; // <-- ปรับ Path ตัวนี้ให้ตรงกับที่เก็บจริงในโปรเจกต์
 
@@ -361,33 +361,22 @@ export default function ManagePage() {
                     </h1>
                 </div>
 
-                {/* 🟢 แก้ไขจุดที่ A: สลับการ์ดตามสถานะการเข้าสู่ระบบ */}
                 {currentUser ? (
-                    // A1. ถ้า Login แล้ว (ไม่ว่าเป็น admin, officer, collector หรือ guest) ให้โชว์การ์ดโปรไฟล์ปกติ
                     <div className="mb-2">
                         <ProfileCard onEdit={() => setShowEdit(true)} />
                     </div>
                 ) : (
-                    // A2. ถ้าไม่มีสิทธิ์ หรือไม่ได้ Login -> ขึ้นเป็นการ์ดสำหรับกด Login เข้าสู่ระบบผ่าน LINE แทน
                     <div className="mb-2 bg-card-general rounded-xl border border-border p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <button
                             onClick={() => liff.login()}
-                            /* 
-      - bg-[#06C755] และ text-white ตามสีแบรนด์ที่กำหนด
-      - h-11 (ใกล้เคียงสเปก 44px - 48px ของปุ่มมาตรฐาน)
-      - ไม่ใส่ shadow, ไม่ใส่ border หนา เพื่อให้เป็น Flat Button ตาม Guidelines
-    */
                             className="w-full sm:w-auto min-w-50 h-11 flex items-center bg-[#06C755] text-white rounded-md overflow-hidden active:opacity-90 transition-opacity cursor-pointer font-sans"
                         >
-                            {/* ─── ฝั่งซ้าย: LINE Logo Container ─── */}
-                            {/* สเปกของ LINE คือโลโก้ต้องแยกบล็อกอยู่ฝั่งซ้ายสุดอย่างชัดเจน */}
                             <div className="h-full w-12 flex items-center justify-center bg-black/10 shrink-0">
                                 <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">
                                     <path d="M24 10.304c0-5.691-5.383-10.304-12-10.304s-12 4.613-12 10.304c0 5.101 4.272 9.351 10.05 10.198.391.084.922.258 1.057.592.12.301.079.77.038 1.074l-.165 1.002c-.05.303-.243 1.186 1.047.646 1.291-.54 6.969-4.103 9.485-7.026 1.834-2.022 2.488-3.954 2.488-5.494z" />
                                 </svg>
                             </div>
 
-                            {/* ─── ฝั่งขวา: ข้อความตรงกลาง ─── */}
                             <div className="flex-1 text-center pr-12 text-sm font-bold tracking-wide">เข้าสู่ระบบด้วย LINE</div>
                         </button>
                     </div>
@@ -402,7 +391,6 @@ export default function ManagePage() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-2 items-stretch">
-                        {/* 🟢 จุดที่ B: เมนูแอดมิน (โชว์เฉพาะคนที่เป็น admin เท่านั้น) */}
                         {isAdmin &&
                             adminMenus.map((menu) => {
                                 const Icon = menu.icon;
@@ -412,17 +400,18 @@ export default function ManagePage() {
                                         key={menu.href}
                                         onClick={() => menu.available && router.push(menu.href)}
                                         disabled={MenuBoxDisable(menu.available)}
-                                        className={`w-full h-full group flex items-start gap-4 p-4 bg-card-general rounded-md border border-border transition-all duration-75 text-left
-                            ${menu.available ? "hover:border-primary/30 hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
+                                        className={`w-full h-full group flex items-start gap-4 p-4 bg-card-general rounded-xl border border-border transition-all duration-75 text-left
+    ${menu.available ? "hover:border-primary/30 hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
                                     >
-                                        <div className={`flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-200 ${menu.available ? "group-hover:scale-105" : ""}`}>
+                                        <div className={`flex items-center justify-center shrink-0 self-center transition-transform duration-200 ${menu.available ? "group-hover:scale-105" : ""}`}>
                                             <Icon size={24} />
                                         </div>
+
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <h3 className="text-sm font-semibold text-text-primary truncate">{menu.label}</h3>
                                                 {!menu.available && (
-                                                    <span className="text-xs font-semibold text-text-muted bg-surface-subtle border border-border px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                                    <span className="text-xs font-semibold text-text-muted bg-card-general border border-border px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                                                         เร็วๆ นี้
                                                     </span>
                                                 )}
@@ -434,30 +423,33 @@ export default function ManagePage() {
                                             </div>
                                             <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
                                         </div>
+
                                         <ChevronRight
                                             size={18}
-                                            className={`shrink-0 mt-1 transition-all duration-75 ${menu.available ? "text-secondary group-hover:text-primary group-hover:translate-x-0.5" : "text-text-muted/30"}`}
+                                            className={`shrink-0 self-center transition-all duration-75 ${menu.available ? "text-secondary group-hover:text-primary group-hover:translate-x-0.5" : "text-text-muted/30"}`}
                                         />
                                     </button>
                                 );
                             })}
 
-                        {/* 🟢 จุดที่ C: ปุ่มออกจากระบบ (โชว์เมื่อมีการล็อกอินเข้ามาแล้ว ไม่ว่า role ไหนก็ตาม) */}
                         {currentUser && (
-                            <button
-                                onClick={handleLogout}
-                                className="w-full h-full group flex items-start gap-4 p-4 bg-danger rounded-md border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-75 text-left cursor-pointer"
-                            >
-                                <div className="flex items-center justify-center shrink-0 text-white transition-transform duration-200 group-hover:scale-105">
-                                    <LogOut size={24} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-sm font-semibold text-white truncate">ออกจากระบบ</h3>
+                            <>
+                                <div className="w-full border-t mt-3" />
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full group flex items-center gap-4 p-4 bg-danger mt-1 rounded-md border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-75 text-left cursor-pointer"
+                                >
+                                    <div className="flex items-center justify-center shrink-0 text-white transition-transform duration-200 group-hover:scale-105">
+                                        <LogOut size={24} />
                                     </div>
-                                </div>
-                                <ChevronRight size={18} className="shrink-0 text-white group-hover:translate-x-0.5 transition-all duration-75" />
-                            </button>
+
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-sm font-semibold text-white truncate">ออกจากระบบ</h3>
+                                        </div>
+                                    </div>
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
