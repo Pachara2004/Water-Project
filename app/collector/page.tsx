@@ -4,11 +4,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import { useRouter } from "next/navigation";
-import { Camera, FileText, FlaskConical, MapPin, Calendar, Beaker, ImageOff, Search, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react"; /* prettier-ignore */
-
-// ─── Import TanStack Table Core ───
+import { Camera, FileText, Calendar, Beaker, ImageOff, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, ColumnFiltersState, SortingState } from "@tanstack/react-table";
-
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -31,7 +28,7 @@ interface CollectorSample {
         organization: string;
     } | null;
     // รองรับคุณสมบัติค่าวัดเคมีจากหลังบ้านแบบ Dynamic ทุกคีย์สารใน DB
-    [key: string]: any; 
+    [key: string]: any;
 }
 
 const statusOptions = [
@@ -137,8 +134,18 @@ export default function CollectorDashboard() {
     }, []);
 
     // ─── 1. เตรียมข้อมูล Data Source หลัก ───
+    // ─── 1. เตรียมข้อมูล Data Source หลัก ───
     const tableData = useMemo(() => {
-        return samples.filter((s) => !s.isDeleted).filter((s) => !showOnlyMine || s.collectedBy === currentUser?.id);
+        return samples
+            .filter((s) => !s.isDeleted)
+            .filter((s) => {
+                // ถ้าเป็น admin ให้เช็คตามสถานะปุ่ม Switch สลับเปิด-ปิด
+                if (currentUser?.role === "admin") {
+                    return !showOnlyMine || s.collectedBy === currentUser?.id;
+                }
+                // ถ้าเป็นสิทธิ์อื่น (collector) บังคับล็อกฟิลเตอร์แสดงเฉพาะของตัวเอง 100%
+                return s.collectedBy === currentUser?.id;
+            });
     }, [samples, showOnlyMine, currentUser]);
 
     // ─── 2. นิยามโครงสร้าง Columns พร้อม Custom Filter ฟังก์ชัน ───
@@ -328,13 +335,13 @@ export default function CollectorDashboard() {
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
                 {/* Header Welcome Card */}
-                <div className="relative w-full rounded-2xl bg-surface p-5 border border-border  flex flex-col gap-4">
+                <div className="relative w-full rounded-2xl bg-card-general p-5 border border-border  flex flex-col gap-4">
                     <div className="flex justify-between items-start gap-3">
                         <div>
-                            <h1 className="text-lg font-bold tracking-tight text-text-primary">
+                            <h1 className="text-lg font-bold tracking-tight text-black">
                                 ศูนย์ข้อมูล<span className="text-primary font-extrabold">ตรวจสอบคุณภาพน้ำ</span>
                             </h1>
-                            <p className="text-text-primary font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
+                            <p className="text-black font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
                         <NotificationBell />
                     </div>
@@ -343,32 +350,34 @@ export default function CollectorDashboard() {
                         onClick={() => router.push("/submit")}
                         className="w-full py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
                     >
-                        <Camera size={16} strokeWidth={2.5} />
+                        <Camera size={18} strokeWidth={2.5} />
                         <span>ตรวจคุณภาพน้ำ</span>
                     </button>
                 </div>
 
                 {/* โซนกล่องค้นหาและฟิลเตอร์แบบ Dropdown Multi-Select */}
 
-                <div className="relative w-full bg-surface rounded-2xl p-4 border border-border">
+                <div className="relative w-full bg-card-general rounded-2xl p-4 border border-border">
                     {/* แท็บคัดกรอง ข้อมูลของฉัน แบบดั้งเดิม */}
                     <div className="flex items-center justify-between gap-3 pt-1 px-1">
-                        <div className="inline-flex items-center gap-1.5">
+                        <div className="inline-flex items-center gap-1">
                             <FileText size={18} className="text-primary" />
-                            <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ประวัติการส่งตรวจ</h2>
+                            <h2 className="text-sm uppercase text-primary font-semibold">ประวัติการส่งตรวจ</h2>
                         </div>
 
-                        <label className="inline-flex items-center gap-2 bg-surface border border-border px-3 py-2 rounded-xl shrink-0 cursor-pointer select-none">
-                            <span className="text-xs font-semibold text-text-secondary">เฉพาะของฉัน</span>
+                        {currentUser?.role === "admin" && (
+                            <label className="inline-flex items-center gap-2 bg-surface border border-border px-3 py-2 rounded-xl shrink-0 cursor-pointer select-none">
+                                <span className="text-xs font-semibold text-black">เฉพาะของฉัน</span>
 
-                            <div className="relative">
-                                {/* Hidden Checkbox ที่เข้าถึงได้ (sr-only) */}
-                                <input type="checkbox" checked={showOnlyMine} onChange={(e) => setShowOnlyMine(e.target.checked)} className="sr-only peer" />
+                                <div className="relative">
+                                    {/* Hidden Checkbox ที่เข้าถึงได้ (sr-only) */}
+                                    <input type="checkbox" checked={showOnlyMine} onChange={(e) => setShowOnlyMine(e.target.checked)} className="sr-only peer" />
 
-                                {/* โครงสร้างสวิตช์ Flowbite / Shadcn ตามที่ส่งมา */}
-                                <div className="relative w-9 h-5 bg-surface-subtle peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-surface after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
-                            </div>
-                        </label>
+                                    {/* โครงสร้างสวิตช์ Flowbite / Shadcn ตามที่ส่งมา */}
+                                    <div className="relative w-9 h-5 bg-surface-subtle peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-surface after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
+                                </div>
+                            </label>
+                        )}
                     </div>
                     <div className="bg-surface  rounded-2xl  space-y-4 mt-6 mb-2">
                         {/* Input ค้นหาชื่อสถานที่ ทรงรีมน */}
@@ -379,9 +388,9 @@ export default function CollectorDashboard() {
                                 value={globalFilter ?? ""}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
                                 data-focus-outline="off"
-                                className="w-full py-3 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
+                                className="w-full py-3 bg-surface-subtle text-xs text-black outline-hidden placeholder:text-secondary"
                             />
-                            <Search size={16} className="text-text-muted ml-2" />
+                            <Search size={18} className="text-secondary ml-2" />
                         </div>
 
                         {/* แถวแถบปุ่มกดตัวเลือก Dropdown สำหรับ Mobile */}
@@ -392,19 +401,19 @@ export default function CollectorDashboard() {
                                     type="button"
                                     onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
                                     className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-surface border rounded-xl text-xs font-semibold transition-all cursor-pointer  select-none ${
-                                        isDateActive ? "border-primary text-text-primary ring-1 ring-primary" : "border-border text-text-secondary hover:bg-surface-subtle"
+                                        isDateActive ? "border-primary text-black ring-1 ring-primary" : "border-border text-text-secondary hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
-                                        <SlidersHorizontal size={13} className={isDateActive ? "text-text-primary" : "text-text-muted"} />
-                                        <span className="truncate">{isDateActive ? "กรองช่วงเวลา" : "เลือกวันที่"}</span>
+                                        <SlidersHorizontal size={16} className={isDateActive ? "text-black" : "text-black"} />
+                                        <span className="truncate text-black test-xs">{isDateActive ? "กรองช่วงเวลา" : "เลือกวันที่"}</span>
                                     </div>
                                     {isDateActive ? (
-                                        <span onClick={clearDateRange} className="p-0.5 rounded-full hover:bg-surface-subtle text-text-secondary flex items-center shrink-0">
-                                            <X size={11} strokeWidth={3} />
+                                        <span onClick={clearDateRange} className="p-0.5 rounded-full hover:bg-bg text-black flex items-center shrink-0">
+                                            <X size={13} strokeWidth={3} />
                                         </span>
                                     ) : (
-                                        <ChevronDown size={13} className="text-text-muted shrink-0" />
+                                        <ChevronDown size={13} className="text-black shrink-0" />
                                     )}
                                 </button>
 
@@ -458,13 +467,13 @@ export default function CollectorDashboard() {
                                     type="button"
                                     onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
                                     className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-surface border rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
-                                        selectedStatuses.length > 0 ? "border-primary text-text-primary ring-1 ring-primary" : "border-border text-text-secondary hover:bg-surface-subtle"
+                                        selectedStatuses.length > 0 ? "border-primary text-black ring-1 ring-primary" : "border-border text-black hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
                                         <span className="truncate">{currentStatusLabel}</span>
                                     </div>
-                                    <ChevronDown size={13} className="text-text-muted shrink-0" />
+                                    <ChevronDown size={13} className="text-black shrink-0" />
                                 </button>
 
                                 {/* รายการตัวเลือกสถานะภายในเมนู (Multi-Select Menu) */}
@@ -479,7 +488,7 @@ export default function CollectorDashboard() {
                                                     type="button"
                                                     onClick={() => handleStatusToggle(option.id)}
                                                     className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
-                                                        isChecked ? "bg-surface-subtle text-text-primary" : "text-text-secondary hover:bg-surface-subtle"
+                                                        isChecked ? "bg-surface-subtle text-black" : "text-text-secondary hover:bg-surface-subtle"
                                                     }`}
                                                 >
                                                     <div className="flex items-center gap-2">
@@ -503,13 +512,12 @@ export default function CollectorDashboard() {
 
                         {/* สรุปข้อมูลผลลัพธ์และระบบสลับ ล่าสุด/เก่าสุด */}
                         <div className="flex items-center justify-between text-xs text-text-muted  px-0.5 pt-1 border-t border-border">
-                            <div className="text-text-secondary">พบ {totalFilteredRecords} รายการ</div>
+                            <div className="text-black">พบ {totalFilteredRecords} รายการ</div>
 
-                            <div onClick={toggleSortDirection} className="flex items-center gap-1 cursor-pointer hover:text-text-primary text-text-secondary transition-colors py-0.5 select-none">
+                            <div onClick={toggleSortDirection} className="flex items-center gap-1 cursor-pointer hover:text-black text-black transition-colors py-0.5 select-none">
                                 <span>{sorting[0]?.id === "collectedAt" && sorting[0]?.desc ? "ล่าสุด" : "เก่าสุด"}</span>
                                 <div className="flex items-center text-text-muted">
-                                    {sorting[0]?.id === "collectedAt" &&
-                                        (sorting[0]?.desc ? <ArrowDown size={12} className="text-text-primary font-bold" /> : <ArrowUp size={12} className="text-text-primary font-bold" />)}
+                                    {sorting[0]?.id === "collectedAt" && (sorting[0]?.desc ? <ArrowDown size={13} className="text-black" /> : <ArrowUp size={13} className="text-black" />)}
                                 </div>
                             </div>
                         </div>

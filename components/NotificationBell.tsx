@@ -98,11 +98,11 @@ export default function NotificationBell() {
                 type="button"
                 onClick={() => setOpen(true)}
                 aria-label="การแจ้งเตือน"
-                className="relative w-10 h-10 rounded-xl bg-surface-subtle border border-border flex items-center justify-center text-text-secondary hover:text-primary hover:border-primary/30 transition-all active:scale-95 cursor-pointer shrink-0"
+                className="relative w-10 h-10 rounded-xl bg-bg border border-border flex items-center justify-center text-primary hover:text-primary hover:border-primary/30 transition-all active:scale-95 cursor-pointer shrink-0"
             >
                 <Bell size={18} strokeWidth={2.2} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center border-2 border-surface">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-4.5 h-4.5 px-1 bg-red-500 text-white text-xs leading-none font-bold rounded-full flex items-center justify-center border-2 border-surface">
                         {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                 )}
@@ -111,27 +111,27 @@ export default function NotificationBell() {
             {/* ป็อปอัปแบบ bottom-sheet ตาม convention โปรเจกต์ */}
             {open && (
                 <>
-                    <div className="fixed inset-0 bg-black/40 z-[1000] backdrop-blur-xs transition-opacity" onClick={() => setOpen(false)} />
+                    <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={() => setOpen(false)} />
                     <div
-                        className="fixed bottom-0 left-0 right-0 z-[1001] bg-surface rounded-t-[32px] shadow-2xl border-t border-border max-w-lg mx-auto flex flex-col max-h-[80dvh] animate-slide-up transition-colors duration-300"
+                        className="fixed bottom-0 left-0 right-0 z-1001 bg-card-general rounded-t-4xl shadow-2xl border-t border-border max-w-lg mx-auto flex flex-col max-h-[80dvh] animate-slide-up transition-colors duration-300"
                         style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom))" }}
                     >
-                        <div className="w-12 h-1 bg-border rounded-full mx-auto mt-3 mb-1 pointer-events-none shrink-0" />
+                        <div className="w-12 h-1 bg-secondary rounded-full mx-auto mt-3 mb-1 pointer-events-none shrink-0" />
 
                         {/* หัวข้อ */}
                         <div className="flex items-center justify-between px-6 pt-3 pb-4 shrink-0">
                             <div className="flex items-center gap-2">
-                                <Bell size={16} className="text-primary" />
-                                <h3 className="text-sm font-bold text-text-primary">การแจ้งเตือน</h3>
+                                <Bell size={18} className="text-primary" />
+                                <h3 className="text-sm font-bold text-primary">การแจ้งเตือน</h3>
                                 {unreadCount > 0 && (
                                     <span className="text-[10px] leading-none font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-full inline-flex items-center">{unreadCount} ใหม่</span>
                                 )}
                             </div>
                             <button
                                 onClick={() => setOpen(false)}
-                                className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
                             >
-                                <X size={14} className="text-text-secondary" />
+                                <X size={24} className="text-secondary" />
                             </button>
                         </div>
 
@@ -139,10 +139,10 @@ export default function NotificationBell() {
                         <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-3">
                             {items.length === 0 ? (
                                 <div className="text-center py-12 flex flex-col items-center justify-center">
-                                    <div className="w-12 h-12 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mb-3 text-text-muted">
-                                        <BellOff size={20} />
+                                    <div className="w-12 h-12 bg-bg border border-border rounded-2xl flex items-center justify-center mb-3 text-text-muted">
+                                        <BellOff size={20} className="text-primary" />
                                     </div>
-                                    <p className="text-xs font-semibold text-text-muted">ยังไม่มีการแจ้งเตือน</p>
+                                    <p className="text-xs font-semibold text-secondary">ยังไม่มีการแจ้งเตือน</p>
                                 </div>
                             ) : (
                                 items.map((item) => {
