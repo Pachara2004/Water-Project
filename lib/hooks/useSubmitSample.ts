@@ -5,6 +5,18 @@ import { useAppStore } from "@/lib/store";
 import { alertError } from "@/lib/swal";
 import { DbParameter, LocationItem, MeasurementResult, VerifyError } from "@/components/submit/types";
 
+// ผลวิเคราะห์ดิบต่อภาพหนึ่งใบ ก่อนกระทบยอด (reconcile) กับสารอื่น ๆ ในชุดเดียวกัน
+// ใช้ระหว่างขั้นตอน handleAnalyze → finalizeAnalysis เท่านั้น ไม่ได้ persist เป็น state ถาวร
+interface AnalyzedItem {
+    originalParamId: number; // ช่อง (toggle) ที่ผู้ใช้ถ่ายภาพนี้ใส่ไว้ตอนแรก
+    originalParamName: string;
+    targetParam: DbParameter; // สารจริงที่ AI ตรวจยืนยัน (จับคู่กับ systemParameters แล้ว)
+    file: File;
+    plottedFile: File | null;
+    aiData: any; // response ดิบจาก /api/analyze
+    isMismatch: boolean; // targetParam ตรงกับช่องเดิมหรือไม่
+}
+
 export function useSubmitSample() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -13,10 +25,10 @@ export function useSubmitSample() {
     // ── States ──
     const [systemParameters, setSystemParameters] = useState<DbParameter[]>([]);
     const [isLoadingParams, setIsLoadingParams] = useState(true);
-    // โหมดการส่ง: เดี่ยว (เลือกสารเดียว) เป็นค่าเริ่มต้น / คู่ (ส่งทุกสารพร้อมกัน)
-    const [mode, setMode] = useState<"single" | "dual">("single");
-    const [selectedParamId, setSelectedParamId] = useState<number | null>(null);
-    // เหตุผลที่ผลวิเคราะห์ของแต่ละสารถูกบล็อก (ไม่ใช่หลอดทดลอง / สารผิดชนิด)
+    // เซ็ตของสารที่เปิด toggle ไว้ (แทนแนวคิด "โหมดเดี่ยว/คู่" เดิม — รองรับ N สารโดยไม่ผูกกับจำนวน)
+    // ค่าเริ่มต้นว่าง (ปิดหมด) ตามที่ต้องการเมื่อเข้าจากหน้า /collector
+    const [enabledParamIds, setEnabledParamIds] = useState<Set<number>>(new Set());
+    // เหตุผลที่ผลวิเคราะห์ของแต่ละสารถูกบล็อก (ไม่ใช่หลอดทดลอง / สารผิดชนิดที่ระบบไม่รู้จัก)
     const [verifyErrors, setVerifyErrors] = useState<Record<number, VerifyError>>({});
     const [imageFiles, setImageFiles] = useState<Record<number, File>>({});
     const [imagePreviews, setImagePreviews] = useState<Record<number, string>>({});
@@ -58,17 +70,32 @@ export function useSubmitSample() {
             .then((data) => {
                 if (Array.isArray(data)) {
                     setSystemParameters(data);
-                    // โหมดเดี่ยวเป็นค่าเริ่มต้น จึงตั้งสารตัวแรกให้อัตโนมัติ
-                    if (data.length > 0) setSelectedParamId((prev) => prev ?? data[0].id);
+                    // ค่าเริ่มต้น: เปิดกล่องอัปโหลดของทุกสารให้หมด ผู้ใช้ไม่ต้องมากดเปิดเองทีละตัว
+                    setEnabledParamIds(new Set(data.map((p: DbParameter) => p.id)));
                 }
             })
             .catch((err) => console.error("Fetch Parameters Error:", err))
             .finally(() => setIsLoadingParams(false));
     }, []);
 
-    // สารที่กำลังทำงานอยู่จริงตามโหมด: คู่ = ทุกตัว / เดี่ยว = เฉพาะตัวที่เลือก
-    const activeParameters =
-        mode === "dual" ? systemParameters : systemParameters.filter((p) => p.id === selectedParamId);
+    // สารที่เปิด toggle ไว้จริง — ตัดสินใจจาก enabledParamIds ล้วน ๆ ไม่ผูกกับจำนวน (รองรับ N สาร)
+    const activeParameters = systemParameters.filter((p) => enabledParamIds.has(p.id));
+
+    const toggleParam = (paramId: number) => {
+        setEnabledParamIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(paramId)) next.delete(paramId);
+            else next.add(paramId);
+            return next;
+        });
+        // เปิด/ปิดสารใหม่ = เคลียร์สถานะบล็อกของช่องนั้นทิ้ง (ถ้ามีค้างจากรอบก่อน)
+        setVerifyErrors((prev) => {
+            if (!prev[paramId]) return prev;
+            const next = { ...prev };
+            delete next[paramId];
+            return next;
+        });
+    };
 
     useEffect(() => {
         fetch("/api/locations")
@@ -132,7 +159,7 @@ export function useSubmitSample() {
                     ctx.strokeStyle = "#28a745";
                     ctx.lineWidth = Math.max(4, canvas.width * 0.005);
                     ctx.strokeRect(x_min, y_min, x_max - x_min, y_max - y_min);
-                    
+
                     const confPct = aiData.confidence;
                     const labelSource = aiData.verifiedParameterName || aiData.parameterName;
                     const paramLabel = labelSource ? labelSource.charAt(0).toUpperCase() + labelSource.slice(1).toLowerCase() : "Vial";
@@ -154,6 +181,72 @@ export function useSubmitSample() {
             img.src = URL.createObjectURL(file);
         });
 
+    // จัดกลุ่ม AnalyzedItem ตามสารจริง (targetParam.id) ที่ AI เจอ — ใช้ตรวจว่ามีสารซ้ำ (≥2 ภาพชนกัน) ไหม
+    const groupByTargetParam = (items: AnalyzedItem[]): Map<number, AnalyzedItem[]> => {
+        const groups = new Map<number, AnalyzedItem[]>();
+        items.forEach((item) => {
+            const arr = groups.get(item.targetParam.id) ?? [];
+            arr.push(item);
+            groups.set(item.targetParam.id, arr);
+        });
+        return groups;
+    };
+
+    // เก็บผลวิเคราะห์เป็นผลลัพธ์สุดท้าย: rebuild state ทั้งหมดตาม "สารจริง" (targetParam.id) ของทุกภาพที่วิเคราะห์ผ่าน
+    // สลับสารให้เสมอโดยไม่ถาม (ผู้ใช้เห็นแบนเนอร์ "เปลี่ยนชนิดสารให้อัตโนมัติ" ที่หน้าผลลัพธ์แทน)
+    // กรณีสารซ้ำ (≥2 ภาพชี้สารเดียวกัน): ไม่บังคับให้เลือก — เก็บทั้งสองภาพแยกเป็นคนละรายการ (คนละ virtual key กันชนกัน)
+    // แล้วติดธง isDuplicateSubstance ไว้ให้ handleSave บังคับส่งเข้าคิว pending เสมอไม่ว่า confidence จะสูงแค่ไหน
+    const finalizeAnalysis = (items: AnalyzedItem[]) => {
+        const groups = groupByTargetParam(items);
+
+        const newImageFiles: Record<number, File> = {};
+        const newImagePreviews: Record<number, string> = {};
+        const newImagePlotFiles: Record<number, File> = {};
+        const newResults: Record<number, MeasurementResult> = {};
+        const finalParamIds = new Set<number>();
+        let hasDanger = false;
+        let hasWarning = false;
+
+        groups.forEach((arr, paramId) => {
+            finalParamIds.add(paramId);
+            const isDuplicateSubstance = arr.length > 1;
+
+            arr.forEach((it) => {
+                // ไม่ชนกัน: ใช้ paramId จริงเป็น key ตามเดิม | ชนกัน: ต้องใช้ virtual key แยกกัน ไม่งั้นทับกันเหลือรายการเดียว
+                const key = isDuplicateSubstance ? paramId * 1_000_000 + it.originalParamId : paramId;
+
+                newImageFiles[key] = it.file;
+                if (imagePreviews[it.originalParamId]) newImagePreviews[key] = imagePreviews[it.originalParamId];
+                if (it.plottedFile) newImagePlotFiles[key] = it.plottedFile;
+
+                const currentStatus = (it.aiData.status?.toLowerCase() ?? "safe") as "safe" | "warning" | "danger";
+                newResults[key] = {
+                    concentrated: it.aiData.concentrated,
+                    status: currentStatus,
+                    message: it.aiData.message || "",
+                    confidence: it.aiData.confidence,
+                    boundingBox: it.aiData["bounding box"],
+                    isTestTube: it.aiData.isTestTube ?? true,
+                    verifiedParameterName: it.aiData.verifiedParameterName || it.targetParam.name,
+                    autoSwitchedFrom: it.isMismatch ? it.originalParamName : undefined,
+                    parameterId: paramId,
+                    isDuplicateSubstance,
+                };
+
+                if (currentStatus === "danger") hasDanger = true;
+                if (currentStatus === "warning") hasWarning = true;
+            });
+        });
+
+        setImageFiles(newImageFiles);
+        setImagePreviews(newImagePreviews);
+        setImagePlotFiles(newImagePlotFiles);
+        setEnabledParamIds(finalParamIds); // toggle สะท้อนองค์ประกอบสุดท้ายจริงหลังกระทบยอด
+        setResults(newResults);
+        setOverallStatus(hasDanger ? "danger" : hasWarning ? "warning" : "safe");
+        setStep("results");
+    };
+
     // ── Handlers ──
     const handleAnalyze = async () => {
         if (activeParameters.length === 0) return;
@@ -161,12 +254,8 @@ export function useSubmitSample() {
         setVerifyErrors({}); // ล้างผลบล็อกรอบก่อนหน้าก่อนเริ่มวิเคราะห์ใหม่
 
         try {
-            const newResults: Record<number, MeasurementResult> = {};
             const newErrors: Record<number, VerifyError> = {};
-            // การสลับ id ของภาพ/ผลลัพธ์ (โหมดเดี่ยว): จาก paramId ที่เลือกไว้ → paramId ของสารที่ AI ตรวจเจอจริง
-            const idSwitches: { fromId: number; toId: number }[] = [];
-            let hasDanger = false;
-            let hasWarning = false;
+            const items: AnalyzedItem[] = [];
 
             for (const param of activeParameters) {
                 const file = imageFiles[param.id];
@@ -195,64 +284,41 @@ export function useSubmitSample() {
                 const isMismatch = verifiedName.toLowerCase() !== param.name.toLowerCase();
 
                 if (!isTestTube) {
-                    // ด่าน 1: ไม่พบหลอดทดลองในภาพ → บังคับถ่ายใหม่ (ทั้งโหมดเดี่ยวและคู่)
+                    // ด่าน 1: ไม่พบหลอดทดลองในภาพ → บังคับถ่ายใหม่
                     newErrors[param.id] = {
                         reason: "not_test_tube",
-                        detail: "ไม่พบหลอดทดลองในภาพ กรุณาถ่ายรูปที่มีขวดบรรจุสารให้ชัดเจนแล้ววิเคราะห์ใหม่",
+                        detail: "ไม่พบหลอดทดลองในภาพ หรือภาพอาจเบลอเกินไป กรุณาถ่ายรูปที่มีขวดบรรจุสารให้ชัดเจน ไม่เบลอ แล้ววิเคราะห์ใหม่",
                     };
                     continue;
                 }
 
-                // ด่าน 2: AI ตรวจพบว่าสารในภาพเป็นคนละชนิดกับที่ระบุ
-                let effectiveParam = param;
+                // ด่าน 2: AI ตรวจพบว่าสารในภาพเป็นคนละชนิดกับช่องเดิม — หาสารจริงจาก systemParameters
+                let targetParam = param;
                 if (isMismatch) {
-                    if (mode === "single") {
-                        // โหมดเดี่ยว: เปลี่ยนไปใช้สารที่ AI ตรวจเจอจริงให้อัตโนมัติ แทนการบล็อก
-                        const matchedParam = systemParameters.find((p) => p.name.toLowerCase() === verifiedName.toLowerCase());
-                        if (!matchedParam) {
-                            // AI ตรวจเจอสารที่ระบบไม่รู้จัก (ไม่มีในฐานข้อมูล) — บล็อกไว้เพราะสลับให้ไม่ได้
-                            const verifiedLabel = verifiedName.charAt(0).toUpperCase() + verifiedName.slice(1).toLowerCase();
-                            newErrors[param.id] = {
-                                reason: "wrong_solution",
-                                detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ซึ่งไม่มีในระบบ กรุณาถ่ายภาพใหม่`,
-                            };
-                            continue;
-                        }
-                        effectiveParam = matchedParam;
-                        if (matchedParam.id !== param.id) {
-                            idSwitches.push({ fromId: param.id, toId: matchedParam.id });
-                        }
-                    } else {
-                        // โหมดคู่: ยังบล็อกเหมือนเดิม เพราะยังไม่มีวิธีจัดการการสลับข้าม 2 สารพร้อมกัน
+                    const matchedParam = systemParameters.find((p) => p.name.toLowerCase() === verifiedName.toLowerCase());
+                    if (!matchedParam) {
+                        // AI ตรวจเจอสารที่ระบบไม่รู้จัก (ไม่มีในฐานข้อมูล) — บล็อกไว้เพราะสลับให้ไม่ได้
                         const verifiedLabel = verifiedName.charAt(0).toUpperCase() + verifiedName.slice(1).toLowerCase();
                         newErrors[param.id] = {
                             reason: "wrong_solution",
-                            detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ไม่ตรงกับที่เลือกไว้ กรุณาเลือกสารให้ตรงหรือถ่ายภาพใหม่`,
+                            detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ซึ่งไม่มีในระบบ กรุณาถ่ายภาพใหม่`,
                         };
                         continue;
                     }
+                    targetParam = matchedParam;
                 }
 
-                // ผ่านด่าน → พล็อตภาพ + เก็บผลตามปกติ (คีย์ด้วย effectiveParam.id เผื่อถูกสลับสารแล้ว)
                 const plotted = await generateAiImagePlot(file, data);
-                if (plotted) {
-                    setImagePlotFiles((prev) => ({ ...prev, [effectiveParam.id]: plotted }));
-                }
 
-                const currentStatus = (data.status?.toLowerCase() ?? "safe") as "safe" | "warning" | "danger";
-                newResults[effectiveParam.id] = {
-                    concentrated: data.concentrated,
-                    status: currentStatus,
-                    message: data.message || "",
-                    confidence: data.confidence,
-                    boundingBox: data["bounding box"],
-                    isTestTube,
-                    verifiedParameterName: verifiedName,
-                    autoSwitchedFrom: isMismatch ? param.name : undefined,
-                };
-
-                if (currentStatus === "danger") hasDanger = true;
-                if (currentStatus === "warning") hasWarning = true;
+                items.push({
+                    originalParamId: param.id,
+                    originalParamName: param.name,
+                    targetParam,
+                    file,
+                    plottedFile: plotted,
+                    aiData: data,
+                    isMismatch,
+                });
             }
 
             // ถ้ามีสารตัวใดไม่ผ่านด่าน → บล็อกทั้ง batch: ไม่เข้าหน้าผลลัพธ์ กลับไปหน้ากรอกข้อมูล
@@ -284,36 +350,8 @@ export function useSubmitSample() {
                 return;
             }
 
-            // ย้ายไฟล์ภาพดิบ/พรีวิวจาก id เดิม (สารที่เลือกไว้) ไปที่ id ใหม่ (สารที่ AI ตรวจเจอจริง)
-            // เพื่อให้ ImageZone ของสารใหม่แสดงรูปที่เพิ่งวิเคราะห์ไปถูกต้อง
-            if (idSwitches.length > 0) {
-                setImageFiles((prev) => {
-                    const next = { ...prev };
-                    idSwitches.forEach(({ fromId, toId }) => {
-                        if (next[fromId] !== undefined) {
-                            next[toId] = next[fromId];
-                            delete next[fromId];
-                        }
-                    });
-                    return next;
-                });
-                setImagePreviews((prev) => {
-                    const next = { ...prev };
-                    idSwitches.forEach(({ fromId, toId }) => {
-                        if (next[fromId] !== undefined) {
-                            next[toId] = next[fromId];
-                            delete next[fromId];
-                        }
-                    });
-                    return next;
-                });
-                // โหมดเดี่ยวมีสารเดียวเสมอ จึงสลับตัวเลือกสารที่ active ให้ตรงกับสารที่ AI ตรวจเจอจริง
-                setSelectedParamId(idSwitches[idSwitches.length - 1].toId);
-            }
-
-            setResults(newResults);
-            setOverallStatus(hasDanger ? "danger" : hasWarning ? "warning" : "safe");
-            setStep("results");
+            // จัดกลุ่มตามสารจริงแล้ว commit ตรง ๆ — สารซ้ำไม่ต้องให้เลือก เก็บทั้งคู่แยกกัน (ดูรายละเอียดใน finalizeAnalysis)
+            finalizeAnalysis(items);
         } catch (err: any) {
             console.error("Analysis failed:", err);
             alertError("วิเคราะห์ภาพล้มเหลว", err.message);
@@ -327,12 +365,14 @@ export function useSubmitSample() {
         try {
             let firstSavedId: number | null = null;
 
-            for (const param of activeParameters) {
-                const resData = results[param.id];
-                const rawFile = imageFiles[param.id];
-                const plotFile = imagePlotFiles[param.id];
+            // วนตาม key จริงใน results (virtual key เมื่อสารซ้ำ) แทน activeParameters เพราะสารซ้ำมี 2 รายการต่อ parameterId เดียวกัน
+            for (const [keyStr, resData] of Object.entries(results)) {
+                const key = Number(keyStr);
+                const rawFile = imageFiles[key];
+                const plotFile = imagePlotFiles[key];
+                const paramMeta = systemParameters.find((p) => p.id === resData.parameterId);
 
-                if (!resData || !rawFile) continue;
+                if (!rawFile || !paramMeta) continue;
 
                 const fd = new FormData();
                 fd.append("locationId", currentLocationId);
@@ -343,9 +383,13 @@ export function useSubmitSample() {
                 // พอเปลี่ยนเป็น useState แล้ว ตรงนี้บอสพ่นชื่อตัวแปร sessionId ลงไปตรง ๆ ได้เลยครับ!
                 fd.append("sessionGroup", sessionId);
 
+                // สารซ้ำ (isDuplicateSubstance) บังคับให้เข้าคิว pending เสมอ ไม่ว่า confidence จะสูงแค่ไหน
+                // — ต้องให้ admin ตัดสินใจว่ารายการไหนถูกต้อง เพราะมีมากกว่า 1 ภาพชี้สารเดียวกันในชุดนี้
+                if (resData.isDuplicateSubstance) fd.append("forceReview", "true");
+
                 const singleMeasurementPayload = [
                     {
-                        parameterId: param.id,
+                        parameterId: resData.parameterId,
                         value: resData.concentrated || 0,
                         confidence: resData.confidence || 0,
                         boundingBox: resData.boundingBox ? JSON.stringify(resData.boundingBox) : null,
@@ -354,8 +398,8 @@ export function useSubmitSample() {
                 ];
                 fd.append("measurements", JSON.stringify(singleMeasurementPayload));
 
-                fd.append(`image_raw_${param.id}`, rawFile);
-                if (plotFile) fd.append(`image_plot_${param.id}`, plotFile);
+                fd.append(`image_raw_${resData.parameterId}`, rawFile);
+                if (plotFile) fd.append(`image_plot_${resData.parameterId}`, plotFile);
 
                 const res = await fetch("/api/samples", {
                     method: "POST",
@@ -365,7 +409,7 @@ export function useSubmitSample() {
 
                 if (!res.ok) {
                     const errData = await res.json();
-                    throw new Error(errData.error || `เกิดข้อผิดพลาดในการบันทึกสาร ${param.name}`);
+                    throw new Error(errData.error || `เกิดข้อผิดพลาดในการบันทึกสาร ${paramMeta.name}`);
                 }
 
                 // เก็บ id ของ sample ตัวแรกที่บันทึกสำเร็จในชุดนี้ ไว้พาไปหน้ารายละเอียดโดยตรงหลังบันทึกเสร็จ
@@ -384,7 +428,7 @@ export function useSubmitSample() {
     };
 
     // เคลียร์ผลวิเคราะห์/รูป/ข้อผิดพลาดทั้งหมด กลับไปเริ่มถ่ายภาพใหม่ — ใช้เมื่อผลลัพธ์ไม่ใช่สิ่งที่ต้องการบันทึก
-    // คงค่าสถานี/เวลา/โหมดไว้ตามเดิม (ไม่ต้องกรอกซ้ำ) แต่ออก sessionGroup ใหม่เพราะเป็นการเก็บตัวอย่างรอบใหม่จริง ๆ
+    // คงค่าสถานี/เวลา/toggle สารไว้ตามเดิม (ไม่ต้องกรอกซ้ำ) แต่ออก sessionGroup ใหม่เพราะเป็นการเก็บตัวอย่างรอบใหม่จริง ๆ
     const resetToUpload = () => {
         setResults({});
         setImageFiles({});
@@ -406,10 +450,8 @@ export function useSubmitSample() {
     return {
         systemParameters,
         activeParameters,
-        mode,
-        setMode,
-        selectedParamId,
-        setSelectedParamId,
+        enabledParamIds,
+        toggleParam,
         verifyErrors,
         setVerifyErrors,
         isLoadingParams,

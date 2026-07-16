@@ -181,16 +181,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         let allMeasurements = [...mainSample.measurements];
 
-        // 🌟 สร้างแผนผังสำหรับผูกเก็บ URL รูปภาพแยกตามไอดีสารเคมี (Parameter ID)
-        const paramImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
-
-        // แนบรูปภาพของสารเคมีตัวแรก (แถวหลักประจำเซสชันนี้) ลงแผนผังก่อน
-        if (mainSample.measurements[0]) {
-            paramImagesMap[mainSample.measurements[0].parameterId] = {
-                raw: mainSample.rawImageUrl,
-                plot: mainSample.analyzedPlotUrl,
-            };
-        }
+        // 🌟 สร้างแผนผังสำหรับผูกเก็บ URL รูปภาพ — ต้อง key ด้วย "sample id" ไม่ใช่ parameterId
+        // เพราะตอนนี้ session เดียวอาจมี WaterSample ≥2 แถวชี้ parameterId เดียวกันได้ (กรณีสารซ้ำที่ยังไม่ได้ตัดสิน)
+        // ถ้า key ด้วย parameterId แถวหลังจะเขียนทับรูปของแถวแรก ทำให้ค่าตัวเลขกับรูปที่โชว์มาจากคนละแถวกัน (บั๊กข้อมูล/รูปไม่ตรงกัน)
+        const sampleImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
+        sampleImagesMap[mainSample.id] = {
+            raw: mainSample.rawImageUrl,
+            plot: mainSample.analyzedPlotUrl,
+        };
 
         // 🔍 ขุดค้นหาเรคคอร์ดสารเคมีตัวอื่น ๆ ที่ถือเลข sessionGroup เดียวกันรอบเซสชันนี้
         if (mainSample.sessionGroup) {
@@ -207,16 +205,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 },
             });
 
-            // ทำการหลอมรวมค่าวัด และดึงไฟล์ภาพจากเรคคอร์ดคู่ขนานมาผูกแยกราย Parameter ID
+            // ทำการหลอมรวมค่าวัด และดึงไฟล์ภาพจากเรคคอร์ดคู่ขนานมาผูกแยกราย sample id (แต่ละแถวมี id ไม่ซ้ำกันเสมอ)
             partnerSamples.forEach((ps) => {
                 allMeasurements.push(...ps.measurements);
-
-                if (ps.measurements[0]) {
-                    paramImagesMap[ps.measurements[0].parameterId] = {
-                        raw: ps.rawImageUrl,
-                        plot: ps.analyzedPlotUrl,
-                    };
-                }
+                sampleImagesMap[ps.id] = {
+                    raw: ps.rawImageUrl,
+                    plot: ps.analyzedPlotUrl,
+                };
             });
         }
 
@@ -254,8 +249,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             collector: mainSample.collector,
             measurements: allMeasurements,
 
-            // 🌟 พ่วงส่งแผนผังรูปภาพแยกรายสารเคมีตัวนี้ออกไปให้หน้าบ้านด้วยครับบอส!
-            paramImagesMap: paramImagesMap,
+            // 🌟 พ่วงส่งแผนผังรูปภาพแยกราย sample id ออกไปให้หน้าบ้านด้วยครับบอส!
+            sampleImagesMap: sampleImagesMap,
 
             ...dynamicMeasurements,
 

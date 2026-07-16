@@ -27,16 +27,30 @@ interface ImageZoneProps {
     onNearestLocationsUpdate: (locations: any[]) => void;
     allLocations: any[];
     setIsRecommending: (b: boolean) => void;
+    enabled?: boolean; // เปิด/ปิดสารนี้ (toggle ที่หัวการ์ด) — ปิด = ซ่อนพื้นที่อัปรูปทั้งหมด
+    onToggle?: () => void; // แสดง toggle เฉพาะตอนส่ง handler นี้มา (step upload เท่านั้น)
 }
 
 // 🌟 1. ดึง measurement ออกมาจากพารามิเตอร์ Props ตรงนี้แล้ว
-export function ImageZone({ param, step, preview, plotFile, measurement, verifyError, onImageFilesChange, onNearestLocationsUpdate, allLocations, setIsRecommending }: ImageZoneProps) {
+export function ImageZone({ param, step, preview, plotFile, measurement, verifyError, onImageFilesChange, onNearestLocationsUpdate, allLocations, setIsRecommending, enabled = true, onToggle }: ImageZoneProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const infoButtonRef = useRef<HTMLButtonElement>(null);
 
     // 🌟 2. เพิ่ม State สำหรับสลับโหมดดูภาพดิบ (raw) หรือ ภาพพล็อต AI (analyzed)
     const [viewMode, setViewMode] = useState<"raw" | "analyzed">("analyzed");
     // เปิด/ปิด popup ตัวอย่างรูปสีของเหลวชุดทดสอบ (กดปุ่ม info ข้างชื่อสาร)
     const [showExampleModal, setShowExampleModal] = useState(false);
+    // ตำแหน่ง popover คำนวณจากปุ่มจริง (fixed positioning) — กัน overflow-hidden ของ section ตัดภาพตอนปิด toggle
+    // แล้วพื้นที่อัปรูปถูกซ่อน ทำให้ section เตี้ยลงจน popover แบบ absolute เดิมโดนตัดมองไม่เห็น
+    const [popoverPos, setPopoverPos] = useState<{ top: number; right: number } | null>(null);
+
+    const toggleExampleModal = () => {
+        if (!showExampleModal && infoButtonRef.current) {
+            const rect = infoButtonRef.current.getBoundingClientRect();
+            setPopoverPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+        }
+        setShowExampleModal((v) => !v);
+    };
 
     const paramKey = matchParamKey(param.name, PARAM_EXAMPLE_IMAGE);
     const exampleImage = paramKey ? PARAM_EXAMPLE_IMAGE[paramKey] : null;
@@ -93,26 +107,41 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
 
     return (
         /* 🌟 5. เพิ่ม Dynamic Class บนกรอบ Section: ถ้าไม่ผ่านเปลี่ยนเป็นขอบแดง-พื้นแดงจาง ถ้าผ่านเปลี่ยนเป็นขอบเขียว-พื้นเขียวจาง */
-        <section className={`rounded-xl overflow-hidden border transition-all duration-300 bg-surface ${verifyError ? "border-red-400 ring-1 ring-red-300" : "border-border"}`}>
+        <section id={`param-zone-${param.id}`} className={`rounded-xl overflow-hidden border transition-all duration-300 bg-surface ${verifyError ? "border-red-400 ring-1 ring-red-300" : "border-border"}`}>
             <div className="text-sm font-semibold relative">
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
-                {exampleImage && (
-                    <button
-                        type="button"
-                        onClick={() => setShowExampleModal((v) => !v)}
-                        aria-label={`ดูตัวอย่างสี ${param.name}`}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
-                    >
-                        <Info size={15} />
-                    </button>
-                )}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2.5">
+                    {exampleImage && (
+                        <button
+                            ref={infoButtonRef}
+                            type="button"
+                            onClick={toggleExampleModal}
+                            aria-label={`ดูตัวอย่างสี ${param.name}`}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                        >
+                            <Info size={15} />
+                        </button>
+                    )}
+                    {/* Toggle เปิด/ปิดสารนี้ — โชว์เฉพาะ step upload (ตอนมี onToggle ส่งมา) */}
+                    {step === "upload" && onToggle && (
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked={enabled} onChange={onToggle} aria-label={`เปิด/ปิดสาร ${param.name}`} className="sr-only peer" />
+                            <div className="relative w-9 h-5 bg-surface-subtle peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-surface after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
+                        </label>
+                    )}
+                </div>
 
-                {/* Popover ตัวอย่างสีของเหลวชุดทดสอบ — โผล่ใกล้ปุ่ม info โดยตรง ไม่ใช่ bottom-sheet */}
-                {showExampleModal && exampleImage && (
+                {/* Popover ตัวอย่างสีของเหลวชุดทดสอบ — โผล่ใกล้ปุ่ม info โดยตรง ไม่ใช่ bottom-sheet
+                    ใช้ fixed + ตำแหน่งที่คำนวณจากปุ่มจริง (popoverPos) แทน absolute เพื่อไม่ให้ overflow-hidden ของ section ตัดทิ้ง
+                    (ตอนปิด toggle section จะเตี้ยลงจนพื้นที่ absolute เดิมโดน clip มองไม่เห็น) */}
+                {showExampleModal && exampleImage && popoverPos && (
                     <>
                         {/* เลเยอร์โปร่งใสจับคลิกข้างนอกเพื่อปิด ไม่มี backdrop มืด */}
                         <div className="fixed inset-0 z-[1000]" onClick={() => setShowExampleModal(false)} />
-                        <div className="absolute left-0 right-0 top-full mt-2 z-[1001] bg-surface border border-border rounded-xl shadow-lg p-2.5 animate-fade-in">
+                        <div
+                            className="fixed z-[1001] w-64 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-lg p-2.5 animate-fade-in"
+                            style={{ top: popoverPos.top, right: popoverPos.right }}
+                        >
                             <div className="flex items-center justify-between mb-1.5">
                                 <span className="text-[10px] font-semibold text-text-primary uppercase tracking-wider">ตัวอย่างสี {param.name.toUpperCase()}</span>
                                 <button
@@ -129,8 +158,9 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
                     </>
                 )}
             </div>
+            {enabled && (
             <div className="p-4">
-                {/* แถบแจ้งเตือนกรณีระบบสลับชนิดสารให้อัตโนมัติ (โหมดเดี่ยว) */}
+                {/* แถบแจ้งเตือนกรณีระบบสลับชนิดสารให้อัตโนมัติ */}
                 {measurement?.autoSwitchedFrom && (
                     <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
                         <FlaskConical size={15} className="shrink-0 mt-0.5" />
@@ -214,6 +244,7 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
                     <input title="input" ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
                 </div>
             </div>
+            )}
         </section>
     );
 }

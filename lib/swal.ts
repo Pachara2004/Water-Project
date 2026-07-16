@@ -105,3 +105,35 @@ const toastSwal = Swal.mixin({
 export function errorToast(title: string, text?: string) {
     return toastSwal.fire({ icon: "error", title, text });
 }
+
+/** Dialog สปินเนอร์ระหว่างรอ action ยาว (เช่น บันทึกข้อมูล) — ปิดด้วย closeDialog() เมื่อเสร็จ */
+export function loadingDialog(title: string, text?: string) {
+    return baseSwal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => baseSwal.showLoading(),
+    });
+}
+
+export function closeDialog() {
+    baseSwal.close();
+}
+
+/** Dialog ยืนยันออกจากระบบ — โทนแดง double icon (ใช้ในหน้าจัดการ) */
+export function confirmLogoutAlert() {
+    return baseSwal.fire({
+        title: "ต้องการออกจากระบบใช่หรือไม่",
+        iconHtml: ICON_SVG.cross,
+        showCancelButton: true,
+        confirmButtonText: "ออกจากระบบ",
+        cancelButtonText: "ยกเลิก",
+        reverseButtons: true,
+        didRender: (popup) => {
+            popup.style.setProperty("--swal-tone", TONE_COLOR.danger);
+            popup.classList.add("app-swal--double");
+        },
+    });
+}

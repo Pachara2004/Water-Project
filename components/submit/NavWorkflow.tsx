@@ -1,5 +1,5 @@
 // components/submit/NavWorkflow.tsx
-import { Loader2, Camera, Sparkles, MapPin, Database, CheckCircle2 } from "lucide-react";
+import { Loader2, Camera, Sparkles, MapPin, Database, CheckCircle2, ToggleLeft } from "lucide-react";
 import { SubmitSteps } from "./SubmitSteps";
 
 export function DesktopSidebar({ sessionId, locationName, currentUser, step, systemParameters, results }: any) {
@@ -29,7 +29,8 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step, sys
 }
 
 export function AnalyzeButton({ activeParameters, imageFiles, currentLocationId, isRecommending, handleAnalyze }: any) {
-    const isAllImagesUploaded = activeParameters.length > 0 && activeParameters.every((p: any) => imageFiles[p.id] !== undefined);
+    const hasEnabledParam = activeParameters.length > 0;
+    const isAllImagesUploaded = hasEnabledParam && activeParameters.every((p: any) => imageFiles[p.id] !== undefined);
     return (
         <button
             onClick={handleAnalyze}
@@ -40,13 +41,17 @@ export function AnalyzeButton({ activeParameters, imageFiles, currentLocationId,
                 <>
                     <Loader2 size={15} className="animate-spin" /> กำลังตรวจจับตำแหน่ง…
                 </>
+            ) : !hasEnabledParam ? (
+                <>
+                    <ToggleLeft size={15} /> เปิดสารที่ต้องการส่งตรวจก่อน
+                </>
             ) : !currentLocationId ? (
                 <>
                     <MapPin size={15} /> กรุณาเลือกสถานีก่อน
                 </>
             ) : !isAllImagesUploaded ? (
                 <>
-                    <Camera size={15} /> ถ่ายภาพให้ครบทุกสาร
+                    <Camera size={15} /> ถ่ายภาพให้ครบทุกสารที่เปิด
                 </>
             ) : (
                 <>
