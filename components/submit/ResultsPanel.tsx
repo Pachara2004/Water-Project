@@ -33,22 +33,31 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                     <div>Value</div>
                 </div>
                 <div className="divide-y divide-border">
-                    {systemParameters.map((param) => {
-                        const measurement = results[param.id];
-                        if (!measurement) return null;
+                    {Object.entries(results).map(([entryKeyStr, measurement]) => {
+                        const entryKey = Number(entryKeyStr);
+                        // หา param จาก measurement.parameterId (สารจริง) ไม่ใช่ entryKey — กรณีสารซ้ำ entryKey เป็น virtual key ที่ไม่ตรงกับ id จริง
+                        const param = systemParameters.find((p) => p.id === measurement.parameterId);
+                        if (!param) return null;
 
                         const maxKey = `${param.name.toLowerCase()}Max`;
                         const max = (std as any)[maxKey] ?? 1.0;
                         const isExceeded = measurement.concentrated > max;
                         const exceededPercentage = isExceeded ? Math.round(((measurement.concentrated - max) / max) * 100) : 0;
 
-                        const isDropdownOpen = openParamId === param.id;
+                        const isDropdownOpen = openParamId === entryKey;
 
                         return (
-                            <div key={param.id} className="px-6 py-4 flex flex-col gap-2 hover:bg-muted/5 transition-colors">
+                            <div key={entryKey} className="px-6 py-4 flex flex-col gap-2 hover:bg-muted/5 transition-colors">
                                 <div className="flex justify-between items-baseline">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
+                                            {measurement.isDuplicateSubstance && (
+                                                <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 px-1.5 py-0.5 rounded">
+                                                    สารซ้ำ
+                                                </span>
+                                            )}
+                                        </div>
                                         {measurement.confidence !== undefined && (
                                             <span className="inline-flex items-center gap-1 font-mono text-[10px] text-teal-600 dark:text-teal-400 font-medium">
                                                 Confidence: {measurement.confidence}
@@ -60,12 +69,12 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                     </div>
                                 </div>
                                 <ThresholdBar value={measurement.concentrated} max={max} status={measurement.status} />
-                                
+
                                 {/* ตัว Dropdown หลักแสดงผลเกณฑ์ของโซนปัจจุบัน */}
                                 <div className="w-full mt-1">
                                     <button
                                         type="button"
-                                        onClick={() => toggleDropdown(param.id)}
+                                        onClick={() => toggleDropdown(entryKey)}
                                         className={`w-full text-xs font-medium px-3 py-2 rounded-lg border transition-all flex items-center justify-between cursor-pointer
                                             ${isExceeded 
                                                 ? "text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200/50 hover:bg-red-100/50" 

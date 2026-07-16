@@ -29,20 +29,21 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
 const antiSpam = new Map<string, number>();
 
 // ==========================================
-// GET /api/samples — ประวัติผลตรวจของตัวเอง เวอร์ชันรวมกลุ่มตาม sessionGroup
-// เห็นเฉพาะของตัวเอง (collectorId = ผู้ใช้ที่ยืนยันตัวตนแล้วเท่านั้น) รวมถึงรายการที่ยัง pending อยู่
+// GET /api/samples — ประวัติผลตรวจ เวอร์ชันรวมกลุ่มตาม sessionGroup
+// collector เห็นเฉพาะของตัวเอง (collectorId = ผู้ใช้ที่ยืนยันตัวตนแล้วเท่านั้น) รวมถึงรายการที่ยัง pending อยู่
+// admin/officer เห็นข้อมูลทุกคนได้ (officer เป็นสิทธิ์อ่านอย่างเดียว ไม่มีปุ่มแก้ไข/ส่งตรวจฝั่งหน้าบ้าน)
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
-        const auth = await verifyAuth(request, ["collector", "admin"]);
+        const auth = await verifyAuth(request, ["collector", "admin", "officer"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
         // collector เห็นได้เฉพาะของตัวเอง (ไม่เชื่อ collectorId จาก query param — ปลอมเป็นคนอื่นได้)
-        // admin เห็นข้อมูลทุกคนได้ (ตามสิทธิ์เดิม) — toggle "เฉพาะของฉัน" ที่หน้าบ้านกรองต่อฝั่ง client เอง
+        // admin/officer เห็นข้อมูลทุกคนได้ — toggle "เฉพาะของฉัน" ที่หน้าบ้านกรองต่อฝั่ง client เอง (เฉพาะ admin)
         const where: any = { isDeleted: false };
-        if (auth.user!.roleName !== "admin") {
+        if (auth.user!.roleName === "collector") {
             where.collectorId = auth.user!.id;
         }
 
@@ -161,8 +162,13 @@ export async function POST(request: NextRequest) {
             } catch (e) {}
         }
 
+        // แนบชื่อ+ขนาดไฟล์ภาพดิบเข้าไปในคีย์ด้วย กันเคสสารซ้ำ (2 ภาพ parameterId เดียวกัน ยิงติดกันเร็วมากจาก handleSave)
+        // โดนบล็อกผิดตัวว่าเป็นการกดซ้ำ ทั้งที่จริงเป็นคนละภาพ — ถ้าเป็นการกดซ้ำจริง ไฟล์เดิมจะมีชื่อ/ขนาดเท่าเดิมเสมอ ยังกันได้ตามปกติ
+        const rawImageFile = formData.get(`image_raw_${paramKey}`) as File | null;
+        const imageFingerprint = rawImageFile ? `${rawImageFile.name}-${rawImageFile.size}` : "no-image";
+
         const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-        const antiSpamKey = `${ip}-${paramKey}`;
+        const antiSpamKey = `${ip}-${paramKey}-${imageFingerprint}`;
 
         if (antiSpam.has(antiSpamKey) && Date.now() - antiSpam.get(antiSpamKey)! < 3000) {
             return NextResponse.json({ error: "อย่ากดซ้ำ ระบบกำลังประมวลผลสารนี้อยู่" }, { status: 429 });
@@ -181,6 +187,9 @@ export async function POST(request: NextRequest) {
         const collectionTime = formData.get("collectionTime") as string;
         const oxygen = formData.get("oxygen") as string | null;
         const sessionGroup = formData.get("sessionGroup") as string | null;
+        // ฝั่งหน้าบ้านส่งมาตอนพบสารซ้ำในชุดเดียวกัน (≥2 ภาพ AI ตรวจเป็นสารเดียวกัน) — บังคับเข้าคิว pending เสมอ
+        // ไม่ว่า confidence จะสูงแค่ไหน เพราะต้องให้ admin ตัดสินใจว่ารายการไหนถูกต้อง
+        const forceReview = formData.get("forceReview") === "true";
 
         if (!locationId || !status || !collectionTime) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" }, { status: 400 });
@@ -337,7 +346,9 @@ export async function POST(request: NextRequest) {
         }
 
         // 4. ตัดสิน low-confidence ฝั่ง server เท่านั้น จาก confidence ที่พาร์สแล้วจริง ๆ ไม่เชื่อ flag จาก client
-        const needsReview = sessionGroup ? createMeasurementsData.some((m) => isLowConfidence(m.confidence)) : false;
+        // forceReview (สารซ้ำ) เชื่อ flag จาก client ได้ เพราะเป็นแค่การ "ยกระดับ" ไปเข้าคิว pending เพิ่มความปลอดภัย
+        // ไม่ได้ปลดล็อกอะไร ต่อให้ client ปลอมส่ง forceReview=true มาเฉย ๆ ผลลัพธ์คือข้อมูลเข้มงวดขึ้น ไม่ใช่ช่องโหว่
+        const needsReview = sessionGroup ? forceReview || createMeasurementsData.some((m) => isLowConfidence(m.confidence)) : false;
 
         // 4.1 คำนวณ status ใหม่ฝั่ง server จากค่าที่วัดได้จริง ห้ามเชื่อ status ที่ client ส่งมาตรง ๆ
         //     (เดิมมีช่องโหว่ให้ client ปลอมค่า status ทับผลวิเคราะห์จริงได้)

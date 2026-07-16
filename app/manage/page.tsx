@@ -10,24 +10,8 @@ import Image from "next/image";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/useToast";
 import Linelogo from "@/public/LINEIcon.png";
-// อิมพอร์ตโครงสร้าง Swal และการตั้งค่าสีจากไฟล์ config ของระบบ
-import { baseSwal, TONE_COLOR, ICON_SVG } from "@/lib/swal"; // <-- ปรับ Path ตัวนี้ให้ตรงกับที่เก็บจริงในโปรเจกต์
-
-// ฟังก์ชันสำหรับเรียก Alert ถามยืนยันการออกจากระบบ
-export function confirmLogoutAlert() {
-    return baseSwal.fire({
-        title: "ต้องการออกจากระบบใช่หรือไม่",
-        iconHtml: ICON_SVG.cross,
-        showCancelButton: true,
-        confirmButtonText: "ออกจากระบบ",
-        cancelButtonText: "ยกเลิก",
-        reverseButtons: true,
-        didRender: (popup) => {
-            popup.style.setProperty("--swal-tone", TONE_COLOR.danger);
-            popup.classList.add("app-swal--double");
-        },
-    });
-}
+// อิมพอร์ตฟังก์ชันยืนยันออกจากระบบจากไฟล์ config กลาง
+import { confirmLogoutAlert } from "@/lib/swal";
 
 // countKey เชื่อมกับผลลัพธ์ /api/manage/pending-count เพื่อบอกว่าเมนูไหนมีคำร้องค้างอยู่
 const adminMenus = [

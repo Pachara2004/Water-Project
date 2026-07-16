@@ -73,7 +73,7 @@ export default function CollectorDashboard() {
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "collector" && currentUser.role !== "admin") {
+        if (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") {
             router.push("/map");
             return;
         }
@@ -136,10 +136,16 @@ export default function CollectorDashboard() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // ─── สวิตช์ "เฉพาะของฉัน" มีความหมายเฉพาะ admin เท่านั้น (เลือกดูของตัวเอง vs ดูทุกคน)
+    //     collector: API กรองเป็นของตัวเองอยู่แล้วเสมอ ไม่ต้องมีสวิตช์ก็เห็นแค่ของตัวเอง
+    //     officer: สิทธิ์อ่านอย่างเดียว ต้องเห็นข้อมูลทุกคนเสมอ ไม่มีแนวคิด "ของฉัน" เพราะไม่ได้เป็นคนเก็บตัวอย่าง
+    const isAdminRole = currentUser?.role === "admin";
+    const effectiveShowOnlyMine = isAdminRole ? showOnlyMine : currentUser?.role === "collector";
+
     // ─── 1. เตรียมข้อมูล Data Source หลัก ───
     const tableData = useMemo(() => {
-        return samples.filter((s) => !s.isDeleted).filter((s) => !showOnlyMine || s.collectedBy === currentUser?.id);
-    }, [samples, showOnlyMine, currentUser]);
+        return samples.filter((s) => !s.isDeleted).filter((s) => !effectiveShowOnlyMine || s.collectedBy === currentUser?.id);
+    }, [samples, effectiveShowOnlyMine, currentUser]);
 
     // ─── 2. นิยามโครงสร้าง Columns พร้อม Custom Filter ฟังก์ชัน ───
     const columns = useMemo(
@@ -336,16 +342,20 @@ export default function CollectorDashboard() {
                             </h1>
                             <p className="text-text-primary font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
-                        <NotificationBell />
+                        {/* Officer เป็นสิทธิ์อ่านอย่างเดียว ไม่ได้เป็นคนเก็บตัวอย่างเอง จึงไม่มีการแจ้งเตือนของตัวเองให้ดู */}
+                        {currentUser?.role !== "officer" && <NotificationBell />}
                     </div>
 
-                    <button
-                        onClick={() => router.push("/submit")}
-                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
-                    >
-                        <Camera size={16} strokeWidth={2.5} />
-                        <span>ตรวจคุณภาพน้ำ</span>
-                    </button>
+                    {/* ปุ่มส่งตรวจ — เฉพาะ collector/admin เท่านั้น officer ดูอย่างเดียวไม่มีสิทธิ์ส่งข้อมูล */}
+                    {currentUser?.role !== "officer" && (
+                        <button
+                            onClick={() => router.push("/submit")}
+                            className="w-full py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
+                        >
+                            <Camera size={16} strokeWidth={2.5} />
+                            <span>ตรวจคุณภาพน้ำ</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* โซนกล่องค้นหาและฟิลเตอร์แบบ Dropdown Multi-Select */}
@@ -358,6 +368,9 @@ export default function CollectorDashboard() {
                             <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ประวัติการส่งตรวจ</h2>
                         </div>
 
+                        {/* สวิตช์ "เฉพาะของฉัน" มีความหมายเฉพาะ admin (เลือกดูของตัวเอง vs ดูทุกคน)
+                            collector เห็นแค่ของตัวเองอยู่แล้วจาก API, officer ต้องเห็นทุกคนเสมอ — ทั้งคู่จึงไม่ต้องมีสวิตช์นี้ */}
+                        {isAdminRole && (
                         <label className="inline-flex items-center gap-2 bg-surface border border-border px-3 py-2 rounded-xl shrink-0 cursor-pointer select-none">
                             <span className="text-xs font-semibold text-text-secondary">เฉพาะของฉัน</span>
 
@@ -369,6 +382,7 @@ export default function CollectorDashboard() {
                                 <div className="relative w-9 h-5 bg-surface-subtle peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-surface after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
                             </div>
                         </label>
+                        )}
                     </div>
                     <div className="bg-surface  rounded-2xl  space-y-4 mt-6 mb-2">
                         {/* Input ค้นหาชื่อสถานที่ ทรงรีมน */}
