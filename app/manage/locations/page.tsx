@@ -49,7 +49,6 @@ export default function AdminLocationsPage() {
     // List
     const [locations, setLocations] = useState<LocationItem[]>([]);
     const [stationSearch, setStationSearch] = useState("");
-    const [isLoading, setIsLoading] = useState(true);
 
     // Edit modal
     const [editingLoc, setEditingLoc] = useState<LocationItem | null>(null);
@@ -61,7 +60,6 @@ export default function AdminLocationsPage() {
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
     const fetchLocations = useCallback(async (silent = false) => {
-        if (!silent) setIsLoading(true);
         try {
             const res = await fetch("/api/locations");
             const data = await res.json();
@@ -80,8 +78,6 @@ export default function AdminLocationsPage() {
             }
         } catch (err) {
             console.error("Failed to fetch locations:", err);
-        } finally {
-            if (!silent) setIsLoading(false);
         }
     }, []);
 
@@ -407,67 +403,52 @@ export default function AdminLocationsPage() {
 
                     {/* รายชื่อสถานีแมตช์สไตล์แบบการ์ดประมวลผล */}
                     <div className="flex flex-col gap-3 pt-2">
-                        {isLoading ? (
-                            <div className="bg-surface rounded-2xl p-10 text-center border border-border flex flex-col items-center justify-center gap-2">
-                                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                <span className="text-xs text-text-muted font-semibold">กำลังดาวน์โหลดข้อมูลสถานี...</span>
-                            </div>
-                        ) : filteredLocations.length === 0 ? (
-                            <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center">
-                                <div className="w-10 h-10 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
-                                    <MapPin size={18} />
-                                </div>
-                                <p className="text-text-primary font-bold text-xs">ไม่พบข้อมูลสถานี</p>
-                                <p className="text-[11px] text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์รายชื่อสถานีที่ตรงกับคำค้นหาในระบบครับ</p>
-                            </div>
-                        ) : (
-                            filteredLocations.map((loc) => (
-                                <div
-                                    key={loc.id}
-                                    className="bg-surface rounded-2xl p-3.5 border border-border flex items-center justify-between gap-4 transition-all hover:scale-[1.005] duration-150 min-w-0"
-                                >
-                                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                                        <div className="flex-1 min-w-0 text-left">
-                                            <div className="gap-2 flex">
-                                                <MapPin size={16} />
-                                                <h4 className="font-bold text-sm text-text-primary truncate">{loc.name}</h4>
+                        {filteredLocations.map((loc) => (
+                            <div
+                                key={loc.id}
+                                className="bg-surface rounded-2xl p-3.5 border border-border flex items-center justify-between gap-4 transition-all hover:scale-[1.005] duration-150 min-w-0"
+                            >
+                                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                    <div className="flex-1 min-w-0 text-left">
+                                        <div className="gap-2 flex">
+                                            <MapPin size={16} />
+                                            <h4 className="font-bold text-sm text-text-primary truncate">{loc.name}</h4>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-text-secondary font-medium">
+                                            <div className="flex items-center gap-2 min-w-0 max-w-35 sm:max-w-none">
+                                                <Building2 size={16} className="text-secondary shrink-0" />
+                                                <span className="truncate font-semibold text-secondary">{getOrganizationLabel(loc.organization)}</span>
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-text-secondary font-medium">
-                                                <div className="flex items-center gap-2 min-w-0 max-w-35 sm:max-w-none">
-                                                    <Building2 size={16} className="text-secondary shrink-0" />
-                                                    <span className="truncate font-semibold text-secondary">{getOrganizationLabel(loc.organization)}</span>
-                                                </div>
-                                                <span className="text-text-muted/30 hidden sm:inline">•</span>
-                                                <span className="text-text-muted text-[10px] bg-surface-subtle px-1.5 py-0.5 rounded-md border border-border font-mono font-semibold">
-                                                    {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
-                                                </span>
-                                            </div>
+                                            <span className="text-text-muted/30 hidden sm:inline">•</span>
+                                            <span className="text-text-muted text-[10px] bg-surface-subtle px-1.5 py-0.5 rounded-md border border-border font-mono font-semibold">
+                                                {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
+                                            </span>
                                         </div>
                                     </div>
-
-                                    {/* กลุ่มปุ่มจัดการด้านขวามือสไตล์ Rounded-xl กระชับ */}
-                                    <div className="flex gap-2 shrink-0">
-                                        <button
-                                            onClick={() => openEdit(loc)}
-                                            className="w-9 h-9 bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
-                                        >
-                                            <Pencil size={16} className="text-text-muted group-hover:text-primary" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(loc)}
-                                            disabled={deletingId === loc.id}
-                                            className="w-9 h-9 bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {deletingId === loc.id ? (
-                                                <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-xl animate-spin" />
-                                            ) : (
-                                                <Trash2 size={16} className="text-text-muted group-hover:text-red-500" />
-                                            )}
-                                        </button>
-                                    </div>
                                 </div>
-                            ))
-                        )}
+
+                                {/* กลุ่มปุ่มจัดการด้านขวามือสไตล์ Rounded-xl กระชับ */}
+                                <div className="flex gap-2 shrink-0">
+                                    <button
+                                        onClick={() => openEdit(loc)}
+                                        className="w-9 h-9 bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
+                                    >
+                                        <Pencil size={16} className="text-text-muted group-hover:text-primary" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(loc)}
+                                        disabled={deletingId === loc.id}
+                                        className="w-9 h-9 bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {deletingId === loc.id ? (
+                                            <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-xl animate-spin" />
+                                        ) : (
+                                            <Trash2 size={16} className="text-text-muted group-hover:text-red-500" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

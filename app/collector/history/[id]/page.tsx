@@ -64,7 +64,6 @@ export default function CollectorHistoryDetailPage() {
     const params = useParams<{ id: string }>();
     const { currentUser } = useAppStore();
     const [sample, setSample] = useState<SampleDetail | null>(null);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
@@ -156,7 +155,6 @@ export default function CollectorHistoryDetailPage() {
         async function fetchSample() {
             if (!currentUser || (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") || !params.id) return;
             try {
-                setLoading(true);
                 setError(null);
                 const response = await fetch(`/api/samples/${params.id}`, {
                     method: "GET",
@@ -170,8 +168,6 @@ export default function CollectorHistoryDetailPage() {
                     setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
                     setSample(null);
                 }
-            } finally {
-                if (!cancelled) setLoading(false);
             }
         }
         fetchSample();
@@ -227,9 +223,9 @@ export default function CollectorHistoryDetailPage() {
     const filteredLocations = locations.filter((l) => l.name?.toLowerCase().includes(locationSearch.toLowerCase()) || l.agency?.toLowerCase().includes(locationSearch.toLowerCase()));
     const isLocationValid = locations.some((l) => String(l.id) === editData.locationId && l.name === locationSearch) || (locations.length === 0 && editData.locationId !== "");
 
-    if (loading) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">กำลังดึงข้อมูลประวัติ...</div>;
+    // 1. หากเกิดปัญหาขึ้นจริงระหว่างยิง API ให้แสดงบล็อก Error ทันที
     if (error) return <div className="min-h-screen text-center p-8 text-xs text-red-500">เกิดข้อผิดพลาด: {error}</div>;
-    if (!sample) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่พบข้อมูลประวัติ</div>;
+    if (!sample) return null;
     if (!mockSubmitHook) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่มีข้อมูลพารามิเตอร์เคมีในระบบ</div>;
 
     // 1 รายการ (การ์ด/แถว) ต่อ 1 measurement จริง — สารซ้ำจะได้ 2 รายการแยกกัน แทนที่จะโดนกันซ้ำเหลือรายการเดียว

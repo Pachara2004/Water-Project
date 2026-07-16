@@ -39,7 +39,6 @@ export default function AdminUsersPage() {
     const router = useRouter();
 
     const [users, setUsers] = useState<UserItem[]>([]);
-    const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<"all" | "staff" | "queue">("queue");
     const [search, setSearch] = useState("");
     const [updating, setUpdating] = useState<number | null>(null);
@@ -94,7 +93,6 @@ export default function AdminUsersPage() {
     };
 
     const fetchUsers = useCallback(async (keyword: string) => {
-        setLoading(true);
         try {
             const params = new URLSearchParams();
             if (keyword) params.set("search", keyword);
@@ -107,8 +105,6 @@ export default function AdminUsersPage() {
             setUsers(Array.isArray(data) ? data : []);
         } catch (e) {
             console.error(e);
-        } finally {
-            setLoading(false);
         }
     }, []);
 
@@ -389,12 +385,7 @@ export default function AdminUsersPage() {
 
                     {/* ─── 3. Content Core Render (List รายการ) ─── */}
                     <div className="space-y-3 pt-2">
-                        {loading ? (
-                            <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center gap-3">
-                                <RefreshCw size={20} className="animate-spin text-primary" />
-                                <span className="text-xs text-text-muted font-bold">กำลังโหลดข้อมูลผู้ใช้...</span>
-                            </div>
-                        ) : processedUsers.length === 0 ? (
+                        {processedUsers.length === 0 ? (
                             <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center">
                                 <div className="w-10 h-10 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
                                     {tab === "queue" ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Users size={18} />}
