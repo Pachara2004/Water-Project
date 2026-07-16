@@ -65,12 +65,12 @@ export default function Navbar() {
 
         // 2. ถ้ามี Role ระดับต่างๆ ให้สอดแทรกเมนูการทำงานเข้าไปตรงกลางก่อน
         // officer เข้าดูได้เหมือน admin แต่เป็นสิทธิ์อ่านอย่างเดียว (ไม่มีปุ่มส่งตรวจ/แจ้งเตือนของตัวเอง จึงไม่มีจุดแดง)
-        if (userRole === "collector" || userRole === "admin" || userRole === "officer") {
+        if (userRole === "collector" || userRole === "admin") {
             items.push({
                 href: "/collector",
                 label: "ตรวจคุณภาพน้ำ",
                 icon: FileScan,
-                showDot: userRole === "officer" ? false : hasUnreadRejection,
+                showDot: hasUnreadRejection,
             });
         }
 
