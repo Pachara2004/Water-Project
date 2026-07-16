@@ -177,31 +177,36 @@ export default function AdminReviewRequestsPage() {
     }
 
     return (
-        <div className="min-h-dvh w-full bg-surface-muted pb-[120px] transition-colors duration-300">
-            <div className="w-full max-w-4xl mx-auto px-4 sm:px-8 pt-10 sm:pt-16">
-                <button onClick={() => router.push("/manage")} className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-primary transition-colors mb-5 group cursor-pointer">
-                    <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
-                    Admin Panel
+        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
+            <div className="bg-card-general border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
+                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
-
+                <div className="text-center">
+                    <h1 className="text-sm font-semibold text-primary">คุณภาพน้ำที่ต้องการยืนยัน</h1>
+                </div>
+                <div className="w-15" />
+            </div>
+            <div className="w-full max-w-4xl mx-auto px-4 pt-5">
                 {/* Header card */}
-                <div className="bg-surface rounded-3xl border border-border shadow-sm p-6 sm:p-8 mb-6 transition-colors duration-300">
-                    <h1 className="font-display text-lg font-bold text-text-primary leading-tight">
+                <div className="bg-card-general rounded-2xl border border-border  p-5 mb-6 transition-colors duration-300">
+                    <h1 className="font-display text-lg font-bold text-black ">
                         ตรวจสอบผลที่มี <span className="font-display text-primary">Confidence ต่ำ</span>
                     </h1>
-                    <p className="text-text-secondary text-xs mt-2 leading-relaxed">
+                    <p className="text-black text-xs mt-1 leading-relaxed">
                         ผลตรวจที่ AI วิเคราะห์ได้ค่าความมั่นใจต่ำกว่า {CONFIDENCE_THRESHOLD.toFixed(2)} จะถูกซ่อนจากแผนที่และแดชบอร์ดจนกว่าจะได้รับการยืนยันจากผู้ดูแลระบบ
                     </p>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex items-center gap-2 mb-6">
+                <div className="px-2 mb-1 text-sm text-primary font-semibold">สถานะที่ต้องการดู</div>
+                <div className="flex items-center gap-1.5 mb-5">
                     {TAB_CONFIG.map((t) => (
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id)}
-                            className={`flex-1 py-3 rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
-                                tab === t.id ? "bg-primary text-white border-primary" : "bg-surface text-text-secondary border-border hover:border-primary/30"
+                            className={`flex-1 py-3 rounded-xl text-xs font-semibold border border-border transition-all cursor-pointer ${
+                                tab === t.id ? "bg-primary text-white border-primary" : "bg-card-general text-black border-border hover:border-primary/30"
                             }`}
                         >
                             {t.label}
