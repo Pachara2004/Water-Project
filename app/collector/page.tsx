@@ -70,7 +70,7 @@ export default function CollectorDashboard() {
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "collector" && currentUser.role !== "admin") {
+        if (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") {
             router.push("/map");
             return;
         }
@@ -132,6 +132,12 @@ export default function CollectorDashboard() {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    // ─── สวิตช์ "เฉพาะของฉัน" มีความหมายเฉพาะ admin เท่านั้น (เลือกดูของตัวเอง vs ดูทุกคน)
+    //     collector: API กรองเป็นของตัวเองอยู่แล้วเสมอ ไม่ต้องมีสวิตช์ก็เห็นแค่ของตัวเอง
+    //     officer: สิทธิ์อ่านอย่างเดียว ต้องเห็นข้อมูลทุกคนเสมอ ไม่มีแนวคิด "ของฉัน" เพราะไม่ได้เป็นคนเก็บตัวอย่าง
+    const isAdminRole = currentUser?.role === "admin";
+    const effectiveShowOnlyMine = isAdminRole ? showOnlyMine : currentUser?.role === "collector";
 
     // ─── 1. เตรียมข้อมูล Data Source หลัก ───
     // ─── 1. เตรียมข้อมูล Data Source หลัก ───
@@ -343,7 +349,8 @@ export default function CollectorDashboard() {
                             </h1>
                             <p className="text-black font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
-                        <NotificationBell />
+                        {/* Officer เป็นสิทธิ์อ่านอย่างเดียว ไม่ได้เป็นคนเก็บตัวอย่างเอง จึงไม่มีการแจ้งเตือนของตัวเองให้ดู */}
+                        {currentUser?.role !== "officer" && <NotificationBell />}
                     </div>
 
                     <button

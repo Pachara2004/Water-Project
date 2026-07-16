@@ -64,12 +64,13 @@ export default function Navbar() {
         const items: { href: string; label: string; icon: typeof Map; showDot?: boolean }[] = [{ href: "/map", label: "แผนที่พิกัดสถานี", icon: Map }];
 
         // 2. ถ้ามี Role ระดับต่างๆ ให้สอดแทรกเมนูการทำงานเข้าไปตรงกลางก่อน
-        if (userRole === "collector" || userRole === "admin") {
+        // officer เข้าดูได้เหมือน admin แต่เป็นสิทธิ์อ่านอย่างเดียว (ไม่มีปุ่มส่งตรวจ/แจ้งเตือนของตัวเอง จึงไม่มีจุดแดง)
+        if (userRole === "collector" || userRole === "admin" || userRole === "officer") {
             items.push({
                 href: "/collector",
                 label: "ตรวจคุณภาพน้ำ",
                 icon: FileScan,
-                showDot: hasUnreadRejection,
+                showDot: userRole === "officer" ? false : hasUnreadRejection,
             });
         }
 

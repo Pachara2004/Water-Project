@@ -33,7 +33,7 @@ interface SampleDetail {
     status: WaterStatus;
     rawImageUrl: string | null;
     analyzedPlotUrl: string | null;
-    paramImagesMap?: Record<number, { raw: string | null; plot: string | null }>;
+    sampleImagesMap?: Record<number, { raw: string | null; plot: string | null }>;
     location: {
         id: number;
         stationName: string;
@@ -76,41 +76,56 @@ export default function CollectorHistoryDetailPage() {
     const locationDropdownRef = useRef<HTMLDivElement>(null);
 
     // ── 1. ค้นหาและสร้างพารามิเตอร์แบบ Dynamic จากโครงสร้าง measurements จริงในเรคคอร์ดนี้ ──
+    // กันซ้ำด้วย parameterId เพราะ session เดียวอาจมี WaterSample 2 แถวชี้ parameterId เดียวกันได้ตอนนี้
+    // (กรณี "สารซ้ำ" ที่หน้า /submit ยอมให้บันทึกทั้งสองภาพแยกกันแล้วรอ admin ตัดสิน) — ไม่งั้น React key ชนกัน
     const systemParameters = useMemo(() => {
         if (!sample || !Array.isArray(sample.measurements)) return [];
 
-        return sample.measurements.map((m: any) => ({
-            id: m.parameter?.id || m.parameterId,
-            name: m.parameter?.name || "unknown",
-            unit: m.parameter?.unit || "mg/L",
-        }));
+        const seen = new Map<number, { id: number; name: string; unit: string }>();
+        sample.measurements.forEach((m: any) => {
+            const id = m.parameter?.id || m.parameterId;
+            if (!seen.has(id)) {
+                seen.set(id, { id, name: m.parameter?.name || "unknown", unit: m.parameter?.unit || "mg/L" });
+            }
+        });
+        return Array.from(seen.values());
     }, [sample]);
 
     // ── 2. ดึงความสัมพันธ์แบบ Dynamic สกัดค่ารายสารและผูกรูปภาพตามสเปกจริงประจำเรคคอร์ด ──
+    // วนตาม measurement จริงทุกตัว (ไม่ใช่ systemParameters ที่ถูกกันซ้ำแล้ว) เพื่อโชว์สารซ้ำเป็น 2 รายการแยกกันได้
+    // key ด้วย sampleId ของแต่ละแถว (ไม่ซ้ำกันเสมอ ต่างจาก parameterId) กันรายการทับกันเหลือรายการเดียว
     const mockSubmitHook = useMemo(() => {
-        if (!sample || systemParameters.length === 0) return null;
+        if (!sample || systemParameters.length === 0 || !Array.isArray(sample.measurements)) return null;
 
         const resultsMap: Record<number, any> = {};
         const imagePreviewsMap: Record<number, string> = {};
         const imagePlotFilesMap: Record<number, any> = {};
 
-        systemParameters.forEach((param) => {
-            const paramId = param.id;
-            const paramNameLower = param.name.toLowerCase();
+        // นับจำนวน measurement ต่อสาร ไว้ตัดสินว่าสารไหน "ซ้ำ" (โชว์ badge ใน ResultsPanel)
+        const countByParam = new Map<number, number>();
+        sample.measurements.forEach((m: any) => {
+            const pid = m.parameter?.id || m.parameterId;
+            countByParam.set(pid, (countByParam.get(pid) || 0) + 1);
+        });
 
-            const mData = Array.isArray(sample.measurements) ? sample.measurements.find((m: any) => (m.parameter?.id || m.parameterId) === paramId) : null;
+        sample.measurements.forEach((m: any) => {
+            const paramId = m.parameter?.id || m.parameterId;
+            const key = m.sampleId ?? paramId;
 
-            resultsMap[paramId] = {
-                concentrated: mData ? mData.value : (sample[`${paramNameLower}Value`] ?? sample[`${paramNameLower}Val`] ?? 0),
-                confidence: mData ? mData.confidence : (sample[`${paramNameLower}Confidence`] ?? sample.confidence ?? 0.9),
+            resultsMap[key] = {
+                concentrated: m.value,
+                confidence: m.confidence,
                 status: sample.status,
+                parameterId: paramId, // ResultsPanel รุ่นใหม่หา param จากฟิลด์นี้แทน key ตรง ๆ (รองรับกรณีสารซ้ำในหน้า submit)
+                isDuplicateSubstance: (countByParam.get(paramId) || 0) > 1,
             };
 
-            // 🌟 ดึงรูปภาพแยกรายสารเคมีที่ถูกต้องผ่านแผนผัง paramImagesMap ที่หลังบ้านแมปคู่ขนานส่งมาให้ครับบอส!
-            const specificImages = sample.paramImagesMap?.[paramId];
+            // 🌟 ดึงรูปภาพผ่าน sampleImagesMap โดย key ด้วย sampleId ของแถวนี้เอง (ไม่ใช่ parameterId)
+            // กัน "ค่ากับรูปมาจากคนละแถว" ตอนมีสารซ้ำ (≥2 WaterSample ชี้ parameterId เดียวกัน) — แต่ละแถวมี sampleId ไม่ซ้ำกันเสมอ
+            const specificImages = m.sampleId !== undefined ? sample.sampleImagesMap?.[m.sampleId] : undefined;
 
-            imagePreviewsMap[paramId] = specificImages?.raw || sample.rawImageUrl || "";
-            imagePlotFilesMap[paramId] = specificImages?.plot || sample.analyzedPlotUrl || "";
+            imagePreviewsMap[key] = specificImages?.raw || sample.rawImageUrl || "";
+            imagePlotFilesMap[key] = specificImages?.plot || sample.analyzedPlotUrl || "";
         });
 
         return {
@@ -133,13 +148,13 @@ export default function CollectorHistoryDetailPage() {
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "collector" && currentUser.role !== "admin") router.push("/map");
+        if (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") router.push("/map");
     }, [currentUser, router]);
 
     useEffect(() => {
         let cancelled = false;
         async function fetchSample() {
-            if (!currentUser || (currentUser.role !== "collector" && currentUser.role !== "admin") || !params.id) return;
+            if (!currentUser || (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") || !params.id) return;
             try {
                 setLoading(true);
                 setError(null);
@@ -216,6 +231,15 @@ export default function CollectorHistoryDetailPage() {
     if (error) return <div className="min-h-screen text-center p-8 text-xs text-red-500">เกิดข้อผิดพลาด: {error}</div>;
     if (!sample) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่พบข้อมูลประวัติ</div>;
     if (!mockSubmitHook) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่มีข้อมูลพารามิเตอร์เคมีในระบบ</div>;
+
+    // 1 รายการ (การ์ด/แถว) ต่อ 1 measurement จริง — สารซ้ำจะได้ 2 รายการแยกกัน แทนที่จะโดนกันซ้ำเหลือรายการเดียว
+    const resultEntries = Object.entries(mockSubmitHook.results)
+        .map(([keyStr, measurement]) => {
+            const key = Number(keyStr);
+            const param = systemParameters.find((p) => p.id === measurement.parameterId);
+            return param ? { key, param, measurement } : null;
+        })
+        .filter((e): e is { key: number; param: (typeof systemParameters)[number]; measurement: any } => e !== null);
 
     const collectorFullName = `${sample.collector.firstName || ""} ${sample.collector.lastName || ""}`.trim() || sample.collector.lineProfileName;
 
@@ -347,7 +371,7 @@ export default function CollectorHistoryDetailPage() {
     return (
         <div className="min-h-dvh w-full bg-surface-muted pb-5 antialiased transition-colors duration-300">
             <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
+                <button onClick={() => router.push("/collector")} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
@@ -377,14 +401,14 @@ export default function CollectorHistoryDetailPage() {
 
             {/* 📱 MOBILE VIEW COMPONENT */}
             <div className="md:hidden px-4 space-y-4 mt-4">
-                {systemParameters.map((param) => (
+                {resultEntries.map(({ key, param, measurement }) => (
                     <ImageZone
-                        key={param.id}
+                        key={key}
                         param={param}
                         step={mockSubmitHook.step}
-                        preview={mockSubmitHook.imagePreviews[param.id]}
-                        plotFile={mockSubmitHook.imagePlotFiles[param.id]}
-                        measurement={mockSubmitHook.results[param.id]}
+                        preview={mockSubmitHook.imagePreviews[key]}
+                        plotFile={mockSubmitHook.imagePlotFiles[key]}
+                        measurement={measurement}
                         onImageFilesChange={() => {}}
                         onNearestLocationsUpdate={() => {}}
                         allLocations={[]}
@@ -414,17 +438,17 @@ export default function CollectorHistoryDetailPage() {
                         </div>
                         <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
                             <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Chemical Summary</p>
-                            {systemParameters.map((param) => {
-                                const chemVal = mockSubmitHook.results[param.id]?.concentrated ?? 0;
-                                return (
-                                    <div key={param.id} className="flex justify-between items-center py-0.5">
-                                        <span className="font-mono text-[10px] text-text-muted uppercase">{param.name}</span>
-                                        <span className="text-[10px] font-bold text-text-primary text-right">
-                                            {chemVal.toFixed(3)} <span className="text-[9px] text-text-muted font-normal">mg/L</span>
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                            {resultEntries.map(({ key, param, measurement }) => (
+                                <div key={key} className="flex justify-between items-center py-0.5">
+                                    <span className="font-mono text-[10px] text-text-muted uppercase">
+                                        {param.name}
+                                        {measurement.isDuplicateSubstance && <span className="ml-1 text-amber-600">•ซ้ำ</span>}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-text-primary text-right">
+                                        {measurement.concentrated.toFixed(3)} <span className="text-[9px] text-text-muted font-normal">mg/L</span>
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     </aside>
 
@@ -433,14 +457,14 @@ export default function CollectorHistoryDetailPage() {
                     </div>
 
                     <div className="flex flex-col flex-1 p-4 gap-4 max-h-[75vh] overflow-y-auto">
-                        {systemParameters.map((param) => (
+                        {resultEntries.map(({ key, param, measurement }) => (
                             <ImageZone
-                                key={param.id}
+                                key={key}
                                 param={param}
                                 step={mockSubmitHook.step}
-                                preview={mockSubmitHook.imagePreviews[param.id]}
-                                plotFile={mockSubmitHook.imagePlotFiles[param.id]}
-                                measurement={mockSubmitHook.results[param.id]}
+                                preview={mockSubmitHook.imagePreviews[key]}
+                                plotFile={mockSubmitHook.imagePlotFiles[key]}
+                                measurement={measurement}
                                 onImageFilesChange={() => {}}
                                 onNearestLocationsUpdate={() => {}}
                                 allLocations={[]}

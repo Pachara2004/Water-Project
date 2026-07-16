@@ -8,7 +8,7 @@ import { confirmDialog, alertError } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
 import { isLowConfidence, CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { refreshNavDots } from "@/lib/navEvents";
-import { ArrowLeft, ShieldAlert, ClipboardCheck, RefreshCw, MapPin, User, Calendar, Check, X, ImageOff, AlertCircle } from "lucide-react";
+import { ArrowLeft, ShieldAlert, ClipboardCheck, RefreshCw, MapPin, User, Calendar, Check, X, ImageOff, AlertCircle, Copy } from "lucide-react";
 
 type ReviewStatusFilter = "pending" | "approved" | "rejected";
 
@@ -58,6 +58,20 @@ function formatDateTime(value: string | null) {
     });
 }
 
+// จัดกลุ่ม samples ของ request ตาม parameterId — คืนเฉพาะกลุ่มที่ชนกัน (≥2 ภาพชี้สารเดียวกัน)
+// ใช้ให้ admin ต้องเลือกภาพหลักก่อนอนุมัติ กันภาพซ้ำหลุดขึ้นแผนที่ทั้งคู่
+function getDuplicateGroups(item: ReviewRequestItem): Map<number, ReviewSample[]> {
+    const groups = new Map<number, ReviewSample[]>();
+    item.samples.forEach((s) => {
+        const pid = s.measurements[0]?.parameterId;
+        if (pid === undefined) return;
+        const arr = groups.get(pid) ?? [];
+        arr.push(s);
+        groups.set(pid, arr);
+    });
+    return new Map(Array.from(groups.entries()).filter(([, arr]) => arr.length > 1));
+}
+
 export default function AdminReviewRequestsPage() {
     const { currentUser } = useAppStore();
     const router = useRouter();
@@ -72,6 +86,16 @@ export default function AdminReviewRequestsPage() {
     const [rejectTarget, setRejectTarget] = useState<ReviewRequestItem | null>(null);
     const [rejectNote, setRejectNote] = useState("");
     const [rejectSaving, setRejectSaving] = useState(false);
+
+    // การเลือกภาพหลักกรณีสารซ้ำ: requestId -> parameterId -> sampleId ที่เลือก
+    const [duplicateSelections, setDuplicateSelections] = useState<Record<number, Record<number, number>>>({});
+
+    const pickDuplicate = (requestId: number, parameterId: number, sampleId: number) => {
+        setDuplicateSelections((prev) => ({
+            ...prev,
+            [requestId]: { ...(prev[requestId] || {}), [parameterId]: sampleId },
+        }));
+    };
 
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
     const fetchRequests = useCallback(async (status: ReviewStatusFilter, silent = false) => {
@@ -100,9 +124,23 @@ export default function AdminReviewRequestsPage() {
     }, [currentUser?.role, tab, fetchRequests]);
 
     const handleApprove = async (item: ReviewRequestItem) => {
+        // สารซ้ำในชุดนี้ (≥2 ภาพชี้ parameterId เดียวกัน) — ต้องเลือกภาพหลักให้ครบทุกกลุ่มก่อนถึงจะอนุมัติได้
+        const dupGroups = getDuplicateGroups(item);
+        const selections = duplicateSelections[item.id] || {};
+        if (dupGroups.size > 0) {
+            const allPicked = Array.from(dupGroups.keys()).every((pid) => selections[pid] !== undefined);
+            if (!allPicked) {
+                alertError("กรุณาเลือกภาพหลักก่อน", "ชุดนี้มีสารซ้ำ กรุณาแตะเลือกภาพที่ต้องการใช้เป็นผลหลักให้ครบทุกสารก่อนกดอนุมัติ");
+                return;
+            }
+        }
+
         const confirmed = await confirmDialog({
             title: "ยืนยันอนุมัติคำร้อง?",
-            text: `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที`,
+            text:
+                dupGroups.size > 0
+                    ? `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที ส่วนภาพที่ไม่ได้เลือกจะถูกลบทิ้งถาวร`
+                    : `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที`,
             confirmText: "อนุมัติ",
             tone: "primary",
         });
@@ -110,15 +148,21 @@ export default function AdminReviewRequestsPage() {
 
         setActingId(item.id);
         try {
+            const keepSampleIds = Object.values(selections);
             const res = await fetch(`/api/review-requests/${item.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getAccessToken()}` },
-                body: JSON.stringify({ action: "approve" }),
+                body: JSON.stringify({ action: "approve", keepSampleIds }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการอนุมัติคำร้อง");
 
             showToast(`อนุมัติผลตรวจของ "${item.location?.name ?? "จุดตรวจ"}" แล้ว`, "success");
+            setDuplicateSelections((prev) => {
+                const next = { ...prev };
+                delete next[item.id];
+                return next;
+            });
             fetchRequests(tab, true);
             refreshNavDots();
         } catch (err) {
@@ -231,7 +275,10 @@ export default function AdminReviewRequestsPage() {
                             </p>
                         </div>
                     ) : (
-                        requests.map((item) => (
+                        requests.map((item) => {
+                            const dupGroups = getDuplicateGroups(item);
+                            const itemSelections = duplicateSelections[item.id] || {};
+                            return (
                             <div key={item.id} className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden">
                                 <div className="p-5 space-y-4">
                                     {/* Header: station + collector + time */}
@@ -259,42 +306,76 @@ export default function AdminReviewRequestsPage() {
                                         </div>
                                     </div>
 
+                                    {/* แจ้งเตือนสารซ้ำ — ต้องเลือกภาพหลักก่อนถึงจะกดอนุมัติได้ */}
+                                    {tab === "pending" && dupGroups.size > 0 && (
+                                        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
+                                            <Copy size={14} className="shrink-0 mt-0.5" />
+                                            <span>ชุดนี้มีสารซ้ำ (แตะเลือกภาพที่ต้องการใช้เป็นผลหลัก) — ภาพที่ไม่ได้เลือกจะถูกลบทิ้งถาวรตอนกดอนุมัติ</span>
+                                        </div>
+                                    )}
+
                                     {/* Measurements per sample */}
                                     <div className="space-y-2">
-                                        {item.samples.map((s) => (
-                                            <div key={s.id} className="flex items-center gap-3 bg-surface-subtle border border-border rounded-xl p-3">
-                                                <div className="w-12 h-12 rounded-lg bg-surface border border-border shrink-0 overflow-hidden flex items-center justify-center">
-                                                    {s.rawImageUrl ? (
-                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                        <img src={s.rawImageUrl} alt="sample" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <ImageOff size={14} className="text-text-muted" />
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0 space-y-1">
-                                                    {s.measurements.map((m) => {
-                                                        const lowConf = isLowConfidence(m.confidence);
-                                                        return (
-                                                            <div key={m.parameterId} className="flex items-center justify-between gap-2 text-xs">
-                                                                <span className="font-semibold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
-                                                                <div className="flex items-center gap-2 shrink-0">
-                                                                    <span className="text-text-secondary">
-                                                                        {m.value.toFixed(3)} {m.unit ?? "mg/L"}
-                                                                    </span>
-                                                                    <span
-                                                                        className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                                                                            lowConf ? "text-red-600 bg-red-50 border border-red-200" : "text-teal-600 bg-teal-50 border border-teal-200"
-                                                                        }`}
-                                                                    >
-                                                                        conf {m.confidence.toFixed(2)}
-                                                                    </span>
-                                                                </div>
+                                        {item.samples.map((s) => {
+                                            const pid = s.measurements[0]?.parameterId;
+                                            const isDuplicateGroup = pid !== undefined && dupGroups.has(pid);
+                                            const isSelected = isDuplicateGroup && itemSelections[pid] === s.id;
+                                            const Wrapper = isDuplicateGroup ? "button" : "div";
+
+                                            return (
+                                                <Wrapper
+                                                    key={s.id}
+                                                    type={isDuplicateGroup ? "button" : undefined}
+                                                    onClick={isDuplicateGroup ? () => pickDuplicate(item.id, pid!, s.id) : undefined}
+                                                    className={`w-full flex items-center gap-3 border rounded-xl p-3 text-left transition-all ${
+                                                        isDuplicateGroup
+                                                            ? `cursor-pointer ${isSelected ? "bg-teal-50 border-teal-500 ring-2 ring-teal-500/30" : "bg-surface-subtle border-amber-300 hover:border-teal-400"}`
+                                                            : "bg-surface-subtle border-border"
+                                                    }`}
+                                                >
+                                                    <div className="relative w-12 h-12 rounded-lg bg-surface border border-border shrink-0 overflow-hidden flex items-center justify-center">
+                                                        {s.rawImageUrl ? (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img src={s.rawImageUrl} alt="sample" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <ImageOff size={14} className="text-text-muted" />
+                                                        )}
+                                                        {isSelected && (
+                                                            <div className="absolute inset-0 bg-teal-600/70 flex items-center justify-center">
+                                                                <Check size={16} className="text-white" strokeWidth={3} />
                                                             </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ))}
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                        {isDuplicateGroup && (
+                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700">
+                                                                {isSelected ? "เลือกเป็นภาพหลักแล้ว" : "แตะเพื่อเลือกเป็นภาพหลัก"}
+                                                            </span>
+                                                        )}
+                                                        {s.measurements.map((m) => {
+                                                            const lowConf = isLowConfidence(m.confidence);
+                                                            return (
+                                                                <div key={m.parameterId} className="flex items-center justify-between gap-2 text-xs">
+                                                                    <span className="font-semibold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
+                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                        <span className="text-text-secondary">
+                                                                            {m.value.toFixed(3)} {m.unit ?? "mg/L"}
+                                                                        </span>
+                                                                        <span
+                                                                            className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
+                                                                                lowConf ? "text-red-600 bg-red-50 border border-red-200" : "text-teal-600 bg-teal-50 border border-teal-200"
+                                                                            }`}
+                                                                        >
+                                                                            conf {m.confidence.toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </Wrapper>
+                                            );
+                                        })}
                                     </div>
 
                                     {/* Reviewed info — เฉพาะคำร้องที่ตัดสินไปแล้ว */}
@@ -324,7 +405,7 @@ export default function AdminReviewRequestsPage() {
                                             </button>
                                             <button
                                                 onClick={() => handleApprove(item)}
-                                                disabled={actingId === item.id}
+                                                disabled={actingId === item.id || (dupGroups.size > 0 && !Array.from(dupGroups.keys()).every((pid) => itemSelections[pid] !== undefined))}
                                                 className="flex-1 py-3 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
@@ -334,7 +415,8 @@ export default function AdminReviewRequestsPage() {
                                     )}
                                 </div>
                             </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>
