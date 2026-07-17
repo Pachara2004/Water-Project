@@ -8,7 +8,7 @@ import { confirmDialog, alertError } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
 import { isLowConfidence, CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { refreshNavDots } from "@/lib/navEvents";
-import { ArrowLeft, ShieldAlert, ClipboardCheck, RefreshCw, MapPin, User, Calendar, Check, X, ImageOff, AlertCircle, Copy } from "lucide-react";
+import { ArrowLeft, ShieldAlert, ClipboardCheck, RefreshCw, MapPin, User, Calendar, Check, X, ImageOff, AlertCircle, Copy, Beaker } from "lucide-react";
 
 type ReviewStatusFilter = "pending" | "approved" | "rejected";
 
@@ -40,6 +40,7 @@ interface ReviewRequestItem {
     collector: { id: number; name: string } | null;
     samples: ReviewSample[];
 }
+
 
 const TAB_CONFIG: { id: ReviewStatusFilter; label: string }[] = [
     { id: "pending", label: "รออนุมัติ" },
@@ -76,6 +77,9 @@ export default function AdminReviewRequestsPage() {
     const { currentUser } = useAppStore();
     const router = useRouter();
     const { showToast, toastElement } = useToast();
+
+    const [previewImgUrl, setPreviewImgUrl] = useState<string | null>(null);
+
 
     const [tab, setTab] = useState<ReviewStatusFilter>("pending");
     const [requests, setRequests] = useState<ReviewRequestItem[]>([]);
@@ -255,13 +259,13 @@ export default function AdminReviewRequestsPage() {
                 </div>
 
                 {/* List */}
-                <div className="space-y-5">
+                <div className="space-y-4">
                     {requests.length === 0 ? (
-                        <div className="bg-surface rounded-3xl p-10 text-center border border-border shadow-sm">
-                            <div className="w-14 h-14 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <ClipboardCheck size={20} className="text-text-muted" />
+                        <div className="bg-surface rounded-2xl p-10 text-center border border-border flex flex-col items-center justify-center">
+                            <div className="w-12 h-12 bg-surface-subtle border border-border rounded-xl flex items-center justify-center mb-4">
+                                <ClipboardCheck size={18} className="text-text-muted" />
                             </div>
-                            <p className="text-xs font-semibold text-text-muted">
+                            <p className="text-xs font-bold text-text-muted">
                                 {tab === "pending" ? "ไม่มีคำร้องรออนุมัติในขณะนี้" : tab === "approved" ? "ยังไม่มีคำร้องที่อนุมัติ" : "ยังไม่มีคำร้องที่ปฏิเสธ"}
                             </p>
                         </div>
@@ -269,142 +273,180 @@ export default function AdminReviewRequestsPage() {
                         requests.map((item) => {
                             const dupGroups = getDuplicateGroups(item);
                             const itemSelections = duplicateSelections[item.id] || {};
+
+                            let statusBadgeColor = "text-amber-600 bg-amber-50";
+                            if (tab === "approved") statusBadgeColor = "text-emerald-600 bg-emerald-50";
+                            if (tab === "rejected") statusBadgeColor = "text-red-600 bg-red-50";
+
                             return (
-                                <div key={item.id} className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden">
-                                    <div className="p-5 space-y-4">
-                                        {/* Header: station + collector + time */}
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-start gap-2.5 min-w-0">
-                                                <MapPin size={16} className="text-primary shrink-0 mt-0.5" />
-                                                <div className="min-w-0">
-                                                    <h3 className="text-sm font-semibold text-text-primary truncate">{item.location?.name ?? "ไม่ทราบสถานที่"}</h3>
-                                                    <p className="text-[11px] text-text-muted mt-0.5 truncate">{item.location?.organization ?? "-"}</p>
-                                                </div>
+                                <div key={item.id} className="bg-card-general rounded-2xl border border-border overflow-hidden flex flex-col p-5 gap-3">
+                                    {/* ── ส่วนหัวการ์ด: ยุบรวม Meta ข้อมูลให้อยู่ในแถวเดียวกันเพื่อประหยัดพื้นที่ ── */}
+                                    <div className="flex items-center  justify-between gap-3 pb-3 border-b border-border/60">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            <MapPin size={24} className="text-primary shrink-0" />
+                                            <div className="flex items-baseline  min-w-0 text-xs flex-wrap flex-col">
+                                                <h3 className="font-bold text-text-primary truncate">{item.location?.name ?? "ไม่ทราบสถานที่"}</h3>
+                                                <p className="text-secondary font-medium truncate">{item.location?.organization ?? "-"}</p>
+                                                <span className="text-secondary font-medium truncate">{formatDateTime(item.collectionTime)}</span>
                                             </div>
-                                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
-                                                {tab === "pending" ? "รออนุมัติ" : tab === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว"}
+                                        </div>
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide shrink-0 border ${statusBadgeColor}`}>
+                                            {tab === "pending" ? "รออนุมัติ" : tab === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว"}
+                                        </span>
+                                    </div>
+
+                                    {/* ── ข้อมูลผู้ส่งและเวลา: ปรับเป็นสไตล์แถวเมทาดาต้าเล็กๆ คลีนๆ ด้านบน ── */}
+                                    <div className="flex items-center gap-4 text-xs text-text-secondary font-medium px-0.5">
+                                        <div className="flex items-center gap-1 min-w-0">
+                                            <span className="truncate">
+                                                ผู้ส่ง: <span className="text-text-primary font-bold">{item.collector?.name ?? "-"}</span>
                                             </span>
                                         </div>
+                                        
+                                    </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                            <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-subtle border border-border rounded-xl px-3.5 py-2.5">
-                                                <User size={13} className="text-text-muted shrink-0" />
-                                                <span className="font-semibold truncate">{item.collector?.name ?? "-"}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-subtle border border-border rounded-xl px-3.5 py-2.5">
-                                                <Calendar size={13} className="text-text-muted shrink-0" />
-                                                <span className="font-semibold truncate">{formatDateTime(item.collectionTime)}</span>
-                                            </div>
+                                    {/* แจ้งเตือนกรณีตรวจเจอสารซ้ำซ้อน */}
+                                    {tab === "pending" && dupGroups.size > 0 && (
+                                        <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/50 text-[10px] text-amber-800 leading-relaxed font-semibold">
+                                            <Copy size={12} className="shrink-0 mt-0.5 text-amber-600" />
+                                            <span>ตรวจพบสารซ้ำซ้อน กรุณาเลือกชิ้นรูปภาพหลักที่ต้องการใช้งานก่อนอนุมัติ</span>
                                         </div>
+                                    )}
 
-                                        {/* แจ้งเตือนสารซ้ำ — ต้องเลือกภาพหลักก่อนถึงจะกดอนุมัติได้ */}
-                                        {tab === "pending" && dupGroups.size > 0 && (
-                                            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
-                                                <Copy size={14} className="shrink-0 mt-0.5" />
-                                                <span>ชุดนี้มีสารซ้ำ (แตะเลือกภาพที่ต้องการใช้เป็นผลหลัก) — ภาพที่ไม่ได้เลือกจะถูกลบทิ้งถาวรตอนกดอนุมัติ</span>
-                                            </div>
-                                        )}
+                                    {/* ── 🌟 การปรับปรุง Core List (ใช้พื้นที่ 2 คอลัมน์ซ้ายขวา) ── */}
+                                    <div className="space-y-2">
+                                        {item.samples.map((s) => {
+                                            const pid = s.measurements[0]?.parameterId;
+                                            const isDuplicateGroup = pid !== undefined && dupGroups.has(pid);
+                                            const isSelected = isDuplicateGroup && itemSelections[pid] === s.id;
 
-                                        {/* Measurements per sample */}
-                                        <div className="space-y-2">
-                                            {item.samples.map((s) => {
-                                                const pid = s.measurements[0]?.parameterId;
-                                                const isDuplicateGroup = pid !== undefined && dupGroups.has(pid);
-                                                const isSelected = isDuplicateGroup && itemSelections[pid] === s.id;
-                                                const Wrapper = isDuplicateGroup ? "button" : "div";
-
-                                                return (
-                                                    <Wrapper
-                                                        key={s.id}
-                                                        type={isDuplicateGroup ? "button" : undefined}
-                                                        onClick={isDuplicateGroup ? () => pickDuplicate(item.id, pid!, s.id) : undefined}
-                                                        className={`w-full flex items-center gap-3 border rounded-xl p-3 text-left transition-all ${
-                                                            isDuplicateGroup
-                                                                ? `cursor-pointer ${isSelected ? "bg-teal-50 border-teal-500 ring-2 ring-teal-500/30" : "bg-surface-subtle border-amber-300 hover:border-teal-400"}`
-                                                                : "bg-surface-subtle border-border"
-                                                        }`}
-                                                    >
-                                                        <div className="relative w-12 h-12 rounded-lg bg-surface border border-border shrink-0 overflow-hidden flex items-center justify-center">
-                                                            {s.rawImageUrl ? (
-                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                <img src={s.rawImageUrl} alt="sample" className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <ImageOff size={14} className="text-text-muted" />
-                                                            )}
-                                                            {isSelected && (
-                                                                <div className="absolute inset-0 bg-teal-600/70 flex items-center justify-center">
-                                                                    <Check size={16} className="text-white" strokeWidth={3} />
-                                                                </div>
-                                                            )}
+                                            return (
+                                                <div
+                                                    key={s.id}
+                                                    className={`w-full border rounded-xl p-3 transition-all flex flex-col gap-2.5 ${
+                                                        isDuplicateGroup
+                                                            ? `${isSelected ? "bg-teal-50/40 border-teal-500 ring-1 ring-teal-500/10" : "bg-surface-subtle border-amber-300 hover:border-teal-400"}`
+                                                            : "bg-surface-subtle border-border/60"
+                                                    }`}
+                                                >
+                                                    {isDuplicateGroup && (
+                                                        <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
+                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700">
+                                                                {isSelected ? "✨ ใช้ชิ้นงานนี้เป็นผลหลัก" : "⚠️ ตัวเลือกสารเคมีซ้ำซ้อน"}
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => pickDuplicate(item.id, pid!, s.id)}
+                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer ${
+                                                                    isSelected
+                                                                        ? "bg-teal-600 text-white"
+                                                                        : "bg-white border border-border text-text-secondary hover:border-teal-500 hover:text-teal-600"
+                                                                }`}
+                                                            >
+                                                                {isSelected ? "เลือกแล้ว" : "ตั้งเป็นหลัก"}
+                                                            </button>
                                                         </div>
-                                                        <div className="flex-1 min-w-0 space-y-1">
-                                                            {isDuplicateGroup && (
-                                                                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700">
-                                                                    {isSelected ? "เลือกเป็นภาพหลักแล้ว" : "แตะเพื่อเลือกเป็นภาพหลัก"}
-                                                                </span>
-                                                            )}
+                                                    )}
+
+                                                    {/* Layout 2 คอลัมน์เคียงข้างกันอย่างมีประโยชน์ */}
+                                                    <div className="flex items-center justify-between gap-3 w-full min-w-0">
+                                                        {/* 📊 คอลัมน์ซ้าย: ยุบรวมกล่องพารามิเตอร์ให้เรียงแถวแนวนอนอย่างกระชับ */}
+                                                        <div className="flex-1 min-w-0 space-y-1.5">
                                                             {s.measurements.map((m) => {
                                                                 const lowConf = isLowConfidence(m.confidence);
+                                                                let chemColor = "text-teal-600 bg-teal-500/10";
+                                                                if (m.parameterName?.toLowerCase().includes("ammonia")) chemColor = "text-purple-600 bg-purple-500/10";
+
                                                                 return (
-                                                                    <div key={m.parameterId} className="flex items-center justify-between gap-2 text-xs">
-                                                                        <span className="font-semibold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
+                                                                    <div
+                                                                        key={m.parameterId}
+                                                                        className="flex items-center justify-between gap-2 bg-white border border-border/40 rounded-lg p-2 shadow-3xs"
+                                                                    >
+                                                                        <div className="flex items-center gap-1 min-w-0">
+                                                                            <Beaker size={11} className={chemColor.split(" ")[0]} />
+                                                                            <span className="text-xs font-bold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
+                                                                        </div>
                                                                         <div className="flex items-center gap-2 shrink-0">
-                                                                            <span className="text-text-secondary">
-                                                                                {m.value.toFixed(3)} {m.unit ?? "mg/L"}
+                                                                            <span className="text-sm font-black text-black">
+                                                                                {m.value.toFixed(3)} <span className="text-[9px] font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
                                                                             </span>
                                                                             <span
-                                                                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                                                                                    lowConf ? "text-red-600 bg-red-50 border border-red-200" : "text-teal-600 bg-teal-50 border border-teal-200"
+                                                                                className={`font-mono text-[9px] px-1.5 py-0.2 rounded font-bold border shrink-0 ${
+                                                                                    lowConf ? "text-red-600 bg-red-50 border-red-100" : "text-teal-600 bg-teal-50 border-teal-100"
                                                                                 }`}
                                                                             >
-                                                                                conf {m.confidence.toFixed(2)}
+                                                                                {m.confidence.toFixed(2)}
                                                                             </span>
                                                                         </div>
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
-                                                    </Wrapper>
-                                                );
-                                            })}
-                                        </div>
 
-                                        {/* Reviewed info — เฉพาะคำร้องที่ตัดสินไปแล้ว */}
-                                        {tab !== "pending" && (
-                                            <div className="text-[11px] text-text-muted bg-surface-subtle border border-border rounded-xl p-3 space-y-1">
-                                                <p>
-                                                    ตัดสินโดย <span className="font-semibold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
-                                                </p>
-                                                {item.reviewNote && (
-                                                    <p className="flex items-start gap-1.5 text-red-600">
-                                                        <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                                                        {item.reviewNote}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
+                                                        {/* 🖼Header 2. คอลัมน์ขวา: จัดรูปถ่ายและรูปกราฟสีให้อยู่ในแนวนอนแพ็คคู่เคียงข้างฝั่งขวา */}
+                                                        <div className="flex gap-1.5 shrink-0 items-center">
+                                                            {/* รูปถ่ายดิบ */}
+                                                            <div
+                                                                onClick={() => s.rawImageUrl && setPreviewImgUrl(s.rawImageUrl)}
+                                                                className="relative w-12 h-12 rounded-lg border border-border bg-white overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
+                                                            >
+                                                                {s.rawImageUrl ? (
+                                                                    <img src={s.rawImageUrl} alt="Raw sample" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
+                                                                )}
+                                                                <span className="absolute bottom-0 inset-x-0 text-[7px] bg-black/60 text-white font-bold text-center py-0.2 select-none">ภาพถ่าย</span>
+                                                            </div>
 
-                                        {/* Actions — เฉพาะแท็บ pending */}
-                                        {tab === "pending" && (
-                                            <div className="flex gap-2.5 pt-1">
-                                                <button
-                                                    onClick={() => openReject(item)}
-                                                    disabled={actingId === item.id}
-                                                    className="flex-1 py-3 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 text-text-secondary hover:text-red-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    <X size={14} /> ปฏิเสธ
-                                                </button>
-                                                <button
-                                                    onClick={() => handleApprove(item)}
-                                                    disabled={actingId === item.id || (dupGroups.size > 0 && !Array.from(dupGroups.keys()).every((pid) => itemSelections[pid] !== undefined))}
-                                                    className="flex-1 py-3 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
-                                                    อนุมัติ
-                                                </button>
-                                            </div>
-                                        )}
+                                                            {/* รูปกราฟสี */}
+                                                            <div
+                                                                onClick={() => s.analyzedPlotUrl && setPreviewImgUrl(s.analyzedPlotUrl)}
+                                                                className="relative w-12 h-12 rounded-lg border border-border bg-white overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
+                                                            >
+                                                                {s.analyzedPlotUrl ? (
+                                                                    <img src={s.analyzedPlotUrl} alt="Analyzed plot" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
+                                                                )}
+                                                                <span className="absolute bottom-0 inset-x-0 text-[7px] bg-primary/80 text-white font-bold text-center py-0.2 select-none">กราฟสี</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
+
+                                    {/* สรุปผลการตัดสินใจ (แท็บที่เคยตรวจผ่านแล้ว) */}
+                                    {tab !== "pending" && (
+                                        <div className="text-[10px] text-text-muted bg-surface-subtle border border-border/60 rounded-xl p-2.5 font-medium">
+                                            <p>
+                                                ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
+                                            </p>
+                                            {item.reviewNote && <p className="text-red-600 font-semibold bg-red-500/5 p-1.5 rounded-md border border-red-500/10 mt-1">เหตุผล: {item.reviewNote}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* ปุ่มกลุ่ม Actions การจัดการระบบในแท็บรออนุมัติ */}
+                                    {tab === "pending" && (
+                                        <div className="flex gap-2 pt-0.5">
+                                            <button
+                                                onClick={() => openReject(item)}
+                                                disabled={actingId === item.id}
+                                                className="flex-1 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-surface-subtle hover:bg-red-50 border border-border hover:border-red-200 text-text-secondary hover:text-red-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <X size={13} /> ปฏิเสธ
+                                            </button>
+                                            <button
+                                                onClick={() => handleApprove(item)}
+                                                disabled={actingId === item.id || (dupGroups.size > 0 && !Array.from(dupGroups.keys()).every((pid) => itemSelections[pid] !== undefined))}
+                                                className="flex-1 py-2 min-h-9.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-800 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {actingId === item.id ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={13} />}
+                                                อนุมัติผล
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })
@@ -415,9 +457,9 @@ export default function AdminReviewRequestsPage() {
             {/* Reject drawer — บังคับกรอกเหตุผลก่อนส่ง */}
             {rejectTarget && (
                 <>
-                    <div className="fixed inset-0 bg-black/40 z-[1000] backdrop-blur-xs transition-opacity" onClick={() => !rejectSaving && setRejectTarget(null)} />
+                    <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={() => !rejectSaving && setRejectTarget(null)} />
                     <div
-                        className="fixed bottom-0 left-0 right-0 z-[1001] bg-surface rounded-t-[32px] shadow-2xl border-t border-border max-w-lg mx-auto px-8 pt-8 space-y-6 animate-slide-up transition-colors duration-300"
+                        className="fixed bottom-0 left-0 right-0 z-1001 bg-surface rounded-t-4xl shadow-2xl border-t border-border max-w-lg mx-auto px-8 pt-8 space-y-6 animate-slide-up transition-colors duration-300"
                         style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}
                     >
                         <div className="w-12 h-1 bg-border rounded-full mx-auto mb-2 pointer-events-none" />
@@ -450,7 +492,7 @@ export default function AdminReviewRequestsPage() {
                         <button
                             onClick={submitReject}
                             disabled={rejectSaving || !rejectNote.trim()}
-                            className="w-full py-4 min-h-[52px] bg-red-600 hover:bg-red-700 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                            className="w-full py-4 min-h-13 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                         >
                             {rejectSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <X size={14} />}
                             ยืนยันปฏิเสธคำร้อง
@@ -458,7 +500,31 @@ export default function AdminReviewRequestsPage() {
                     </div>
                 </>
             )}
+            {previewImgUrl && (
+                <div
+                    className="fixed inset-0 bg-black/90 backdrop-blur-xs z-2000 flex flex-col items-center justify-center p-2 animate-in fade-in duration-200"
+                    onClick={() => setPreviewImgUrl(null)}
+                >
+                    {/* ปุ่มปิดมุมขวาบน */}
+                    <button
+                        onClick={() => setPreviewImgUrl(null)}
+                        className="absolute top-35 right-5 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
+                    >
+                        <X size={20} />
+                    </button>
 
+                    {/* รูปภาพขยายเต็มตา */}
+                    <div className="relative max-w-full max-h-[80vh] rounded-2xl overflow-hidden shadow-2xl">
+                        <img
+                            src={previewImgUrl}
+                            alt="Preview Expanded"
+                            className="max-w-full max-h-[80vh] object-contain"
+                            onClick={(e) => e.stopPropagation()} // กันกดโดนรูปแล้วปิด
+                        />
+                    </div>
+                    <p className="text-white text-xs font-semibold mt-4 tracking-wide select-none">แตะพื้นที่ว่างเพื่อปิดหน้าต่างขยาย</p>
+                </div>
+            )}
             {/* Toast */}
             {toastElement}
         </div>

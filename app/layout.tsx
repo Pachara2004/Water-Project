@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import LiffProvider from "@/components/LiffProvider";
+import DevRoleSwitcher from "@/components/DevRoleSwitcher"; 
 
 export const metadata: Metadata = {
     title: "ระบบตรวจสอบคุณภาพน้ำ | Water Quality Monitoring",
@@ -45,6 +46,7 @@ export default function RootLayout({
                         {children}
                     </main>
                     <Navbar />
+                    <DevRoleSwitcher />
                 </LiffProvider>
             </body>
         </html>
