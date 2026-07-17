@@ -5,7 +5,7 @@
  */
 
 import { PrismaClient, WaterStatus } from "@prisma/client";
-import { evaluateSample } from "../lib/standards";
+import { getParameterStatus } from "../lib/standards";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,7 @@ async function main() {
     await prisma.waterSample.deleteMany();
     await prisma.standard.deleteMany(); // ต้องมาก่อน parameter/locationType เพราะ FK ชี้ไปทั้งคู่
     await prisma.parameter.deleteMany();
-    await prisma.location.deleteMany(); // ต้องมาก่อน locationType เพราะ Location.locationTypeId ชี้มา
+    await prisma.location.deleteMany();
     await prisma.locationType.deleteMany();
     await prisma.user.deleteMany();
     await prisma.role.deleteMany();
@@ -74,6 +74,21 @@ async function main() {
             ],
         });
     }
+
+    // สถานะ = เทียบค่ากับทั้ง 6 เกณฑ์แล้วเอาผลแย่สุด ซึ่งผลลัพธ์ถูกกำหนดโดยเกณฑ์ที่เข้มที่สุดเสมอ
+    // (ผ่านตัวเข้มสุดแล้ว = ผ่านที่เหลืออัตโนมัติ) จึงคำนวณจากตัวเข้มสุดตัวเดียวได้ผลเท่ากันแต่ถูกกว่า
+    // ดึงจาก payload ด้านบนแทนการฮาร์ดโค้ด — แก้ค่าเกณฑ์แล้วข้อมูลสุ่มขยับตามเอง
+    const strictestPhosphate = Math.min(...locationTypesPayload.map((t) => t.phosphateMax));
+    const strictestAmmonia = Math.min(...locationTypesPayload.map((t) => t.ammoniaMax));
+
+    /** สถานะรวมของ 1 ตัวอย่าง = สารที่แย่กว่าเป็นตัวตัดสิน (กฎเดียวกับที่ /api/samples จะใช้หลังแก้ในเฟส A) */
+    const computeStatus = (phosphate: number, ammonia: number): WaterStatus => {
+        const p = getParameterStatus(phosphate, strictestPhosphate);
+        const a = getParameterStatus(ammonia, strictestAmmonia);
+        if (p === "danger" || a === "danger") return "danger" as WaterStatus;
+        if (p === "warning" || a === "warning") return "warning" as WaterStatus;
+        return "safe" as WaterStatus;
+    };
 
     // ─── 4. DASHBOARD WIDGETS SEEDING (ผูกโครงสร้างตามคอลัมน์และ Parameter ID ของจริง) ───
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");
@@ -162,29 +177,22 @@ async function main() {
         const rainVol = Math.random() > 0.6 ? parseFloat((Math.random() * 45).toFixed(2)) : 0;
         const weatherCode = rainVol > 30 ? 7 : rainVol > 10 ? 5 : 1;
 
-        // สุ่ม "โซนความเข้มข้น" อิงเกณฑ์จริงจาก lib/standards.ts (COMMUNITY) แทนสูตรฝนเดิม
-        // เพื่อให้ค่าที่สุ่มออกมาอยู่ในสเกลเดียวกับ phosphateMax/ammoniaMax จริง
+        // สุ่ม "โซนความเข้มข้น" อิงเกณฑ์ที่เข้มที่สุด เพราะนั่นคือตัวที่ตัดสินสถานะจริง
+        // สัดส่วน: ปลอดภัย 85% / เฝ้าระวัง 9% / อันตราย 6%
+        // ตั้ง 85% (ไม่ใช่ 80%) เพื่อเผื่อความแปรปรวนของการสุ่ม + ตัวอย่างชุดทดสอบ review ที่เป็น danger ล้วน
+        // ให้ผลรวมยืนเหนือเป้า "ปลอดภัย > 75%" ได้ทุกครั้งที่รัน ไม่ใช่แค่บางครั้ง
         const severityRoll = Math.random();
-        const severityBucket: "danger" | "warning" | "safe" = severityRoll > 0.85 ? "danger" : severityRoll > 0.6 ? "warning" : "safe";
+        const severityBucket: "danger" | "warning" | "safe" = severityRoll > 0.94 ? "danger" : severityRoll > 0.85 ? "warning" : "safe";
 
-        const AMMONIA_MAX = 0.95;
-        const PHOSPHATE_MAX = 0.045;
+        // ตัวคูณอิงเกณฑ์เข้มสุด: safe < 70% ของเกณฑ์ | warning 70-100% | danger > 100%
+        const scaleFor = (bucket: typeof severityBucket) =>
+            bucket === "danger" ? 1.05 + Math.random() * 1.5 : bucket === "warning" ? 0.7 + Math.random() * 0.29 : Math.random() * 0.69;
 
-        const ammoniaValue =
-            severityBucket === "danger"
-                ? parseFloat((AMMONIA_MAX * (1.05 + Math.random() * 1.5)).toFixed(3))
-                : severityBucket === "warning"
-                  ? parseFloat((AMMONIA_MAX * (0.7 + Math.random() * 0.3)).toFixed(3))
-                  : parseFloat((AMMONIA_MAX * (Math.random() * 0.65)).toFixed(3));
-        const phosphateValue =
-            severityBucket === "danger"
-                ? parseFloat((PHOSPHATE_MAX * (1.05 + Math.random() * 1.5)).toFixed(3))
-                : severityBucket === "warning"
-                  ? parseFloat((PHOSPHATE_MAX * (0.7 + Math.random() * 0.3)).toFixed(3))
-                  : parseFloat((PHOSPHATE_MAX * (Math.random() * 0.65)).toFixed(3));
+        const ammoniaValue = parseFloat((strictestAmmonia * scaleFor(severityBucket)).toFixed(3));
+        const phosphateValue = parseFloat((strictestPhosphate * scaleFor(severityBucket)).toFixed(4));
 
         // คำนวณ status จากสูตรจริงเดียวกับที่ /api/samples ใช้ ไม่ใช่ label ที่ตั้งเอง
-        const computedStatus = evaluateSample(phosphateValue, ammoniaValue).overallStatus as WaterStatus;
+        const computedStatus = computeStatus(phosphateValue, ammoniaValue);
 
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
         const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
@@ -239,7 +247,7 @@ async function main() {
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 3),
             dissolvedOxygen: 5.2,
             airTemperature: 29.1,
-            status: evaluateSample(0, 2.1).overallStatus as WaterStatus,
+            status: computeStatus(0, 2.1),
             sessionGroup: sgPendingSingle,
             rawImageUrl: "/uploads/mock-raw.jpg",
             analyzedPlotUrl: "/uploads/mock-plot.jpg",
@@ -258,7 +266,7 @@ async function main() {
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
-            status: evaluateSample(0, 0.15).overallStatus as WaterStatus,
+            status: computeStatus(0, 0.15),
             sessionGroup: sgPendingPaired,
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 0.15, confidence: 0.91, boundingBox: "[10,20,100,200]" }] },
         },
@@ -270,7 +278,7 @@ async function main() {
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
-            status: evaluateSample(0.6, 0).overallStatus as WaterStatus,
+            status: computeStatus(0.6, 0),
             sessionGroup: sgPendingPaired,
             measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.6, confidence: 0.42, boundingBox: "[15,25,110,210]" }] },
         },
@@ -284,7 +292,7 @@ async function main() {
             collectorId: collectorB.id,
             locationId: insertedLocations[1].id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 8),
-            status: evaluateSample(0, 3.4).overallStatus as WaterStatus,
+            status: computeStatus(0, 3.4),
             sessionGroup: sgPendingOther,
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 3.4, confidence: 0.18, boundingBox: "[10,20,100,200]" }] },
         },
@@ -298,7 +306,7 @@ async function main() {
             collectorId: collectorB.id,
             locationId: reviewLocation.id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
-            status: evaluateSample(0.02, 0).overallStatus as WaterStatus,
+            status: computeStatus(0.02, 0),
             sessionGroup: sgApproved,
             measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.02, confidence: 0.55, boundingBox: "[15,25,110,210]" }] },
         },
@@ -319,7 +327,7 @@ async function main() {
             collectorId: collectorA.id,
             locationId: insertedLocations[2].id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 48),
-            status: evaluateSample(0, 4.5).overallStatus as WaterStatus,
+            status: computeStatus(0, 4.5),
             sessionGroup: sgRejected,
             isDeleted: true,
             lastModifiedBy: adminUser.id,
