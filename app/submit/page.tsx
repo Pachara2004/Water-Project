@@ -91,9 +91,7 @@ function SubmitContent() {
     const onConfirmSave = async (needsAdminReview: boolean) => {
         const confirmed = await confirmDialog({
             title: needsAdminReview ? "ยืนยันส่งข้อมูลเพื่อรอตรวจสอบ" : "ยืนยันการบันทึกข้อมูล",
-            text: needsAdminReview
-                ? "ข้อมูลนี้จะถูกส่งเข้าสถานะ \"รออนุมัติ\" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน"
-                : "คุณต้องการบันทึกผลการตรวจสอบน้ำนี้ลงฐานข้อมูล",
+            text: needsAdminReview ? 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน' : "คุณต้องการบันทึกผลการตรวจสอบน้ำนี้ลงฐานข้อมูล",
             confirmText: needsAdminReview ? "ใช่ ส่งเพื่อรอตรวจสอบ" : "ใช่ บันทึกข้อมูล",
             tone: needsAdminReview ? "warning" : "primary",
         });
@@ -143,61 +141,57 @@ function SubmitContent() {
             {/* MOBILE VIEW COMPONENT */}
             <div className="md:hidden px-4 pb-24 space-y-4 mt-3">
                 <SubmitSteps step={step} />
-                {isLoadingParams ? (
-                    <div className="text-center text-xs py-8 text-text-muted">กำลังโหลดข้อมูลสารเคมี...</div>
-                ) : step === "upload" ? (
-                    // step upload: แสดงหัวการ์ด+toggle ของทุกสารในระบบเสมอ (ไม่ผูกกับจำนวนสาร) เปิดค่อยโผล่พื้นที่อัปรูป
-                    systemParameters.map((param) => (
-                        <ImageZone
-                            key={param.id}
-                            param={param}
-                            step={step}
-                            preview={imagePreviews[param.id]}
-                            plotFile={imagePlotFiles[param.id]}
-                            measurement={results[param.id]}
-                            verifyError={verifyErrors[param.id]}
-                            onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                            onNearestLocationsUpdate={setNearestLocations}
-                            allLocations={allLocations}
-                            setIsRecommending={setIsRecommending}
-                            enabled={enabledParamIds.has(param.id)}
-                            onToggle={() => toggleParam(param.id)}
-                        />
-                    ))
-                ) : step === "analyzing" ? (
-                    // step analyzing: แสดงเฉพาะสารที่เปิดไว้จริง (ยังไม่รู้ผล ใช้ key ของช่องเดิมได้)
-                    activeParameters.map((param) => (
-                        <ImageZone
-                            key={param.id}
-                            param={param}
-                            step={step}
-                            preview={imagePreviews[param.id]}
-                            plotFile={imagePlotFiles[param.id]}
-                            measurement={results[param.id]}
-                            verifyError={verifyErrors[param.id]}
-                            onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                            onNearestLocationsUpdate={setNearestLocations}
-                            allLocations={allLocations}
-                            setIsRecommending={setIsRecommending}
-                        />
-                    ))
-                ) : (
-                    // step results: 1 การ์ดต่อ 1 รายการใน results จริง — สารซ้ำจะได้ 2 การ์ดแยกกัน
-                    resultEntries.map(({ key, param, measurement }) => (
-                        <ImageZone
-                            key={key}
-                            param={param}
-                            step={step}
-                            preview={imagePreviews[key]}
-                            plotFile={imagePlotFiles[key]}
-                            measurement={measurement}
-                            onImageFilesChange={() => {}}
-                            onNearestLocationsUpdate={setNearestLocations}
-                            allLocations={allLocations}
-                            setIsRecommending={setIsRecommending}
-                        />
-                    ))
-                )}
+                {step === "upload"
+                    ? // step upload: แสดงหัวการ์ด+toggle ของทุกสารในระบบเสมอ (ไม่ผูกกับจำนวนสาร) เปิดค่อยโผล่พื้นที่อัปรูป
+                      systemParameters.map((param) => (
+                          <ImageZone
+                              key={param.id}
+                              param={param}
+                              step={step}
+                              preview={imagePreviews[param.id]}
+                              plotFile={imagePlotFiles[param.id]}
+                              measurement={results[param.id]}
+                              verifyError={verifyErrors[param.id]}
+                              onImageFilesChange={(file) => handleImageSelect(param.id, file)}
+                              onNearestLocationsUpdate={setNearestLocations}
+                              allLocations={allLocations}
+                              setIsRecommending={setIsRecommending}
+                              enabled={enabledParamIds.has(param.id)}
+                              onToggle={() => toggleParam(param.id)}
+                          />
+                      ))
+                    : step === "analyzing"
+                      ? // step analyzing: แสดงเฉพาะสารที่เปิดไว้จริง (ยังไม่รู้ผล ใช้ key ของช่องเดิมได้)
+                        activeParameters.map((param) => (
+                            <ImageZone
+                                key={param.id}
+                                param={param}
+                                step={step}
+                                preview={imagePreviews[param.id]}
+                                plotFile={imagePlotFiles[param.id]}
+                                measurement={results[param.id]}
+                                verifyError={verifyErrors[param.id]}
+                                onImageFilesChange={(file) => handleImageSelect(param.id, file)}
+                                onNearestLocationsUpdate={setNearestLocations}
+                                allLocations={allLocations}
+                                setIsRecommending={setIsRecommending}
+                            />
+                        ))
+                      : // step results: 1 การ์ดต่อ 1 รายการใน results จริง — สารซ้ำจะได้ 2 การ์ดแยกกัน
+                        resultEntries.map(({ key, param, measurement }) => (
+                            <ImageZone
+                                key={key}
+                                param={param}
+                                step={step}
+                                preview={imagePreviews[key]}
+                                plotFile={imagePlotFiles[key]}
+                                measurement={measurement}
+                                onImageFilesChange={() => {}}
+                                onNearestLocationsUpdate={setNearestLocations}
+                                allLocations={allLocations}
+                                setIsRecommending={setIsRecommending}
+                            />
+                        ))}
                 {step === "upload" && (
                     <>
                         <LocationPicker {...hook} />
@@ -220,9 +214,7 @@ function SubmitContent() {
                                 {hasLowConfidence && (
                                     <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
                                         <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                                        <span>
-                                            ผลตรวจมีค่า confidence ต่ำกว่าเกณฑ์ หากส่งบันทึก ข้อมูลจะเข้าสู่สถานะ &quot;รออนุมัติ&quot; และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบ
-                                        </span>
+                                        <span>ผลตรวจมีค่า confidence ต่ำกว่าเกณฑ์ หากส่งบันทึก ข้อมูลจะเข้าสู่สถานะ &quot;รออนุมัติ&quot; และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบ</span>
                                     </div>
                                 )}
 
@@ -252,11 +244,7 @@ function SubmitContent() {
                                     needsAdminReview ? "border-amber-500/30 bg-amber-50/60" : "border-teal-500/30 bg-teal-50/60"
                                 }`}
                             >
-                                {needsAdminReview ? (
-                                    <Clock className="text-amber-600" size={28} />
-                                ) : (
-                                    <CheckCircle2 className="text-teal-600 animate-bounce" size={28} />
-                                )}
+                                {needsAdminReview ? <Clock className="text-amber-600" size={28} /> : <CheckCircle2 className="text-teal-600 animate-bounce" size={28} />}
                                 <div>
                                     <p className={`text-sm font-semibold ${needsAdminReview ? "text-amber-900" : "text-teal-900"}`}>
                                         {needsAdminReview ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
@@ -283,55 +271,54 @@ function SubmitContent() {
                 <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-150">
                     <DesktopSidebar {...hook} />
                     <div className="flex flex-col flex-1 border-r border-border p-4 gap-4 max-h-[70vh] overflow-y-auto">
-                        {!isLoadingParams &&
-                            (step === "upload"
-                                ? systemParameters.map((param) => (
-                                      <ImageZone
-                                          key={param.id}
-                                          param={param}
-                                          step={step}
-                                          preview={imagePreviews[param.id]}
-                                          plotFile={imagePlotFiles[param.id]}
-                                          measurement={results[param.id]}
-                                          verifyError={verifyErrors[param.id]}
-                                          onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                                          onNearestLocationsUpdate={setNearestLocations}
-                                          allLocations={allLocations}
-                                          setIsRecommending={setIsRecommending}
-                                          enabled={enabledParamIds.has(param.id)}
-                                          onToggle={() => toggleParam(param.id)}
-                                      />
-                                  ))
-                                : step === "analyzing"
-                                  ? activeParameters.map((param) => (
-                                        <ImageZone
-                                            key={param.id}
-                                            param={param}
-                                            step={step}
-                                            preview={imagePreviews[param.id]}
-                                            plotFile={imagePlotFiles[param.id]}
-                                            measurement={results[param.id]}
-                                            verifyError={verifyErrors[param.id]}
-                                            onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                                            onNearestLocationsUpdate={setNearestLocations}
-                                            allLocations={allLocations}
-                                            setIsRecommending={setIsRecommending}
-                                        />
-                                    ))
-                                  : resultEntries.map(({ key, param, measurement }) => (
-                                        <ImageZone
-                                            key={key}
-                                            param={param}
-                                            step={step}
-                                            preview={imagePreviews[key]}
-                                            plotFile={imagePlotFiles[key]}
-                                            measurement={measurement}
-                                            onImageFilesChange={() => {}}
-                                            onNearestLocationsUpdate={setNearestLocations}
-                                            allLocations={allLocations}
-                                            setIsRecommending={setIsRecommending}
-                                        />
-                                    )))}
+                        {step === "upload"
+                            ? systemParameters.map((param) => (
+                                  <ImageZone
+                                      key={param.id}
+                                      param={param}
+                                      step={step}
+                                      preview={imagePreviews[param.id]}
+                                      plotFile={imagePlotFiles[param.id]}
+                                      measurement={results[param.id]}
+                                      verifyError={verifyErrors[param.id]}
+                                      onImageFilesChange={(file) => handleImageSelect(param.id, file)}
+                                      onNearestLocationsUpdate={setNearestLocations}
+                                      allLocations={allLocations}
+                                      setIsRecommending={setIsRecommending}
+                                      enabled={enabledParamIds.has(param.id)}
+                                      onToggle={() => toggleParam(param.id)}
+                                  />
+                              ))
+                            : step === "analyzing"
+                              ? activeParameters.map((param) => (
+                                    <ImageZone
+                                        key={param.id}
+                                        param={param}
+                                        step={step}
+                                        preview={imagePreviews[param.id]}
+                                        plotFile={imagePlotFiles[param.id]}
+                                        measurement={results[param.id]}
+                                        verifyError={verifyErrors[param.id]}
+                                        onImageFilesChange={(file) => handleImageSelect(param.id, file)}
+                                        onNearestLocationsUpdate={setNearestLocations}
+                                        allLocations={allLocations}
+                                        setIsRecommending={setIsRecommending}
+                                    />
+                                ))
+                              : resultEntries.map(({ key, param, measurement }) => (
+                                    <ImageZone
+                                        key={key}
+                                        param={param}
+                                        step={step}
+                                        preview={imagePreviews[key]}
+                                        plotFile={imagePlotFiles[key]}
+                                        measurement={measurement}
+                                        onImageFilesChange={() => {}}
+                                        onNearestLocationsUpdate={setNearestLocations}
+                                        allLocations={allLocations}
+                                        setIsRecommending={setIsRecommending}
+                                    />
+                                ))}
                         {step === "upload" && <AnalyzeButton {...hook} />}
                     </div>
                     <div className="flex flex-col flex-1 p-4 gap-4">

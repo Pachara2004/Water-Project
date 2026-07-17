@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import ExportButtons from "@/components/dashboard/ExportButtons";
-import { LucideShieldAlert, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX,} from "lucide-react";
+import { LucideShieldAlert, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
@@ -37,7 +37,6 @@ export default function ExecutiveAnalyticsDashboard() {
     const router = useRouter();
     const [viewMode, setViewMode] = useState<"ALL" | "MINE">("ALL");
     const [analytics, setAnalytics] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState(false);
     const [retryTick, setRetryTick] = useState(0); // เพิ่มค่าเพื่อ trigger fetch ใหม่ตอนกดปุ่มลองใหม่
 
@@ -81,7 +80,6 @@ export default function ExecutiveAnalyticsDashboard() {
 
         // ยกเลิก request เก่าเวลาสลับ filter เร็วๆ — กัน response เก่าที่มาช้ากว่ามาทับผลลัพธ์ของ filter ปัจจุบัน
         const controller = new AbortController();
-        setLoading(true);
         setFetchError(false);
         let url = `/api/dashboard/widgets?viewMode=${viewMode}&startDate=${startDate}&endDate=${endDate}&agency=${agency}`;
         if (locationId) url += `&locationId=${locationId}`;
@@ -97,13 +95,10 @@ export default function ExecutiveAnalyticsDashboard() {
             })
             .then((data) => setAnalytics(data))
             .catch((err) => {
-                if (err.name === "AbortError") return; // ถูกยกเลิกเพราะ filter เปลี่ยนก่อนโหลดเสร็จ ไม่ใช่ error จริง ไม่ต้องโชว์ผู้ใช้
+                if (err.name === "AbortError") return;
                 console.error(err);
                 setFetchError(true);
-            })
-            .finally(() => {
-                if (!controller.signal.aborted) setLoading(false);
-            });
+            }); // 💡 สิ้นสุดแค่ .catch พอครับ
 
         return () => controller.abort();
     }, [viewMode, userId, userRole, startDate, endDate, agency, locationId, retryTick, currentUser]);
@@ -353,10 +348,9 @@ export default function ExecutiveAnalyticsDashboard() {
                                 ลองใหม่อีกครั้ง
                             </button>
                         </div>
-                    ) : !analytics ? (
-                        <DashboardSkeleton />
-                    ) : (
-                        <div className={`space-y-3 transition-opacity duration-200 ${loading ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+                    ) : !analytics ? null : (
+                        <div className={`space-y-3 transition-opacity duration-200 ${!analytics ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+                            {" "}
                             {fetchError && (
                                 // มีข้อมูลเก่าอยู่แล้ว แค่ refetch รอบนี้พัง — คงข้อมูลเดิมไว้ให้ดู แค่แจ้งเตือนว่าอาจไม่ใช่ข้อมูลล่าสุด
                                 <div className="bg-red-50 border border-red-100 text-red-600 text-xs font-semibold rounded-lg px-3 py-2 flex items-center gap-1.5">
@@ -420,7 +414,6 @@ export default function ExecutiveAnalyticsDashboard() {
                                     </div>
                                 ))}
                             </div>
-
                             <div className="grid grid-cols-1 gap-2.5">
                                 {/* ตาราง Hotspots เสี่ยงอันตรายสะสมสูงสุด — ซ่อนตอนเลือกสถานีเดียว เพราะข้อมูลซ้ำกับการ์ด KPI ด้านบนที่ scope ตามสถานีเดียวกันอยู่แล้ว */}
                                 {!analytics?.stationDetail && (
@@ -494,7 +487,6 @@ export default function ExecutiveAnalyticsDashboard() {
                                     </div>
                                 </div>
                             </div>
-
                             {/* มิติที่ 4: WATERTRENDCHART แนวโน้มสารเคมีพร้อมเส้นควบคุมควบคุม PCD */}
                             <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -544,7 +536,6 @@ export default function ExecutiveAnalyticsDashboard() {
                                     </div>
                                 )}
                             </div>
-
                             {/* มิติที่ 5: Correlation — แยกเป็น component ลูกเพื่อไม่ให้การกด toggle re-render ทั้งหน้า */}
                             {analytics?.correlation && <CorrelationSection correlation={analytics.correlation} />}
                         </div>
@@ -552,91 +543,6 @@ export default function ExecutiveAnalyticsDashboard() {
                 </div>
             </div>
         </div>
-    );
-}
-
-// ก้อนสี่เหลี่ยมกระพริบพื้นฐานของ skeleton (ขนาดกำหนดผ่าน className ที่ส่งเข้ามา)
-function Sk({ className = "" }: { className?: string }) {
-    return <div className={`bg-slate-200/70 rounded animate-pulse ${className}`} />;
-}
-
-// 💀 Skeleton โครงร่างขนาดเทียบเท่าของจริง — ลอกโครงสร้าง grid/section เดียวกับตอนโหลดเสร็จ ป้องกันเลย์เอาต์กระโดดตอนข้อมูลมาถึง
-function DashboardSkeleton() {
-    return (
-        <>
-            {/* แถวปุ่มสลับ WoW/MoM */}
-            <div className="flex items-center justify-end shrink-0">
-                <Sk className="h-6 w-24" />
-            </div>
-
-            {/* มิติที่ 1: การ์ด KPI 4 ใบ */}
-            <div className="grid grid-cols-2 md:grid-cols-12 gap-2 shrink-0">
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className={`bg-surface rounded-xl border border-border p-2.5 flex flex-col border-l-10 border-l-slate-200 ${kpiSpanClass(3)}`}>
-                        <Sk className="h-2.5 w-3/4 mb-2" />
-                        <Sk className="h-5 w-1/2 mb-2" />
-                        <Sk className="h-3 w-2/5" />
-                    </div>
-                ))}
-            </div>
-
-            {/* มิติที่ 2 & 3: Hotspots + Temporal */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-                <div className="col-span-1 md:col-span-5 bg-surface rounded-xl border border-border p-3 shadow-xs">
-                    <Sk className="h-3.5 w-2/3 mb-3" />
-                    <div className="space-y-2.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                                <Sk className="h-3 w-3 shrink-0" />
-                                <div className="flex-1">
-                                    <Sk className="h-2.5 w-3/4 mb-1" />
-                                    <Sk className="h-2 w-1/3" />
-                                </div>
-                                <Sk className="h-3 w-8" />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="col-span-1 md:col-span-7 bg-surface rounded-xl border border-border p-3 shadow-xs flex flex-col gap-3">
-                    <Sk className="h-3.5 w-3/4" />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {Array.from({ length: 2 }).map((_, i) => (
-                            <div key={i} className="bg-surface-subtle rounded-lg p-2 border border-border h-52 flex flex-col gap-2">
-                                <Sk className="h-2.5 w-1/2" />
-                                <Sk className="flex-1 w-full" />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* มิติที่ 4: WaterTrendChart */}
-            <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
-                <Sk className="h-3.5 w-1/2 mb-2" />
-                <Sk className="h-40 w-full" />
-            </div>
-
-            {/* มิติที่ 5: Correlation */}
-            <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
-                <div className="flex items-center justify-between mb-2 gap-2">
-                    <Sk className="h-3.5 w-1/3" />
-                    <Sk className="h-6 w-32" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-                    <div className="col-span-1 md:col-span-8">
-                        <Sk className="h-48 w-full" />
-                    </div>
-                    <div className="col-span-1 md:col-span-4 grid grid-cols-2 gap-2 content-start">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="rounded-lg border border-border p-2">
-                                <Sk className="h-4 w-1/2 mx-auto mb-1.5" />
-                                <Sk className="h-2 w-3/4 mx-auto" />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </>
     );
 }
 

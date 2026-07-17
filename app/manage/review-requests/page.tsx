@@ -79,7 +79,6 @@ export default function AdminReviewRequestsPage() {
 
     const [tab, setTab] = useState<ReviewStatusFilter>("pending");
     const [requests, setRequests] = useState<ReviewRequestItem[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [actingId, setActingId] = useState<number | null>(null);
 
     // Reject drawer — reason ต้องกรอกเสมอก่อนส่ง (บังคับที่ API ด้วย)
@@ -99,7 +98,6 @@ export default function AdminReviewRequestsPage() {
 
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
     const fetchRequests = useCallback(async (status: ReviewStatusFilter, silent = false) => {
-        if (!silent) setIsLoading(true);
         try {
             const res = await fetch(`/api/review-requests?status=${status}`, {
                 headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
@@ -109,8 +107,6 @@ export default function AdminReviewRequestsPage() {
         } catch (err) {
             console.error("Failed to fetch review requests:", err);
             setRequests([]);
-        } finally {
-            if (!silent) setIsLoading(false);
         }
     }, []);
 
@@ -260,12 +256,7 @@ export default function AdminReviewRequestsPage() {
 
                 {/* List */}
                 <div className="space-y-5">
-                    {isLoading ? (
-                        <div className="bg-surface rounded-3xl p-10 text-center border border-border flex flex-col items-center justify-center gap-3">
-                            <RefreshCw size={22} className="animate-spin text-primary" />
-                            <span className="text-xs text-text-muted font-semibold">กำลังดาวน์โหลดรายการคำร้อง...</span>
-                        </div>
-                    ) : requests.length === 0 ? (
+                    {requests.length === 0 ? (
                         <div className="bg-surface rounded-3xl p-10 text-center border border-border shadow-sm">
                             <div className="w-14 h-14 bg-surface-subtle border border-border rounded-2xl flex items-center justify-center mx-auto mb-4">
                                 <ClipboardCheck size={20} className="text-text-muted" />
@@ -279,142 +270,142 @@ export default function AdminReviewRequestsPage() {
                             const dupGroups = getDuplicateGroups(item);
                             const itemSelections = duplicateSelections[item.id] || {};
                             return (
-                            <div key={item.id} className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden">
-                                <div className="p-5 space-y-4">
-                                    {/* Header: station + collector + time */}
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-start gap-2.5 min-w-0">
-                                            <MapPin size={16} className="text-primary shrink-0 mt-0.5" />
-                                            <div className="min-w-0">
-                                                <h3 className="text-sm font-semibold text-text-primary truncate">{item.location?.name ?? "ไม่ทราบสถานที่"}</h3>
-                                                <p className="text-[11px] text-text-muted mt-0.5 truncate">{item.location?.organization ?? "-"}</p>
+                                <div key={item.id} className="bg-surface rounded-2xl border border-border shadow-md overflow-hidden">
+                                    <div className="p-5 space-y-4">
+                                        {/* Header: station + collector + time */}
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-start gap-2.5 min-w-0">
+                                                <MapPin size={16} className="text-primary shrink-0 mt-0.5" />
+                                                <div className="min-w-0">
+                                                    <h3 className="text-sm font-semibold text-text-primary truncate">{item.location?.name ?? "ไม่ทราบสถานที่"}</h3>
+                                                    <p className="text-[11px] text-text-muted mt-0.5 truncate">{item.location?.organization ?? "-"}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
+                                                {tab === "pending" ? "รออนุมัติ" : tab === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว"}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-subtle border border-border rounded-xl px-3.5 py-2.5">
+                                                <User size={13} className="text-text-muted shrink-0" />
+                                                <span className="font-semibold truncate">{item.collector?.name ?? "-"}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-subtle border border-border rounded-xl px-3.5 py-2.5">
+                                                <Calendar size={13} className="text-text-muted shrink-0" />
+                                                <span className="font-semibold truncate">{formatDateTime(item.collectionTime)}</span>
                                             </div>
                                         </div>
-                                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
-                                            {tab === "pending" ? "รออนุมัติ" : tab === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว"}
-                                        </span>
-                                    </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                        <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-subtle border border-border rounded-xl px-3.5 py-2.5">
-                                            <User size={13} className="text-text-muted shrink-0" />
-                                            <span className="font-semibold truncate">{item.collector?.name ?? "-"}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-subtle border border-border rounded-xl px-3.5 py-2.5">
-                                            <Calendar size={13} className="text-text-muted shrink-0" />
-                                            <span className="font-semibold truncate">{formatDateTime(item.collectionTime)}</span>
-                                        </div>
-                                    </div>
+                                        {/* แจ้งเตือนสารซ้ำ — ต้องเลือกภาพหลักก่อนถึงจะกดอนุมัติได้ */}
+                                        {tab === "pending" && dupGroups.size > 0 && (
+                                            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
+                                                <Copy size={14} className="shrink-0 mt-0.5" />
+                                                <span>ชุดนี้มีสารซ้ำ (แตะเลือกภาพที่ต้องการใช้เป็นผลหลัก) — ภาพที่ไม่ได้เลือกจะถูกลบทิ้งถาวรตอนกดอนุมัติ</span>
+                                            </div>
+                                        )}
 
-                                    {/* แจ้งเตือนสารซ้ำ — ต้องเลือกภาพหลักก่อนถึงจะกดอนุมัติได้ */}
-                                    {tab === "pending" && dupGroups.size > 0 && (
-                                        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
-                                            <Copy size={14} className="shrink-0 mt-0.5" />
-                                            <span>ชุดนี้มีสารซ้ำ (แตะเลือกภาพที่ต้องการใช้เป็นผลหลัก) — ภาพที่ไม่ได้เลือกจะถูกลบทิ้งถาวรตอนกดอนุมัติ</span>
-                                        </div>
-                                    )}
+                                        {/* Measurements per sample */}
+                                        <div className="space-y-2">
+                                            {item.samples.map((s) => {
+                                                const pid = s.measurements[0]?.parameterId;
+                                                const isDuplicateGroup = pid !== undefined && dupGroups.has(pid);
+                                                const isSelected = isDuplicateGroup && itemSelections[pid] === s.id;
+                                                const Wrapper = isDuplicateGroup ? "button" : "div";
 
-                                    {/* Measurements per sample */}
-                                    <div className="space-y-2">
-                                        {item.samples.map((s) => {
-                                            const pid = s.measurements[0]?.parameterId;
-                                            const isDuplicateGroup = pid !== undefined && dupGroups.has(pid);
-                                            const isSelected = isDuplicateGroup && itemSelections[pid] === s.id;
-                                            const Wrapper = isDuplicateGroup ? "button" : "div";
-
-                                            return (
-                                                <Wrapper
-                                                    key={s.id}
-                                                    type={isDuplicateGroup ? "button" : undefined}
-                                                    onClick={isDuplicateGroup ? () => pickDuplicate(item.id, pid!, s.id) : undefined}
-                                                    className={`w-full flex items-center gap-3 border rounded-xl p-3 text-left transition-all ${
-                                                        isDuplicateGroup
-                                                            ? `cursor-pointer ${isSelected ? "bg-teal-50 border-teal-500 ring-2 ring-teal-500/30" : "bg-surface-subtle border-amber-300 hover:border-teal-400"}`
-                                                            : "bg-surface-subtle border-border"
-                                                    }`}
-                                                >
-                                                    <div className="relative w-12 h-12 rounded-lg bg-surface border border-border shrink-0 overflow-hidden flex items-center justify-center">
-                                                        {s.rawImageUrl ? (
-                                                            // eslint-disable-next-line @next/next/no-img-element
-                                                            <img src={s.rawImageUrl} alt="sample" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <ImageOff size={14} className="text-text-muted" />
-                                                        )}
-                                                        {isSelected && (
-                                                            <div className="absolute inset-0 bg-teal-600/70 flex items-center justify-center">
-                                                                <Check size={16} className="text-white" strokeWidth={3} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0 space-y-1">
-                                                        {isDuplicateGroup && (
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700">
-                                                                {isSelected ? "เลือกเป็นภาพหลักแล้ว" : "แตะเพื่อเลือกเป็นภาพหลัก"}
-                                                            </span>
-                                                        )}
-                                                        {s.measurements.map((m) => {
-                                                            const lowConf = isLowConfidence(m.confidence);
-                                                            return (
-                                                                <div key={m.parameterId} className="flex items-center justify-between gap-2 text-xs">
-                                                                    <span className="font-semibold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
-                                                                    <div className="flex items-center gap-2 shrink-0">
-                                                                        <span className="text-text-secondary">
-                                                                            {m.value.toFixed(3)} {m.unit ?? "mg/L"}
-                                                                        </span>
-                                                                        <span
-                                                                            className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                                                                                lowConf ? "text-red-600 bg-red-50 border border-red-200" : "text-teal-600 bg-teal-50 border border-teal-200"
-                                                                            }`}
-                                                                        >
-                                                                            conf {m.confidence.toFixed(2)}
-                                                                        </span>
-                                                                    </div>
+                                                return (
+                                                    <Wrapper
+                                                        key={s.id}
+                                                        type={isDuplicateGroup ? "button" : undefined}
+                                                        onClick={isDuplicateGroup ? () => pickDuplicate(item.id, pid!, s.id) : undefined}
+                                                        className={`w-full flex items-center gap-3 border rounded-xl p-3 text-left transition-all ${
+                                                            isDuplicateGroup
+                                                                ? `cursor-pointer ${isSelected ? "bg-teal-50 border-teal-500 ring-2 ring-teal-500/30" : "bg-surface-subtle border-amber-300 hover:border-teal-400"}`
+                                                                : "bg-surface-subtle border-border"
+                                                        }`}
+                                                    >
+                                                        <div className="relative w-12 h-12 rounded-lg bg-surface border border-border shrink-0 overflow-hidden flex items-center justify-center">
+                                                            {s.rawImageUrl ? (
+                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                <img src={s.rawImageUrl} alt="sample" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <ImageOff size={14} className="text-text-muted" />
+                                                            )}
+                                                            {isSelected && (
+                                                                <div className="absolute inset-0 bg-teal-600/70 flex items-center justify-center">
+                                                                    <Check size={16} className="text-white" strokeWidth={3} />
                                                                 </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </Wrapper>
-                                            );
-                                        })}
-                                    </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0 space-y-1">
+                                                            {isDuplicateGroup && (
+                                                                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700">
+                                                                    {isSelected ? "เลือกเป็นภาพหลักแล้ว" : "แตะเพื่อเลือกเป็นภาพหลัก"}
+                                                                </span>
+                                                            )}
+                                                            {s.measurements.map((m) => {
+                                                                const lowConf = isLowConfidence(m.confidence);
+                                                                return (
+                                                                    <div key={m.parameterId} className="flex items-center justify-between gap-2 text-xs">
+                                                                        <span className="font-semibold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
+                                                                        <div className="flex items-center gap-2 shrink-0">
+                                                                            <span className="text-text-secondary">
+                                                                                {m.value.toFixed(3)} {m.unit ?? "mg/L"}
+                                                                            </span>
+                                                                            <span
+                                                                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
+                                                                                    lowConf ? "text-red-600 bg-red-50 border border-red-200" : "text-teal-600 bg-teal-50 border border-teal-200"
+                                                                                }`}
+                                                                            >
+                                                                                conf {m.confidence.toFixed(2)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </Wrapper>
+                                                );
+                                            })}
+                                        </div>
 
-                                    {/* Reviewed info — เฉพาะคำร้องที่ตัดสินไปแล้ว */}
-                                    {tab !== "pending" && (
-                                        <div className="text-[11px] text-text-muted bg-surface-subtle border border-border rounded-xl p-3 space-y-1">
-                                            <p>
-                                                ตัดสินโดย <span className="font-semibold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
-                                            </p>
-                                            {item.reviewNote && (
-                                                <p className="flex items-start gap-1.5 text-red-600">
-                                                    <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                                                    {item.reviewNote}
+                                        {/* Reviewed info — เฉพาะคำร้องที่ตัดสินไปแล้ว */}
+                                        {tab !== "pending" && (
+                                            <div className="text-[11px] text-text-muted bg-surface-subtle border border-border rounded-xl p-3 space-y-1">
+                                                <p>
+                                                    ตัดสินโดย <span className="font-semibold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
                                                 </p>
-                                            )}
-                                        </div>
-                                    )}
+                                                {item.reviewNote && (
+                                                    <p className="flex items-start gap-1.5 text-red-600">
+                                                        <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                                                        {item.reviewNote}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
 
-                                    {/* Actions — เฉพาะแท็บ pending */}
-                                    {tab === "pending" && (
-                                        <div className="flex gap-2.5 pt-1">
-                                            <button
-                                                onClick={() => openReject(item)}
-                                                disabled={actingId === item.id}
-                                                className="flex-1 py-3 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 text-text-secondary hover:text-red-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                <X size={14} /> ปฏิเสธ
-                                            </button>
-                                            <button
-                                                onClick={() => handleApprove(item)}
-                                                disabled={actingId === item.id || (dupGroups.size > 0 && !Array.from(dupGroups.keys()).every((pid) => itemSelections[pid] !== undefined))}
-                                                className="flex-1 py-3 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
-                                                อนุมัติ
-                                            </button>
-                                        </div>
-                                    )}
+                                        {/* Actions — เฉพาะแท็บ pending */}
+                                        {tab === "pending" && (
+                                            <div className="flex gap-2.5 pt-1">
+                                                <button
+                                                    onClick={() => openReject(item)}
+                                                    disabled={actingId === item.id}
+                                                    className="flex-1 py-3 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 text-text-secondary hover:text-red-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <X size={14} /> ปฏิเสธ
+                                                </button>
+                                                <button
+                                                    onClick={() => handleApprove(item)}
+                                                    disabled={actingId === item.id || (dupGroups.size > 0 && !Array.from(dupGroups.keys()).every((pid) => itemSelections[pid] !== undefined))}
+                                                    className="flex-1 py-3 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={14} />}
+                                                    อนุมัติ
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
                             );
                         })
                     )}

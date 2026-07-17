@@ -41,7 +41,6 @@ export default function RootLayout({
             </head>
             <body className="overscroll-none">
                 <LiffProvider>
-                    
                     <main className="min-h-screen lg:pl-50 lg:pb-0!" style={{ paddingBottom: "calc(88px + env(safe-area-inset-bottom))" }}>
                         {children}
                     </main>

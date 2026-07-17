@@ -336,6 +336,7 @@ export default function ManagePage() {
     };
 
     const isAdmin = currentUser?.role === "admin";
+    if (currentUser === undefined) return null;
     return (
         <div className="min-h-dvh w-full bg-bg transition-colors duration-75">
             <div className="w-full max-w-2xl mx-auto px-4">
