@@ -5,7 +5,7 @@
  */
 
 import { PrismaClient, WaterStatus } from "@prisma/client";
-import { getParameterStatus } from "../lib/standards";
+import { evaluateSample, type StandardRow } from "../lib/standards";
 
 const prisma = new PrismaClient();
 
@@ -75,20 +75,25 @@ async function main() {
         });
     }
 
-    // สถานะ = เทียบค่ากับทั้ง 6 เกณฑ์แล้วเอาผลแย่สุด ซึ่งผลลัพธ์ถูกกำหนดโดยเกณฑ์ที่เข้มที่สุดเสมอ
-    // (ผ่านตัวเข้มสุดแล้ว = ผ่านที่เหลืออัตโนมัติ) จึงคำนวณจากตัวเข้มสุดตัวเดียวได้ผลเท่ากันแต่ถูกกว่า
-    // ดึงจาก payload ด้านบนแทนการฮาร์ดโค้ด — แก้ค่าเกณฑ์แล้วข้อมูลสุ่มขยับตามเอง
+    // เกณฑ์ที่เข้มที่สุดของแต่ละสาร = ตัวที่ตัดสินสถานะจริง (ผ่านตัวเข้มสุดแล้ว = ผ่านที่เหลืออัตโนมัติ)
+    // ใช้เป็นสเกลอ้างอิงตอนสุ่มค่า — ดึงจาก payload ด้านบนแทนการฮาร์ดโค้ด
     const strictestPhosphate = Math.min(...locationTypesPayload.map((t) => t.phosphateMax));
     const strictestAmmonia = Math.min(...locationTypesPayload.map((t) => t.ammoniaMax));
 
-    /** สถานะรวมของ 1 ตัวอย่าง = สารที่แย่กว่าเป็นตัวตัดสิน (กฎเดียวกับที่ /api/samples จะใช้หลังแก้ในเฟส A) */
-    const computeStatus = (phosphate: number, ammonia: number): WaterStatus => {
-        const p = getParameterStatus(phosphate, strictestPhosphate);
-        const a = getParameterStatus(ammonia, strictestAmmonia);
-        if (p === "danger" || a === "danger") return "danger" as WaterStatus;
-        if (p === "warning" || a === "warning") return "warning" as WaterStatus;
-        return "safe" as WaterStatus;
-    };
+    // เกณฑ์ทั้งหมดที่เพิ่ง seed ลงไป — ส่งเข้า evaluateSample ตัวเดียวกับที่ /api/samples ใช้
+    // ไม่เขียนกฎซ้ำในไฟล์นี้ ป้องกัน seed กับ production คำนวณคนละแบบแล้วไม่มีใครรู้
+    const seededStandards: StandardRow[] = await prisma.standard.findMany({
+        select: { parameterId: true, maxValue: true },
+    });
+
+    const computeStatus = (phosphate: number, ammonia: number): WaterStatus =>
+        evaluateSample(
+            [
+                { parameterId: paramPhosphate.id, value: phosphate },
+                { parameterId: paramAmmonia.id, value: ammonia },
+            ],
+            seededStandards,
+        ) as WaterStatus;
 
     // ─── 4. DASHBOARD WIDGETS SEEDING (ผูกโครงสร้างตามคอลัมน์และ Parameter ID ของจริง) ───
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");

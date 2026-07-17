@@ -69,34 +69,64 @@ export function getParameterStatus(value: number | null | undefined, max: number
     return "safe";
 }
 
-export interface EvaluationResult {
-    phosphateStatus: StatusType;
-    ammoniaStatus: StatusType;
-    overallStatus: StatusType;
+/** ค่าที่วัดได้ 1 ตัว — ผูกสารด้วย parameterId ไม่ใช่ชื่อ */
+export interface MeasuredValue {
+    parameterId: number;
+    value: number | null | undefined;
+}
+
+/** 1 แถวจากตาราง `standards` — เกณฑ์ของสารหนึ่งภายใต้ประเภทการใช้ประโยชน์หนึ่ง */
+export interface StandardRow {
+    parameterId: number;
+    maxValue: number;
+}
+
+const STATUS_SEVERITY: Record<StatusType, number> = { safe: 0, warning: 1, danger: 2 };
+
+/** เอาสถานะที่แย่กว่าระหว่างสองตัว */
+export function worseStatus(a: StatusType, b: StatusType): StatusType {
+    return STATUS_SEVERITY[a] >= STATUS_SEVERITY[b] ? a : b;
 }
 
 /**
- * Determine overall water quality status based on location type
+ * สถานะของค่า 1 ตัว เทียบกับ "ทุกเกณฑ์ของสารนั้น" แล้วเอาผลที่แย่สุด
+ *
+ * คืน null เมื่อสารนั้นไม่มีเกณฑ์กำหนดสักตัว — ต่างจาก "safe" อย่างสิ้นเชิง
+ * ("ไม่มีเกณฑ์" = ตัดสินไม่ได้ ส่วน "safe" = ตัดสินแล้วว่าผ่าน) ผู้เรียกต้องแยกสองกรณีนี้เอง
  */
-export function evaluateSample(phosphate: number | null | undefined, ammonia: number | null | undefined, locationType: LocationType = "COMMUNITY"): EvaluationResult {
-    const standards = LOCATION_STANDARDS[locationType];
+export function evaluateValueAgainstStandards(value: number | null | undefined, maxValues: number[]): StatusType | null {
+    if (maxValues.length === 0) return null;
+    return maxValues.reduce<StatusType>((acc, max) => worseStatus(acc, getParameterStatus(value, max)), "safe");
+}
 
-    const phosphateStatus = getParameterStatus(phosphate, standards.phosphateMax);
-    const ammoniaStatus = getParameterStatus(ammonia, standards.ammoniaMax);
+/** จัดกลุ่มเกณฑ์ตามสาร เพื่อให้ค้นด้วย parameterId ได้ในครั้งเดียว */
+export function groupStandardsByParameter(standards: StandardRow[]): Map<number, number[]> {
+    const grouped = new Map<number, number[]>();
+    for (const s of standards) {
+        const list = grouped.get(s.parameterId);
+        if (list) list.push(s.maxValue);
+        else grouped.set(s.parameterId, [s.maxValue]);
+    }
+    return grouped;
+}
 
-    // ลอจิกรวบยอดหาความเสี่ยงสูงสุด
+/**
+ * สถานะรวมของตัวอย่าง 1 ใบ = แย่สุดของ (ทุกสารในใบ × ทุกเกณฑ์ของสารนั้น)
+ *
+ * ไม่มีการ "เลือกประเภทการใช้ประโยชน์" — ผลตรวจถูกเทียบกับเกณฑ์ทุกชุดที่มีเสมอ
+ * สารที่ไม่มีเกณฑ์กำหนดจะถูกข้าม (ตัดสินไม่ได้ ไม่ใช่ผ่าน)
+ */
+export function evaluateSample(values: MeasuredValue[], standards: StandardRow[]): StatusType {
+    const maxesByParameter = groupStandardsByParameter(standards);
+
     let overallStatus: StatusType = "safe";
-    if (phosphateStatus === "danger" || ammoniaStatus === "danger") {
-        overallStatus = "danger";
-    } else if (phosphateStatus === "warning" || ammoniaStatus === "warning") {
-        overallStatus = "warning";
+    for (const measured of values) {
+        const status = evaluateValueAgainstStandards(measured.value, maxesByParameter.get(measured.parameterId) ?? []);
+        if (status === null) continue;
+        overallStatus = worseStatus(overallStatus, status);
     }
 
-    return {
-        phosphateStatus,
-        ammoniaStatus,
-        overallStatus,
-    };
+    return overallStatus;
 }
 
 /**
