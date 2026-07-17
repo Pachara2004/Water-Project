@@ -22,7 +22,6 @@ function SubmitContent() {
         toggleParam,
         verifyErrors,
         setVerifyErrors,
-        isLoadingParams,
         imagePreviews,
         imagePlotFiles,
         setImageFiles,
