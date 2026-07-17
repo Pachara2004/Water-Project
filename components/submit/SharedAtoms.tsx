@@ -22,13 +22,21 @@ export function StepDot({ n, state }: { n: number; state: "done" | "active" | "i
     return <div className={`${base} border border-border text-text-muted bg-(--color-background-secondary,#f9fafb)`}>{n}</div>;
 }
 
+// ใช้ token สีของระบบ (--color-safe/warning/danger ใน globals.css) แทน hex ฝังในโค้ด
+// เดิมฝัง #1D9E75/#EF9F27/#E24B4A ไว้ตรงนี้ซึ่งเป็นคนละสีกับที่ StatusBadge ใช้ — แถบกับป้าย
+// บอกสถานะเดียวกันแต่คนละเฉดสี และธีมมืดปรับตามไม่ได้
+const FILL_CLASS: Record<"safe" | "warning" | "danger", string> = {
+    safe: "bg-safe",
+    warning: "bg-warning",
+    danger: "bg-danger",
+};
+
 export function ThresholdBar({ value, max, status }: { value: number; max: number; status: "safe" | "warning" | "danger" }) {
     const pct = Math.min((value / max) * 100, 100);
-    const fillColor = status === "safe" ? "#1D9E75" : status === "warning" ? "#EF9F27" : "#E24B4A";
     return (
         <div className="mt-2">
             <div className="h-1 w-full rounded-xs bg-border/40">
-                <div style={{ width: `${pct}%`, backgroundColor: fillColor }} className="h-full rounded-sm transition-all duration-500 ease-out" />
+                <div style={{ width: `${pct}%` }} className={`h-full rounded-sm transition-all duration-500 ease-out ${FILL_CLASS[status]}`} />
             </div>
             <div className="flex justify-between mt-1">
                 <span className="text-xs text-text-muted">0</span>

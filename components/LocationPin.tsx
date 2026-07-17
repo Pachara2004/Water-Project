@@ -1,16 +1,15 @@
 /**
  * LocationPin — Custom SVG marker icons for react-leaflet
  *
- * PRIMARY: Color by Water Status (what users care about most)
+ * สีหมุดบอกสถานะคุณภาพน้ำของสถานที่ (ค่าล่าสุดของแต่ละสาร เทียบกับทุกเกณฑ์ เอาผลแย่สุด)
  * - safe    → Green (#22C55E)
  * - warning → Amber (#F59E0B)
  * - danger  → Red   (#EF4444)
  * - no data → Gray  (#94A3B8)
  *
- * SECONDARY: Shape by Organization (for experts)
- * - FISHERY   → Circle inner
- * - POLLUTION → Diamond inner
- * - OTHER     → Square inner
+ * เดิมมีรูปทรงข้างในแยกตามหน่วยงาน (FISHERY วงกลม / POLLUTION ข้าวหลามตัด / OTHER สี่เหลี่ยม)
+ * แต่ไม่เคยทำงานเลย: มันหาคีย์จาก governingAgency ซึ่งเก็บชื่อไทย ("กรมประมง") ไม่ใช่โค้ด
+ * จึงตกไป OTHER ทุกครั้ง → หมุดเป็นสี่เหลี่ยมเหมือนกันหมดมาตลอด ตอนนี้ถอดออกแล้ว
  */
 
 import L from "leaflet";
@@ -32,7 +31,7 @@ function getStatusColors(status: string | null) {
     return STATUS_COLORS[lowerStatus] || DEFAULT_COLOR;
 }
 
-function buildPinSvg(colors: typeof DEFAULT_COLOR, innerShape: string): string {
+function buildPinSvg(colors: typeof DEFAULT_COLOR): string {
     return `<svg width="36" height="44" viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <filter id="ds" x="-20%" y="-10%" width="140%" height="140%">
@@ -42,25 +41,14 @@ function buildPinSvg(colors: typeof DEFAULT_COLOR, innerShape: string): string {
     <path d="M18 42 C18 42 4 26 4 16 C4 9.4 10.3 4 18 4 C25.7 4 32 9.4 32 16 C32 26 18 42 18 42Z"
           fill="${colors.fill}" stroke="${colors.stroke}" stroke-width="1.5" filter="url(#ds)"/>
     <circle cx="18" cy="16" r="7" fill="${colors.inner}" opacity="0.95"/>
-    ${innerShape}
   </svg>`;
 }
 
-// Inner shapes by organization
-const INNER_SHAPES: Record<string, string> = {
-    FISHERY: '<circle cx="18" cy="16" r="3.5" fill="currentColor"/>',
-    POLLUTION: '<rect x="14.5" y="12.5" width="7" height="7" rx="1.5" fill="currentColor" transform="rotate(45 18 16)"/>',
-    OTHER: '<rect x="14.5" y="12.5" width="7" height="7" rx="1.5" fill="currentColor"/>',
-};
-
-export function createLocationIcon(organization: string, status: string | null): L.DivIcon {
+export function createLocationIcon(status: string | null): L.DivIcon {
     const colors = getStatusColors(status);
-    const innerShape = (INNER_SHAPES[organization] || INNER_SHAPES.OTHER).replace("currentColor", colors.fill);
-
-    const svg = buildPinSvg(colors, innerShape);
 
     return L.divIcon({
-        html: svg,
+        html: buildPinSvg(colors),
         className: "custom-marker",
         iconSize: [36, 44],
         iconAnchor: [18, 44],

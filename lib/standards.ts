@@ -148,14 +148,3 @@ export function getStatusLabel(status: StatusType): string {
     return labels[status];
 }
 
-/**
- * Get organization Thai label
- */
-export function getOrganizationLabel(org: string): string {
-    const labels: Record<string, string> = {
-        FISHERY: "กรมประมง",
-        POLLUTION: "กรมควบคุมมลพิษ",
-        OTHER: "อื่นๆ",
-    };
-    return labels[org] || org;
-}

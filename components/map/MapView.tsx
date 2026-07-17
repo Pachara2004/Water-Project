@@ -148,7 +148,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             <Marker
                 key={loc.id}
                 position={[loc.lat, loc.lng]}
-                icon={createLocationIcon(loc.organization, loc.locationStatus)}
+                icon={createLocationIcon(loc.locationStatus)}
                 eventHandlers={mode === "explorer" ? { click: () => setSelectedLocation(loc) } : undefined}
             />
         ));
@@ -200,7 +200,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 {renderedMarkers}
 
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
-                {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon("OTHER", null)} />}
+                {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon(null)} />}
 
                 {userPos && (
                     <Marker

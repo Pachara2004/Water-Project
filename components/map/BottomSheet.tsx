@@ -4,7 +4,7 @@ import { X, MapPin, Calendar, FlaskConical, TrendingUp, TrendingDown, Minus } fr
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import StatusBadge from "./StatusBadge";
-import { getOrganizationLabel, evaluateAgainstLocationType } from "@/lib/standards";
+import { evaluateAgainstLocationType } from "@/lib/standards";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
 import TimeSeriesChart, { TimeSeriesDataPoint } from "../TimeSeriesChart";
@@ -296,7 +296,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 <div className="flex-1">
                     <h3 className="font-bold text-primary text-base truncate">{location.name}</h3>
                     <div className="flex items-center gap-2 text-secondary text-xs">
-                        <span className="font-semibold">{getOrganizationLabel(location.organization)}</span>
+                        <span className="font-semibold">{location.organization}</span>
                     </div>
                 </div>
             </div>
