@@ -65,14 +65,14 @@ model RoleRequest {
   @@map("role_requests")
 }
 
-// ประเภทการใช้ประโยชน์ของแหล่งน้ำ — ตัวกำหนดว่าจุดเก็บนั้นต้องวัดด้วยเกณฑ์ชุดไหน
-// เดิมฮาร์ดโค้ดเป็น union type ใน lib/standards.ts ตอนนี้ย้ายมาเป็นข้อมูลจริงใน DB
+// ประเภทการใช้ประโยชน์ของแหล่งน้ำ — เป็นแค่ "ชุดเกณฑ์ 6 แบบ" ที่เอาไว้เทียบ
+// จงใจไม่ผูกกับ Location: จุดเก็บไม่ได้ถูกกำหนดให้เป็นประเภทใดประเภทหนึ่ง
+// ผลตรวจของทุกจุดจะถูกเทียบกับทั้ง 6 ชุดพร้อมกันเสมอ แล้วเอาผลที่แย่สุดเป็นสถานะ
 model LocationType {
   id        Int        @id @default(autoincrement())
   code      String     @unique @map("code")      // รหัสที่โค้ดใช้อ้างอิง เช่น CONSERVATION, CORAL_REEF — เป็นตัวที่ codegen เอาไป gen เป็น TypeScript union (npm run gen:location-types)
   labelTh   String     @map("label_th")          // ป้ายภาษาไทยสำหรับแสดงผล เช่น "เพื่อการอนุรักษ์แหล่งปะการัง"
 
-  locations Location[]
   standards Standard[]
 
   @@map("location_types")
@@ -105,11 +105,6 @@ model Location {
   governingAgency String        @map("governing_agency")
   latitude        Float         @map("latitude")
   longitude       Float         @map("longitude")
-
-  // nullable ระหว่างเปลี่ยนผ่าน: จุดเก็บเดิมยังไม่มีโซนจนกว่าจะมีคนระบุ (เฟส 2)
-  // null = ยังไม่ระบุ → ฝั่งคำนวณ fallback เป็น COMMUNITY ซึ่งเป็นพฤติกรรมเดิมของระบบ
-  locationTypeId  Int?          @map("location_type_id")
-  locationType    LocationType? @relation(fields: [locationTypeId], references: [id]) // ไม่ Cascade: ลบประเภททิ้งไม่ควรลบสถานีตาม
 
   samples         WaterSample[]
   weatherData     WeatherData[]
