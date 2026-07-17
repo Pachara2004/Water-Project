@@ -19,13 +19,15 @@ async function main() {
     await prisma.reviewRequest.deleteMany(); // ไม่มี FK จริงกับ samples (ผูกผ่าน sessionGroup string) แต่ต้องเคลียร์ก่อน reseed กัน @unique sessionGroup ชนกัน
     await prisma.waterSampleMeasurement.deleteMany();
     await prisma.waterSample.deleteMany();
+    await prisma.standard.deleteMany(); // ต้องมาก่อน parameter/locationType เพราะ FK ชี้ไปทั้งคู่
     await prisma.parameter.deleteMany();
-    await prisma.location.deleteMany();
+    await prisma.location.deleteMany(); // ต้องมาก่อน locationType เพราะ Location.locationTypeId ชี้มา
+    await prisma.locationType.deleteMany();
     await prisma.user.deleteMany();
     await prisma.role.deleteMany();
 
     // MySQL ไม่รีเซ็ต AUTO_INCREMENT ให้เองตอน DELETE (ต่างจาก TRUNCATE) — รีเซ็ตมือทุกตารางกันเลข id ไต่สูงขึ้นเรื่อยๆ ทุกครั้งที่ reseed
-    const tablesToResetAutoIncrement = ["dashboard_widgets", "role_requests", "review_requests", "sample_measurements", "samples", "parameters", "locations", "users", "roles"];
+    const tablesToResetAutoIncrement = ["dashboard_widgets", "role_requests", "review_requests", "sample_measurements", "samples", "standards", "parameters", "locations", "location_types", "users", "roles"];
     for (const table of tablesToResetAutoIncrement) {
         await prisma.$executeRawUnsafe(`ALTER TABLE \`${table}\` AUTO_INCREMENT = 1`);
     }
@@ -46,6 +48,32 @@ async function main() {
     const paramPhosphate = await prisma.parameter.create({
         data: { name: "phosphate", unit: "mg/L", description: "สารฟอสเฟตในน้ำ (PO4)" },
     });
+
+    // ─── 3.1 LOCATION TYPES + STANDARDS (เกณฑ์มาตรฐานคุณภาพน้ำทะเล — กรมควบคุมมลพิษ) ───
+    // ย้ายมาจาก LOCATION_STANDARDS / LOCATION_TYPE_LABELS ที่เคยฮาร์ดโค้ดใน lib/standards.ts
+    console.log("📏 Creating location types and water quality standards...");
+
+    const locationTypesPayload = [
+        { code: "CONSERVATION", labelTh: "เพื่อการอนุรักษ์ทรัพยากรธรรมชาติ", phosphateMax: 0.015, ammoniaMax: 0.1 },
+        { code: "CORAL_REEF", labelTh: "เพื่อการอนุรักษ์แหล่งปะการัง", phosphateMax: 0.015, ammoniaMax: 0.1 },
+        { code: "AQUACULTURE", labelTh: "เพื่อการเพาะเลี้ยงสัตว์น้ำ", phosphateMax: 0.045, ammoniaMax: 0.7 },
+        { code: "RECREATION", labelTh: "เพื่อการนันทนาการ", phosphateMax: 0.015, ammoniaMax: 0.2 },
+        { code: "INDUSTRY", labelTh: "เพื่อการอุตสาหกรรมและท่าเรือ", phosphateMax: 0.045, ammoniaMax: 0.95 },
+        { code: "COMMUNITY", labelTh: "สำหรับเขตชุมชน", phosphateMax: 0.045, ammoniaMax: 0.95 },
+    ];
+
+    for (const lt of locationTypesPayload) {
+        const createdType = await prisma.locationType.create({
+            data: { code: lt.code, labelTh: lt.labelTh },
+        });
+
+        await prisma.standard.createMany({
+            data: [
+                { locationTypeId: createdType.id, parameterId: paramPhosphate.id, maxValue: lt.phosphateMax },
+                { locationTypeId: createdType.id, parameterId: paramAmmonia.id, maxValue: lt.ammoniaMax },
+            ],
+        });
+    }
 
     // ─── 4. DASHBOARD WIDGETS SEEDING (ผูกโครงสร้างตามคอลัมน์และ Parameter ID ของจริง) ───
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");

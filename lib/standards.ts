@@ -5,14 +5,26 @@
  * Reference: กรมควบคุมมลพิษ (Pollution Control Department)
  */
 
-// 1. กำหนดประเภทสิทธิ์พิกัดใช้งานจริงโดยตรง (เนื่องจากใน Schema ปัจจุบันไม่ได้ประกาศ Enum ตัวนี้ไว้)
-export type LocationType = "CONSERVATION" | "CORAL_REEF" | "AQUACULTURE" | "RECREATION" | "INDUSTRY" | "COMMUNITY";
+// ประเภทการใช้ประโยชน์ — ตอนนี้มาจากตาราง `location_types` ใน DB ผ่าน codegen (npm run gen:location-types)
+// ไม่ต้องมาแก้ที่นี่เวลาเพิ่มโซนใหม่: insert แถวใน DB แล้วรัน gen ใหม่
+export type { LocationTypeCode } from "./generated/location-types";
+export { LOCATION_TYPE_CODES, DEFAULT_LOCATION_TYPE_CODE, isLocationTypeCode } from "./generated/location-types";
+
+import type { LocationTypeCode } from "./generated/location-types";
+
+/** @deprecated ใช้ `LocationTypeCode` ที่ gen จาก DB แทน — alias นี้ไว้กันของเดิมพังระหว่างเปลี่ยนผ่าน */
+export type LocationType = LocationTypeCode;
 
 export interface StandardThresholds {
     phosphateMax: number;
     ammoniaMax: number;
 }
 
+/**
+ * @deprecated แหล่งความจริงย้ายไปตาราง `standards` ใน DB แล้ว — แก้ค่าที่นี่จะไม่มีผลกับที่ DB
+ * ค่าชุดนี้ยังอยู่ชั่วคราวเพราะ ResultsPanel / BottomSheet ยังอ่านตรงจากตัวแปรนี้อยู่
+ * จะถูกลบทิ้งเมื่อฝั่ง API ส่งเกณฑ์ลงมาให้แทน (เฟส 3)
+ */
 export const LOCATION_STANDARDS: Record<LocationType, StandardThresholds> = {
     CONSERVATION: { phosphateMax: 0.015, ammoniaMax: 0.1 },
     CORAL_REEF: { phosphateMax: 0.015, ammoniaMax: 0.1 },
