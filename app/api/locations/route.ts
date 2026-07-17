@@ -84,18 +84,26 @@ export async function GET(request: NextRequest) {
             //
             // อิงจาก sample 50 แถวล่าสุดเท่านั้น (take: 50 ด้านบน) ถ้าสารตัวไหนไม่ถูกวัดเลย
             // ใน 50 รอบหลังสุด ค่าของมันจะไม่ถูกนับเข้าสถานะสถานที่
-            const latestValueByParameter = new Map<number, number>();
+            const latestValueByParameter = new Map<number, { parameterId: number; parameterName: string; value: number; collectedAt: string }>();
             for (const s of loc.samples) {
                 // loc.samples เรียง collectionTime desc มาแล้ว → ตัวแรกที่เจอของแต่ละสาร = ตัวล่าสุด
                 for (const m of s.measurements) {
-                    if (!latestValueByParameter.has(m.parameterId)) latestValueByParameter.set(m.parameterId, m.value);
+                    if (latestValueByParameter.has(m.parameterId)) continue;
+                    latestValueByParameter.set(m.parameterId, {
+                        parameterId: m.parameterId,
+                        parameterName: m.parameter?.name ?? "",
+                        value: m.value,
+                        collectedAt: s.collectionTime.toISOString(), // บอกด้วยว่าค่านี้มาจากรอบไหน — หลังโดนปฏิเสธ ค่าอาจย้อนไปหลายรอบ
+                    });
                 }
             }
 
+            const latestByParameter = Array.from(latestValueByParameter.values());
+
             const locationStatus =
-                latestValueByParameter.size > 0
+                latestByParameter.length > 0
                     ? evaluateSample(
-                          Array.from(latestValueByParameter, ([parameterId, value]) => ({ parameterId, value })),
+                          latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value })),
                           standards,
                       )
                     : null; // ยังไม่เคยมีผลตรวจ → หมุดสีเทา ไม่ใช่เขียว
@@ -170,6 +178,8 @@ export async function GET(request: NextRequest) {
                 // สถานะของสถานที่ = ตัวกำหนดสีหมุด (คนละอย่างกับ latestSample.status ซึ่งเป็นของตัวอย่างใบเดียว)
                 // null = ยังไม่เคยมีผลตรวจ
                 locationStatus,
+                // ค่าล่าสุดของแต่ละสารที่ใช้คำนวณ locationStatus — หน้าบ้านเอาไปทำตารางเปรียบเทียบเกณฑ์
+                latestByParameter,
                 // ใบวิเคราะห์ล่าสุดคืออาร์เรย์ตัวแรกที่ผ่านการควบรวมมาเรียบร้อย
                 latestSample: formattedSamples[0] || null,
                 // ดึงรายการประวัติย้อนหลังเรียงจำกัดเอา 10 ชุดเซสชันกลุ่มพรีเมียม

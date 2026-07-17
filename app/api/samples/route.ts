@@ -184,7 +184,8 @@ export async function POST(request: NextRequest) {
         const secureCollectorId = auth.user!.id;
 
         const locationId = formData.get("locationId") as string;
-        const status = formData.get("status") as string;
+        // ไม่รับ status จาก client อีกต่อไป — ค่าที่ส่งมาไม่เคยถูกใช้ (server คำนวณเองที่ computedStatus ด้านล่าง)
+        // เหลือไว้เป็น required field มีแต่จะหลอกให้คนอ่านโค้ดคิดว่า client กำหนดสถานะได้
         const collectionTime = formData.get("collectionTime") as string;
         const oxygen = formData.get("oxygen") as string | null;
         const sessionGroup = formData.get("sessionGroup") as string | null;
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
         // ไม่ว่า confidence จะสูงแค่ไหน เพราะต้องให้ admin ตัดสินใจว่ารายการไหนถูกต้อง
         const forceReview = formData.get("forceReview") === "true";
 
-        if (!locationId || !status || !collectionTime) {
+        if (!locationId || !collectionTime) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" }, { status: 400 });
         }
 

@@ -16,7 +16,8 @@ export interface LocationItem {
 
 export interface MeasurementResult {
     concentrated: number;
-    status: "safe" | "warning" | "danger";
+    /** null = สารนี้ไม่มีเกณฑ์กำหนด ตัดสินไม่ได้ */
+    status: "safe" | "warning" | "danger" | null;
     message: string;
     confidence?: number;
     boundingBox?: any;

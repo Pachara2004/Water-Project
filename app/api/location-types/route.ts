@@ -8,8 +8,17 @@ import { prisma } from "@/lib/prisma";
 // ==========================================
 export async function GET() {
     try {
+        // แนบเกณฑ์ของแต่ละประเภทมาด้วย — หน้าบ้านต้องใช้ทำตารางเปรียบเทียบ
+        // และเป็นทางเดียวที่ client component จะได้เกณฑ์ เพราะ query DB เองไม่ได้
         const types = await prisma.locationType.findMany({
-            select: { id: true, code: true, labelTh: true },
+            select: {
+                id: true,
+                code: true,
+                labelTh: true,
+                standards: {
+                    select: { parameterId: true, maxValue: true },
+                },
+            },
             orderBy: { id: "asc" },
         });
 

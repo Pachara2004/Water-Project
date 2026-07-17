@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
-import { evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
 import { ArrowLeft, Calendar, MapPin, Pencil, User, FlaskConical, Thermometer, CloudRain, Waves } from "lucide-react";
 import { getWeatherConditionLabel } from "@/lib/weather";
 
@@ -132,7 +131,6 @@ export default function CollectorHistoryDetailPage() {
             results: resultsMap,
             imagePreviews: imagePreviewsMap,
             imagePlotFiles: imagePlotFilesMap,
-            locationType: "COMMUNITY",
             overallStatus: sample.status,
             step: "results" as const,
             saved: true,
