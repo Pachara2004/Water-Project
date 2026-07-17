@@ -210,7 +210,18 @@ export default function CollectorHistoryDetailPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาด");
             setIsEditing(false);
-            setSample(data);
+
+            // การบันทึกไม่ได้แก้แถวเดิม แต่สร้างเวอร์ชันใหม่ที่มี id ใหม่ แล้วปิดเวอร์ชันเก่า
+            // จึงต้องพา URL ไปที่ id ใหม่ ไม่งั้น:
+            //   - refresh แล้วเจอ 404 เพราะ id เดิมถูกปิดไปแล้ว
+            //   - state ค้างอยู่กับ id ที่ตายแล้ว
+            //
+            // และตั้งใจไม่ setSample(data) เพราะ PUT ตอบคนละรูปกับ GET (ไม่มี location / collector /
+            // sampleImagesMap) ยัดเข้า state ตรง ๆ แล้วหน้าจะ crash ตอนอ่าน sample.collector.firstName
+            // การเปลี่ยน URL ทำให้ effect ที่ผูกกับ params.id ยิง GET ใหม่เอง → ได้ข้อมูลรูปแบบเดียวกับตอนโหลดหน้าปกติ
+            if (data?.id && String(data.id) !== String(params.id)) {
+                router.replace(`/collector/history/${data.id}`);
+            }
         } catch (err) {
             alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึก");
         } finally {

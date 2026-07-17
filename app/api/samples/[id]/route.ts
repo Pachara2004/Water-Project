@@ -33,14 +33,45 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติน้ำทะเลที่ระบุ หรือข้อมูลอาจถูกลบไปแล้ว" }, { status: 404 });
         }
 
-        // 1. สั่ง Soft Delete เวอร์ชันเก่าทิ้งไป มาร์กสวิตช์เป็น true
-        await prisma.waterSample.update({
-            where: { id: sampleId },
-            data: {
-                isDeleted: true,
-                lastModifiedBy: secureAdmin.id,
-            },
-        });
+        // ─── 1. ตรวจ input ให้ครบก่อนแตะ DB สักคำสั่งเดียว ───
+        // สำคัญมาก: เดิมค่าที่ผิดรูป (วันที่มั่ว / oxygen เป็นตัวอักษร / locationId ที่ไม่มีจริง)
+        // จะหลุดไปให้ Prisma โยน error — ซึ่งเกิด "หลังจาก" soft-delete แถวเก่าไปแล้ว → ตัวอย่างหายถาวร
+        // ตอนนี้ตรวจให้จบก่อน แล้วตอบ 400 พร้อมบอกว่าผิดตรงไหน โดยยังไม่เขียนอะไรลง DB เลย
+        let parsedCollectionTime = oldSample.collectionTime;
+        if (collectionTime !== undefined && collectionTime !== null && collectionTime !== "") {
+            const candidate = new Date(collectionTime);
+            if (Number.isNaN(candidate.getTime())) {
+                return NextResponse.json({ error: "รูปแบบวันที่และเวลาที่เก็บตัวอย่างไม่ถูกต้อง" }, { status: 400 });
+            }
+            parsedCollectionTime = candidate;
+        }
+
+        let parsedLocationId = oldSample.locationId;
+        if (locationId !== undefined && locationId !== null && locationId !== "") {
+            const candidate = Number(locationId);
+            if (!Number.isInteger(candidate) || candidate <= 0) {
+                return NextResponse.json({ error: "รหัสสถานีไม่ถูกต้อง" }, { status: 400 });
+            }
+            // ต้องเช็คว่ามีจริง ไม่งั้น FK จะพังตอน create (หลังฆ่าแถวเก่าไปแล้ว)
+            const locationExists = await prisma.location.findUnique({ where: { id: candidate }, select: { id: true } });
+            if (!locationExists) {
+                return NextResponse.json({ error: "ไม่พบสถานีที่ระบุในระบบ" }, { status: 400 });
+            }
+            parsedLocationId = candidate;
+        }
+
+        let parsedOxygen = oldSample.dissolvedOxygen;
+        if (oxygen !== undefined) {
+            if (oxygen === null || oxygen === "") {
+                parsedOxygen = null; // ตั้งใจล้างค่า
+            } else {
+                const candidate = Number(oxygen);
+                if (!Number.isFinite(candidate)) {
+                    return NextResponse.json({ error: "ค่าออกซิเจนละลายน้ำต้องเป็นตัวเลข" }, { status: 400 });
+                }
+                parsedOxygen = candidate;
+            }
+        }
 
         // 2. จัดการ Payload ผลตรวจสารเคมีตัวใหม่
         let finalMeasurementsPayload: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];
@@ -64,36 +95,49 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }));
         }
 
-        // 3. ชุบชีวิตสร้าง Record ตัวแทนตัวใหม่ขึ้นมา
-        const createdSample = await prisma.waterSample.create({
-            data: {
-                collectorId: oldSample.collectorId,
-                locationId: locationId ? Number(locationId) : oldSample.locationId,
-                collectionTime: collectionTime ? new Date(collectionTime) : oldSample.collectionTime,
-                dissolvedOxygen: oxygen !== undefined ? (oxygen === null || oxygen === "" ? null : parseFloat(oxygen)) : oldSample.dissolvedOxygen,
-                airTemperature: oldSample.airTemperature,
-                rainAccumulation: oldSample.rainAccumulation,
-                weatherCondCode: oldSample.weatherCondCode,
-                status: oldSample.status,
-
-                // 🌟 สืบทอดรหัสกลุ่มประจำเซสชันตามไปด้วยเพื่อไม่ให้กลุ่มแตกแยกแถวกันครับบอส!
-                sessionGroup: oldSample.sessionGroup,
-
-                rawImageUrl: oldSample.rawImageUrl,
-                analyzedPlotUrl: oldSample.analyzedPlotUrl,
-                imageExpiresAt: oldSample.imageExpiresAt,
-                isDeleted: false,
-                lastModifiedBy: secureAdmin.id,
-
-                measurements: {
-                    create: finalMeasurementsPayload,
+        // 3. ปิดเวอร์ชันเก่า + สร้างเวอร์ชันใหม่ ในก้อนเดียวกัน
+        //    ต้องเป็น transaction เด็ดขาด: เดิมเป็นคนละคำสั่ง ถ้า create ล้มหลัง update สำเร็จ
+        //    แถวเก่าจะค้างสถานะ isDeleted:true โดยไม่มีเวอร์ชันใหม่มาแทน = ตัวอย่างน้ำหายถาวร กู้ไม่ได้
+        //    (แพตเทิร์นเดียวกับที่ POST /api/samples ใช้อยู่แล้ว)
+        const createdSample = await prisma.$transaction(async (tx) => {
+            await tx.waterSample.update({
+                where: { id: sampleId },
+                data: {
+                    isDeleted: true,
+                    lastModifiedBy: secureAdmin.id,
                 },
-            },
-            include: {
-                measurements: {
-                    include: { parameter: true },
+            });
+
+            return tx.waterSample.create({
+                data: {
+                    collectorId: oldSample.collectorId,
+                    locationId: parsedLocationId,
+                    collectionTime: parsedCollectionTime,
+                    dissolvedOxygen: parsedOxygen,
+                    airTemperature: oldSample.airTemperature,
+                    rainAccumulation: oldSample.rainAccumulation,
+                    weatherCondCode: oldSample.weatherCondCode,
+                    status: oldSample.status,
+
+                    // 🌟 สืบทอดรหัสกลุ่มประจำเซสชันตามไปด้วยเพื่อไม่ให้กลุ่มแตกแยกแถวกันครับบอส!
+                    sessionGroup: oldSample.sessionGroup,
+
+                    rawImageUrl: oldSample.rawImageUrl,
+                    analyzedPlotUrl: oldSample.analyzedPlotUrl,
+                    imageExpiresAt: oldSample.imageExpiresAt,
+                    isDeleted: false,
+                    lastModifiedBy: secureAdmin.id,
+
+                    measurements: {
+                        create: finalMeasurementsPayload,
+                    },
                 },
-            },
+                include: {
+                    measurements: {
+                        include: { parameter: true },
+                    },
+                },
+            });
         });
 
         // 4. แตกคีย์พ่นผลลัพธ์สารเคมีออกไปหา Client แบบ Dynamic Flattening
