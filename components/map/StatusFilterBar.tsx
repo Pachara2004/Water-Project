@@ -38,7 +38,7 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="bg-surface flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform w-35 cursor-pointer max-w-40 sm:max-w-xs"
+                className="bg-card-general flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform w-35 cursor-pointer max-w-40 sm:max-w-xs"
             >
                 <div className="shrink-0">
                     <Droplets size={18} className="text-secondary" />

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import { createLocationIcon } from "../LocationPin";
 import BottomSheet, { BottomSheetLocation } from "./BottomSheet";
+import MapSearchBar from "./MapSearchBar";
 import FilterBar from "./OfficerFilterBar";
 import StatusFilterBar from "./StatusFilterBar";
 import "leaflet/dist/leaflet.css";
@@ -78,7 +79,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     const [statusFilter, setStatusFilter] = useState("ALL");
 
     const [selectedLocation, setSelectedLocation] = useState<BottomSheetLocation | null>(null);
-    
+
     const [userPos, setUserPos] = useState<[number, number] | null>(null);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -155,16 +156,39 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     const center: [number, number] = [13.2, 100.9];
     const zoom = mode === "picker" ? 10 : 9;
 
+    const THAILAND_BOUNDS = L.latLngBounds(
+        [6.5, 99.0], // มุมซ้ายล่าง (ใต้สุด/ตะวันตกสุด)
+        [21.5, 107.0], // มุมขวาบน (เหนือสุด/ตะวันออกสุด)
+    );
+
     return (
         <div className="relative w-full h-full">
             {mode === "explorer" && (
-                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-3 break-all">
+                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-2 break-all">
+                    <MapSearchBar
+                        locations={locations}
+                        onSelectLocation={(loc) => {
+                            setSelectedLocation(loc);
+                        }}
+                    />
                     <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
                     <StatusFilterBar value={statusFilter} onChange={setStatusFilter} />
                 </div>
             )}
 
-            <MapContainer key={`map-container-${mode}`} center={center} zoom={zoom} className="w-full h-full" zoomControl={false} attributionControl={false}>
+            <MapContainer
+                key={`map-container-${mode}`}
+                center={center}
+                zoom={zoom}
+                className="w-full h-full"
+                zoomControl={false}
+                attributionControl={false}
+                minZoom={mode === "picker" ? 3 : 3} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
+                maxZoom={10}
+                maxBounds={THAILAND_BOUNDS}
+                maxBoundsViscosity={0.2}
+                bounceAtZoomLimits={true}
+            >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
 
                 {renderedMarkers}

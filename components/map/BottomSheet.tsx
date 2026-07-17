@@ -44,7 +44,7 @@ interface BottomSheetProps {
 export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const router = useRouter();
     const { currentUser } = useAppStore();
-    const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("half");
+    const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("collapsed");
 
     const isDraggingRef = useRef(false);
     const dragStartYRef = useRef(0);
