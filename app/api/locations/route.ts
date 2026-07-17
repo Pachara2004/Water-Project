@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
 import { backfillWeatherData } from "@/lib/tmd";
+import { evaluateSample } from "@/lib/standards";
+import { loadAllStandards } from "@/lib/standards-db";
 
 // ==========================================
 // GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
@@ -53,6 +55,7 @@ export async function GET(request: NextRequest) {
                         measurements: {
                             select: {
                                 value: true,
+                                parameterId: true, // ใช้จับคู่เกณฑ์ในตาราง standards — ห้ามจับคู่ด้วยชื่อสาร
                                 parameter: {
                                     select: {
                                         name: true,
@@ -65,9 +68,37 @@ export async function GET(request: NextRequest) {
             },
         });
 
+        // เกณฑ์ทั้งหมด โหลดครั้งเดียวใช้ทุกสถานี (12 แถว) — ไม่ query ซ้ำในลูป
+        const standards = await loadAllStandards();
+
         const result = locations.map((loc) => {
             // แผนผัง Map ควบแน่นจัดกลุ่มเรคคอร์ดที่มีรหัสเซสชันกลุ่มเดียวกันให้อยู่รวมร่างกันในขวดเดียว
             const sessionGroupMap = new Map<string, any>();
+
+            // ── สถานะของ "สถานที่" (ตัวกำหนดสีหมุดบนแผนที่) ──
+            // นิยาม: ค่าล่าสุดของแต่ละสาร → เทียบกับทุกเกณฑ์ → เอาผลแย่สุด
+            //
+            // ต้องคำนวณสดตรงนี้ ดึงจาก latestSample.status แทนไม่ได้ เพราะค่าล่าสุดของแต่ละสาร
+            // อาจมาจากคนละรอบการเก็บ เช่น รอบล่าสุดเก็บแค่ phosphate (ปลอดภัย) แต่ ammonia
+            // ล่าสุดที่วัดไว้เมื่อรอบก่อนยังอันตรายอยู่ → สถานะสถานที่ต้องเป็นอันตราย
+            //
+            // อิงจาก sample 50 แถวล่าสุดเท่านั้น (take: 50 ด้านบน) ถ้าสารตัวไหนไม่ถูกวัดเลย
+            // ใน 50 รอบหลังสุด ค่าของมันจะไม่ถูกนับเข้าสถานะสถานที่
+            const latestValueByParameter = new Map<number, number>();
+            for (const s of loc.samples) {
+                // loc.samples เรียง collectionTime desc มาแล้ว → ตัวแรกที่เจอของแต่ละสาร = ตัวล่าสุด
+                for (const m of s.measurements) {
+                    if (!latestValueByParameter.has(m.parameterId)) latestValueByParameter.set(m.parameterId, m.value);
+                }
+            }
+
+            const locationStatus =
+                latestValueByParameter.size > 0
+                    ? evaluateSample(
+                          Array.from(latestValueByParameter, ([parameterId, value]) => ({ parameterId, value })),
+                          standards,
+                      )
+                    : null; // ยังไม่เคยมีผลตรวจ → หมุดสีเทา ไม่ใช่เขียว
 
             loc.samples.forEach((s) => {
                 // ค้นหาคีย์ ถ้าไม่มีให้ใช้ id แถวเดี่ยว ๆ เป็นคีย์สำรองเพื่อไม่ให้ข้อมูลหลุดพังครับบอส
@@ -136,6 +167,9 @@ export async function GET(request: NextRequest) {
                 organization: loc.governingAgency,
                 lat: loc.latitude,
                 lng: loc.longitude,
+                // สถานะของสถานที่ = ตัวกำหนดสีหมุด (คนละอย่างกับ latestSample.status ซึ่งเป็นของตัวอย่างใบเดียว)
+                // null = ยังไม่เคยมีผลตรวจ
+                locationStatus,
                 // ใบวิเคราะห์ล่าสุดคืออาร์เรย์ตัวแรกที่ผ่านการควบรวมมาเรียบร้อย
                 latestSample: formattedSamples[0] || null,
                 // ดึงรายการประวัติย้อนหลังเรียงจำกัดเอา 10 ชุดเซสชันกลุ่มพรีเมียม
