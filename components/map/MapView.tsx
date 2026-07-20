@@ -190,7 +190,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 zoomControl={false}
                 attributionControl={false}
                 minZoom={mode === "picker" ? 3 : 3} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
-                maxZoom={10}
+                maxZoom={25}
                 maxBounds={THAILAND_BOUNDS}
                 maxBoundsViscosity={0.2}
                 bounceAtZoomLimits={true}
