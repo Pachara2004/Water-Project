@@ -7,6 +7,7 @@ import path from "path";
 import crypto from "crypto";
 import { verifyAuth } from "@/lib/auth-guard";
 import { isLowConfidence, evaluateSample } from "@/lib/standards";
+import { loadStandardsForParameters } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 
 /**
@@ -183,7 +184,8 @@ export async function POST(request: NextRequest) {
         const secureCollectorId = auth.user!.id;
 
         const locationId = formData.get("locationId") as string;
-        const status = formData.get("status") as string;
+        // ไม่รับ status จาก client อีกต่อไป — ค่าที่ส่งมาไม่เคยถูกใช้ (server คำนวณเองที่ computedStatus ด้านล่าง)
+        // เหลือไว้เป็น required field มีแต่จะหลอกให้คนอ่านโค้ดคิดว่า client กำหนดสถานะได้
         const collectionTime = formData.get("collectionTime") as string;
         const oxygen = formData.get("oxygen") as string | null;
         const sessionGroup = formData.get("sessionGroup") as string | null;
@@ -191,7 +193,7 @@ export async function POST(request: NextRequest) {
         // ไม่ว่า confidence จะสูงแค่ไหน เพราะต้องให้ admin ตัดสินใจว่ารายการไหนถูกต้อง
         const forceReview = formData.get("forceReview") === "true";
 
-        if (!locationId || !status || !collectionTime) {
+        if (!locationId || !collectionTime) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" }, { status: 400 });
         }
 
@@ -352,15 +354,14 @@ export async function POST(request: NextRequest) {
 
         // 4.1 คำนวณ status ใหม่ฝั่ง server จากค่าที่วัดได้จริง ห้ามเชื่อ status ที่ client ส่งมาตรง ๆ
         //     (เดิมมีช่องโหว่ให้ client ปลอมค่า status ทับผลวิเคราะห์จริงได้)
-        const parameterNameById = new Map(systemParameters.map((p) => [p.id, p.name.toLowerCase()]));
-        let serverPhosphate = 0;
-        let serverAmmonia = 0;
-        for (const m of createMeasurementsData) {
-            const paramName = parameterNameById.get(m.parameterId) || "";
-            if (paramName.includes("phosphate")) serverPhosphate = m.value;
-            if (paramName.includes("ammonia")) serverAmmonia = m.value;
-        }
-        const computedStatus = evaluateSample(serverPhosphate, serverAmmonia).overallStatus;
+        //
+        //     ผูกสารด้วย parameterId ตรง ๆ — เดิมเดาจากชื่อ (paramName.includes("phosphate"))
+        //     ซึ่งทำให้สารที่เพิ่มเข้ามาใหม่ (เช่น nitrate) ไม่ถูกนับเข้าสถานะเลยโดยไม่มีใครรู้
+        const standards = await loadStandardsForParameters(createMeasurementsData.map((m) => m.parameterId));
+        const computedStatus = evaluateSample(
+            createMeasurementsData.map((m) => ({ parameterId: m.parameterId, value: m.value })),
+            standards,
+        );
 
         // 5. สั่งบันทึกข้อมูล + สร้างคำร้องตรวจสอบ (ถ้าจำเป็น) รวมใน Transaction เดียวกัน
         //    กันเคสเซฟ sample สำเร็จแต่สร้างคำร้องพลาด ซึ่งจะทำให้ข้อมูล confidence ต่ำรั่วออกสู่สาธารณะ

@@ -219,7 +219,9 @@ export function useSubmitSample() {
                 if (imagePreviews[it.originalParamId]) newImagePreviews[key] = imagePreviews[it.originalParamId];
                 if (it.plottedFile) newImagePlotFiles[key] = it.plottedFile;
 
-                const currentStatus = (it.aiData.status?.toLowerCase() ?? "safe") as "safe" | "warning" | "danger";
+                // null = สารนี้ยังไม่มีเกณฑ์กำหนด ตัดสินไม่ได้ — ต้องส่ง null ต่อ ห้าม ?? "safe"
+                // เพราะจะกลายเป็นบอกผู้ใช้ว่า "ปลอดภัย" ทั้งที่ไม่เคยมีเกณฑ์ให้เทียบ
+                const currentStatus = (it.aiData.status?.toLowerCase() ?? null) as "safe" | "warning" | "danger" | null;
                 newResults[key] = {
                     concentrated: it.aiData.concentrated,
                     status: currentStatus,
@@ -376,7 +378,7 @@ export function useSubmitSample() {
 
                 const fd = new FormData();
                 fd.append("locationId", currentLocationId);
-                fd.append("status", resData.status);
+                // ไม่ส่ง status แล้ว — server คำนวณเองจากค่าที่วัดได้จริง และไม่เคยเชื่อค่าจาก client อยู่แล้ว
                 fd.append("collectionTime", new Date(collectionTime).toISOString());
                 if (oxygen) fd.append("oxygen", oxygen);
 

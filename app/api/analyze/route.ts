@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { evaluateSample } from "@/lib/standards";
+import { evaluateValueAgainstStandards } from "@/lib/standards";
+import { loadStandardsForParameters } from "@/lib/standards-db";
 import { verifyAuth } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 
@@ -80,14 +81,30 @@ export async function POST(request: NextRequest) {
         // ใช้ค่านี้เป็นฐานคำนวณ status เพื่อกันเหนียว กรณี AI แก้ชนิดสารต่างจากที่ผู้ใช้ขอ
         const verifiedParameterName: string = aiResult.parameterName || dbParam.name;
 
-        // 2. คำนวณสถานะความปลอดภัยแบบ Dynamic เพื่อรักษาระบบเดิม
+        // 2. คำนวณสถานะความปลอดภัยจากเกณฑ์จริงในตาราง standards
         const currentParamName = dbParam.name.toLowerCase();
-        const verifiedNameLower = verifiedParameterName.toLowerCase();
-        const targetPhosphate = verifiedNameLower.includes("phosphate") ? aiResult.concentrated : 0;
-        const targetAmmonia = verifiedNameLower.includes("ammonia") ? aiResult.concentrated : 0;
 
-        // เรียกใช้งานเกณฑ์มาตรฐานกลางในเว็บแอป (เปิดช่องทางสำหรับปรับปรุงโมดูลรวมสารในอนาคต)
-        const evalResult = evaluateSample(targetPhosphate, targetAmmonia);
+        // ถ้า AI ยืนยันว่าเป็นสารคนละตัวกับที่ผู้ใช้เลือก ให้ยึดสารที่ AI ตรวจได้เป็นฐานคำนวณ
+        // (เดิมเดาจากชื่อ verifiedNameLower.includes("phosphate") ซึ่งรองรับแค่ 2 สาร
+        //  และถ้า AI ตอบสารตัวที่สาม จะได้ค่า 0 ทั้งคู่ → ตอบ "ปลอดภัย" ทั้งที่ไม่เคยวัดอะไรเลย)
+        //
+        // ⚠️ ตรงนี้ยังต้องแปลง "ชื่อ" เป็น id เพราะ AI คืนมาเป็นข้อความ ไม่ใช่ parameterId
+        //    จึงเป็นจุดเดียวในระบบที่ยังผูกด้วยชื่อ — ถ้า AI ตอบชื่อที่ไม่มีในตาราง Parameter
+        //    (เช่น "PO4" แทน "phosphate") จะหาไม่เจอ ห้าม fallback ไปใช้สารที่ผู้ใช้เลือกเด็ดขาด
+        //    เพราะจะกลายเป็นเอาค่าของสาร A ไปเทียบเกณฑ์ของสาร B แล้วตอบผลผิดอย่างมั่นใจ
+        const verifiedParam =
+            verifiedParameterName.toLowerCase() === currentParamName
+                ? dbParam
+                : await prisma.parameter.findFirst({
+                      where: { name: { equals: verifiedParameterName.trim().toLowerCase() } },
+                      select: { id: true },
+                  });
+
+        const standards = verifiedParam ? await loadStandardsForParameters([verifiedParam.id]) : [];
+
+        // null = ตัดสินไม่ได้ เกิดได้ 2 กรณี: สารที่ AI ตอบไม่มีในระบบ | สารมีอยู่แต่ยังไม่มีเกณฑ์กำหนด
+        // ทั้งสองกรณีต้องบอกหน้าบ้านตรง ๆ ว่าตัดสินไม่ได้ ห้ามเดาว่า "ปลอดภัย"
+        const evaluatedStatus = verifiedParam ? evaluateValueAgainstStandards(aiResult.concentrated, standards.map((s) => s.maxValue)) : null;
 
         // ดึงข้อความแนะนำสเปกใหม่ ดักจับกรณีคีย์ผันแปร
         const aiMessage = aiResult.message || aiResult.text || "";
@@ -102,7 +119,8 @@ export async function POST(request: NextRequest) {
             verifiedParameterName, // ชื่อสารที่ AI ตรวจยืนยัน ใช้เทียบว่าตรงกับที่ผู้ใช้ระบุไหม
             isTestTube: aiResult.is_test_tube ?? true, // ตรวจเจอหลอดทดลองในภาพหรือไม่
             concentrated: aiResult.concentrated,
-            status: evalResult.overallStatus,
+            status: evaluatedStatus, // null = สารนี้ยังไม่มีเกณฑ์กำหนด ตัดสินไม่ได้
+
             confidence: aiResult.confidence,
             "bounding box": boundingBox,
             message: aiMessage,

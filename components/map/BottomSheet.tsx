@@ -1,10 +1,12 @@
 "use client";
 
-import { X, MapPin, Calendar, FlaskConical, ShieldCheck, ShieldX, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { X, MapPin, Calendar, FlaskConical, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import StatusBadge from "./StatusBadge";
-import { getOrganizationLabel, evaluateAllStandards, LOCATION_TYPE_LABELS } from "@/lib/standards";
+import { evaluateAgainstLocationType } from "@/lib/standards";
+import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
+import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
 import TimeSeriesChart, { TimeSeriesDataPoint } from "../TimeSeriesChart";
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
@@ -16,6 +18,8 @@ export interface BottomSheetLocation {
     type?: string;
     lat: number;
     lng: number;
+    // ค่าล่าสุดของแต่ละสาร (อาจมาจากคนละรอบเก็บ ถ้ารอบล่าสุดของสารนั้นถูกปฏิเสธ)
+    latestByParameter?: Array<{ parameterId: number; parameterName: string; value: number; collectedAt: string }>;
     latestSample: {
         id: string;
         status: "SAFE" | "WARNING" | "DANGER";
@@ -44,6 +48,7 @@ interface BottomSheetProps {
 export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const router = useRouter();
     const { currentUser } = useAppStore();
+    const { locationTypes } = useLocationTypes();
     const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("collapsed");
 
     const isDraggingRef = useRef(false);
@@ -267,9 +272,20 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     );
     const modeStatus = Object.keys(statusCounts).length > 0 ? Object.keys(statusCounts).reduce((a, b) => (statusCounts[a] > statusCounts[b] ? a : b), "SAFE") : null;
 
-    const latestPhosphate = latest ? (latest.phosphateVal ?? latest.phosphateValue ?? null) : null;
-    const latestAmmonia = latest ? (latest.ammoniaVal ?? latest.ammoniaValue ?? null) : null;
-    const standardsEval = latest ? evaluateAllStandards(latestPhosphate, latestAmmonia) : null;
+    // แถวตารางเปรียบเทียบ: ผลตรวจล่าสุดของสถานีนี้ผ่านเกณฑ์ของแต่ละประเภทการใช้ประโยชน์หรือไม่
+    // เกณฑ์มาจาก DB ผ่าน API — ไม่มีตัวเลขหรือป้ายชื่อฮาร์ดโค้ดในไฟล์นี้แล้ว
+    //
+    // ไม่ใช้ useMemo เพราะจุดนี้อยู่หลัง `if (!location) return null` ด้านบน — เป็น hook แบบมีเงื่อนไข
+    // ซึ่งผิด Rules of Hooks และทำ React พังจริง ไม่ใช่แค่ lint บ่น (วนแค่ 6 ประเภท ไม่ต้อง memo อยู่แล้ว)
+    const latestValues = (location.latestByParameter ?? []).map((m) => ({ parameterId: m.parameterId, value: m.value }));
+    const comparisonRows: ComparisonRow[] =
+        latest && locationTypes.length > 0 && latestValues.length > 0
+            ? locationTypes.map((type) => ({
+                  key: type.code,
+                  label: type.labelTh,
+                  status: evaluateAgainstLocationType(latestValues, type),
+              }))
+            : [];
 
     const renderContent = () => (
         <div className="flex-1 ">
@@ -280,7 +296,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 <div className="flex-1">
                     <h3 className="font-bold text-primary text-base truncate">{location.name}</h3>
                     <div className="flex items-center gap-2 text-secondary text-xs">
-                        <span className="font-semibold">{getOrganizationLabel(location.organization)}</span>
+                        <span className="font-semibold">{location.organization}</span>
                     </div>
                 </div>
             </div>
@@ -372,29 +388,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             </div>
                         )}
 
-                    {standardsEval && (
-                        <div className="bg-surface text-center border border-border rounded-2xl p-6">
-                            <h4 className="text-xs font-semibold text-primary mb-3">การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน</h4>
-                            <div className="grid grid-cols-1 gap-3 text-start">
-                                {Object.entries(standardsEval).map(([type, passed]) => (
-                                    <div
-                                        key={type}
-                                        className={`flex items-center gap-3.5 text-xs font-bold px-4 py-3 rounded-xl border ${
-                                            passed ? "bg-emerald-500/5 text-emerald-700 border-emerald-500/10" : "bg-red-500/5 text-red-700 border-red-500/10"
-                                        }`}
-                                    >
-                                        {passed ? <ShieldCheck size={16} className="text-emerald-500 shrink-0" /> : <ShieldX size={16} className="text-red-500 shrink-0" />}
-                                        <span className="flex-1 truncate">{LOCATION_TYPE_LABELS[type as keyof typeof LOCATION_TYPE_LABELS]}</span>
-                                        <span
-                                            className={`text-xs font-black px-2 py-0.5 rounded border ${passed ? "bg-emerald-100 text-emerald-600 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}
-                                        >
-                                            {passed ? "ผ่าน" : "ไม่ผ่าน"}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <StandardsComparison title="การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน" rows={comparisonRows} />
 
                     {samplesArr.length > 0 && (
                         <div className="bg-surface border border-border rounded-2xl p-4">

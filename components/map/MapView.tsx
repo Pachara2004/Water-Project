@@ -19,6 +19,10 @@ interface LocationData {
     lat: number;
     lng: number;
     createdAt: string;
+    // สถานะของสถานที่ = ค่าล่าสุดของแต่ละสาร (ข้ามรอบเก็บได้) เทียบกับทุกเกณฑ์ แล้วเอาผลแย่สุด
+    // คนละอย่างกับ latestSample.status ซึ่งเป็นสถานะของตัวอย่างใบเดียว — ห้ามเอามาใช้แทนกัน
+    // null = ยังไม่เคยมีผลตรวจ
+    locationStatus: "safe" | "warning" | "danger" | null;
     latestSample: {
         id: number;
         status: "safe" | "warning" | "danger";
@@ -122,8 +126,10 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             if (!Array.isArray(data)) data = [];
 
             if (statusFilter !== "ALL") {
+                // กรองด้วยสถานะของสถานที่ ให้ตรงกับสีหมุดที่ผู้ใช้เห็น — เดิมกรองด้วย latestSample.status
+                // ซึ่งเป็นสถานะของตัวอย่างใบเดียว ทำให้ตัวกรองไม่ตรงกับสีที่แสดง
                 const targetStatus = statusFilter.toLowerCase();
-                data = data.filter((loc: LocationData) => loc.latestSample?.status?.toLowerCase() === targetStatus);
+                data = data.filter((loc: LocationData) => loc.locationStatus === targetStatus);
             }
 
             setLocations(data);
@@ -142,7 +148,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             <Marker
                 key={loc.id}
                 position={[loc.lat, loc.lng]}
-                icon={createLocationIcon(loc.organization, loc.latestSample?.status || null)}
+                icon={createLocationIcon(loc.locationStatus)}
                 eventHandlers={mode === "explorer" ? { click: () => setSelectedLocation(loc) } : undefined}
             />
         ));
@@ -194,7 +200,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 {renderedMarkers}
 
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
-                {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon("OTHER", null)} />}
+                {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon(null)} />}
 
                 {userPos && (
                     <Marker

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { getOrganizationLabel } from "@/lib/standards";
 import { confirmDialog } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
 import { MapPin, MapPinPlus, MapPinned, Building2, Save, ShieldAlert, Plus, Pencil, Trash2, X, Check, Search, FileText, ArrowLeft } from "lucide-react"; /* prettier-ignore */
@@ -231,11 +230,11 @@ export default function AdminLocationsPage() {
     const uniqueOrgs = Array.from(new Set(locations.map((l) => l.organization).filter(Boolean)));
     const stationKeyword = stationSearch.trim().toLowerCase();
     const filteredLocations = stationKeyword
-        ? locations.filter((loc) => loc.name.toLowerCase().includes(stationKeyword) || getOrganizationLabel(loc.organization).toLowerCase().includes(stationKeyword))
+        ? locations.filter((loc) => loc.name.toLowerCase().includes(stationKeyword) || loc.organization.toLowerCase().includes(stationKeyword))
         : locations;
 
     const orgKeyword = orgSearch.trim().toLowerCase();
-    const orgOptions = orgKeyword ? uniqueOrgs.filter((org) => getOrganizationLabel(org).toLowerCase().includes(orgKeyword)) : uniqueOrgs;
+    const orgOptions = orgKeyword ? uniqueOrgs.filter((org) => org.toLowerCase().includes(orgKeyword)) : uniqueOrgs;
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
@@ -300,14 +299,14 @@ export default function AdminLocationsPage() {
                                                 type="button"
                                                 onClick={() => {
                                                     setOrganization(org);
-                                                    setOrgSearch(getOrganizationLabel(org));
+                                                    setOrgSearch(org);
                                                     setCustomOrg("");
                                                     setOrgDropdownOpen(false);
                                                 }}
                                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
                                             >
                                                 <Building2 size={13} className="text-text-muted shrink-0" />
-                                                {getOrganizationLabel(org)}
+                                                {org}
                                             </button>
                                         ))}
                                         {orgOptions.length === 0 && <p className="px-4 py-2 text-xs text-text-muted">ไม่พบหน่วยงานที่ค้นหา</p>}
@@ -417,7 +416,7 @@ export default function AdminLocationsPage() {
                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-text-secondary font-medium">
                                             <div className="flex items-center gap-2 min-w-0 max-w-35 sm:max-w-none">
                                                 <Building2 size={16} className="text-secondary shrink-0" />
-                                                <span className="truncate font-semibold text-secondary">{getOrganizationLabel(loc.organization)}</span>
+                                                <span className="truncate font-semibold text-secondary">{loc.organization}</span>
                                             </div>
                                             <span className="text-text-muted/30 hidden sm:inline">•</span>
                                             <span className="text-text-muted text-[10px] bg-surface-subtle px-1.5 py-0.5 rounded-md border border-border font-mono font-semibold">
@@ -502,7 +501,7 @@ export default function AdminLocationsPage() {
                                     >
                                         {uniqueOrgs.map((org) => (
                                             <option key={org} value={org}>
-                                                {getOrganizationLabel(org)}
+                                                {org}
                                             </option>
                                         ))}
                                         <option value="CUSTOM">+ เพิ่มหน่วยงานใหม่...</option>

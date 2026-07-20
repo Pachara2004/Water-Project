@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run gen:location-types && next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "npx prisma db seed"
+    "seed": "npx prisma db seed",
+    "gen:location-types": "npx tsx scripts/generate-location-types.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

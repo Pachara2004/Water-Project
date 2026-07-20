@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, PieChart, Pie, Cell, ReferenceLine, BarChart } from "recharts";
 import { Activity, Sun, Moon, MapPin, Building2, AlertTriangle, TrendingUp, ShieldCheck, Beaker, CloudRain } from "lucide-react";
-import { getOrganizationLabel } from "@/lib/standards";
 import { useAppStore } from "@/lib/store";
 
 export interface SampleItem {
@@ -355,7 +354,7 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                         <option value="ALL">ทุกหน่วยงาน</option>
                         {uniqueOrgs.map((org) => (
                             <option key={org} value={org}>
-                                {getOrganizationLabel(org)}
+                                {org}
                             </option>
                         ))}
                     </select>
@@ -662,7 +661,7 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                                         <tr key={loc.id} className="hover:bg-surface-subtle/30 transition-colors">
                                             <td className="px-5 py-4 text-sm font-black">{loc.name}</td>
                                             <td className="px-5 py-4">
-                                                <span className="bg-surface-subtle px-3 py-1 rounded-full border border-border text-[10px]">{getOrganizationLabel(loc.org)}</span>
+                                                <span className="bg-surface-subtle px-3 py-1 rounded-full border border-border text-[10px]">{loc.org}</span>
                                             </td>
                                             <td className="px-5 py-4 text-center">
                                                 {loc.danger > 0 ? (

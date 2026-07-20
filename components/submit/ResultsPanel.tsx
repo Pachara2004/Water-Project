@@ -1,26 +1,33 @@
 // components/submit/ResultsPanel.tsx
-import { useState } from "react"; 
-import { AlertCircle, ChevronDown, ChevronUp, Check, X } from "lucide-react"; 
-import { LOCATION_STANDARDS, LOCATION_TYPE_LABELS, getParameterStatus, LocationType } from "@/lib/standards";
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { evaluateValueAgainstStandards, groupStandardsByParameter } from "@/lib/standards";
+import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
+import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
 import { DbParameter, MeasurementResult } from "./types";
 import { ThresholdBar } from "./SharedAtoms";
 
 interface ResultsPanelProps {
     results: Record<number, MeasurementResult>;
     systemParameters: DbParameter[];
-    locationType: string;
     overallStatus: "safe" | "warning" | "danger";
     setStep: (step: "upload" | "analyzing" | "results") => void;
 }
 
-export function ResultsPanel({ results, systemParameters, locationType, overallStatus, setStep }: ResultsPanelProps) {
+export function ResultsPanel({ results, systemParameters, overallStatus, setStep }: ResultsPanelProps) {
     const [openParamId, setOpenParamId] = useState<number | null>(null);
+    const { locationTypes } = useLocationTypes();
 
     if (Object.keys(results).length === 0) return null;
-    const std = LOCATION_STANDARDS[locationType as keyof typeof LOCATION_STANDARDS] || LOCATION_STANDARDS["COMMUNITY"];
 
     const toggleDropdown = (paramId: number) => {
         setOpenParamId(openParamId === paramId ? null : paramId);
+    };
+
+    /** เกณฑ์ที่เข้มที่สุดของสารตัวนี้ — ตัวที่ตัดสินสถานะจริง ใช้เป็นสเกลของแถบวัด */
+    const strictestMaxFor = (parameterId: number): number | null => {
+        const maxes = locationTypes.flatMap((t) => t.standards.filter((s) => s.parameterId === parameterId).map((s) => s.maxValue));
+        return maxes.length > 0 ? Math.min(...maxes) : null;
     };
 
     return (
@@ -39,10 +46,11 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                         const param = systemParameters.find((p) => p.id === measurement.parameterId);
                         if (!param) return null;
 
-                        const maxKey = `${param.name.toLowerCase()}Max`;
-                        const max = (std as any)[maxKey] ?? 1.0;
-                        const isExceeded = measurement.concentrated > max;
-                        const exceededPercentage = isExceeded ? Math.round(((measurement.concentrated - max) / max) * 100) : 0;
+                        // เกณฑ์มาจาก DB ผูกด้วย parameterId — เดิมเดาจากชื่อสาร (`${name}Max`) แล้ว fallback 1.0
+                        // ซึ่งกุเกณฑ์ปลอมขึ้นมาให้สารที่ไม่มีเกณฑ์จริง แล้วแสดงผลราวกับเป็นเกณฑ์จริง
+                        const strictestMax = strictestMaxFor(measurement.parameterId);
+                        const paramStatus = strictestMax !== null ? evaluateValueAgainstStandards(measurement.concentrated, [strictestMax]) : null;
+                        const isExceeded = paramStatus === "danger";
 
                         const isDropdownOpen = openParamId === entryKey;
 
@@ -68,69 +76,50 @@ export function ResultsPanel({ results, systemParameters, locationType, overallS
                                         {measurement.concentrated.toFixed(3)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
                                     </div>
                                 </div>
-                                <ThresholdBar value={measurement.concentrated} max={max} status={measurement.status} />
+                                {/* สารที่ไม่มีเกณฑ์กำหนด: ไม่มีสเกลให้วาดแถบ — ซ่อนดีกว่าวาดด้วยเกณฑ์ที่กุขึ้นมา */}
+                                {strictestMax !== null && paramStatus !== null && <ThresholdBar value={measurement.concentrated} max={strictestMax} status={paramStatus} />}
 
-                                {/* ตัว Dropdown หลักแสดงผลเกณฑ์ของโซนปัจจุบัน */}
                                 <div className="w-full mt-1">
                                     <button
                                         type="button"
                                         onClick={() => toggleDropdown(entryKey)}
-                                        className={`w-full text-xs font-medium px-3 py-2 rounded-lg border transition-all flex items-center justify-between cursor-pointer
-                                            ${isExceeded 
-                                                ? "text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200/50 hover:bg-red-100/50" 
-                                                : "text-teal-600 bg-teal-50 dark:bg-teal-950/30 border-teal-200/50 hover:bg-teal-100/50"
+                                        disabled={paramStatus === null}
+                                        className={`w-full text-xs font-medium px-3 py-2 rounded-lg border transition-all flex items-center justify-between
+                                            ${
+                                                paramStatus === null
+                                                    ? "text-text-muted bg-surface-subtle border-border cursor-default"
+                                                    : isExceeded
+                                                      ? "text-red-600 bg-red-500/10 border-red-500/20 hover:bg-red-500/15 cursor-pointer"
+                                                      : paramStatus === "warning"
+                                                        ? "text-amber-600 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15 cursor-pointer"
+                                                        : "text-teal-600 bg-teal-500/10 border-teal-500/20 hover:bg-teal-500/15 cursor-pointer"
                                             }`}
                                     >
                                         <span className="flex-1 text-center pl-4">
-                                            {isExceeded ? `เกินเกณฑ์มาตรฐาน` : "ปกติ"}
+                                            {paramStatus === null ? "ไม่มีเกณฑ์กำหนดสำหรับสารนี้" : isExceeded ? "เกินเกณฑ์มาตรฐาน" : paramStatus === "warning" ? "เฝ้าระวัง" : "ปกติ"}
                                         </span>
-                                        {isDropdownOpen ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
+                                        {paramStatus !== null && (isDropdownOpen ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />)}
                                     </button>
 
-                                    {/* เมื่อกดกาง Dropdown ออกมา แผ่เต็มกริบ ไม่มีจำกัดความสูงและไม่มี scrollbar */}
-                                    {isDropdownOpen && (
-                                        <div className="mt-1.5 p-3 rounded-xl bg-surface-subtle border border-border/70 space-y-2 animate-fadeIn">
-                                            <p className="text-xs text-primary border-b border-primary pb-1">
-                                                เปรียบเทียบเกณฑ์มาตรฐานสิ่งแวดล้อมทางน้ำ
-                                            </p>
-                                            <div className="space-y-2 h-auto w-full"> 
-                                                {Object.entries(LOCATION_STANDARDS).map(([key, value]) => {
-                                                    const locKey = key as LocationType;
-                                                    const currentParamMax = (value as any)[maxKey] ?? 1.0;
-                                                    const currentParamStatus = getParameterStatus(measurement.concentrated, currentParamMax);
-                                                    const subParamExceeded = currentParamStatus === "danger";
-
-                                                    return (
-                                                        <div key={locKey} className="flex items-center justify-between text-xs py-1 border-b border-black/20 last:border-0 pb-1 last:pb-0">
-                                                            <div className="flex flex-col">
-                                                                <span className="font-medium text-black text-xs">{LOCATION_TYPE_LABELS[locKey]}</span>
-                                                                <span className="text-xs text-secondary ">
-                                                                    เกณฑ์สูงสุด: {currentParamMax} {param.unit}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1 shrink-0 ml-2">
-                                                                {subParamExceeded ? (
-                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-5 py-0.5 text-red-600 bg-red-50 text-xs">
-                                                                        เกินเกณฑ์
-                                                                    </span>
-                                                                ) : currentParamStatus === "warning" ? (
-                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-5 py-0.5 text-amber-600 bg-amber-50 text-xs">
-                                                                        เฝ้าระวัง
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-0.5 font-medium px-5 py-0.5 text-teal-600 bg-teal-50 text-xs">
-                                                                        ผ่าน
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
+                                    {isDropdownOpen && paramStatus !== null && (
+                                        <div className="mt-1.5 p-3 rounded-xl bg-surface-subtle border border-border/70 animate-fadeIn">
+                                            <StandardsComparison
+                                                compact
+                                                title="เปรียบเทียบเกณฑ์มาตรฐานสิ่งแวดล้อมทางน้ำ"
+                                                rows={locationTypes.map<ComparisonRow>((type) => {
+                                                    const maxes = groupStandardsByParameter(type.standards).get(measurement.parameterId) ?? [];
+                                                    const status = evaluateValueAgainstStandards(measurement.concentrated, maxes);
+                                                    return {
+                                                        key: type.code,
+                                                        label: type.labelTh,
+                                                        detail: maxes.length > 0 ? `เกณฑ์สูงสุด: ${Math.min(...maxes)} ${param.unit ?? ""}`.trim() : undefined,
+                                                        status,
+                                                    };
                                                 })}
-                                            </div>
+                                            />
                                         </div>
                                     )}
                                 </div>
-
                             </div>
                         );
                     })}
