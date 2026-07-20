@@ -74,7 +74,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 className="bg-card-general flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform cursor-pointer w-45 shrink-0"
             >
                 <div className="shrink-0">
-                    <Filter size={16} className="text-secondary" />
+                    <Filter size={16} strokeWidth={3} className="text-secondary" />
                 </div>
 
                 <div className="flex flex-col items-start leading-none min-w-0 flex-1">
@@ -111,10 +111,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                         )}
                     </div>
 
-                    <div
-                        className="p-1 flex flex-col gap-0.5 max-h-56 overflow-y-auto overscroll-contain reserve-scrollbar-gutter scrollbar-thin"
-                        onTouchMove={(e) => e.stopPropagation()}
-                    >
+                    <div className="p-1 flex flex-col gap-0.5 max-h-56 overflow-y-auto overscroll-contain reserve-scrollbar-gutter scrollbar-thin" onTouchMove={(e) => e.stopPropagation()}>
                         {filteredOptions.length === 0 ? (
                             <div className="text-center py-6 text-xs text-text-muted font-medium tracking-wide">ไม่พบข้อมูลหน่วยงานนี้</div>
                         ) : (
