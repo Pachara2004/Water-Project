@@ -6,10 +6,13 @@ import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import { ArrowLeft, Calendar, MapPin, Pencil, User, FlaskConical, Thermometer, CloudRain, Waves } from "lucide-react";
 import { getWeatherConditionLabel } from "@/lib/weather";
+import { evaluateAgainstLocationType } from "@/lib/standards";
+import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 
 import StatusBadge from "@/components/map/StatusBadge";
 import { ImageZone } from "@/components/submit/ImageZone";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
+import { StandardsComparison, type ComparisonRow } from "@/components/StandardsComparison";
 
 type WaterStatus = "safe" | "warning" | "danger";
 interface LocationOption {
@@ -34,6 +37,9 @@ interface SampleDetail {
     rawImageUrl: string | null;
     analyzedPlotUrl: string | null;
     sampleImagesMap?: Record<number, { raw: string | null; plot: string | null }>;
+    // ผลประเมินระดับสถานที่ — คนละมิติกับ status ของ record นี้ (ค่าล่าสุดของแต่ละสาร ณ locationId นี้ อาจคนละรอบเก็บ)
+    locationStatus?: WaterStatus | null;
+    latestByParameter?: { parameterId: number; parameterName: string; value: number; collectedAt: string }[];
     location: {
         id: number;
         stationName: string;
@@ -65,6 +71,7 @@ export default function CollectorHistoryDetailPage() {
     const { currentUser } = useAppStore();
     const [sample, setSample] = useState<SampleDetail | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const { locationTypes } = useLocationTypes();
 
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -249,6 +256,22 @@ export default function CollectorHistoryDetailPage() {
 
     const collectorFullName = `${sample.collector.firstName || ""} ${sample.collector.lastName || ""}`.trim() || sample.collector.lineProfileName;
 
+    // ผลประเมินระดับ "สถานที่" ณ วันที่ของ record นี้ (context-aware ตามวันที่กำลังดู ไม่ใช่ล่าสุดจริงตอนนี้)
+    // เช่น ดูแอมโมเนียเมื่อ 10 วันก่อน ฟอสเฟตจะถูกเทียบด้วยค่าที่ใกล้เคียงวันนั้น (ดู computeValueByParameterAsOf)
+    // แยกจากผลประเมินของ record ใบนี้ (ResultsPanel ด้านล่าง) ซึ่งเทียบแค่ค่าที่วัดได้ในใบนี้เอง
+    const latestByParameter = sample.latestByParameter ?? [];
+    const locationComparisonRows: ComparisonRow[] =
+        locationTypes.length > 0 && latestByParameter.length > 0
+            ? locationTypes.map((type) => ({
+                  key: type.code,
+                  label: type.labelTh,
+                  status: evaluateAgainstLocationType(
+                      latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value })),
+                      type,
+                  ),
+              }))
+            : [];
+
     const HistoryMetaBlocks = () => (
         <div className="space-y-4">
             <section className="rounded-xl bg-surface overflow-hidden border border-border p-4 space-y-3">
@@ -371,6 +394,33 @@ export default function CollectorHistoryDetailPage() {
                     </div>
                 </div>
             </section>
+
+            {/* ผลประเมินของ "สถานที่" ณ วันที่ของ record นี้ — สารแต่ละตัวเทียบด้วยค่าที่ใกล้เคียงวันนี้ที่สุด (อาจคนละรอบเก็บ) */}
+            {sample.locationStatus && latestByParameter.length > 0 && (
+                <section className="rounded-xl bg-surface overflow-hidden border border-border p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-primary font-bold">ผลประเมินของสถานที่ ณ วันที่บันทึกนี้</span>
+                        </div>
+                        <StatusBadge status={sample.locationStatus} size="md" />
+                    </div>
+
+                    {/* ค่าที่ใช้คำนวณต่อสาร พร้อมวันที่วัดจริง — สารแต่ละตัวอาจมาจากคนละรอบเก็บ ต้องบอกให้ชัดว่ามาจากเมื่อไหร่ */}
+                    <div className="space-y-2">
+                        {latestByParameter.map((m) => (
+                            <div key={m.parameterId} className="flex items-center justify-between text-xs bg-surface-subtle border border-border rounded-xl px-4 py-2.5">
+                                <span className="font-bold text-text-primary uppercase">{m.parameterName || "-"}</span>
+                                <div className="flex items-center gap-3">
+                                    <span className="font-bold text-text-primary">{m.value.toFixed(3)} mg/L</span>
+                                    <span className="text-xs text-text-muted">{formatDateTime(m.collectedAt)}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <StandardsComparison compact title="การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน" rows={locationComparisonRows} />
+                </section>
+            )}
         </div>
     );
 

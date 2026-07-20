@@ -8,7 +8,7 @@ import { confirmDialog, alertError } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
 import { isLowConfidence, CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { refreshNavDots } from "@/lib/navEvents";
-import { ArrowLeft, ShieldAlert, ClipboardCheck, RefreshCw, MapPin, User, Calendar, Check, X, ImageOff, AlertCircle, Copy, Beaker } from "lucide-react";
+import { ArrowLeft, ShieldAlert, ClipboardCheck, RefreshCw, MapPin, User, Calendar, Check, X, ImageOff, AlertCircle, Beaker } from "lucide-react";
 
 type ReviewStatusFilter = "pending" | "approved" | "rejected";
 
@@ -59,20 +59,6 @@ function formatDateTime(value: string | null) {
     });
 }
 
-// จัดกลุ่ม samples ของ request ตาม parameterId — คืนเฉพาะกลุ่มที่ชนกัน (≥2 ภาพชี้สารเดียวกัน)
-// ใช้ให้ admin ต้องเลือกภาพหลักก่อนอนุมัติ กันภาพซ้ำหลุดขึ้นแผนที่ทั้งคู่
-function getDuplicateGroups(item: ReviewRequestItem): Map<number, ReviewSample[]> {
-    const groups = new Map<number, ReviewSample[]>();
-    item.samples.forEach((s) => {
-        const pid = s.measurements[0]?.parameterId;
-        if (pid === undefined) return;
-        const arr = groups.get(pid) ?? [];
-        arr.push(s);
-        groups.set(pid, arr);
-    });
-    return new Map(Array.from(groups.entries()).filter(([, arr]) => arr.length > 1));
-}
-
 export default function AdminReviewRequestsPage() {
     const { currentUser } = useAppStore();
     const router = useRouter();
@@ -89,16 +75,6 @@ export default function AdminReviewRequestsPage() {
     const [rejectTarget, setRejectTarget] = useState<ReviewRequestItem | null>(null);
     const [rejectNote, setRejectNote] = useState("");
     const [rejectSaving, setRejectSaving] = useState(false);
-
-    // การเลือกภาพหลักกรณีสารซ้ำ: requestId -> parameterId -> sampleId ที่เลือก
-    const [duplicateSelections, setDuplicateSelections] = useState<Record<number, Record<number, number>>>({});
-
-    const pickDuplicate = (requestId: number, parameterId: number, sampleId: number) => {
-        setDuplicateSelections((prev) => ({
-            ...prev,
-            [requestId]: { ...(prev[requestId] || {}), [parameterId]: sampleId },
-        }));
-    };
 
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
     const fetchRequests = useCallback(async (status: ReviewStatusFilter, silent = false) => {
@@ -124,23 +100,9 @@ export default function AdminReviewRequestsPage() {
     }, [currentUser?.role, tab, fetchRequests]);
 
     const handleApprove = async (item: ReviewRequestItem) => {
-        // สารซ้ำในชุดนี้ (≥2 ภาพชี้ parameterId เดียวกัน) — ต้องเลือกภาพหลักให้ครบทุกกลุ่มก่อนถึงจะอนุมัติได้
-        const dupGroups = getDuplicateGroups(item);
-        const selections = duplicateSelections[item.id] || {};
-        if (dupGroups.size > 0) {
-            const allPicked = Array.from(dupGroups.keys()).every((pid) => selections[pid] !== undefined);
-            if (!allPicked) {
-                alertError("กรุณาเลือกภาพหลักก่อน", "ชุดนี้มีสารซ้ำ กรุณาแตะเลือกภาพที่ต้องการใช้เป็นผลหลักให้ครบทุกสารก่อนกดอนุมัติ");
-                return;
-            }
-        }
-
         const confirmed = await confirmDialog({
             title: "ยืนยันอนุมัติคำร้อง?",
-            text:
-                dupGroups.size > 0
-                    ? `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที ส่วนภาพที่ไม่ได้เลือกจะถูกลบทิ้งถาวร`
-                    : `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที`,
+            text: `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที`,
             confirmText: "อนุมัติ",
             tone: "primary",
         });
@@ -148,21 +110,15 @@ export default function AdminReviewRequestsPage() {
 
         setActingId(item.id);
         try {
-            const keepSampleIds = Object.values(selections);
             const res = await fetch(`/api/review-requests/${item.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getAccessToken()}` },
-                body: JSON.stringify({ action: "approve", keepSampleIds }),
+                body: JSON.stringify({ action: "approve" }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการอนุมัติคำร้อง");
 
             showToast(`อนุมัติผลตรวจของ "${item.location?.name ?? "จุดตรวจ"}" แล้ว`, "success");
-            setDuplicateSelections((prev) => {
-                const next = { ...prev };
-                delete next[item.id];
-                return next;
-            });
             fetchRequests(tab, true);
             refreshNavDots();
         } catch (err) {
@@ -271,9 +227,6 @@ export default function AdminReviewRequestsPage() {
                         </div>
                     ) : (
                         requests.map((item) => {
-                            const dupGroups = getDuplicateGroups(item);
-                            const itemSelections = duplicateSelections[item.id] || {};
-
                             let statusBadgeColor = "text-amber-600 bg-amber-50";
                             if (tab === "approved") statusBadgeColor = "text-emerald-600 bg-emerald-50";
                             if (tab === "rejected") statusBadgeColor = "text-red-600 bg-red-50";
@@ -305,49 +258,11 @@ export default function AdminReviewRequestsPage() {
                                         
                                     </div>
 
-                                    {/* แจ้งเตือนกรณีตรวจเจอสารซ้ำซ้อน */}
-                                    {tab === "pending" && dupGroups.size > 0 && (
-                                        <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/50 text-[10px] text-amber-800 leading-relaxed font-semibold">
-                                            <Copy size={12} className="shrink-0 mt-0.5 text-amber-600" />
-                                            <span>ตรวจพบสารซ้ำซ้อน กรุณาเลือกชิ้นรูปภาพหลักที่ต้องการใช้งานก่อนอนุมัติ</span>
-                                        </div>
-                                    )}
-
                                     {/* ── 🌟 การปรับปรุง Core List (ใช้พื้นที่ 2 คอลัมน์ซ้ายขวา) ── */}
                                     <div className="space-y-2">
                                         {item.samples.map((s) => {
-                                            const pid = s.measurements[0]?.parameterId;
-                                            const isDuplicateGroup = pid !== undefined && dupGroups.has(pid);
-                                            const isSelected = isDuplicateGroup && itemSelections[pid] === s.id;
-
                                             return (
-                                                <div
-                                                    key={s.id}
-                                                    className={`w-full border rounded-xl p-3 transition-all flex flex-col gap-2.5 ${
-                                                        isDuplicateGroup
-                                                            ? `${isSelected ? "bg-teal-50/40 border-teal-500 ring-1 ring-teal-500/10" : "bg-surface-subtle border-amber-300 hover:border-teal-400"}`
-                                                            : "bg-surface-subtle border-border/60"
-                                                    }`}
-                                                >
-                                                    {isDuplicateGroup && (
-                                                        <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700">
-                                                                {isSelected ? "✨ ใช้ชิ้นงานนี้เป็นผลหลัก" : "⚠️ ตัวเลือกสารเคมีซ้ำซ้อน"}
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => pickDuplicate(item.id, pid!, s.id)}
-                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer ${
-                                                                    isSelected
-                                                                        ? "bg-teal-600 text-white"
-                                                                        : "bg-white border border-border text-text-secondary hover:border-teal-500 hover:text-teal-600"
-                                                                }`}
-                                                            >
-                                                                {isSelected ? "เลือกแล้ว" : "ตั้งเป็นหลัก"}
-                                                            </button>
-                                                        </div>
-                                                    )}
-
+                                                <div key={s.id} className="w-full border rounded-xl p-3 transition-all flex flex-col gap-2.5 bg-surface-subtle border-border/60">
                                                     {/* Layout 2 คอลัมน์เคียงข้างกันอย่างมีประโยชน์ */}
                                                     <div className="flex items-center justify-between gap-3 w-full min-w-0">
                                                         {/* 📊 คอลัมน์ซ้าย: ยุบรวมกล่องพารามิเตอร์ให้เรียงแถวแนวนอนอย่างกระชับ */}
@@ -439,7 +354,7 @@ export default function AdminReviewRequestsPage() {
                                             </button>
                                             <button
                                                 onClick={() => handleApprove(item)}
-                                                disabled={actingId === item.id || (dupGroups.size > 0 && !Array.from(dupGroups.keys()).every((pid) => itemSelections[pid] !== undefined))}
+                                                disabled={actingId === item.id}
                                                 className="flex-1 py-2 min-h-9.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-800 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 {actingId === item.id ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={13} />}
