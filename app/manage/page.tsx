@@ -256,7 +256,7 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
     const userDisplayName = currentUser.firstName ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim() : currentUser.lineProfileName;
 
     return (
-        <div className="bg-card-general rounded-xl border border-border p-4">
+        <div className="bg-card-general rounded-2xl border border-border p-4">
             <div className="flex flex-col gap-1">
                 <div className="flex justify-between items-start gap-4 p-2 pb-0">
                     <h2 className="text-xl font-semibold text-black truncate flex-1">{userDisplayName}</h2>
@@ -385,7 +385,7 @@ export default function ManagePage() {
                                         key={menu.href}
                                         onClick={() => menu.available && router.push(menu.href)}
                                         disabled={MenuBoxDisable(menu.available)}
-                                        className={`w-full h-full group flex items-start gap-4 p-4 bg-card-general rounded-xl border border-border transition-all duration-75 text-left
+                                        className={`w-full h-full group flex items-start gap-4 p-4 bg-card-general rounded-2xl border border-border transition-all duration-75 text-left
     ${menu.available ? "hover:border-primary/30 hover:scale-[1.01] cursor-pointer active:scale-[0.99]" : "opacity-50 cursor-not-allowed"}`}
                                     >
                                         <div className={`flex items-center justify-center shrink-0 self-center transition-transform duration-200 ${menu.available ? "group-hover:scale-105" : ""}`}>
@@ -422,7 +422,7 @@ export default function ManagePage() {
                                 <div className="w-full border-t mt-3" />
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full group flex items-center gap-4 p-4 bg-danger mt-1 rounded-md border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-75 text-left cursor-pointer"
+                                    className="w-full group flex items-center gap-4 p-4 bg-danger mt-1 rounded-2xl border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-75 text-left cursor-pointer"
                                 >
                                     <div className="flex items-center justify-center shrink-0 text-white transition-transform duration-200 group-hover:scale-105">
                                         <LogOut size={24} />
