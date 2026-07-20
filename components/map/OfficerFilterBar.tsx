@@ -78,7 +78,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 </div>
 
                 <div className="flex flex-col items-start leading-none min-w-0 flex-1">
-                    <span className="text-[9px] text-primary font-semibold uppercase tracking-wider">หน่วยงาน</span>
+                    <span className="text-xs text-primary font-semibold uppercase tracking-wider">หน่วยงาน</span>
                     <span className="font-semibold text-black text-xs mt-0.5 truncate w-full text-left">{currentLabel}</span>
                 </div>
 

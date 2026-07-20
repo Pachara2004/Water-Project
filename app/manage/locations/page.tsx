@@ -348,12 +348,12 @@ export default function AdminLocationsPage() {
                             </div>
 
                             {pickedPosition ? (
-                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary bg-surface-subtle border border-border py-1.5 px-3 rounded-md w-fit mt-2">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary bg-surface-subtle border border-border py-1.5 px-3 rounded-md w-fit mt-2">
                                     <MapPinned size={12} className="text-text-muted" />
                                     LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
                                 </div>
                             ) : (
-                                <p className="text-[11px] text-text-muted italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
+                                <p className="text-xs text-text-muted italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
                             )}
                         </div>
 
@@ -419,7 +419,7 @@ export default function AdminLocationsPage() {
                                                 <span className="truncate font-semibold text-secondary">{loc.organization}</span>
                                             </div>
                                             <span className="text-text-muted/30 hidden sm:inline">•</span>
-                                            <span className="text-text-muted text-[10px] bg-surface-subtle px-1.5 py-0.5 rounded-md border border-border font-mono font-semibold">
+                                            <span className="text-text-muted text-xs bg-surface-subtle px-1.5 py-0.5 rounded-md border border-border font-mono font-semibold">
                                                 {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
                                             </span>
                                         </div>

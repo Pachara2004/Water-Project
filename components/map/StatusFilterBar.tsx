@@ -44,7 +44,7 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
                     <Droplets size={18} className="text-secondary" />
                 </div>
                 <div className="flex flex-col items-start leading-none min-w-0">
-                    <span className="text-[9px] text-primary font-semibold uppercase tracking-wider">คุณภาพน้ำ</span>
+                    <span className="text-xs text-primary font-semibold uppercase tracking-wider">คุณภาพน้ำ</span>
                     <span className="font-semibold text-black text-xs flex items-center gap-1.5 mt-0.5 w-full">
                         <span className="truncate text-left">{currentOption.label}</span>
                     </span>

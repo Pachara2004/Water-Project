@@ -307,7 +307,7 @@ export default function AdminReviewRequestsPage() {
 
                                     {/* แจ้งเตือนกรณีตรวจเจอสารซ้ำซ้อน */}
                                     {tab === "pending" && dupGroups.size > 0 && (
-                                        <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/50 text-[10px] text-amber-800 leading-relaxed font-semibold">
+                                        <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/50 text-xs text-amber-800 leading-relaxed font-semibold">
                                             <Copy size={12} className="shrink-0 mt-0.5 text-amber-600" />
                                             <span>ตรวจพบสารซ้ำซ้อน กรุณาเลือกชิ้นรูปภาพหลักที่ต้องการใช้งานก่อนอนุมัติ</span>
                                         </div>
@@ -331,13 +331,13 @@ export default function AdminReviewRequestsPage() {
                                                 >
                                                     {isDuplicateGroup && (
                                                         <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700">
-                                                                {isSelected ? "✨ ใช้ชิ้นงานนี้เป็นผลหลัก" : "⚠️ ตัวเลือกสารเคมีซ้ำซ้อน"}
+                                                            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                                                                {isSelected ? "ใช้ชิ้นงานนี้เป็นผลหลัก" : "ตัวเลือกสารเคมีซ้ำซ้อน"}
                                                             </span>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => pickDuplicate(item.id, pid!, s.id)}
-                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer ${
+                                                                className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                                                                     isSelected
                                                                         ? "bg-teal-600 text-white"
                                                                         : "bg-white border border-border text-text-secondary hover:border-teal-500 hover:text-teal-600"
@@ -368,10 +368,10 @@ export default function AdminReviewRequestsPage() {
                                                                         </div>
                                                                         <div className="flex items-center gap-2 shrink-0">
                                                                             <span className="text-sm font-black text-black">
-                                                                                {m.value.toFixed(3)} <span className="text-[9px] font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
+                                                                                {m.value.toFixed(3)} <span className="text-xs font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
                                                                             </span>
                                                                             <span
-                                                                                className={`font-mono text-[9px] px-1.5 py-0.2 rounded font-bold border shrink-0 ${
+                                                                                className={`font-mono text-xs px-1.5 py-0.2 rounded font-bold border shrink-0 ${
                                                                                     lowConf ? "text-red-600 bg-red-50 border-red-100" : "text-teal-600 bg-teal-50 border-teal-100"
                                                                                 }`}
                                                                             >
@@ -395,7 +395,7 @@ export default function AdminReviewRequestsPage() {
                                                                 ) : (
                                                                     <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
                                                                 )}
-                                                                <span className="absolute bottom-0 inset-x-0 text-[7px] bg-black/60 text-white font-bold text-center py-0.2 select-none">ภาพถ่าย</span>
+                                                                <span className="absolute bottom-0 inset-x-0 text-xs bg-black/60 text-white font-bold text-center py-0.2 select-none">ภาพถ่าย</span>
                                                             </div>
 
                                                             {/* รูปกราฟสี */}
@@ -408,7 +408,7 @@ export default function AdminReviewRequestsPage() {
                                                                 ) : (
                                                                     <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
                                                                 )}
-                                                                <span className="absolute bottom-0 inset-x-0 text-[7px] bg-primary/80 text-white font-bold text-center py-0.2 select-none">กราฟสี</span>
+                                                                <span className="absolute bottom-0 inset-x-0 text-xs bg-primary/80 text-white font-bold text-center py-0.2 select-none">กราฟสี</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -419,7 +419,7 @@ export default function AdminReviewRequestsPage() {
 
                                     {/* สรุปผลการตัดสินใจ (แท็บที่เคยตรวจผ่านแล้ว) */}
                                     {tab !== "pending" && (
-                                        <div className="text-[10px] text-text-muted bg-surface-subtle border border-border/60 rounded-xl p-2.5 font-medium">
+                                        <div className="text-xs text-text-muted bg-surface-subtle border border-border/60 rounded-xl p-2.5 font-medium">
                                             <p>
                                                 ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
                                             </p>
@@ -479,7 +479,7 @@ export default function AdminReviewRequestsPage() {
                         </p>
 
                         <div className="space-y-2.5">
-                            <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
+                            <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
                             <textarea
                                 value={rejectNote}
                                 onChange={(e) => setRejectNote(e.target.value)}

@@ -61,13 +61,13 @@ export function ResultsPanel({ results, systemParameters, overallStatus, setStep
                                         <div className="flex items-center gap-1.5">
                                             <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
                                             {measurement.isDuplicateSubstance && (
-                                                <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 px-1.5 py-0.5 rounded">
+                                                <span className="text-xs font-semibold text-amber-700 bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 px-1.5 py-0.5 rounded">
                                                     สารซ้ำ
                                                 </span>
                                             )}
                                         </div>
                                         {measurement.confidence !== undefined && (
-                                            <span className="inline-flex items-center gap-1 font-mono text-[10px] text-teal-600 dark:text-teal-400 font-medium">
+                                            <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">
                                                 Confidence: {measurement.confidence}
                                             </span>
                                         )}

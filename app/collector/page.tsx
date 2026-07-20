@@ -433,7 +433,7 @@ export default function CollectorDashboard() {
                                         </div>
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="text-[10px] font-bold uppercase text-text-muted block mb-1">จากวันที่</label>
+                                                <label className="text-xs font-bold uppercase text-text-muted block mb-1">จากวันที่</label>
                                                 <input
                                                     title="start date"
                                                     type="date"
@@ -443,7 +443,7 @@ export default function CollectorDashboard() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-bold uppercase text-text-muted block mb-1">ถึงวันที่</label>
+                                                <label className="text-xs font-bold uppercase text-text-muted block mb-1">ถึงวันที่</label>
                                                 <input
                                                     title="end date"
                                                     type="date"
@@ -455,11 +455,11 @@ export default function CollectorDashboard() {
                                             </div>
                                             <div className="flex justify-end gap-2 pt-1">
                                                 {(startDate || endDate) && (
-                                                    <button onClick={clearDateRange} className="text-[11px] font-bold text-text-muted hover:text-text-secondary px-2 py-1">
+                                                    <button onClick={clearDateRange} className="text-xs font-bold text-text-muted hover:text-text-secondary px-2 py-1">
                                                         ล้างค่า
                                                     </button>
                                                 )}
-                                                <button onClick={() => setIsDatePanelOpen(false)} className="text-[11px] font-bold bg-primary text-white px-3 py-1.5 rounded-lg">
+                                                <button onClick={() => setIsDatePanelOpen(false)} className="text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg">
                                                     ตกลง
                                                 </button>
                                             </div>
@@ -538,7 +538,7 @@ export default function CollectorDashboard() {
                                         <FileText size={18} />
                                     </div>
                                     <p className="text-text-primary font-bold text-xs">ไม่พบข้อมูลประวัติ</p>
-                                    <p className="text-[11px] text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
+                                    <p className="text-xs text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
                                 </div>
                             );
                         }
@@ -599,7 +599,7 @@ export default function CollectorDashboard() {
                                                         <div className="flex flex-col items-end gap-1 shrink-0">
                                                             <StatusBadge status={sample.status} size="sm" />
                                                             {sample.reviewStatus === "PENDING" && (
-                                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md whitespace-nowrap">
+                                                                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md whitespace-nowrap">
                                                                     รออนุมัติ
                                                                 </span>
                                                             )}

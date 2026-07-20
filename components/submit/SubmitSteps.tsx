@@ -46,7 +46,7 @@ export function SubmitSteps({ step, orientation = "horizontal" }: SubmitStepsPro
                 {STEP_LABELS.map((label, i) => (
                     <div key={label} className="flex items-center gap-2.5">
                         <StepCircle n={i + 1} state={states[i]} />
-                        <span className={`text-[10px] font-medium ${states[i] === "idle" ? "text-text-muted" : "text-text-primary"}`}>{label}</span>
+                        <span className={`text-xs font-medium ${states[i] === "idle" ? "text-text-muted" : "text-text-primary"}`}>{label}</span>
                     </div>
                 ))}
             </div>
@@ -59,7 +59,7 @@ export function SubmitSteps({ step, orientation = "horizontal" }: SubmitStepsPro
                 <div key={label} className="flex items-center flex-1 last:flex-none">
                     <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
                         <StepCircle n={i + 1} state={states[i]} />
-                        <span className={`text-[10px] font-medium text-center ${states[i] === "idle" ? "text-text-muted" : "text-text-primary"}`}>{label}</span>
+                        <span className={`text-xs font-medium text-center ${states[i] === "idle" ? "text-text-muted" : "text-text-primary"}`}>{label}</span>
                     </div>
                     {i < STEP_LABELS.length - 1 && <div className="flex-1 h-px bg-border mx-2 mb-5" />}
                 </div>

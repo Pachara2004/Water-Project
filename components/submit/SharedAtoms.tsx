@@ -5,13 +5,13 @@ export function SectionHead({ icon, label }: { icon: React.ReactNode; label: str
     return (
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <span className="text-text-muted">{icon}</span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">{label}</span>
+            <span className="font-mono text-xs uppercase tracking-wider text-text-secondary">{label}</span>
         </div>
     );
 }
 
 export function StepDot({ n, state }: { n: number; state: "done" | "active" | "idle" }) {
-    const base = "w-5 h-5 rounded-full text-[10px] font-mono font-medium flex items-center justify-center flex-shrink-0";
+    const base = "w-5 h-5 rounded-full text-xs font-mono font-medium flex items-center justify-center flex-shrink-0";
     if (state === "done")
         return (
             <div className={`${base} bg-teal-600 text-white`}>
