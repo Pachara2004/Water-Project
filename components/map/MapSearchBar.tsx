@@ -39,7 +39,7 @@ export default function MapSearchBar({ locations, onSelectLocation }: MapSearchB
         <div ref={containerRef} className="relative w-full z-700">
             {/* Input ค้นหา */}
             <div className="flex items-center w-full h-12 px-4 bg-card-general rounded-xl shadow-sm transition-all">
-                <Search size={16} className="text-secondary shrink-0 mr-1.5" />
+                <Search size={16} strokeWidth={3} className="text-secondary shrink-0 mr-1.5" />
                 <input
                     type="text"
                     value={keyword}

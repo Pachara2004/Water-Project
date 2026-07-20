@@ -165,7 +165,7 @@ export default function Navbar() {
                             </div>
                             <div className="flex flex-col min-w-0 ml-3 leading-tight">
                                 <span className="text-xs font-semibold text-text-primary truncate">{currentUser.firstName || currentUser.lineProfileName}</span>
-                                <span className="text-[9px] text-text-muted font-semibold uppercase tracking-wider mt-0.5 truncate">{userRole}</span>
+                                <span className="text-xs text-text-muted font-semibold uppercase tracking-wider mt-0.5 truncate">{userRole}</span>
                             </div>
                         </div>
                     </div>

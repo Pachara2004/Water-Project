@@ -100,7 +100,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                     <div className="flex flex-col gap-0.5">
                                         <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
                                         {measurement.confidence !== undefined && (
-                                            <span className="inline-flex items-center gap-1 font-mono text-[10px] text-teal-600 dark:text-teal-400 font-medium">
+                                            <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">
                                                 Confidence: {measurement.confidence}
                                             </span>
                                         )}

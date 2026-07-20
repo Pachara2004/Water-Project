@@ -283,10 +283,10 @@ export default function AdminReviewRequestsPage() {
                                                                         </div>
                                                                         <div className="flex items-center gap-2 shrink-0">
                                                                             <span className="text-sm font-black text-black">
-                                                                                {m.value.toFixed(3)} <span className="text-[9px] font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
+                                                                                {m.value.toFixed(3)} <span className="text-xs font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
                                                                             </span>
                                                                             <span
-                                                                                className={`font-mono text-[9px] px-1.5 py-0.2 rounded font-bold border shrink-0 ${
+                                                                                className={`font-mono text-xs px-1.5 py-0.2 rounded font-bold border shrink-0 ${
                                                                                     lowConf ? "text-red-600 bg-red-50 border-red-100" : "text-teal-600 bg-teal-50 border-teal-100"
                                                                                 }`}
                                                                             >
@@ -310,7 +310,7 @@ export default function AdminReviewRequestsPage() {
                                                                 ) : (
                                                                     <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
                                                                 )}
-                                                                <span className="absolute bottom-0 inset-x-0 text-[7px] bg-black/60 text-white font-bold text-center py-0.2 select-none">ภาพถ่าย</span>
+                                                                <span className="absolute bottom-0 inset-x-0 text-xs bg-black/60 text-white font-bold text-center py-0.2 select-none">ภาพถ่าย</span>
                                                             </div>
 
                                                             {/* รูปกราฟสี */}
@@ -323,7 +323,7 @@ export default function AdminReviewRequestsPage() {
                                                                 ) : (
                                                                     <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
                                                                 )}
-                                                                <span className="absolute bottom-0 inset-x-0 text-[7px] bg-primary/80 text-white font-bold text-center py-0.2 select-none">กราฟสี</span>
+                                                                <span className="absolute bottom-0 inset-x-0 text-xs bg-primary/80 text-white font-bold text-center py-0.2 select-none">กราฟสี</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -334,7 +334,7 @@ export default function AdminReviewRequestsPage() {
 
                                     {/* สรุปผลการตัดสินใจ (แท็บที่เคยตรวจผ่านแล้ว) */}
                                     {tab !== "pending" && (
-                                        <div className="text-[10px] text-text-muted bg-surface-subtle border border-border/60 rounded-xl p-2.5 font-medium">
+                                        <div className="text-xs text-text-muted bg-surface-subtle border border-border/60 rounded-xl p-2.5 font-medium">
                                             <p>
                                                 ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
                                             </p>
@@ -394,7 +394,7 @@ export default function AdminReviewRequestsPage() {
                         </p>
 
                         <div className="space-y-2.5">
-                            <label className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
+                            <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
                             <textarea
                                 value={rejectNote}
                                 onChange={(e) => setRejectNote(e.target.value)}

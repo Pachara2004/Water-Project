@@ -206,14 +206,14 @@ function SubmitContent() {
                         {!saved ? (
                             <div className="space-y-2.5">
                                 {hasDuplicateSubstance && (
-                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700 leading-relaxed font-medium">
                                         <Copy size={14} className="shrink-0 mt-0.5" />
                                         <span>ตรวจพบสารซ้ำกัน กรุณาแตะเลือกเก็บไว้เพียงรูปเดียว รูปที่ไม่ได้เลือกจะไม่ถูกเก็บ</span>
                                     </div>
                                 )}
 
                                 {hasLowConfidence && (
-                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed font-medium">
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700 leading-relaxed font-medium">
                                         <AlertCircle size={14} className="shrink-0 mt-0.5" />
                                         <span>ผลตรวจมีค่า confidence ต่ำกว่าเกณฑ์ หากส่งบันทึก ข้อมูลจะเข้าสู่สถานะ &quot;รออนุมัติ&quot; และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบ</span>
                                     </div>

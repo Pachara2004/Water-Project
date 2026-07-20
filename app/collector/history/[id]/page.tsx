@@ -306,7 +306,7 @@ export default function CollectorHistoryDetailPage() {
                                         className="w-full text-left px-4 py-2 text-xs hover:bg-surface-subtle border-b last:border-0"
                                     >
                                         <span className="block font-bold">{loc.name}</span>
-                                        <span className="text-[10px] text-text-muted">{loc.agency}</span>
+                                        <span className="text-xs text-text-muted">{loc.agency}</span>
                                     </button>
                                 ))}
                             </div>
@@ -431,27 +431,27 @@ export default function CollectorHistoryDetailPage() {
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
-                    {sample?.code ? (
+                    {sample?.sessionGroup ? (
                         <div className="flex flex-col items-center">
-                            <h1 className="text-sm font-semibold text-secondary">{sample.code}</h1>
+                            <h1 className="text-sm font-semibold text-secondary">{sample.sessionGroup}</h1>
                         </div>
                     ) : (
-                        <h1 className="text-sm font-semibold text-secondary">รายละเอียดประวัติการตรวจสอบ</h1>
+                        <h1 className="text-sm font-semibold text-primary">รายละเอียดประวัติการตรวจสอบ</h1>
                     )}
                 </div>
                 {currentUser?.role === "admin" ? (
                     <div className="flex items-center">
                         {isEditing ? (
                             <div className="flex gap-1.5">
-                                <button onClick={() => setIsEditing(false)} className="text-[11px] font-bold text-text-secondary bg-surface-subtle border px-3 py-1.5 rounded-lg">
+                                <button onClick={() => setIsEditing(false)} className="text-xs font-bold text-text-secondary bg-surface-subtle border px-3 py-1.5 rounded-lg">
                                     ยกเลิก
                                 </button>
-                                <button onClick={handleSave} disabled={saving || !isLocationValid} className="text-[11px] font-bold text-white bg-teal-700 px-3 py-1.5 rounded-lg disabled:opacity-40">
+                                <button onClick={handleSave} disabled={saving || !isLocationValid} className="text-xs font-bold text-white bg-teal-700 px-3 py-1.5 rounded-lg disabled:opacity-40">
                                     บันทึก
                                 </button>
                             </div>
                         ) : (
-                            <button onClick={startEdit} className="text-[11px] font-bold text-teal-700 border border-teal-600 bg-teal-50/40 px-3 py-1.5 rounded-lg flex items-center gap-1">
+                            <button onClick={startEdit} className="text-xs font-bold text-teal-700 border border-teal-600 bg-teal-50/40 px-3 py-1.5 rounded-lg flex items-center gap-1">
                                 <Pencil size={11} /> แก้ไข
                             </button>
                         )}
@@ -484,30 +484,30 @@ export default function CollectorHistoryDetailPage() {
             {/* 💻 DESKTOP VIEW COMPONENT */}
             <div className="hidden md:block m-4">
                 <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-150">
-                    <aside className="w-[200px] border-r border-border bg-surface flex flex-col p-4 shrink-0">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-2">ประวัติการตรวจ</p>
+                    <aside className="w-50 border-r border-border bg-surface flex flex-col p-4 shrink-0">
+                        <p className="font-mono text-xs uppercase tracking-widest text-text-muted mb-2">ประวัติการตรวจ</p>
                         <div className="space-y-2 py-2 border-b">
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-text-muted font-mono">Sample ID</span>
+                                <span className="text-xs text-text-muted font-mono">Sample ID</span>
                                 <span className="text-xs font-bold">#{sample.id}</span>
                             </div>
                             <div className="flex flex-col mt-1.5">
-                                <span className="text-[10px] text-text-muted font-mono">ผลประเมิน</span>
+                                <span className="text-xs text-text-muted font-mono">ผลประเมิน</span>
                                 <div className="w-fit mt-1">
                                     <StatusBadge status={sample.status} size="sm" />
                                 </div>
                             </div>
                         </div>
                         <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
-                            <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Chemical Summary</p>
+                            <p className="font-mono textxs uppercase tracking-widest text-text-muted">Chemical Summary</p>
                             {resultEntries.map(({ key, param, measurement }) => (
                                 <div key={key} className="flex justify-between items-center py-0.5">
-                                    <span className="font-mono text-[10px] text-text-muted uppercase">
+                                    <span className="font-mono text-xs text-text-muted uppercase">
                                         {param.name}
                                         {measurement.isDuplicateSubstance && <span className="ml-1 text-amber-600">•ซ้ำ</span>}
                                     </span>
-                                    <span className="text-[10px] font-bold text-text-primary text-right">
-                                        {measurement.concentrated.toFixed(3)} <span className="text-[9px] text-text-muted font-normal">mg/L</span>
+                                    <span className="text-xs font-bold text-text-primary text-right">
+                                        {measurement.concentrated.toFixed(3)} <span className="text-xs text-text-muted font-normal">mg/L</span>
                                     </span>
                                 </div>
                             ))}

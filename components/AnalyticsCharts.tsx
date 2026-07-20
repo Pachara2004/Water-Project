@@ -661,7 +661,7 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                                         <tr key={loc.id} className="hover:bg-surface-subtle/30 transition-colors">
                                             <td className="px-5 py-4 text-sm font-black">{loc.name}</td>
                                             <td className="px-5 py-4">
-                                                <span className="bg-surface-subtle px-3 py-1 rounded-full border border-border text-[10px]">{loc.org}</span>
+                                                <span className="bg-surface-subtle px-3 py-1 rounded-full border border-border text-xs">{loc.org}</span>
                                             </td>
                                             <td className="px-5 py-4 text-center">
                                                 {loc.danger > 0 ? (
@@ -689,7 +689,7 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                     <div className="text-center py-10 bg-surface-subtle rounded-xl border border-dashed border-border flex flex-col items-center justify-center">
                         <ShieldCheck size={28} className="text-safe mb-2" />
                         <p className="text-text-primary font-black text-sm">คุณภาพน้ำอยู่ในสภาวะปกติอย่างสมบูรณ์</p>
-                        <p className="text-[10px] text-text-muted mt-1">ไม่พบพื้นที่ประมงหรือจุดจัดเก็บน้ำที่อยู่ในระดับวิกฤตหรืออันตราย</p>
+                        <p className="text-xs text-text-muted mt-1">ไม่พบพื้นที่ประมงหรือจุดจัดเก็บน้ำที่อยู่ในระดับวิกฤตหรืออันตราย</p>
                     </div>
                 )}
             </div>
