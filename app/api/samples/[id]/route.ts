@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
+import { evaluateSample, computeValueByParameterAsOf } from "@/lib/standards";
+import { loadAllStandards } from "@/lib/standards-db";
+import { getPendingSessionGroups } from "@/lib/review";
 
 type WaterStatus = "safe" | "warning" | "danger";
 
@@ -245,6 +248,42 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             }
         });
 
+        // ── ผลประเมินระดับ "สถานที่" ณ วันที่ของ record นี้ (context-aware — ไม่ใช่ล่าสุดจริงตอนนี้) ──
+        // เช่น ดูแอมโมเนียเมื่อ 10 วันก่อน ฟอสเฟตต้องเทียบด้วยค่าฟอสเฟตที่ใกล้เคียงวันนั้น ไม่ใช่ฟอสเฟตของวันนี้
+        // กติกา (ดู computeValueByParameterAsOf ใน lib/standards.ts): ย้อนหลังล่าสุดก่อนเสมอ ถ้าไม่มีค่อยขยายไปฝั่งอนาคตเอาตัวใกล้สุด
+        const pendingGroups = await getPendingSessionGroups();
+        const baseLocationSampleWhere: any = { locationId: mainSample.locationId, isDeleted: false };
+        if (pendingGroups.length > 0) {
+            baseLocationSampleWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
+        }
+        const locationSampleSelect = {
+            collectionTime: true,
+            measurements: { select: { value: true, parameterId: true, parameter: { select: { name: true } } } },
+        };
+        const [beforeOrAtSamples, afterSamples] = await Promise.all([
+            prisma.waterSample.findMany({
+                where: { ...baseLocationSampleWhere, collectionTime: { lte: mainSample.collectionTime } },
+                orderBy: { collectionTime: "desc" },
+                take: 50,
+                select: locationSampleSelect,
+            }),
+            prisma.waterSample.findMany({
+                where: { ...baseLocationSampleWhere, collectionTime: { gt: mainSample.collectionTime } },
+                orderBy: { collectionTime: "asc" },
+                take: 50,
+                select: locationSampleSelect,
+            }),
+        ]);
+        const latestByParameter = computeValueByParameterAsOf(beforeOrAtSamples, afterSamples);
+        const locationStandards = await loadAllStandards();
+        const locationStatus =
+            latestByParameter.length > 0
+                ? evaluateSample(
+                      latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value })),
+                      locationStandards,
+                  )
+                : null;
+
         const responseGetData = {
             id: mainSample.id,
             code: mainSample.code, // [NEW] แนบ code ส่งออกไปใน GET Response ให้หน้าบ้านนำไปโชว์ที่ Header
@@ -272,6 +311,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             collector: mainSample.collector,
             measurements: allMeasurements,
             sampleImagesMap: sampleImagesMap,
+
+            // ผลประเมินของสถานที่ (คนละมิติกับ status ของ record นี้) — null = สถานที่นี้ยังไม่เคยมีผลตรวจ
+            locationStatus,
+            latestByParameter,
 
             ...dynamicMeasurements,
 

@@ -1,6 +1,6 @@
 // components/submit/ResultsPanel.tsx
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Check } from "lucide-react";
 import { evaluateValueAgainstStandards, groupStandardsByParameter } from "@/lib/standards";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
@@ -12,9 +12,13 @@ interface ResultsPanelProps {
     systemParameters: DbParameter[];
     overallStatus: "safe" | "warning" | "danger";
     setStep: (step: "upload" | "analyzing" | "results") => void;
+    // กรณีสารซ้ำ: parameterId → key ของภาพที่ผู้ส่งเลือกเก็บ (เลือกได้ตัวเดียวต่อสาร)
+    // optional เพราะหน้าประวัติ (read-only) ก็ใช้ component นี้ แต่ข้อมูลที่บันทึกแล้วไม่มีสารซ้ำให้เลือก
+    duplicateChoice?: Record<number, number>;
+    chooseDuplicate?: (parameterId: number, key: number) => void;
 }
 
-export function ResultsPanel({ results, systemParameters, overallStatus, setStep }: ResultsPanelProps) {
+export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate }: ResultsPanelProps) {
     const [openParamId, setOpenParamId] = useState<number | null>(null);
     const { locationTypes } = useLocationTypes();
 
@@ -36,8 +40,8 @@ export function ResultsPanel({ results, systemParameters, overallStatus, setStep
             {/* ตารางแสดงรายละเอียดแต่ละสารพารามิเตอร์ */}
             <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-1                                                                                                                                                           ">
                 <div className="px-6 py-3 border-b border-border bg-muted/40 flex justify-between items-center text-text-muted text-xs uppercase tracking-wider">
-                    <div>Parameter</div>
-                    <div>Value</div>
+                    <div>สารที่ตรวจ</div>
+                    <div>ค่าที่วัดได้</div>
                 </div>
                 <div className="divide-y divide-border">
                     {Object.entries(results).map(([entryKeyStr, measurement]) => {
@@ -54,18 +58,47 @@ export function ResultsPanel({ results, systemParameters, overallStatus, setStep
 
                         const isDropdownOpen = openParamId === entryKey;
 
+                        // สารซ้ำ: ผู้ส่งเลือกเก็บได้ภาพเดียวต่อสาร — ภาพที่ไม่ถูกเลือกจะหรี่ลงและไม่ถูกบันทึก
+                        const isDuplicate = measurement.isDuplicateSubstance === true;
+                        const isChosen = isDuplicate && duplicateChoice[measurement.parameterId] === entryKey;
+
                         return (
-                            <div key={entryKey} className="px-6 py-4 flex flex-col gap-2 hover:bg-muted/5 transition-colors">
+                            <div
+                                key={entryKey}
+                                className={`px-5 py-4 flex flex-col gap-2.5 border-l-[3px] transition-all ${
+                                    isDuplicate
+                                        ? isChosen
+                                            ? "border-l-teal-500 bg-teal-500/[0.05]"
+                                            : "border-l-transparent opacity-55 hover:opacity-100"
+                                        : "border-l-transparent hover:bg-muted/5"
+                                }`}
+                            >
+                                {/* สารซ้ำ: ตัวเลือก radio เต็มแถว เลือกเก็บได้ภาพเดียวต่อสาร */}
+                                {isDuplicate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => chooseDuplicate?.(measurement.parameterId, entryKey)}
+                                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                                            isChosen
+                                                ? "bg-teal-500/10 border-teal-500/40 text-[#009689]"
+                                                : "bg-surface-subtle border-border text-text-secondary hover:border-teal-400 hover:text-teal-600"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                                isChosen ? "border-teal-600 bg-teal-600" : "border-text-muted"
+                                            }`}
+                                        >
+                                            {isChosen && <Check size={11} strokeWidth={4} className="text-white" />}
+                                        </span>
+                                        <span className="flex-1 text-left">{isChosen ? "เก็บรูปนี้ไว้" : "แตะเพื่อเลือกรูปนี้"}</span>
+                                        {!isChosen && <span className="text-[10px] font-medium text-text-muted normal-case">รูปนี้จะไม่ถูกเก็บ</span>}
+                                    </button>
+                                )}
+
                                 <div className="flex justify-between items-baseline">
                                     <div className="flex flex-col gap-0.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
-                                            {measurement.isDuplicateSubstance && (
-                                                <span className="text-xs font-semibold text-amber-700 bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 px-1.5 py-0.5 rounded">
-                                                    สารซ้ำ
-                                                </span>
-                                            )}
-                                        </div>
+                                        <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
                                         {measurement.confidence !== undefined && (
                                             <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">
                                                 Confidence: {measurement.confidence}
@@ -89,7 +122,7 @@ export function ResultsPanel({ results, systemParameters, overallStatus, setStep
                                                 paramStatus === null
                                                     ? "text-text-muted bg-surface-subtle border-border cursor-default"
                                                     : isExceeded
-                                                      ? "text-red-600 bg-red-500/10 border-red-500/20 hover:bg-red-500/15 cursor-pointer"
+                                                      ? "text-[#EA2F0B] bg-red-500/10 border-red-500/20 hover:bg-red-500/15 cursor-pointer"
                                                       : paramStatus === "warning"
                                                         ? "text-amber-600 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15 cursor-pointer"
                                                         : "text-teal-600 bg-teal-500/10 border-teal-500/20 hover:bg-teal-500/15 cursor-pointer"

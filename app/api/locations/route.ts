@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
 import { backfillWeatherData } from "@/lib/tmd";
-import { evaluateSample } from "@/lib/standards";
+import { evaluateSample, computeLatestValueByParameter } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
 
 // ==========================================
@@ -84,21 +84,8 @@ export async function GET(request: NextRequest) {
             //
             // อิงจาก sample 50 แถวล่าสุดเท่านั้น (take: 50 ด้านบน) ถ้าสารตัวไหนไม่ถูกวัดเลย
             // ใน 50 รอบหลังสุด ค่าของมันจะไม่ถูกนับเข้าสถานะสถานที่
-            const latestValueByParameter = new Map<number, { parameterId: number; parameterName: string; value: number; collectedAt: string }>();
-            for (const s of loc.samples) {
-                // loc.samples เรียง collectionTime desc มาแล้ว → ตัวแรกที่เจอของแต่ละสาร = ตัวล่าสุด
-                for (const m of s.measurements) {
-                    if (latestValueByParameter.has(m.parameterId)) continue;
-                    latestValueByParameter.set(m.parameterId, {
-                        parameterId: m.parameterId,
-                        parameterName: m.parameter?.name ?? "",
-                        value: m.value,
-                        collectedAt: s.collectionTime.toISOString(), // บอกด้วยว่าค่านี้มาจากรอบไหน — หลังโดนปฏิเสธ ค่าอาจย้อนไปหลายรอบ
-                    });
-                }
-            }
-
-            const latestByParameter = Array.from(latestValueByParameter.values());
+            // loc.samples เรียง collectionTime desc มาแล้ว → computeLatestValueByParameter หาตัวแรกที่เจอของแต่ละสารให้
+            const latestByParameter = computeLatestValueByParameter(loc.samples);
 
             const locationStatus =
                 latestByParameter.length > 0

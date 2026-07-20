@@ -31,6 +31,7 @@ function SubmitContent() {
         setNearestLocations,
         step,
         results,
+        savedEntryKeys,
         router,
         saved,
         savedSampleId,
@@ -90,8 +91,8 @@ function SubmitContent() {
     const onConfirmSave = async (needsAdminReview: boolean) => {
         const confirmed = await confirmDialog({
             title: needsAdminReview ? "ยืนยันส่งข้อมูลเพื่อรอตรวจสอบ" : "ยืนยันการบันทึกข้อมูล",
-            text: needsAdminReview ? 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน' : "คุณต้องการบันทึกผลการตรวจสอบน้ำนี้ลงฐานข้อมูล",
-            confirmText: needsAdminReview ? "ใช่ ส่งเพื่อรอตรวจสอบ" : "ใช่ บันทึกข้อมูล",
+            text: needsAdminReview ? 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน' : "คุณต้องการบันทึกผลตรวจน้ำครั้งนี้ใช่หรือไม่",
+            confirmText: needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกข้อมูล",
             tone: needsAdminReview ? "warning" : "primary",
         });
         if (!confirmed) return;
@@ -107,10 +108,11 @@ function SubmitContent() {
         }
     };
 
-    const hasLowConfidence = Object.values(results).some((r) => isLowConfidence(r.confidence));
+    // นับ confidence ต่ำเฉพาะภาพที่จะถูกบันทึกจริง (สารซ้ำ: เฉพาะภาพที่ผู้ส่งเลือก) — ภาพที่ถูกทิ้งต้องไม่ดัน session เข้า pending
+    const hasLowConfidence = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && isLowConfidence(r.confidence));
     const hasDuplicateSubstance = Object.values(results).some((r) => r.isDuplicateSubstance);
-    // เหตุผลใดเหตุผลหนึ่งก็พอที่จะบังคับให้ session นี้ต้องรอ admin อนุมัติ (confidence ต่ำ หรือ สารซ้ำ)
-    const needsAdminReview = hasLowConfidence || hasDuplicateSubstance;
+    // สารซ้ำไม่ต้องรอ admin แล้ว — ผู้ส่งเลือกภาพเองตอนนี้; เหลือแค่ confidence ต่ำที่ยังเข้าคิว review
+    const needsAdminReview = hasLowConfidence;
 
     const onResetClick = async () => {
         const confirmed = await confirmDialog({
@@ -206,7 +208,7 @@ function SubmitContent() {
                                 {hasDuplicateSubstance && (
                                     <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700 leading-relaxed font-medium">
                                         <Copy size={14} className="shrink-0 mt-0.5" />
-                                        <span>ตรวจพบสารซ้ำกัน หากส่งบันทึก ข้อมูลจะเข้าสู่สถานะ &quot;รออนุมัติ&quot; และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบ</span>
+                                        <span>ตรวจพบสารซ้ำกัน กรุณาแตะเลือกเก็บไว้เพียงรูปเดียว รูปที่ไม่ได้เลือกจะไม่ถูกเก็บ</span>
                                     </div>
                                 )}
 
@@ -225,7 +227,7 @@ function SubmitContent() {
                                     }`}
                                 >
                                     {needsAdminReview ? <Clock size={15} /> : <Database size={15} />}
-                                    {needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกลงฐานข้อมูล"}
+                                    {needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกผลตรวจ"}
                                 </button>
 
                                 {/* ทางออกสำรอง — ผลลัพธ์นี้ไม่ใช่สิ่งที่ต้องการ กลับไปถ่ายใหม่ได้โดยไม่ต้องออกจากหน้า */}

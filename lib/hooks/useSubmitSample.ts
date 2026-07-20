@@ -38,6 +38,9 @@ export function useSubmitSample() {
     const [locationType, setLocationType] = useState("COMMUNITY");
     const [step, setStep] = useState<"upload" | "analyzing" | "results">("upload");
     const [results, setResults] = useState<Record<number, MeasurementResult>>({});
+    // กรณีสารซ้ำ (≥2 ภาพชี้ parameterId เดียวกัน): ผู้ส่งเลือกเก็บได้ภาพเดียวต่อสาร
+    // map parameterId → key (virtual key) ของ entry ที่เลือกไว้ | ค่าเริ่มต้นตั้งเป็นภาพ confidence สูงสุดใน finalizeAnalysis
+    const [duplicateChoice, setDuplicateChoice] = useState<Record<number, number>>({});
     const [overallStatus, setOverallStatus] = useState<"safe" | "warning" | "danger">("safe");
     const [saved, setSaved] = useState(false);
     // id ของ sample ตัวแรกที่บันทึกสำเร็จในรอบนี้ — ใช้พาไปหน้ารายละเอียดของชุดนี้โดยตรงหลังบันทึกเสร็จ
@@ -80,6 +83,19 @@ export function useSubmitSample() {
 
     // สารที่เปิด toggle ไว้จริง — ตัดสินใจจาก enabledParamIds ล้วน ๆ ไม่ผูกกับจำนวน (รองรับ N สาร)
     const activeParameters = systemParameters.filter((p) => enabledParamIds.has(p.id));
+
+    // ผู้ส่งเลือกภาพหลักของกลุ่มสารซ้ำ (parameterId → key ที่เลือก)
+    const chooseDuplicate = (parameterId: number, key: number) => {
+        setDuplicateChoice((prev) => ({ ...prev, [parameterId]: key }));
+    };
+
+    // key ของทุก entry ที่จะถูกบันทึกจริง = entry ที่ไม่ซ้ำ + entry ของสารซ้ำที่ถูกเลือกไว้เท่านั้น
+    // ใช้ทั้งตอน handleSave (กรองส่ง) และให้ UI ตัดสิน review ตามเฉพาะภาพที่จะบันทึก
+    const savedEntryKeys = new Set<number>(
+        Object.entries(results)
+            .filter(([keyStr, r]) => !r.isDuplicateSubstance || duplicateChoice[r.parameterId] === Number(keyStr))
+            .map(([keyStr]) => Number(keyStr)),
+    );
 
     const toggleParam = (paramId: number) => {
         setEnabledParamIds((prev) => {
@@ -204,16 +220,28 @@ export function useSubmitSample() {
         const newImagePlotFiles: Record<number, File> = {};
         const newResults: Record<number, MeasurementResult> = {};
         const finalParamIds = new Set<number>();
+        // ตัวเลือกเริ่มต้นของกลุ่มสารซ้ำ: parameterId → key ของภาพ confidence สูงสุด (ผู้ส่งเปลี่ยนได้ทีหลัง)
+        const newDuplicateChoice: Record<number, number> = {};
         let hasDanger = false;
         let hasWarning = false;
 
         groups.forEach((arr, paramId) => {
             finalParamIds.add(paramId);
             const isDuplicateSubstance = arr.length > 1;
+            let bestKey: number | null = null;
+            let bestConfidence = -Infinity;
 
             arr.forEach((it) => {
                 // ไม่ชนกัน: ใช้ paramId จริงเป็น key ตามเดิม | ชนกัน: ต้องใช้ virtual key แยกกัน ไม่งั้นทับกันเหลือรายการเดียว
                 const key = isDuplicateSubstance ? paramId * 1_000_000 + it.originalParamId : paramId;
+
+                if (isDuplicateSubstance) {
+                    const conf = typeof it.aiData.confidence === "number" ? it.aiData.confidence : -Infinity;
+                    if (conf > bestConfidence) {
+                        bestConfidence = conf;
+                        bestKey = key;
+                    }
+                }
 
                 newImageFiles[key] = it.file;
                 if (imagePreviews[it.originalParamId]) newImagePreviews[key] = imagePreviews[it.originalParamId];
@@ -238,6 +266,8 @@ export function useSubmitSample() {
                 if (currentStatus === "danger") hasDanger = true;
                 if (currentStatus === "warning") hasWarning = true;
             });
+
+            if (isDuplicateSubstance && bestKey !== null) newDuplicateChoice[paramId] = bestKey;
         });
 
         setImageFiles(newImageFiles);
@@ -245,6 +275,7 @@ export function useSubmitSample() {
         setImagePlotFiles(newImagePlotFiles);
         setEnabledParamIds(finalParamIds); // toggle สะท้อนองค์ประกอบสุดท้ายจริงหลังกระทบยอด
         setResults(newResults);
+        setDuplicateChoice(newDuplicateChoice);
         setOverallStatus(hasDanger ? "danger" : hasWarning ? "warning" : "safe");
         setStep("results");
     };
@@ -370,6 +401,10 @@ export function useSubmitSample() {
             // วนตาม key จริงใน results (virtual key เมื่อสารซ้ำ) แทน activeParameters เพราะสารซ้ำมี 2 รายการต่อ parameterId เดียวกัน
             for (const [keyStr, resData] of Object.entries(results)) {
                 const key = Number(keyStr);
+
+                // สารซ้ำ: บันทึกเฉพาะภาพที่ผู้ส่งเลือกไว้เท่านั้น (ตัวที่ไม่เลือกไม่ถูกส่งขึ้น server เลย)
+                if (resData.isDuplicateSubstance && duplicateChoice[resData.parameterId] !== key) continue;
+
                 const rawFile = imageFiles[key];
                 const plotFile = imagePlotFiles[key];
                 const paramMeta = systemParameters.find((p) => p.id === resData.parameterId);
@@ -381,12 +416,6 @@ export function useSubmitSample() {
                 // ไม่ส่ง status แล้ว — server คำนวณเองจากค่าที่วัดได้จริง และไม่เคยเชื่อค่าจาก client อยู่แล้ว
                 fd.append("collectionTime", new Date(collectionTime).toISOString());
                 if (oxygen) fd.append("oxygen", oxygen);
-
-                fd.append("sessionGroup", sessionId);
-
-                // สารซ้ำ (isDuplicateSubstance) บังคับให้เข้าคิว pending เสมอ ไม่ว่า confidence จะสูงแค่ไหน
-                // — ต้องให้ admin ตัดสินใจว่ารายการไหนถูกต้อง เพราะมีมากกว่า 1 ภาพชี้สารเดียวกันในชุดนี้
-                if (resData.isDuplicateSubstance) fd.append("forceReview", "true");
 
                 const singleMeasurementPayload = [
                     {
@@ -432,6 +461,7 @@ export function useSubmitSample() {
     // คงค่าสถานี/เวลา/toggle สารไว้ตามเดิม (ไม่ต้องกรอกซ้ำ) แต่ออก sessionGroup ใหม่เพราะเป็นการเก็บตัวอย่างรอบใหม่จริง ๆ
     const resetToUpload = () => {
         setResults({});
+        setDuplicateChoice({});
         setImageFiles({});
         setImagePreviews({});
         setImagePlotFiles({});
@@ -474,6 +504,9 @@ export function useSubmitSample() {
         step,
         setStep,
         results,
+        duplicateChoice,
+        chooseDuplicate,
+        savedEntryKeys,
         overallStatus,
         saved,
         savedSampleId,
