@@ -401,7 +401,7 @@ export default function ManagePage() {
                                                     </span>
                                                 )}
                                                 {pendingCount > 0 && (
-                                                    <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                                    <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                                                         {pendingCount} รายการ
                                                     </span>
                                                 )}

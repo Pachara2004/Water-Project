@@ -137,13 +137,13 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
                 {showExampleModal && exampleImage && popoverPos && (
                     <>
                         {/* เลเยอร์โปร่งใสจับคลิกข้างนอกเพื่อปิด ไม่มี backdrop มืด */}
-                        <div className="fixed inset-0 z-[1000]" onClick={() => setShowExampleModal(false)} />
+                        <div className="fixed inset-0 z-1000" onClick={() => setShowExampleModal(false)} />
                         <div
-                            className="fixed z-[1001] w-64 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-lg p-2.5 animate-fade-in"
+                            className="fixed z-1001 w-64 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-lg p-2.5 animate-fade-in"
                             style={{ top: popoverPos.top, right: popoverPos.right }}
                         >
                             <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[10px] font-semibold text-text-primary uppercase tracking-wider">ตัวอย่างสี {param.name.toUpperCase()}</span>
+                                <span className="text-xs font-semibold text-text-primary uppercase tracking-wider">ตัวอย่างสี {param.name.toUpperCase()}</span>
                                 <button
                                     onClick={() => setShowExampleModal(false)}
                                     className="w-5 h-5 rounded-full flex items-center justify-center text-text-muted hover:bg-surface-subtle transition-colors cursor-pointer shrink-0"
@@ -164,7 +164,7 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
                 {measurement?.autoSwitchedFrom && (
                     <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
                         <FlaskConical size={15} className="shrink-0 mt-0.5" />
-                        <div className="text-[11px] leading-relaxed font-medium">
+                        <div className="text-xs leading-relaxed font-medium">
                             <p className="font-semibold mb-0.5">เปลี่ยนชนิดสารให้อัตโนมัติ</p>
                             <p>
                                 เดิมเลือก {measurement.autoSwitchedFrom.toUpperCase()} แต่ระบบตรวจพบว่าสารในภาพเป็น {param.name.toUpperCase()} จึงเปลี่ยนให้อัตโนมัติ
@@ -177,7 +177,7 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
                 {verifyError && (
                     <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">
                         {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}
-                        <div className="text-[11px] leading-relaxed font-medium">
+                        <div className="text-xs leading-relaxed font-medium">
                             <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "ต้องถ่ายภาพใหม่" : "สารไม่ตรงชนิด"}</p>
                             <p>{verifyError.detail}</p>
                         </div>
@@ -220,7 +220,7 @@ export function ImageZone({ param, step, preview, plotFile, measurement, verifyE
                             {/* 🌟 7. ปุ่มสลับดูภาพดิบ/ภาพพล็อต AI บริเวณมุมซ้ายบนของรูปภาพ (แสดงเมื่อแสดงผลลัพธ์และมีภาพพล็อต) */}
                             {step === "results" && hasPlotImg && (
                                 <div
-                                    className="absolute top-3 right-3 flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                    className="absolute top-3 right-3 flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
                                     onClick={(e) => {
                                         e.stopPropagation(); // 🚨 บล็อกไม่ให้การคลิกปุ่มสลับรูปภาพ ทะลุไปเปิดฟังก์ชันเปลี่ยนรูปภาพพื้นหลังครับบอส
                                         setViewMode(viewMode === "analyzed" ? "raw" : "analyzed");

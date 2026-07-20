@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
 import path from "path";
 import { promises as fs } from "fs";
-import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ต Guard กลางมาควบคุมสิทธิ์
+import { verifyAuth } from "@/lib/auth-guard";
 
 export async function GET(request: NextRequest) {
-    // 🔥 SECURITY GUARD: ล็อกกลอนขั้นสูง อนุญาตเฉพาะสิทธิ์ "officer" และ "admin" เท่านั้นที่ส่งออกรายงานได้
+    // 🔒 SECURITY GUARD: ล็อกกลอนขั้นสูง อนุญาตเฉพาะสิทธิ์ "officer" และ "admin" เท่านั้นที่ส่งออกรายงานได้
     const auth = await verifyAuth(request, ["officer", "admin"]);
     if (!auth.isValid) {
         return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -32,9 +32,11 @@ export async function GET(request: NextRequest) {
         const worksheet = workbook.addWorksheet("Water Quality Report");
 
         // 3. ประกอบโครงสร้างคอลัมน์รายงาน (Columns) แบบ Dynamic
-        // คอลัมน์พื้นฐานส่วนต้น
+        // คอลัมน์พื้นฐานส่วนต้น (เพิ่ม Sample Code และ Session Group)
         const baseColumns = [
             { header: "No.", key: "no", width: 8 },
+            { header: "Sample Code", key: "code", width: 20 }, // 🌟 เพิ่มคอลัมน์ Sample Code (SP260720...)
+            { header: "Session Group", key: "sessionGroup", width: 20 }, // 🌟 เพิ่มคอลัมน์ Session Group (SES260720...)
             { header: "Collection Time", key: "cTime", width: 20 },
             { header: "Location Name", key: "locName", width: 25 },
             { header: "Agency", key: "agency", width: 20 },
@@ -42,10 +44,10 @@ export async function GET(request: NextRequest) {
             { header: "Longitude", key: "lon", width: 12 },
         ];
 
-        // คอลัมน์สารเคมีที่งอกจาก DB อัตโนมัติ (ใช้ชื่อสารเป็นคีย์สำหรับผูกข้อมูลแถว)
+        // คอลัมน์สารเคมีที่งอกจาก DB อัตโนมัติ
         const parameterColumns = activeParameters.map((param) => ({
             header: `${param.name}${param.unit ? ` (${param.unit})` : ""}`,
-            key: `param_${param.id}`, // ใช้ ID กันเหนลียวเรื่องชื่อซ้ำหรืออักขระพิเศษ
+            key: `param_${param.id}`,
             width: 16,
         }));
 
@@ -64,7 +66,6 @@ export async function GET(request: NextRequest) {
         worksheet.getRow(1).font = { bold: true };
 
         // คำนวณหาตำแหน่งคอลัมน์รูปภาพแบบ Dynamic (ExcelJS นับเริ่มที่ 0)
-        // ตำแหน่งจะเลื่อนไปเรื่อยๆ ตามจำนวนสารเคมีที่ดึงมาได้
         const imageColIndex = baseColumns.length + parameterColumns.length + 4; // ถัดจาก status
         const imagePlotColIndex = imageColIndex + 1;
 
@@ -74,6 +75,8 @@ export async function GET(request: NextRequest) {
             // สร้างก้อน Object ข้อมูลพื้นฐานส่วนต้น
             const rowData: Record<string, any> = {
                 no: index++,
+                code: sample.code || "N/A", // 🌟 แปะค่า code
+                sessionGroup: sample.sessionGroup || "N/A", // 🌟 แปะค่า sessionGroup
                 cTime: sample.collectionTime.toISOString().replace("T", " ").substring(0, 16),
                 locName: sample.location?.stationName || "N/A",
                 agency: sample.location?.governingAgency || "N/A",
@@ -105,19 +108,14 @@ export async function GET(request: NextRequest) {
                         const cleanPath = imagePath.replace("/uploads/", "");
                         const fullPath = path.join(process.cwd(), "public", "uploads", cleanPath);
 
-                        // ตรวจสอบเช็กไฟล์ภาพบนตัวเครื่องเซิร์ฟเวอร์ก่อนหยิบมาอ่าน
                         await fs.access(fullPath);
                         const imageBuffer = await fs.readFile(fullPath);
 
-                        // exceljs ประกาศ `declare interface Buffer extends ArrayBuffer {}` เองใน index.d.ts (บั๊ก upstream)
-                        // ซึ่งชนกับ Buffer type จริงจาก @types/node เวอร์ชันใหม่ ทำให้ tsc มองว่าไม่ตรงกันเสมอไม่ว่าจะสร้าง Buffer ยังไงก็ตาม
-                        // ค่า runtime ถูกต้อง 100% (เป็น Buffer จริง) จึง cast ผ่านจุดนี้จุดเดียวแทนการไล่แก้ทั้ง type system
                         const imageId = workbook.addImage({
                             buffer: imageBuffer as any,
                             extension: "jpeg",
                         });
 
-                        // ฝังรูปภาพลงตามดัชนีพิกัดคอลัมน์ (0-indexed)
                         worksheet.addImage(imageId, {
                             tl: { col: colIndex, row: row.number - 1 },
                             ext: { width: 150, height: 95 },
@@ -134,13 +132,13 @@ export async function GET(request: NextRequest) {
             await embedImageToCell(sample.analyzedPlotUrl, imagePlotColIndex);
         }
 
-        // 5. คอมไพล์ก้อน Buffer และตอบกลับให้บราว์เซอร์หน้าบ้านกดโหลดทันที
+        // 5. คอมไพล์ก้อน Buffer และตอบกลับให้บราวเซอร์หน้าบ้านกดโหลดทันที
         const buffer = await workbook.xlsx.writeBuffer();
 
         return new Response(buffer, {
             headers: {
                 "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "Content-Disposition": `attachment; filename=Dynamic_Water_Report_${Date.now()}.xlsx`,
+                "Content-Disposition": `attachment; filename=Water_Quality_Report_${Date.now()}.xlsx`,
             },
         });
     } catch (error) {

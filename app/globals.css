@@ -27,7 +27,15 @@
 
     --color-bg-danger: var(--color-bg-danger);
     --color-border-danger: var(--color-border-danger);
-    --color-text-danger: var(--text-danger);
+    --color-text-danger: var(--color--text-danger);
+    --color-bg-safe: var(--color-bg-safe);
+    --color-border-safe: var(--color-border-safe);
+    --color-text-safe: var(--color--text-safe);
+    --color-bg-warning: var(--color-bg-danger);
+    --color-border-warning: var(--color-border-danger);
+    --color-text-warning: var(--color--text-warning);
+    --color-text: var(--color-text);
+
 
     --color-surface: var(--color-surface);
     --color-surface-muted: var(--color-surface-muted);
@@ -89,9 +97,18 @@
     --color-danger: #b91c1c;
     --color-danger-hover: #b91c1c;
 
+    /* สีการ์ดในระบบ */
     --color-bg-danger: #fef2f2;
     --color-border-danger: #fecaca;
     --color-text-danger: #b91c1c;
+    --color-bg-safe: #f0fdf4;
+    --color-border-safe: #86efac;
+    --color-text-safe: #15803d;
+    --color-bg-warning: #fffbeb;
+    --color-border-warning: #fcd34d;
+    --color-text-warning: #b45309;
+
+    --color-text: #112a33;
 
     /* Surfaces & Texts */
     --color-surface: #ffffff;

@@ -38,13 +38,13 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="bg-card-general flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform w-35 cursor-pointer max-w-40 sm:max-w-xs"
+                className="bg-card-general flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform w-40 cursor-pointer max-w-45 sm:max-w-xs"
             >
                 <div className="shrink-0">
-                    <Droplets size={18} className="text-secondary" />
+                    <Droplets size={18} strokeWidth={3} className="text-secondary" />
                 </div>
                 <div className="flex flex-col items-start leading-none min-w-0">
-                    <span className="text-[9px] text-primary font-semibold uppercase tracking-wider">คุณภาพน้ำ</span>
+                    <span className="text-xs text-primary font-semibold uppercase tracking-wider">คุณภาพน้ำ</span>
                     <span className="font-semibold text-black text-xs flex items-center gap-1.5 mt-0.5 w-full">
                         <span className="truncate text-left">{currentOption.label}</span>
                     </span>

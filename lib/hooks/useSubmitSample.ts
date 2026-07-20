@@ -382,6 +382,8 @@ export function useSubmitSample() {
                 fd.append("collectionTime", new Date(collectionTime).toISOString());
                 if (oxygen) fd.append("oxygen", oxygen);
 
+                fd.append("sessionGroup", sessionId);
+
                 // สารซ้ำ (isDuplicateSubstance) บังคับให้เข้าคิว pending เสมอ ไม่ว่า confidence จะสูงแค่ไหน
                 // — ต้องให้ admin ตัดสินใจว่ารายการไหนถูกต้อง เพราะมีมากกว่า 1 ภาพชี้สารเดียวกันในชุดนี้
                 if (resData.isDuplicateSubstance) fd.append("forceReview", "true");

@@ -124,7 +124,7 @@ export default function NotificationBell() {
                                 <Bell size={18} className="text-primary" />
                                 <h3 className="text-sm font-bold text-primary">การแจ้งเตือน</h3>
                                 {unreadCount > 0 && (
-                                    <span className="text-[10px] leading-none font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-full inline-flex items-center">{unreadCount} ใหม่</span>
+                                    <span className="text-xs leading-none font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-full inline-flex items-center">{unreadCount} ใหม่</span>
                                 )}
                             </div>
                             <button
@@ -174,7 +174,7 @@ export default function NotificationBell() {
                                                 <div className="flex-1 min-w-0">
                                                     {/* หัว: สถานะปฏิเสธ + สถานที่ */}
                                                     <div className="flex items-center gap-1.5 mb-1">
-                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md shrink-0">
+                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md shrink-0">
                                                             ถูกปฏิเสธ
                                                         </span>
                                                         {!isRead && <span className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />}
@@ -185,14 +185,14 @@ export default function NotificationBell() {
                                                         <span className="truncate">{item.location?.name ?? "ไม่ทราบสถานที่"}</span>
                                                     </div>
 
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-0.5">
+                                                    <div className="flex items-center gap-1.5 text-xs text-text-muted mt-0.5">
                                                         <Calendar size={11} className="shrink-0" />
                                                         <span className="truncate">{formatDateTime(item.collectionTime)}</span>
                                                     </div>
 
                                                     {/* เหตุผล */}
                                                     {item.reviewNote && (
-                                                        <p className="flex items-start gap-1.5 text-[11px] text-red-600 mt-2 leading-relaxed">
+                                                        <p className="flex items-start gap-1.5 text-xs text-red-600 mt-2 leading-relaxed">
                                                             <AlertCircle size={12} className="shrink-0 mt-0.5" />
                                                             <span>{item.reviewNote}</span>
                                                         </p>
