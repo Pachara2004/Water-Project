@@ -20,6 +20,7 @@ interface LocationOption {
 
 interface SampleDetail {
     id: number;
+    code?: string | null;
     collectorId: number;
     locationId: number;
     collectionTime: string;
@@ -380,7 +381,13 @@ export default function CollectorHistoryDetailPage() {
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">รายละเอียดประวัติการตรวจสอบ</h1>
+                    {sample?.code ? (
+                        <div className="flex flex-col items-center">
+                            <h1 className="text-sm font-semibold text-secondary">{sample.code}</h1>
+                        </div>
+                    ) : (
+                        <h1 className="text-sm font-semibold text-secondary">รายละเอียดประวัติการตรวจสอบ</h1>
+                    )}
                 </div>
                 {currentUser?.role === "admin" ? (
                     <div className="flex items-center">

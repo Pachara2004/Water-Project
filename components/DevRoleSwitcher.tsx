@@ -19,20 +19,27 @@ export default function DevRoleSwitcher() {
         { id: "admin", label: "Admin (ผู้ดูแลระบบ)", icon: ShieldAlert, color: "text-red-600 bg-red-50 dark:bg-red-950/30" },
     ];
 
-    const changeRole = (roleId: Role) => {
+    const changeRole = async (roleId: Role) => {
         if (!currentUser) return;
 
-        // ── 🌟 แก้ไขจุดสำคัญ: บังคับเปลี่ยนค่า currentUser ใน Zustand Store ลัดวงจรตรง ๆ ──
+        // 1. อัปเดต Frontend State ทันทีให้ UI เปลี่ยนไว
+        useAppStore.setState({
+            currentUser: {
+                ...currentUser,
+                role: roleId,
+                fullName: `Test ${roleId.toUpperCase()}`,
+            },
+        });
+
+        // 2. [เพิ่มส่วนนี้] ยิงไปเปลี่ยน Role ใน Database จริงๆ
         try {
-            useAppStore.setState({
-                currentUser: {
-                    ...currentUser,
-                    role: roleId,
-                    fullName: `Test ${roleId.toUpperCase()}`,
-                },
+            await fetch("/api/dev/switch-role", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: currentUser.id, roleName: roleId }),
             });
         } catch (e) {
-            console.error("DevRoleSwitcher: Cannot mutate Zustand state directly", e);
+            console.error("Failed to sync role to DB:", e);
         }
 
         setIsOpen(false);

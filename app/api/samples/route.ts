@@ -26,13 +26,64 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
     return `${prefix}-${dateStamp}-${crypto.randomUUID()}.${cleanExt}`;
 }
 
+/**
+ * GENERATOR: SessionGroup Format -> SES[YYMMDD][Sequence 0001-9999]
+ */
+async function generateSessionGroup(tx: any, collectionTime: Date): Promise<string> {
+    const yy = String(collectionTime.getFullYear()).slice(-2);
+    const mm = String(collectionTime.getMonth() + 1).padStart(2, "0");
+    const dd = String(collectionTime.getDate()).padStart(2, "0");
+    const datePrefix = `SES${yy}${mm}${dd}`;
+
+    const startOfDay = new Date(collectionTime);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(collectionTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // นับกลุ่ม sessionGroup ที่เริ่มด้วย SES[YYMMDD] ในวันนั้น
+    const groups = await tx.waterSample.groupBy({
+        by: ["sessionGroup"],
+        where: {
+            collectionTime: { gte: startOfDay, lte: endOfDay },
+            sessionGroup: { startsWith: datePrefix },
+        },
+    });
+
+    const nextSeq = String(groups.length + 1).padStart(4, "0");
+    return `${datePrefix}${nextSeq}`;
+}
+
+/**
+ * GENERATOR: Sample Code Format -> SP[YYMMDD][LocationID][Sequence 0001-9999]
+ */
+async function generateSampleCode(tx: any, locationId: number, collectionTime: Date): Promise<string> {
+    const yy = String(collectionTime.getFullYear()).slice(-2);
+    const mm = String(collectionTime.getMonth() + 1).padStart(2, "0");
+    const dd = String(collectionTime.getDate()).padStart(2, "0");
+    const prefix = `SP${yy}${mm}${dd}${locationId}`;
+
+    const startOfDay = new Date(collectionTime);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(collectionTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // นับจำนวน WaterSample ของสถานีนี้ในวันนั้น
+    const count = await tx.waterSample.count({
+        where: {
+            locationId: Number(locationId),
+            collectionTime: { gte: startOfDay, lte: endOfDay },
+        },
+    });
+
+    const nextSeq = String(count + 1).padStart(4, "0");
+    return `${prefix}${nextSeq}`;
+}
+
 // Anti-Spam Key ผสม IP + Action ป้องกันการกดเบิ้ลส่งข้อมูล
 const antiSpam = new Map<string, number>();
 
 // ==========================================
 // GET /api/samples — ประวัติผลตรวจ เวอร์ชันรวมกลุ่มตาม sessionGroup
-// collector เห็นเฉพาะของตัวเอง (collectorId = ผู้ใช้ที่ยืนยันตัวตนแล้วเท่านั้น) รวมถึงรายการที่ยัง pending อยู่
-// admin/officer เห็นข้อมูลทุกคนได้ (officer เป็นสิทธิ์อ่านอย่างเดียว ไม่มีปุ่มแก้ไข/ส่งตรวจฝั่งหน้าบ้าน)
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
@@ -41,14 +92,11 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
-        // collector เห็นได้เฉพาะของตัวเอง (ไม่เชื่อ collectorId จาก query param — ปลอมเป็นคนอื่นได้)
-        // admin/officer เห็นข้อมูลทุกคนได้ — toggle "เฉพาะของฉัน" ที่หน้าบ้านกรองต่อฝั่ง client เอง (เฉพาะ admin)
         const where: any = { isDeleted: false };
         if (auth.user!.roleName === "collector") {
             where.collectorId = auth.user!.id;
         }
 
-        // ชุด sessionGroup ที่ยัง pending อยู่ — ใช้แค่ "ติด badge" ไม่ได้กรองทิ้ง เพราะ endpoint นี้ต้อง auth แล้วเท่านั้น
         const pendingGroups = await getPendingSessionGroups();
         const pendingSet = new Set(pendingGroups);
 
@@ -90,6 +138,7 @@ export async function GET(request: NextRequest) {
             if (!groupedSamples.has(groupKey)) {
                 groupedSamples.set(groupKey, {
                     id: s.id,
+                    code: s.code, // แนบ code ส่งให้ Frontend
                     collectorId: s.collectorId,
                     locationId: s.locationId,
                     collectionTime: s.collectionTime,
@@ -103,7 +152,6 @@ export async function GET(request: NextRequest) {
                     isDeleted: s.isDeleted,
                     sessionGroup: s.sessionGroup,
 
-                    // ติด badge ว่า session นี้รออนุมัติอยู่หรือไม่ (สร้าง/ปฏิเสธพร้อมกันทั้ง session เสมอ ไม่ต้องอัปเดตตอน merge)
                     reviewStatus: pendingSet.has(groupKey) ? "PENDING" : "APPROVED",
 
                     ...currentMeasurements,
@@ -163,8 +211,6 @@ export async function POST(request: NextRequest) {
             } catch (e) {}
         }
 
-        // แนบชื่อ+ขนาดไฟล์ภาพดิบเข้าไปในคีย์ด้วย กันเคสสารซ้ำ (2 ภาพ parameterId เดียวกัน ยิงติดกันเร็วมากจาก handleSave)
-        // โดนบล็อกผิดตัวว่าเป็นการกดซ้ำ ทั้งที่จริงเป็นคนละภาพ — ถ้าเป็นการกดซ้ำจริง ไฟล์เดิมจะมีชื่อ/ขนาดเท่าเดิมเสมอ ยังกันได้ตามปกติ
         const rawImageFile = formData.get(`image_raw_${paramKey}`) as File | null;
         const imageFingerprint = rawImageFile ? `${rawImageFile.name}-${rawImageFile.size}` : "no-image";
 
@@ -184,13 +230,9 @@ export async function POST(request: NextRequest) {
         const secureCollectorId = auth.user!.id;
 
         const locationId = formData.get("locationId") as string;
-        // ไม่รับ status จาก client อีกต่อไป — ค่าที่ส่งมาไม่เคยถูกใช้ (server คำนวณเองที่ computedStatus ด้านล่าง)
-        // เหลือไว้เป็น required field มีแต่จะหลอกให้คนอ่านโค้ดคิดว่า client กำหนดสถานะได้
         const collectionTime = formData.get("collectionTime") as string;
         const oxygen = formData.get("oxygen") as string | null;
-        const sessionGroup = formData.get("sessionGroup") as string | null;
-        // ฝั่งหน้าบ้านส่งมาตอนพบสารซ้ำในชุดเดียวกัน (≥2 ภาพ AI ตรวจเป็นสารเดียวกัน) — บังคับเข้าคิว pending เสมอ
-        // ไม่ว่า confidence จะสูงแค่ไหน เพราะต้องให้ admin ตัดสินใจว่ารายการไหนถูกต้อง
+        let sessionGroup = formData.get("sessionGroup") as string | null;
         const forceReview = formData.get("forceReview") === "true";
 
         if (!locationId || !collectionTime) {
@@ -215,7 +257,6 @@ export async function POST(request: NextRequest) {
         let mainRawImageUrl: string | null = null;
         let mainAnalyzedPlotUrl: string | null = null;
 
-        // 1. สร้าง Array สำหรับเก็บฟังก์ชันจำพวก Async Tasks ที่จะสั่งรันพร้อมกัน
         const fileTasks: Promise<void>[] = [];
 
         for (const param of systemParameters) {
@@ -224,8 +265,7 @@ export async function POST(request: NextRequest) {
 
             if (rawFile && rawFile.size > 0 && allowedImageTypes.includes(rawFile.type) && rawFile.size <= maxFileSize) {
                 const filename = sanitizeAndGenerateFilename(rawFile.name, `raw-${param.name.toLowerCase()}`);
-                
-                // ปรับจุดที่ 1: ห่อคำสั่งแกะ ArrayBuffer และสั่งเซฟไฟล์ให้อยู่ในโครงสร้าง Async เดียวกัน
+
                 const saveRawTask = (async () => {
                     const buffer = Buffer.from(await rawFile.arrayBuffer());
                     await writeFile(path.join(uploadDir, filename), buffer);
@@ -239,8 +279,7 @@ export async function POST(request: NextRequest) {
 
             if (plotFile && plotFile.size > 0 && allowedImageTypes.includes(plotFile.type) && plotFile.size <= maxFileSize) {
                 const filename = sanitizeAndGenerateFilename(plotFile.name, `plot-${param.name.toLowerCase()}`);
-                
-                // 🌟 ปรับจุดที่ 2: ห่อคำสั่งแกะภาพพล็อตให้อยู่ในโครงสร้าง Async เดียวกันเช่นกัน
+
                 const savePlotTask = (async () => {
                     const buffer = Buffer.from(await plotFile.arrayBuffer());
                     await writeFile(path.join(uploadDir, filename), buffer);
@@ -253,14 +292,12 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 🔥 สั่งรัน Parallel ทั้งการแกะไฟล์ภาพและบันทึกลงดิสก์ไปพร้อม ๆ กันในช็อตเดียว
         if (fileTasks.length > 0) {
             await Promise.all(fileTasks);
         }
 
         const parsedCollectionTime = new Date(collectionTime);
 
-        // 1. ตั้งตัวแปรสำหรับเก็บข้อมูลสภาพอากาศชุดเดียวที่จะใช้ร่วมกันทั้งกลุ่ม
         let finalWeather = {
             airTemperature: null as number | null,
             rainAccumulation: null as number | null,
@@ -268,7 +305,6 @@ export async function POST(request: NextRequest) {
         };
 
         try {
-            // 2. ส่องเช็คก่อนว่า มีสารเคมีเพื่อนร่วมชุดบันทึกเซฟเข้าไปในเซสชันกลุ่มนี้ก่อนเราหรือยัง
             let existingGroupSample = null;
             if (sessionGroup) {
                 existingGroupSample = await prisma.waterSample.findFirst({
@@ -285,15 +321,12 @@ export async function POST(request: NextRequest) {
             }
 
             if (existingGroupSample) {
-                // 🤝 ถ้ารุ่นพี่สารตัวแรกเซฟค่าแชร์ไว้แล้ว ดึงมาใช้ต่อเลยเพื่อความเร็วระดับสูงสุด
                 finalWeather.airTemperature = existingGroupSample.airTemperature;
                 finalWeather.rainAccumulation = existingGroupSample.rainAccumulation;
                 finalWeather.weatherCondCode = existingGroupSample.weatherCondCode;
             } else {
-                // 💾 หากเราคือสารตัวแรกสุดของรอบนี้ (หรือส่งแบบขวดเดี่ยวเดี่ยว) ให้ดึงตรงจากฐานข้อมูลแคชสภาพอากาศ
-                // 🚨 ไฮไลท์เด็ด: ต้องตัดนาที วินาที มิลลิวินาที ทิ้งให้เป็น 00:00.000 เพื่อให้ตรงคีย์ @@unique ใน DB แคช
                 const normalizedTime = new Date(parsedCollectionTime.getTime());
-                normalizedTime.setMinutes(0, 0, 0); 
+                normalizedTime.setMinutes(0, 0, 0);
                 normalizedTime.setSeconds(0, 0);
 
                 let weatherCache = await prisma.weatherData.findUnique({
@@ -305,12 +338,10 @@ export async function POST(request: NextRequest) {
                     },
                 });
 
-                // 🚨 กรณีฉุกเฉิน: หากเจ้าหน้าที่กรอกวันย้อนหลังเกิน 2 เดือน แล้วใน DB ไม่มีข้อมูล 
-                // สั่งซ่อมแซมประวัติย้อนหลังตรงรอบพิกัดนั้นทันที
                 if (!weatherCache) {
                     console.log(`⚠️ [API Sample] ไม่พบแคชสภาพอากาศใน DB รอบเวลา ${normalizedTime.toISOString()} สั่งซ่อมแซมข้อมูล...`);
                     await backfillWeatherData(location.id, location.latitude, location.longitude);
-                    
+
                     weatherCache = await prisma.weatherData.findUnique({
                         where: {
                             locationId_timestamp: {
@@ -321,7 +352,6 @@ export async function POST(request: NextRequest) {
                     });
                 }
 
-                // ดึงค่าอุณหภูมิ, น้ำฝน และสภาพอากาศมาจัดใส่กระเป๋าเพื่อเอาไปเซฟ
                 if (weatherCache) {
                     finalWeather.airTemperature = weatherCache.temperature;
                     finalWeather.rainAccumulation = weatherCache.rainVolume;
@@ -332,7 +362,7 @@ export async function POST(request: NextRequest) {
             console.error("❌ Weather resolution error:", weatherErr);
         }
 
-        let createMeasurementsData: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];
+        let createMeasurementsData: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: any; message?: string | null }> = [];
 
         if (measurementsRaw) {
             const parsedMeasurements = JSON.parse(measurementsRaw);
@@ -341,39 +371,38 @@ export async function POST(request: NextRequest) {
                     parameterId: Number(m.parameterId),
                     value: parseFloat(m.value || "0"),
                     confidence: parseFloat(m.confidence || "0.90"),
-                    boundingBox: m.boundingBox || null,
+                    boundingBox: typeof m.boundingBox === "string" ? (m.boundingBox ? JSON.parse(m.boundingBox) : null) : m.boundingBox || null,
                     message: m.message || null,
                 }));
             }
         }
 
-        // 4. ตัดสิน low-confidence ฝั่ง server เท่านั้น จาก confidence ที่พาร์สแล้วจริง ๆ ไม่เชื่อ flag จาก client
-        // forceReview (สารซ้ำ) เชื่อ flag จาก client ได้ เพราะเป็นแค่การ "ยกระดับ" ไปเข้าคิว pending เพิ่มความปลอดภัย
-        // ไม่ได้ปลดล็อกอะไร ต่อให้ client ปลอมส่ง forceReview=true มาเฉย ๆ ผลลัพธ์คือข้อมูลเข้มงวดขึ้น ไม่ใช่ช่องโหว่
         const needsReview = sessionGroup ? forceReview || createMeasurementsData.some((m) => isLowConfidence(m.confidence)) : false;
 
-        // 4.1 คำนวณ status ใหม่ฝั่ง server จากค่าที่วัดได้จริง ห้ามเชื่อ status ที่ client ส่งมาตรง ๆ
-        //     (เดิมมีช่องโหว่ให้ client ปลอมค่า status ทับผลวิเคราะห์จริงได้)
-        //
-        //     ผูกสารด้วย parameterId ตรง ๆ — เดิมเดาจากชื่อ (paramName.includes("phosphate"))
-        //     ซึ่งทำให้สารที่เพิ่มเข้ามาใหม่ (เช่น nitrate) ไม่ถูกนับเข้าสถานะเลยโดยไม่มีใครรู้
         const standards = await loadStandardsForParameters(createMeasurementsData.map((m) => m.parameterId));
         const computedStatus = evaluateSample(
             createMeasurementsData.map((m) => ({ parameterId: m.parameterId, value: m.value })),
             standards,
         );
 
-        // 5. สั่งบันทึกข้อมูล + สร้างคำร้องตรวจสอบ (ถ้าจำเป็น) รวมใน Transaction เดียวกัน
-        //    กันเคสเซฟ sample สำเร็จแต่สร้างคำร้องพลาด ซึ่งจะทำให้ข้อมูล confidence ต่ำรั่วออกสู่สาธารณะ
+        // 5. บันทึกข้อมูลแบบ Transaction + สร้าง sessionGroup และ code อัตโนมัติถ้าไม่มี
         const sample = await prisma.$transaction(async (tx) => {
+            // ถ้าหน้าบ้านไม่ได้ส่ง sessionGroup มา ให้รันสร้าง SESYYMMDD0001
+            if (!sessionGroup || !sessionGroup.startsWith("SES")) {
+                sessionGroup = await generateSessionGroup(tx, parsedCollectionTime);
+            }
+
+            // สร้าง Sample Code รูปร่าง SPYYMMDD[LocID]0001
+            const generatedCode = await generateSampleCode(tx, Number(locationId), parsedCollectionTime);
+
             const created = await tx.waterSample.create({
                 data: {
+                    code: generatedCode,
                     locationId: Number(locationId),
                     collectorId: secureCollectorId,
                     collectionTime: parsedCollectionTime,
                     dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
 
-                    // ผูกค่าสภาพอากาศแบบหลอมรวมกลุ่มก้อนที่คำนวณมาได้ลง Database ครับบอส
                     airTemperature: finalWeather.airTemperature,
                     rainAccumulation: finalWeather.rainAccumulation,
                     weatherCondCode: finalWeather.weatherCondCode,
@@ -390,8 +419,6 @@ export async function POST(request: NextRequest) {
             });
 
             if (needsReview && sessionGroup) {
-                // upsert แทน create: ตอนส่งแบบคู่ (2 สาร) ยิง POST แยกกันทีละสารด้วย sessionGroup เดียวกัน
-                //    สารตัวแรกที่ต่ำสร้างคำร้อง ตัวถัดไปเจอว่ามีคำร้องแล้วก็ปล่อยผ่าน (ทั้ง session pending ร่วมกันเสมอ)
                 await tx.reviewRequest.upsert({
                     where: { sessionGroup },
                     create: { sessionGroup, statusRequest: "pending" },
