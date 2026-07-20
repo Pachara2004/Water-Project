@@ -31,21 +31,22 @@ model Role {
 }
 
 model User {
-  id              Int           @id @default(autoincrement())
-  lineUniqueId    String        @unique @map("line_unique_id")
-  lineProfileName String        @map("line_profile_name")
-  firstName       String?       @map("first_name")
-  lastName        String?       @map("last_name")
-  phoneNumber     String?       @map("phone_number")
+  id              Int             @id @default(autoincrement())
+  lineUniqueId    String          @unique @map("line_unique_id")
+  lineProfileName String          @map("line_profile_name")
+  firstName       String?         @map("first_name")
+  lastName        String?         @map("last_name")
+  phoneNumber     String?         @map("phone_number")
   
-  roleId          Int           @map("role_id")
-  systemRole      Role          @relation(fields: [roleId], references: [id])
+  roleId          Int             @map("role_id")
+  systemRole      Role            @relation(fields: [roleId], references: [id])
   
   samples         WaterSample[]
   roleRequests    RoleRequest[]
-  
-  registeredAt    DateTime      @default(now()) @map("registered_at")
-  lastActiveAt    DateTime      @updatedAt @map("last_active_at")
+  reviewedRequests ReviewRequest[] @relation("ReviewedByUser") // [NEW] เชื่อม Foreign Key กับ ReviewRequest
+
+  registeredAt    DateTime        @default(now()) @map("registered_at")
+  lastActiveAt    DateTime        @updatedAt @map("last_active_at")
 
   @@map("users")
 }
@@ -118,6 +119,9 @@ model Location {
 model WaterSample {
   id               Int                      @id @default(autoincrement())
   
+  // [NEW] รหัสตัวอย่างน้ำ (อิงจาก sessionGroup ได้)
+  code             String?                  @map("code")
+  
   collectorId      Int                      @map("collector_id")
   collector        User                     @relation(fields: [collectorId], references: [id], onDelete: Cascade)
   
@@ -148,6 +152,7 @@ model WaterSample {
 
   // เชื่อมกับ ReviewRequest ผ่าน sessionGroup (string link ไม่ใช่ FK จริง — ดู ReviewRequest ด้านล่าง)
   @@index([sessionGroup])
+  @@index([code]) // [NEW] Index สำหรับค้นหา code
   @@map("samples")
 }
 
@@ -174,7 +179,10 @@ model WaterSampleMeasurement {
   parameterId Int         @map("parameter_id")
   value       Float       @map("value")      
   confidence  Float       @map("confidence")  
-  boundingBox String?     @map("bounding_box") 
+  
+  // [UPDATED] ปรับจาก String? เป็น Json? เพื่อความสะดวกในการจัดการพิกัด AI
+  boundingBox Json?       @map("bounding_box") 
+  
   message     String?     @map("message") @db.Text
 
   sample      WaterSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
@@ -195,6 +203,9 @@ model ReviewRequest {
   statusRequest ReviewStatus @default(pending) @map("status_request")
 
   reviewedById  Int?         @map("reviewed_by_id")
+  // [NEW] เพิ่ม Foreign Key เชื่อมกับ User สำหรับผู้ตรวจทาน
+  reviewedBy    User?        @relation("ReviewedByUser", fields: [reviewedById], references: [id], onDelete: SetNull)
+
   reviewedAt    DateTime?    @map("reviewed_at")
   reviewNote    String?      @map("review_note") @db.Text
   

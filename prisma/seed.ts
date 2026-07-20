@@ -1,5 +1,5 @@
 /**
- * prisma/seed.ts — Database seed สำหรับโครงสร้างใหม่ตาม schema.prisma จริงของ
+ * prisma/seed.ts — Database seed สำหรับโครงสร้างใหม่ตาม schema.prisma จริง
  * ─────────────────────────────────────────────────────────
  * รัน: npm run seed หรือ npx prisma db seed
  */
@@ -16,18 +16,30 @@ async function main() {
     console.log("🧹 Cleaning existing data...");
     await prisma.dashboardWidget.deleteMany();
     await prisma.roleRequest.deleteMany();
-    await prisma.reviewRequest.deleteMany(); // ไม่มี FK จริงกับ samples (ผูกผ่าน sessionGroup string) แต่ต้องเคลียร์ก่อน reseed กัน @unique sessionGroup ชนกัน
+    await prisma.reviewRequest.deleteMany();
     await prisma.waterSampleMeasurement.deleteMany();
     await prisma.waterSample.deleteMany();
-    await prisma.standard.deleteMany(); // ต้องมาก่อน parameter/locationType เพราะ FK ชี้ไปทั้งคู่
+    await prisma.standard.deleteMany();
     await prisma.parameter.deleteMany();
     await prisma.location.deleteMany();
     await prisma.locationType.deleteMany();
     await prisma.user.deleteMany();
     await prisma.role.deleteMany();
 
-    // MySQL ไม่รีเซ็ต AUTO_INCREMENT ให้เองตอน DELETE (ต่างจาก TRUNCATE) — รีเซ็ตมือทุกตารางกันเลข id ไต่สูงขึ้นเรื่อยๆ ทุกครั้งที่ reseed
-    const tablesToResetAutoIncrement = ["dashboard_widgets", "role_requests", "review_requests", "sample_measurements", "samples", "standards", "parameters", "locations", "location_types", "users", "roles"];
+    // รีเซ็ต AUTO_INCREMENT ทุกตาราง
+    const tablesToResetAutoIncrement = [
+        "dashboard_widgets",
+        "role_requests",
+        "review_requests",
+        "sample_measurements",
+        "samples",
+        "standards",
+        "parameters",
+        "locations",
+        "location_types",
+        "users",
+        "roles",
+    ];
     for (const table of tablesToResetAutoIncrement) {
         await prisma.$executeRawUnsafe(`ALTER TABLE \`${table}\` AUTO_INCREMENT = 1`);
     }
@@ -37,9 +49,10 @@ async function main() {
     const roleAdmin = await prisma.role.create({ data: { roleName: "admin" } });
     const roleOfficer = await prisma.role.create({ data: { roleName: "officer" } });
     const roleCollector = await prisma.role.create({ data: { roleName: "collector" } });
-    const roleGuest = await prisma.role.create({ data: { data: { roleName: "guest" } } as any }).catch(() => prisma.role.create({ data: { roleName: "guest" } }));
+    // เคลียร์ความซ้ำซ้อนของการสร้าง guest role
+    const roleGuest = await prisma.role.create({ data: { roleName: "guest" } });
 
-    // ─── 3. PARAMETERS SEEDING (สร้างมาสเตอร์สารเคมีเริ่มต้น) ───
+    // ─── 3. PARAMETERS SEEDING ───
     console.log("🧪 Creating parameter master data...");
     const paramAmmonia = await prisma.parameter.create({
         data: { name: "ammonia", unit: "mg/L", description: "สารแอมโมเนียในน้ำ (NH3)" },
@@ -49,8 +62,7 @@ async function main() {
         data: { name: "phosphate", unit: "mg/L", description: "สารฟอสเฟตในน้ำ (PO4)" },
     });
 
-    // ─── 3.1 LOCATION TYPES + STANDARDS (เกณฑ์มาตรฐานคุณภาพน้ำทะเล — กรมควบคุมมลพิษ) ───
-    // ย้ายมาจาก LOCATION_STANDARDS / LOCATION_TYPE_LABELS ที่เคยฮาร์ดโค้ดใน lib/standards.ts
+    // ─── 3.1 LOCATION TYPES + STANDARDS ───
     console.log("📏 Creating location types and water quality standards...");
 
     const locationTypesPayload = [
@@ -75,13 +87,9 @@ async function main() {
         });
     }
 
-    // เกณฑ์ที่เข้มที่สุดของแต่ละสาร = ตัวที่ตัดสินสถานะจริง (ผ่านตัวเข้มสุดแล้ว = ผ่านที่เหลืออัตโนมัติ)
-    // ใช้เป็นสเกลอ้างอิงตอนสุ่มค่า — ดึงจาก payload ด้านบนแทนการฮาร์ดโค้ด
     const strictestPhosphate = Math.min(...locationTypesPayload.map((t) => t.phosphateMax));
     const strictestAmmonia = Math.min(...locationTypesPayload.map((t) => t.ammoniaMax));
 
-    // เกณฑ์ทั้งหมดที่เพิ่ง seed ลงไป — ส่งเข้า evaluateSample ตัวเดียวกับที่ /api/samples ใช้
-    // ไม่เขียนกฎซ้ำในไฟล์นี้ ป้องกัน seed กับ production คำนวณคนละแบบแล้วไม่มีใครรู้
     const seededStandards: StandardRow[] = await prisma.standard.findMany({
         select: { parameterId: true, maxValue: true },
     });
@@ -95,21 +103,39 @@ async function main() {
             seededStandards,
         ) as WaterStatus;
 
-    // ─── 4. DASHBOARD WIDGETS SEEDING (ผูกโครงสร้างตามคอลัมน์และ Parameter ID ของจริง) ───
+    // ─── 4. DASHBOARD WIDGETS SEEDING ───
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");
 
-    // ไอดี 1-7 ตามของเดิมในตาราง
     await prisma.dashboardWidget.create({
         data: { title: "จำนวนตัวอย่างน้ำทะเลทั้งหมด", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 3 },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "อัตราคุณภาพน้ำปลอดภัย (Safety Rate)", widgetType: "CARD", metricType: "RATE", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "safe", unit: "%", cardColor: "green", w: 3 },
+        data: {
+            title: "อัตราคุณภาพน้ำปลอดภัย (Safety Rate)",
+            widgetType: "CARD",
+            metricType: "RATE",
+            targetType: "SAMPLE_STATUS",
+            targetColumn: null,
+            filterValue: "safe",
+            unit: "%",
+            cardColor: "green",
+            w: 3,
+        },
     });
     await prisma.dashboardWidget.create({
         data: { title: "ตัวอย่างที่เกินค่ามาตรฐาน (Danger)", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "danger", cardColor: "red", w: 3 },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "ตัวอย่างที่ต้องเฝ้าระวัง (Warning)", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "warning", cardColor: "yellow", w: 3 },
+        data: {
+            title: "ตัวอย่างที่ต้องเฝ้าระวัง (Warning)",
+            widgetType: "CARD",
+            metricType: "COUNT",
+            targetType: "SAMPLE_STATUS",
+            targetColumn: null,
+            filterValue: "warning",
+            cardColor: "yellow",
+            w: 3,
+        },
     });
     await prisma.dashboardWidget.create({
         data: { title: "สัดส่วนดัชนีคุณภาพน้ำทะเลรวม", widgetType: "PIE_CHART", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 6 },
@@ -163,7 +189,7 @@ async function main() {
         insertedLocations.push(createdLoc);
     }
 
-    // ─── 8. WATER SAMPLES WITH PARAMETER MEASUREMENTS (250 ตัวอย่างย้อนหลัง) ───
+    // ─── 8. WATER SAMPLES WITH PARAMETER MEASUREMENTS (250 ตัวอย่าง) ───
     console.log("🧪 Generating 250 water samples with actual required EAV fields...");
     const samplesCount = 250;
 
@@ -175,41 +201,30 @@ async function main() {
         sampleDate.setHours(sampleDate.getHours() - hourAgo);
 
         const randomCollectorObj = collectors[i % collectors.length];
-        // round-robin แทนสุ่มล้วน — การันตีว่าทุกสถานีมีตัวอย่างน้ำอย่างน้อย floor(samplesCount / จำนวนสถานี) ตัว ไม่ใช่แค่ "น่าจะมี"
         const randomLocation = insertedLocations[i % insertedLocations.length];
 
-        // ฝนยังคงสุ่มไว้ใช้แสดงผลสภาพอากาศเท่านั้น ไม่ผูกกับสถานะคุณภาพน้ำอีกต่อไป
         const rainVol = Math.random() > 0.6 ? parseFloat((Math.random() * 45).toFixed(2)) : 0;
         const weatherCode = rainVol > 30 ? 7 : rainVol > 10 ? 5 : 1;
 
-        // สุ่ม "โซนความเข้มข้น" อิงเกณฑ์ที่เข้มที่สุด เพราะนั่นคือตัวที่ตัดสินสถานะจริง
-        // สัดส่วน: ปลอดภัย 85% / เฝ้าระวัง 9% / อันตราย 6%
-        // ตั้ง 85% (ไม่ใช่ 80%) เพื่อเผื่อความแปรปรวนของการสุ่ม + ตัวอย่างชุดทดสอบ review ที่เป็น danger ล้วน
-        // ให้ผลรวมยืนเหนือเป้า "ปลอดภัย > 75%" ได้ทุกครั้งที่รัน ไม่ใช่แค่บางครั้ง
         const severityRoll = Math.random();
         const severityBucket: "danger" | "warning" | "safe" = severityRoll > 0.94 ? "danger" : severityRoll > 0.85 ? "warning" : "safe";
 
-        // ตัวคูณอิงเกณฑ์เข้มสุด: safe < 70% ของเกณฑ์ | warning 70-100% | danger > 100%
-        const scaleFor = (bucket: typeof severityBucket) =>
-            bucket === "danger" ? 1.05 + Math.random() * 1.5 : bucket === "warning" ? 0.7 + Math.random() * 0.29 : Math.random() * 0.69;
+        const scaleFor = (bucket: typeof severityBucket) => (bucket === "danger" ? 1.05 + Math.random() * 1.5 : bucket === "warning" ? 0.7 + Math.random() * 0.29 : Math.random() * 0.69);
 
         const ammoniaValue = parseFloat((strictestAmmonia * scaleFor(severityBucket)).toFixed(3));
         const phosphateValue = parseFloat((strictestPhosphate * scaleFor(severityBucket)).toFixed(4));
 
-        // คำนวณ status จากสูตรจริงเดียวกับที่ /api/samples ใช้ ไม่ใช่ label ที่ตั้งเอง
         const computedStatus = computeStatus(phosphateValue, ammoniaValue);
 
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
         const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
 
-        // sessionGroup เฉพาะตัวต่อ 1 ครั้งที่เก็บตัวอย่าง (ปกติแล้วจะใช้ร่วมกันระหว่างสารในรอบเดียวกัน)
-        // ตั้งใจใส่ทุกแถวไม่ให้เป็น null — กัน query ฝั่ง map/dashboard ที่กรองด้วย sessionGroup: { notIn: ... }
-        // พลาดคัดข้อมูลทิ้งหมดตอนมี pending review (ดูรายละเอียดใน lib/review.ts)
         const bulkSessionGroup = `SEED-BULK-${String(i + 1).padStart(4, "0")}`;
+        const sampleCode = `SAMP-${bulkSessionGroup}-01`;
 
-        // บันทึกลงตารางตามฟิลด์แวดล้อมจริงที่มีในโครงสร้างโมเดลเท่านั้น ปราศจากฟิลด์ส่วนเกิน
         await prisma.waterSample.create({
             data: {
+                code: sampleCode,
                 collectorId: randomCollectorObj.id,
                 locationId: randomLocation.id,
                 collectionTime: sampleDate,
@@ -222,31 +237,29 @@ async function main() {
                 rawImageUrl: Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null,
                 analyzedPlotUrl: Math.random() > 0.5 ? `/uploads/mock-plot.jpg` : null,
 
-                // 🧪 บันทึกข้อมูลผ่านตารางลูก Junction Table พร้อมส่งค่า Required: confidence และ boundingBox
+                // [UPDATED] boundingBox ส่งเป็น JSON Object แทน String
                 measurements: {
                     create: [
-                        { parameterId: paramAmmonia.id, value: ammoniaValue, confidence: 0.92, boundingBox: "[10,20,100,200]" },
-                        { parameterId: paramPhosphate.id, value: phosphateValue, confidence: 0.89, boundingBox: "[15,25,110,210]" },
+                        { parameterId: paramAmmonia.id, value: ammoniaValue, confidence: 0.92, boundingBox: { x: 10, y: 20, w: 100, h: 200 } },
+                        { parameterId: paramPhosphate.id, value: phosphateValue, confidence: 0.89, boundingBox: { x: 15, y: 25, w: 110, h: 210 } },
                     ],
                 },
             },
         });
     }
 
-    // ─── 9. CONFIDENCE REVIEW TEST DATA (pending / approved / rejected) ───
-    // ข้อมูลชุดนี้ไว้ทดสอบฟีเจอร์ตรวจสอบผลที่ AI วิเคราะห์ confidence ต่ำกว่าเกณฑ์ (< 0.6)
-    console.log("🔍 Generating confidence-review test scenarios (pending/approved/rejected)...");
+    // ─── 9. CONFIDENCE REVIEW TEST DATA ───
+    console.log("🔍 Generating confidence-review test scenarios...");
 
-    const reviewLocation = insertedLocations[0]; // ปากแม่น้ำบางปะกง
-    const collectorA = collectors[0]; // วิชัย
-    const collectorB = collectors[1]; // มานี
+    const reviewLocation = insertedLocations[0];
+    const collectorA = collectors[0];
+    const collectorB = collectors[1];
 
-    // A) PENDING — เดี่ยว: 1 สาร confidence ต่ำ ยังไม่มีใครตัดสิน
-    //    ทดสอบ: /manage/review-requests แท็บ "รออนุมัติ", badge "รออนุมัติ" ในประวัติของ collectorA,
-    //    ต้องหายจากแผนที่ + dashboard
+    // A) PENDING Single
     const sgPendingSingle = "SEED-PENDING-01";
     await prisma.waterSample.create({
         data: {
+            code: `SAMP-${sgPendingSingle}-01`,
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 3),
@@ -256,16 +269,16 @@ async function main() {
             sessionGroup: sgPendingSingle,
             rawImageUrl: "/uploads/mock-raw.jpg",
             analyzedPlotUrl: "/uploads/mock-plot.jpg",
-            measurements: { create: [{ parameterId: paramAmmonia.id, value: 2.1, confidence: 0.35, boundingBox: "[10,20,100,200]" }] },
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 2.1, confidence: 0.35, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingSingle, statusRequest: "pending" } });
 
-    // B) PENDING — ส่งแบบคู่: สารตัวหนึ่ง confidence ปกติ อีกตัวต่ำ แต่ "ทั้ง session" ต้อง pending ไปด้วยกัน
-    //    ทดสอบ: 2 แถวในตารางแต่รวมเป็น 1 การ์ด และทั้ง 2 สารติด badge รออนุมัติพร้อมกัน
+    // B) PENDING Paired
     const sgPendingPaired = "SEED-PENDING-02";
     await prisma.waterSample.create({
         data: {
+            code: `SAMP-${sgPendingPaired}-01`,
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
@@ -273,11 +286,12 @@ async function main() {
             airTemperature: 28.4,
             status: computeStatus(0, 0.15),
             sessionGroup: sgPendingPaired,
-            measurements: { create: [{ parameterId: paramAmmonia.id, value: 0.15, confidence: 0.91, boundingBox: "[10,20,100,200]" }] },
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 0.15, confidence: 0.91, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
     await prisma.waterSample.create({
         data: {
+            code: `SAMP-${sgPendingPaired}-02`,
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
@@ -285,35 +299,37 @@ async function main() {
             airTemperature: 28.4,
             status: computeStatus(0.6, 0),
             sessionGroup: sgPendingPaired,
-            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.6, confidence: 0.42, boundingBox: "[15,25,110,210]" }] },
+            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.6, confidence: 0.42, boundingBox: { x: 15, y: 25, w: 110, h: 210 } }] },
         },
     });
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingPaired, statusRequest: "pending" } });
 
-    // C) PENDING — ของ collectorB เผื่อทดสอบว่า collectorA มองไม่เห็นคำร้องของคนอื่น
+    // C) PENDING Other
     const sgPendingOther = "SEED-PENDING-03";
     await prisma.waterSample.create({
         data: {
+            code: `SAMP-${sgPendingOther}-01`,
             collectorId: collectorB.id,
             locationId: insertedLocations[1].id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 8),
             status: computeStatus(0, 3.4),
             sessionGroup: sgPendingOther,
-            measurements: { create: [{ parameterId: paramAmmonia.id, value: 3.4, confidence: 0.18, boundingBox: "[10,20,100,200]" }] },
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 3.4, confidence: 0.18, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingOther, statusRequest: "pending" } });
 
-    // D) APPROVED — เคย confidence ต่ำแต่ admin ตรวจสอบแล้วยืนยันผ่าน ควรกลับมาโชว์บนแผนที่/dashboard ตามปกติ
+    // D) APPROVED
     const sgApproved = "SEED-APPROVED-01";
     await prisma.waterSample.create({
         data: {
+            code: `SAMP-${sgApproved}-01`,
             collectorId: collectorB.id,
             locationId: reviewLocation.id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
             status: computeStatus(0.02, 0),
             sessionGroup: sgApproved,
-            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.02, confidence: 0.55, boundingBox: "[15,25,110,210]" }] },
+            measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.02, confidence: 0.55, boundingBox: { x: 15, y: 25, w: 110, h: 210 } }] },
         },
     });
     await prisma.reviewRequest.create({
@@ -325,10 +341,11 @@ async function main() {
         },
     });
 
-    // E) REJECTED — admin ปฏิเสธพร้อมเหตุผล ตัว WaterSample ถูก soft-delete (isDeleted=true) ตามพฤติกรรมจริงของระบบ
+    // E) REJECTED
     const sgRejected = "SEED-REJECTED-01";
     await prisma.waterSample.create({
         data: {
+            code: `SAMP-${sgRejected}-01`,
             collectorId: collectorA.id,
             locationId: insertedLocations[2].id,
             collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 48),
@@ -336,7 +353,7 @@ async function main() {
             sessionGroup: sgRejected,
             isDeleted: true,
             lastModifiedBy: adminUser.id,
-            measurements: { create: [{ parameterId: paramAmmonia.id, value: 4.5, confidence: 0.28, boundingBox: "[10,20,100,200]" }] },
+            measurements: { create: [{ parameterId: paramAmmonia.id, value: 4.5, confidence: 0.28, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
     await prisma.reviewRequest.create({
@@ -349,9 +366,8 @@ async function main() {
         },
     });
 
-    console.log("   ✔ Pending: 3 sessions (1 เดี่ยว + 1 คู่ + 1 ของอีกคน) | Approved: 1 | Rejected: 1");
-
-    console.log("\n✅ Seeding completed successfully with exact EAV compliance!");
+    console.log("   ✔ Pending: 3 sessions | Approved: 1 | Rejected: 1");
+    console.log("\n✅ Seeding completed successfully!");
 }
 
 main()
