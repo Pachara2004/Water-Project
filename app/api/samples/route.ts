@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
         const locationId = formData.get("locationId") as string;
         const collectionTime = formData.get("collectionTime") as string;
         const oxygen = formData.get("oxygen") as string | null;
-        let sessionGroup = formData.get("sessionGroup") as string | null;
+        let clientSessionGroup = formData.get("sessionGroup") as string | null;
         const forceReview = formData.get("forceReview") === "true";
 
         if (!locationId || !collectionTime) {
@@ -306,10 +306,12 @@ export async function POST(request: NextRequest) {
 
         try {
             let existingGroupSample = null;
-            if (sessionGroup) {
+            if (clientSessionGroup) {
                 existingGroupSample = await prisma.waterSample.findFirst({
                     where: {
-                        sessionGroup: sessionGroup,
+                        collectorId: secureCollectorId,
+                        locationId: Number(locationId),
+                        collectionTime: parsedCollectionTime,
                         isDeleted: false,
                     },
                     select: {
@@ -377,23 +379,42 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const needsReview = sessionGroup ? forceReview || createMeasurementsData.some((m) => isLowConfidence(m.confidence)) : false;
-
         const standards = await loadStandardsForParameters(createMeasurementsData.map((m) => m.parameterId));
         const computedStatus = evaluateSample(
             createMeasurementsData.map((m) => ({ parameterId: m.parameterId, value: m.value })),
             standards,
         );
 
-        // 5. บันทึกข้อมูลแบบ Transaction + สร้าง sessionGroup และ code อัตโนมัติถ้าไม่มี
+        // 5. บันทึกข้อมูลแบบ Transaction
         const sample = await prisma.$transaction(async (tx) => {
-            // ถ้าหน้าบ้านไม่ได้ส่ง sessionGroup มา ให้รันสร้าง SESYYMMDD0001
-            if (!sessionGroup || !sessionGroup.startsWith("SES")) {
-                sessionGroup = await generateSessionGroup(tx, parsedCollectionTime);
+            let sessionGroupToUse: string;
+
+            // 🎯 ค้นหาสารเคมีใน Batch เดียวกันที่บันทึกลง DB ไปก่อนหน้านี้ (ยิงติดๆ กันไม่เกิน 1 นาที)
+            const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+            const existingBatchSample = await tx.waterSample.findFirst({
+                where: {
+                    collectorId: secureCollectorId,
+                    locationId: Number(locationId),
+                    collectionTime: parsedCollectionTime,
+                    uploadedActiveAt: { gte: oneMinuteAgo },
+                    isDeleted: false,
+                },
+                select: { sessionGroup: true },
+                orderBy: { id: "desc" },
+            });
+
+            if (existingBatchSample && existingBatchSample.sessionGroup) {
+                // 🤝 เจอสารตัวแรกใน Batch เดียวกันแล้ว! ดึง SES... ของตัวแรกมาใช้ต่อทันที
+                sessionGroupToUse = existingBatchSample.sessionGroup;
+            } else {
+                // 🆕 นี่คือสารตัวแรกสุดของ Batch ให้สั่งเจน SES260720... ใหม่
+                sessionGroupToUse = await generateSessionGroup(tx, parsedCollectionTime);
             }
 
-            // สร้าง Sample Code รูปร่าง SPYYMMDD[LocID]0001
+            // เจน Sample Code รายขวด (SP26072030001, SP26072030002) แยกรายขวด
             const generatedCode = await generateSampleCode(tx, Number(locationId), parsedCollectionTime);
+
+            const needsReview = forceReview || createMeasurementsData.some((m) => isLowConfidence(m.confidence));
 
             const created = await tx.waterSample.create({
                 data: {
@@ -402,26 +423,24 @@ export async function POST(request: NextRequest) {
                     collectorId: secureCollectorId,
                     collectionTime: parsedCollectionTime,
                     dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
-
                     airTemperature: finalWeather.airTemperature,
                     rainAccumulation: finalWeather.rainAccumulation,
                     weatherCondCode: finalWeather.weatherCondCode,
-
                     status: computedStatus as WaterStatus,
                     rawImageUrl: mainRawImageUrl,
                     analyzedPlotUrl: mainAnalyzedPlotUrl,
                     isDeleted: false,
-                    sessionGroup: sessionGroup,
+                    sessionGroup: sessionGroupToUse, // 👈 ใช้ SES... ร่วมกันแน่นอน!
                     measurements: {
                         create: createMeasurementsData,
                     },
                 },
             });
 
-            if (needsReview && sessionGroup) {
+            if (needsReview && sessionGroupToUse) {
                 await tx.reviewRequest.upsert({
-                    where: { sessionGroup },
-                    create: { sessionGroup, statusRequest: "pending" },
+                    where: { sessionGroup: sessionGroupToUse },
+                    create: { sessionGroup: sessionGroupToUse, statusRequest: "pending" },
                     update: {},
                 });
             }

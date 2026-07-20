@@ -381,12 +381,12 @@ export default function CollectorHistoryDetailPage() {
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
-                    {sample?.code ? (
+                    {sample?.sessionGroup ? (
                         <div className="flex flex-col items-center">
-                            <h1 className="text-sm font-semibold text-secondary">{sample.code}</h1>
+                            <h1 className="text-sm font-semibold text-secondary">{sample.sessionGroup}</h1>
                         </div>
                     ) : (
-                        <h1 className="text-sm font-semibold text-secondary">รายละเอียดประวัติการตรวจสอบ</h1>
+                        <h1 className="text-sm font-semibold text-primary">รายละเอียดประวัติการตรวจสอบ</h1>
                     )}
                 </div>
                 {currentUser?.role === "admin" ? (
