@@ -11,6 +11,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useMap } from "react-leaflet";
 import { Navigation } from "lucide-react";
+import { alertError } from "@/lib/swal";
+import { disableAutoTrackAfterDenial, resolveAutoTrack } from "@/lib/gpsAutoTrack";
 
 interface LocationData {
     id: number;
@@ -108,28 +110,47 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         return () => setIsMounted(false);
     }, []);
 
-    // ฟังก์ชันดึงพิกัด (คงเดิม)
-    const handleLocateMe = useCallback(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    setUserPos([pos.coords.latitude, pos.coords.longitude]);
-                },
-                (err) => {
-                    console.error("Geolocation error:", err);
-                    alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้");
-                },
-                { enableHighAccuracy: true },
-            );
-        } else {
-            alert("เบราว์เซอร์ของคุณไม่รองรับ Geolocation");
+    // ฟังก์ชันดึงพิกัด — silent = เรียกอัตโนมัติ ห้ามเด้ง dialog รบกวนผู้ใช้ (ปุ่มที่ผู้ใช้กดเองถึงจะแจ้งเตือน)
+    const handleLocateMe = useCallback((silent = false) => {
+        if (!navigator.geolocation) {
+            if (!silent) alertError("เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง");
+            return;
         }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setUserPos([pos.coords.latitude, pos.coords.longitude]);
+            },
+            (err) => {
+                console.warn("Geolocation error:", err);
+                if (silent) {
+                    // สิทธิ์ถูกถอนหลังเปิดสวิตช์ไว้ → ปิดสวิตช์ให้ตรงความจริง หน้าจัดการจะได้ไม่โชว์ว่ายังเปิดอยู่
+                    if (err.code === err.PERMISSION_DENIED) disableAutoTrackAfterDenial();
+                    return;
+                }
+                if (err.code === err.PERMISSION_DENIED) {
+                    alertError("ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง", "กรุณาเปิดสิทธิ์การเข้าถึงตำแหน่งในตั้งค่าเบราว์เซอร์หรือแอป LINE แล้วลองใหม่อีกครั้ง");
+                } else {
+                    alertError("ไม่สามารถดึงตำแหน่งปัจจุบันได้", "กรุณาลองใหม่อีกครั้ง");
+                }
+            },
+            { enableHighAccuracy: true },
+        );
     }, []);
 
+    // ดึงพิกัดอัตโนมัติตอนเข้าหน้า เฉพาะเมื่อผู้ใช้เปิดสวิตช์ "GPS อัตโนมัติ" ไว้ที่หน้าจัดการ
+    // (ค่าเริ่มต้นคือเปิดให้เองเมื่ออนุญาตสิทธิ์ตำแหน่งแล้ว — ดู lib/gpsAutoTrack.ts)
     useEffect(() => {
-        if (isMounted) {
-            handleLocateMe();
-        }
+        if (!isMounted) return;
+        let cancelled = false;
+
+        (async () => {
+            const autoTrack = await resolveAutoTrack();
+            if (!cancelled && autoTrack) handleLocateMe(true);
+        })();
+
+        return () => {
+            cancelled = true;
+        };
     }, [isMounted, handleLocateMe]);
 
     // ฟังก์ชัน fetch ข้อมูลสถานีน้ำ (คงเดิม)[cite: 10]
@@ -232,7 +253,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             {mode === "explorer" && (
                 <button
                     title="Locate Me"
-                    onClick={handleLocateMe}
+                    onClick={() => handleLocateMe()}
                     className="absolute bottom-8 right-4 z-600 bg-card-general p-3.5 rounded-full border border-border text-primary transition-all duration-75 active:scale-95 will-change-transform cursor-pointer"
                 >
                     <Navigation size={18} className="fill-primary" />

@@ -5,31 +5,9 @@ import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import { useRouter } from "next/navigation";
 import { Camera, FileText, Calendar, Beaker, ImageOff, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react";
-import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
-
-// 1. แก้ไขโครงสร้าง Interface ด้านบนสุด
-interface CollectorSample {
-    id: number;
-    locationId: number;
-    status: "safe" | "warning" | "danger";
-    collectedAt: string | Date;
-    collectedBy: number;
-    imageUrl?: string | null;
-    imagePlotUrl?: string | null;
-    isDeleted: boolean;
-    updatedBy?: number | null;
-    // สถานะการตรวจสอบ (คนละมิติกับ status คุณภาพน้ำ) — มีค่าเฉพาะรายการที่ confidence ต่ำกว่าเกณฑ์เท่านั้น
-    reviewStatus?: "PENDING" | "APPROVED";
-    location?: {
-        id: number;
-        name: string;
-        organization: string;
-    } | null;
-    // รองรับคุณสมบัติค่าวัดเคมีจากหลังบ้านแบบ Dynamic ทุกคีย์สารใน DB
-    [key: string]: any;
-}
+import { useCollectorFilters, type CollectorSample } from "@/lib/hooks/useCollectorFilters";
 
 const statusOptions = [
     { id: "safe", label: "ปลอดภัย", color: "bg-emerald-500" },
@@ -42,22 +20,13 @@ export default function CollectorDashboard() {
     const router = useRouter();
     const [samples, setSamples] = useState<CollectorSample[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showOnlyMine, setShowOnlyMine] = useState(true);
 
-    // ─── TanStack Table States ───
-    const [globalFilter, setGlobalFilter] = useState("");
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [sorting, setSorting] = useState<SortingState>([{ id: "collectedAt", desc: true }]);
+    // ตัวกรองทั้งหมด + ตาราง + การจำค่าไว้ข้ามการเปิดหน้ารายละเอียด อยู่ในฮุกตัวเดียว
+    const { table, showOnlyMine, setShowOnlyMine, globalFilter, setGlobalFilter, selectedStatuses, handleStatusToggle, startDate, setStartDate, endDate, setEndDate, sorting, toggleSortDirection, clearDateRange } =
+        useCollectorFilters({ samples, currentUser, loading });
 
-    // ─── State สำหรับระบบ Multi-Select สถานะ (เก็บเป็น Array) ───
-    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-
-    // ─── States สำหรับระบบควบคุมช่วงเวลา (Date Range) ───
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    // ─── State สำหรับควบคุมป็อปอัปช่วงเวลา / Dropdown สถานะ (เรื่อง UI ล้วน ไม่เกี่ยวกับค่าที่ถูกจำ) ───
     const [isDatePanelOpen, setIsDatePanelOpen] = useState(false);
-
-    // ─── State สำหรับควบคุม Dropdown เลือกสถานะ ───
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
 
     const datePanelRef = useRef<HTMLDivElement>(null);
@@ -133,139 +102,19 @@ export default function CollectorDashboard() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // ─── สวิตช์ "เฉพาะของฉัน" มีความหมายเฉพาะ admin เท่านั้น (เลือกดูของตัวเอง vs ดูทุกคน)
-    //     collector: API กรองเป็นของตัวเองอยู่แล้วเสมอ ไม่ต้องมีสวิตช์ก็เห็นแค่ของตัวเอง
-    //     officer: สิทธิ์อ่านอย่างเดียว ต้องเห็นข้อมูลทุกคนเสมอ ไม่มีแนวคิด "ของฉัน" เพราะไม่ได้เป็นคนเก็บตัวอย่าง
-    const isAdminRole = currentUser?.role === "admin";
-    const effectiveShowOnlyMine = isAdminRole ? showOnlyMine : currentUser?.role === "collector";
-
-    // ─── 1. เตรียมข้อมูล Data Source หลัก ───
-    // ─── 1. เตรียมข้อมูล Data Source หลัก ───
-    const tableData = useMemo(() => {
-        return samples
-            .filter((s) => !s.isDeleted)
-            .filter((s) => {
-                // ถ้าเป็น admin ให้เช็คตามสถานะปุ่ม Switch สลับเปิด-ปิด
-                if (currentUser?.role === "admin") {
-                    return !showOnlyMine || s.collectedBy === currentUser?.id;
-                }
-                // ถ้าเป็นสิทธิ์อื่น (collector) บังคับล็อกฟิลเตอร์แสดงเฉพาะของตัวเอง 100%
-                return s.collectedBy === currentUser?.id;
-            });
-    }, [samples, showOnlyMine, currentUser]);
-
-    // ─── 2. นิยามโครงสร้าง Columns พร้อม Custom Filter ฟังก์ชัน ───
-    const columns = useMemo(
-        () => [
-            {
-                accessorKey: "status",
-                header: "สถานะ",
-                // ฟังก์ชันคัดกรองแบบ Multi-select ตรวจสอบจาก Array
-                filterFn: (row: any, columnId: string, filterValue: string[]) => {
-                    if (!filterValue || filterValue.length === 0) return true;
-                    const rowStatus = row.getValue(columnId) as string;
-                    return filterValue.includes(rowStatus.toLowerCase());
-                },
-            },
-            {
-                accessorFn: (row: CollectorSample) => row.location?.name || "",
-                id: "locationName",
-                header: "ชื่อสถานที่",
-            },
-            {
-                accessorKey: "collectedAt",
-                header: "วันที่เก็บตัวอย่าง",
-                filterFn: (row: any, columnId: string, filterValue: [string, string]) => {
-                    const [start, end] = filterValue;
-                    if (!start && !end) return true;
-
-                    const rowDateStr = new Date(row.getValue(columnId)).toISOString().split("T")[0];
-                    const rowTime = new Date(rowDateStr).getTime();
-
-                    const startTime = start ? new Date(start).getTime() : -Infinity;
-                    const endTime = end ? new Date(end).getTime() : Infinity;
-
-                    return rowTime >= startTime && rowTime <= endTime;
-                },
-            },
-        ],
-        [],
-    );
-
-    // ─── 3. เรียกใช้งาน TanStack Table Engine ───
-    const table = useReactTable({
-        data: tableData,
-        columns,
-        state: {
-            globalFilter,
-            columnFilters,
-            sorting,
-        },
-        onGlobalFilterChange: setGlobalFilter,
-        onColumnFiltersChange: setColumnFilters,
-        onSortingChange: setSorting,
-        getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        initialState: {
-            pagination: {
-                pageSize: 10,
-            },
-        },
-    });
-
-    // ส่งฟิลเตอร์ช่วงวันที่เข้า TanStack
-    useEffect(() => {
-        if (startDate || endDate) {
-            table.getColumn("collectedAt")?.setFilterValue([startDate, endDate]);
-        } else {
-            table.getColumn("collectedAt")?.setFilterValue(undefined);
-        }
-        table.setPageIndex(0);
-    }, [startDate, endDate, table]);
-
-    // จัดการการกดย้อนกลับ/ติ๊กเลือกสถานะแบบ Multi-Select
-    const handleStatusToggle = (status: string) => {
-        let updatedStatuses: string[];
-
-        if (selectedStatuses.includes(status)) {
-            // ถ้าเลือกอยู่แล้ว -> ติ๊กออก
-            updatedStatuses = selectedStatuses.filter((s) => s !== status);
-        } else {
-            // ถ้ายังไม่เลือก -> เพิ่มเข้า Array
-            updatedStatuses = [...selectedStatuses, status];
-        }
-
-        setSelectedStatuses(updatedStatuses);
-
-        // ส่ง Array ไปอัปเดตตัวกรองคอลัมน์ใน TanStack Table
-        if (updatedStatuses.length === 0) {
-            table.getColumn("status")?.setFilterValue(undefined);
-        } else {
-            table.getColumn("status")?.setFilterValue(updatedStatuses);
-        }
-        table.setPageIndex(0);
-    };
-
-    const clearDateRange = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setStartDate("");
-        setEndDate("");
-        setIsDatePanelOpen(false);
-    };
-
-    const toggleSortDirection = () => {
-        const isDesc = sorting[0]?.id === "collectedAt" && sorting[0]?.desc;
-        setSorting([{ id: "collectedAt", desc: !isDesc }]);
-    };
-
     const totalFilteredRecords = table.getFilteredRowModel().rows.length;
     const displayedRows = table.getRowModel().rows;
     const pageIndex = table.getState().pagination.pageIndex;
     const pageCount = table.getPageCount();
 
     const isDateActive = startDate || endDate;
+
+    // ล้างช่วงวันที่จากปุ่มกากบาทบนชิป — ต้องกัน event ไม่ให้ทะลุไปเปิดป็อปอัปปฏิทินซ้ำ
+    const handleClearDateRange = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        clearDateRange();
+        setIsDatePanelOpen(false);
+    };
 
     // ข้อความแสดงสถานะบนปุ่มหลัก (กรณีเลือกตัวเดียว หรือเลือกหลายตัว)
     const currentStatusLabel = useMemo(() => {
@@ -416,7 +265,7 @@ export default function CollectorDashboard() {
                                         <span className="truncate text-black test-xs">{isDateActive ? "กรองช่วงเวลา" : "เลือกวันที่"}</span>
                                     </div>
                                     {isDateActive ? (
-                                        <span onClick={clearDateRange} className="p-0.5 rounded-full hover:bg-bg text-black flex items-center shrink-0">
+                                        <span onClick={handleClearDateRange} className="p-0.5 rounded-full hover:bg-bg text-black flex items-center shrink-0">
                                             <X size={13} strokeWidth={3} />
                                         </span>
                                     ) : (
@@ -455,7 +304,7 @@ export default function CollectorDashboard() {
                                             </div>
                                             <div className="flex justify-end gap-2 pt-1">
                                                 {(startDate || endDate) && (
-                                                    <button onClick={clearDateRange} className="text-xs font-bold text-text-muted hover:text-text-secondary px-2 py-1">
+                                                    <button onClick={handleClearDateRange} className="text-xs font-bold text-text-muted hover:text-text-secondary px-2 py-1">
                                                         ล้างค่า
                                                     </button>
                                                 )}
