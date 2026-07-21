@@ -45,6 +45,68 @@ export default function AdminLocationsPage() {
     const [orgSearch, setOrgSearch] = useState("");
     const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
 
+    // 🌟 1. State สำหรับ Lat/Lng Input แบบพิมพ์เอง
+    const [inputLat, setInputLat] = useState("");
+    const [inputLng, setInputLng] = useState("");
+
+    // 🌟 2. State สำหรับค้นหาชื่อสถานที่ผ่าน OpenStreetMap Nominatim
+    const [placeSearch, setPlaceSearch] = useState("");
+    const [placeResults, setPlaceResults] = useState<any[]>([]);
+    const [isSearchingPlace, setIsSearchingPlace] = useState(false);
+    const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
+
+    // 🌟 3. Sync พิกัดเมื่อผู้ใช้แตะปักหมุดบนแผนที่ ➔ อัปเดตลงช่อง Input
+    useEffect(() => {
+        if (pickedPosition) {
+            setInputLat(pickedPosition.lat.toFixed(6));
+            setInputLng(pickedPosition.lng.toFixed(6));
+        }
+    }, [pickedPosition]);
+
+    const handleSearchPlace = async (query: string) => {
+        setPlaceSearch(query);
+        if (!query.trim() || query.length < 3) {
+            setPlaceResults([]);
+            setShowPlaceDropdown(false);
+            return;
+        }
+
+        setIsSearchingPlace(true);
+        setShowPlaceDropdown(true);
+
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=th&limit=5`, { headers: { "Accept-Language": "th,en" } });
+            const data = await res.json();
+            if (Array.isArray(data)) setPlaceResults(data);
+        } catch (err) {
+            console.error("Nominatim search failed:", err);
+        } finally {
+            setIsSearchingPlace(false);
+        }
+    };
+
+    // 🌟 เมื่อคลิกเลือกสถานที่จากรายการค้นหา
+    const handleSelectPlace = (place: any) => {
+        const lat = parseFloat(place.lat);
+        const lng = parseFloat(place.lon);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            setPickedPosition({ lat, lng });
+            setShowPlaceDropdown(false);
+            setPlaceSearch(place.display_name.split(",")[0]);
+        }
+    };
+
+    // 🌟 เมื่อพิมพ์ Lat/Lng ในช่อง Input เอง
+    const handleManualCoordsChange = (latStr: string, lngStr: string) => {
+        setInputLat(latStr);
+        setInputLng(lngStr);
+        const lat = parseFloat(latStr);
+        const lng = parseFloat(lngStr);
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            setPickedPosition({ lat, lng });
+        }
+    };
+
     // List
     const [locations, setLocations] = useState<LocationItem[]>([]);
     const [stationSearch, setStationSearch] = useState("");
@@ -229,9 +291,7 @@ export default function AdminLocationsPage() {
 
     const uniqueOrgs = Array.from(new Set(locations.map((l) => l.organization).filter(Boolean)));
     const stationKeyword = stationSearch.trim().toLowerCase();
-    const filteredLocations = stationKeyword
-        ? locations.filter((loc) => loc.name.toLowerCase().includes(stationKeyword) || loc.organization.toLowerCase().includes(stationKeyword))
-        : locations;
+    const filteredLocations = stationKeyword ? locations.filter((loc) => loc.name.toLowerCase().includes(stationKeyword) || loc.organization.toLowerCase().includes(stationKeyword)) : locations;
 
     const orgKeyword = orgSearch.trim().toLowerCase();
     const orgOptions = orgKeyword ? uniqueOrgs.filter((org) => org.toLowerCase().includes(orgKeyword)) : uniqueOrgs;
@@ -263,7 +323,72 @@ export default function AdminLocationsPage() {
                         </div>
                     </div>
                     <div className="space-y-4">
-                        {/* Input ชื่อสถานที่ */}
+                        {/* 🌟 โซนค้นหาสถานที่ & กรอกพิกัด Lat/Lng ด้วยตนเอง */}
+                        <div className="space-y-3 pt-2 border-t border-border">
+                            {/* 1. ช่องค้นหาชื่อสถานที่ (OSM Nominatim) */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-text-primary flex items-center gap-1.5 uppercase tracking-wide">
+                                    <Search size={13} className="text-primary" />
+                                    ค้นหาสถานที่ใกล้เคียง
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={placeSearch}
+                                        onChange={(e) => handleSearchPlace(e.target.value)}
+                                        placeholder="พิมพ์ชื่อชายหาด, วัด, หรือสถานที่..."
+                                        className="w-full pl-9 pr-8 py-2.5 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none focus:border-primary font-semibold"
+                                    />
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                                    {isSearchingPlace && (
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    )}
+
+                                    {/* Dropdown ผลลัพธ์จากการค้นหา */}
+                                    {showPlaceDropdown && placeResults.length > 0 && (
+                                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 bg-surface border border-border rounded-xl shadow-xl py-1 max-h-56 overflow-y-auto">
+                                            {placeResults.map((place) => (
+                                                <button
+                                                    key={place.place_id}
+                                                    type="button"
+                                                    onClick={() => handleSelectPlace(place)}
+                                                    className="w-full flex items-start gap-2 px-3 py-2 text-xs text-text-primary hover:bg-surface-subtle text-left border-b border-border/50 last:border-0 cursor-pointer"
+                                                >
+                                                    <MapPin size={13} className="text-primary shrink-0 mt-0.5" />
+                                                    <span className="line-clamp-2">{place.display_name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 2. ช่องกรอก Lat / Lng แบบพิมพ์เอง */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-xs font-bold text-text uppercase tracking-wider block mb-1">LATITUDE</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={inputLat}
+                                        onChange={(e) => handleManualCoordsChange(e.target.value, inputLng)}
+                                        placeholder="เช่น 12.8791"
+                                        className="w-full px-3 py-2 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs font-mono font-semibold focus:border-primary outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-black block mb-1">LONGITUDE</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={inputLng}
+                                        onChange={(e) => handleManualCoordsChange(inputLat, e.target.value)}
+                                        placeholder="เช่น 100.8872"
+                                        className="w-full px-3 py-2 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs font-mono font-semibold focus:border-primary outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">ชื่อจุดเก็บตัวอย่าง</label>
                             <input
@@ -343,12 +468,12 @@ export default function AdminLocationsPage() {
                                 <MapPin size={13} className="text-text-secondary" />
                                 ปักหมุดภูมิศาสตร์บนแผนที่
                             </label>
-                            <div className="w-full h-52 rounded-xl overflow-hidden border border-border bg-surface-subtle relative z-0">
+                            <div className="w-full h-104 rounded-xl overflow-hidden border border-border bg-surface-subtle relative z-0">
                                 <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} />
                             </div>
 
                             {pickedPosition ? (
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary bg-surface-subtle border border-border py-1.5 px-3 rounded-md w-fit mt-2">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary justify-center  py-1.5 px-3 rounded-md w-fit mt-2">
                                     <MapPinned size={12} className="text-text-muted" />
                                     LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
                                 </div>

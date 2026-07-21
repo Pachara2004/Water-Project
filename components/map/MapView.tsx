@@ -43,25 +43,41 @@ function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => 
     return null;
 }
 
-function MapController({ centerPos, selectedLocation }: { centerPos: [number, number] | null; selectedLocation: BottomSheetLocation | null }) {
+function MapController({
+    centerPos,
+    selectedLocation,
+    pickedPosition,
+}: {
+    centerPos: [number, number] | null;
+    selectedLocation: BottomSheetLocation | null;
+    pickedPosition?: { lat: number; lng: number } | null;
+}) {
     const map = useMap();
 
+    // 🌟 1. ย้ายกล้องไปที่ตำแหน่งปักหมุด/เลือกสถานที่ (pickedPosition)
+    useEffect(() => {
+        if (pickedPosition) {
+            map.flyTo([pickedPosition.lat, pickedPosition.lng], 15, {
+                animate: true,
+                duration: 0.8,
+            });
+        }
+    }, [pickedPosition, map]);
+
+    // 2. ย้ายกล้องเมื่อค้นหา GPS ผู้ใช้ (centerPos)
     useEffect(() => {
         if (centerPos) {
-            // ใช้ setTimeout เล็กน้อย (100ms) เพื่อรอให้ Leaflet ผูก Container และสิทธิ์ Zoom บนหน้าจอเสร็จเรียบร้อย
             const timer = setTimeout(() => {
-                // บินไปที่พิกัดผู้ใช้ พร้อมปรับระดับความซูมเข้าไปใกล้ๆ (เช่น ระดับ 15 หรือ 16 เพื่อให้เห็นพิกัดตัวเองชัดเจน)
                 map.flyTo(centerPos, 15, {
                     animate: true,
-                    duration: 0.8, // ความเร็วในการเลื่อนหน้าจอ
+                    duration: 0.8,
                 });
             }, 100);
-
             return () => clearTimeout(timer);
         }
     }, [centerPos, map]);
 
-    // การเลื่อนเมื่อกดเลือกสถานที่จากด้านล่าง (คงเดิม)
+    // 3. ย้ายกล้องเมื่อเลือกสถานที่จาก BottomSheet
     useEffect(() => {
         if (selectedLocation) {
             map.flyTo([selectedLocation.lat, selectedLocation.lng], 15, { duration: 0.5 });
@@ -163,8 +179,8 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     const zoom = mode === "picker" ? 10 : 9;
 
     const THAILAND_BOUNDS = L.latLngBounds(
-        [6.5, 99.0], // มุมซ้ายล่าง (ใต้สุด/ตะวันตกสุด)
-        [21.5, 107.0], // มุมขวาบน (เหนือสุด/ตะวันออกสุด)
+        [4.5, 95.0], // ขยับลงใต้ (ครอบคลุมมาเลเซียตอนบน) และขยับไปตะวันตก (อันดามัน)
+        [23.5, 110.0],
     );
 
     return (
@@ -189,19 +205,16 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 className="w-full h-full"
                 zoomControl={false}
                 attributionControl={false}
-                minZoom={mode === "picker" ? 3 : 3} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
+                minZoom={mode === "picker" ? 1 : 1} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
                 maxZoom={25}
                 maxBounds={THAILAND_BOUNDS}
-                maxBoundsViscosity={0.2}
+                maxBoundsViscosity={0.1}
                 bounceAtZoomLimits={true}
             >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
-
                 {renderedMarkers}
-
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
                 {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon(null)} />}
-
                 {userPos && (
                     <Marker
                         position={userPos}
@@ -213,7 +226,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                         })}
                     />
                 )}
-                <MapController centerPos={userPos} selectedLocation={selectedLocation} />
+                <MapController centerPos={userPos} selectedLocation={selectedLocation} pickedPosition={pickedPosition} />{" "}
             </MapContainer>
 
             {mode === "explorer" && (
