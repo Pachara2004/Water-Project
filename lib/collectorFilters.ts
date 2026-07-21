@@ -1,0 +1,49 @@
+"use client";
+
+/* จำตัวกรองของหน้าประวัติผลตรวจ (/collector) ไว้ชั่วคราว
+   ปัญหาเดิม: กดดูรายละเอียดตัวอย่างแล้วกดย้อนกลับ component ถูก unmount ทิ้ง ตัวกรองที่ตั้งไว้จึงหายหมด
+   ใช้ sessionStorage เพราะได้ผลกับทุกวิธีกลับหน้า (ปุ่มย้อนกลับในแอป, back ของเบราว์เซอร์, refresh)
+   และล้างตัวเองเมื่อปิดแท็บ — ไม่ค้างข้ามวันเหมือน localStorage */
+
+const STORAGE_KEY = "collectorFilters";
+
+export interface CollectorFilterState {
+    showOnlyMine: boolean;
+    globalFilter: string;
+    selectedStatuses: string[];
+    startDate: string;
+    endDate: string;
+    sortDesc: boolean;
+    pageIndex: number;
+}
+
+export function readCollectorFilters(): CollectorFilterState | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+
+        // ค่าที่อ่านมาจาก storage อาจเป็นของเวอร์ชันเก่าหรือถูกแก้มือ — คัดชนิดข้อมูลทีละฟิลด์ก่อนใช้
+        return {
+            showOnlyMine: typeof parsed.showOnlyMine === "boolean" ? parsed.showOnlyMine : true,
+            globalFilter: typeof parsed.globalFilter === "string" ? parsed.globalFilter : "",
+            selectedStatuses: Array.isArray(parsed.selectedStatuses) ? parsed.selectedStatuses.filter((s: unknown) => typeof s === "string") : [],
+            startDate: typeof parsed.startDate === "string" ? parsed.startDate : "",
+            endDate: typeof parsed.endDate === "string" ? parsed.endDate : "",
+            sortDesc: typeof parsed.sortDesc === "boolean" ? parsed.sortDesc : true,
+            pageIndex: Number.isInteger(parsed.pageIndex) && parsed.pageIndex >= 0 ? parsed.pageIndex : 0,
+        };
+    } catch {
+        return null;
+    }
+}
+
+export function writeCollectorFilters(state: CollectorFilterState) {
+    if (typeof window === "undefined") return;
+    try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+        /* storage เต็มหรือถูกปิดใช้งาน (โหมดส่วนตัวบางเบราว์เซอร์) — ไม่ใช่เรื่องคอขาดบาดตาย ปล่อยผ่าน */
+    }
+}
