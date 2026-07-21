@@ -27,21 +27,21 @@ export interface ComparisonRow {
 const STATUS_STYLE: Record<StatusType, { label: string; chip: string; icon: typeof ShieldCheck; iconClass: string }> = {
     safe: {
         label: "ผ่าน",
-        chip: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-300",
+        chip: "bg-bg-safe text-text-safe border-border-safe dark:text-emerald-300",
         icon: ShieldCheck,
-        iconClass: "text-emerald-500",
+        iconClass: "text-text-safe",
     },
     warning: {
         label: "เฝ้าระวัง",
-        chip: "bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-300",
+        chip: "bg-bg-warning text-text-warning border-border-warning dark:text-amber-300",
         icon: ShieldAlert,
-        iconClass: "text-amber-500",
+        iconClass: "text-text-warning",
     },
     danger: {
         label: "เกินเกณฑ์",
-        chip: "bg-red-500/10 text-red-700 border-red-500/20 dark:text-red-300",
+        chip: "bg-bg-danger text-text-danger border-border-danger dark:text-red-300",
         icon: ShieldX,
-        iconClass: "text-red-500",
+        iconClass: "text-text-danger",
     },
 };
 
@@ -55,8 +55,8 @@ export function StandardsComparison({ title, rows, compact = false }: { title: s
     if (rows.length === 0) return null;
 
     return (
-        <div className={compact ? "space-y-2" : "bg-surface border border-border rounded-2xl p-6"}>
-            <h4 className={`text-xs font-semibold text-primary ${compact ? "border-b border-primary pb-1" : "mb-3 text-center"}`}>{title}</h4>
+        <div className={compact ? "space-y-2" : "bg-card-general border border-border rounded-2xl p-6"}>
+            <h4 className={`text-sm font-semibold text-primary ${compact ? "border-b border-primary pb-1" : "mb-3 text-center"}`}>{title}</h4>
 
             <div className={compact ? "space-y-2" : "grid grid-cols-1 gap-3 text-start"}>
                 {rows.map((row) => {

@@ -37,6 +37,7 @@ function SubmitContent() {
         savedSampleId,
         handleSave,
         resetToUpload,
+        processImageExif,
     } = hook;
 
     // จองพื้นที่ scrollbar ไว้ล่วงหน้าเฉพาะหน้านี้ กัน layout ขยับตอน popup ยืนยันล็อกการ scroll
@@ -59,10 +60,12 @@ function SubmitContent() {
     }, [verifyErrors]);
 
     const handleImageSelect = async (paramId: number, file: File) => {
-        // อัปเดตไฟล์ดิบ
         setImageFiles((prev) => ({ ...prev, [paramId]: file }));
 
-        // เลือกรูปใหม่ให้สารตัวนี้ = เคลียร์สถานะบล็อกของสารตัวนั้นทิ้ง
+        // สั่งแกะ EXIF จากรูปภาพที่เพิ่งอัปโหลด
+        hook.processImageExif(file);
+        processImageExif(file);
+
         setVerifyErrors((prev) => {
             if (!prev[paramId]) return prev;
             const next = { ...prev };
@@ -70,7 +73,6 @@ function SubmitContent() {
             return next;
         });
 
-        // แตก Base64 สำหรับทำ Preview บนหน้าจอ
         const reader = new FileReader();
         reader.onloadend = () => {
             setImagePreviews((prev) => ({ ...prev, [paramId]: reader.result as string }));
@@ -195,7 +197,7 @@ function SubmitContent() {
                         ))}
                 {step === "upload" && (
                     <>
-                        <LocationPicker {...hook} />
+                        <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
                         <MetadataFields {...hook} />
                         <AnalyzeButton {...hook} />
                     </>
@@ -325,7 +327,7 @@ function SubmitContent() {
                     <div className="flex flex-col flex-1 p-4 gap-4">
                         {step === "upload" && (
                             <>
-                                <LocationPicker {...hook} />
+                                <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
                                 <MetadataFields {...hook} />
                             </>
                         )}
