@@ -8,6 +8,7 @@ import { useAppStore } from "@/lib/store";
 import { MapPin, ChevronRight, Users, Phone, Pencil, X, Check, AlertCircle, User, ClipboardCheck, LogOut } from "lucide-react";
 import Image from "next/image";
 import ThemeToggle from "@/components/ThemeToggle";
+import GpsAutoTrackToggle from "@/components/GpsAutoTrackToggle";
 import { useToast } from "@/components/useToast";
 import Linelogo from "@/public/LINEIcon.png";
 // อิมพอร์ตฟังก์ชันยืนยันออกจากระบบจากไฟล์ config กลาง
@@ -368,10 +369,12 @@ export default function ManagePage() {
                 )}
 
                 <div className="space-y-2">
-                    <div className="p-1 flex justify-between items-center gap-4">
+                    <div className="p-1 flex flex-wrap justify-between items-center gap-y-2 gap-x-4">
                         <p className="text-sm font-semibold text-primary mt-1">เมนูการจัดการ</p>
-                        <div className="shrink-0 mt-1">
+                        {/* flex-wrap ที่แถวนอก: จอแคบให้ปุ่มตกลงบรรทัดใหม่ทั้งคู่ ดีกว่าบีบจนข้อความล้น */}
+                        <div className="shrink-0 mt-1 flex items-center gap-2">
                             <ThemeToggle showLabel />
+                            <GpsAutoTrackToggle />
                         </div>
                     </div>
 

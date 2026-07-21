@@ -12,6 +12,7 @@ import L from "leaflet";
 import { useMap } from "react-leaflet";
 import { Navigation } from "lucide-react";
 import { alertError } from "@/lib/swal";
+import { disableAutoTrackAfterDenial, resolveAutoTrack } from "@/lib/gpsAutoTrack";
 
 interface LocationData {
     id: number;
@@ -105,7 +106,11 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             },
             (err) => {
                 console.warn("Geolocation error:", err);
-                if (silent) return;
+                if (silent) {
+                    // สิทธิ์ถูกถอนหลังเปิดสวิตช์ไว้ → ปิดสวิตช์ให้ตรงความจริง หน้าจัดการจะได้ไม่โชว์ว่ายังเปิดอยู่
+                    if (err.code === err.PERMISSION_DENIED) disableAutoTrackAfterDenial();
+                    return;
+                }
                 if (err.code === err.PERMISSION_DENIED) {
                     alertError("ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง", "กรุณาเปิดสิทธิ์การเข้าถึงตำแหน่งในตั้งค่าเบราว์เซอร์หรือแอป LINE แล้วลองใหม่อีกครั้ง");
                 } else {
@@ -116,21 +121,15 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         );
     }, []);
 
-    // ดึงพิกัดอัตโนมัติเฉพาะตอนที่ผู้ใช้เคยอนุญาตไว้แล้วเท่านั้น
-    // ถ้าเป็น "prompt"/"denied" หรือไม่มี Permissions API (LIFF webview บางตัว) จะไม่แตะ geolocation เลย
-    // ป้องกัน permission popup / error alert เด้งทุกครั้งที่เข้าหน้าแผนที่
+    // ดึงพิกัดอัตโนมัติตอนเข้าหน้า เฉพาะเมื่อผู้ใช้เปิดสวิตช์ "GPS อัตโนมัติ" ไว้ที่หน้าจัดการ
+    // (ค่าเริ่มต้นคือเปิดให้เองเมื่ออนุญาตสิทธิ์ตำแหน่งแล้ว — ดู lib/gpsAutoTrack.ts)
     useEffect(() => {
         if (!isMounted) return;
         let cancelled = false;
 
         (async () => {
-            if (!navigator.geolocation || !navigator.permissions?.query) return;
-            try {
-                const status = await navigator.permissions.query({ name: "geolocation" });
-                if (!cancelled && status.state === "granted") handleLocateMe(true);
-            } catch {
-                /* เบราว์เซอร์ไม่รองรับ query ชื่อ geolocation → ปล่อยให้ผู้ใช้กดปุ่มเอง */
-            }
+            const autoTrack = await resolveAutoTrack();
+            if (!cancelled && autoTrack) handleLocateMe(true);
         })();
 
         return () => {
