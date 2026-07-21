@@ -1,5 +1,5 @@
 // components/submit/LocationPicker.tsx
-import { Search, MapPin, ChevronRight, Loader2 } from "lucide-react";
+import { Search, MapPin, ChevronRight, Loader2, Navigation, Image as ImageIcon } from "lucide-react";
 import { LocationItem } from "./types";
 import { SectionHead } from "./SharedAtoms";
 
@@ -12,15 +12,88 @@ interface LocationPickerProps {
     allLocations: LocationItem[];
     nearestLocations: LocationItem[];
     clearLocation: () => void;
+
+    // Props สำหรับสวิตช์ 3 กรณี
+    gpsCoords: { lat: number; lng: number } | null;
+    exifCoords: { lat: number; lng: number } | null;
+    activeSource: "gps" | "exif" | "manual";
+    onSelectSource: (source: "gps" | "exif") => void;
 }
 
-export function LocationPicker({ searchQuery, setSearchQuery, locationName, currentLocationId, setCurrentLocationId, allLocations, nearestLocations, clearLocation }: LocationPickerProps) {
+export function LocationPicker({
+    searchQuery,
+    setSearchQuery,
+    locationName,
+    currentLocationId,
+    setCurrentLocationId,
+    allLocations,
+    nearestLocations,
+    gpsCoords,
+    exifCoords,
+    activeSource,
+    onSelectSource,
+}: LocationPickerProps) {
+    const hasGps = !!gpsCoords;
+    const hasExif = !!exifCoords;
+
+    const handleGpsClick = () => {
+        if (hasGps) {
+            onSelectSource("gps");
+        } else {
+            alert("ไม่พบพิกัด GPS: กรุณาเปิดการเข้าถึงตำแหน่ง (Location) ในเบราว์เซอร์ครับ");
+        }
+    };
+
+    const handleExifClick = () => {
+        if (hasExif) {
+            onSelectSource("exif");
+        } else {
+            alert("รูปถ่ายไม่มีข้อมูลพิกัด: รูปภาพนี้ไม่มีข้อมูล EXIF GPS ระบบจึงใช้พิกัดจาก GPS เครื่องแทนครับ");
+        }
+    };
+
     return (
         <section className="rounded-xl bg-surface overflow-hidden border border-border">
-            <div className="text-sm font-semibold ">
+            <div className="text-sm font-semibold">
                 <SectionHead icon={<MapPin size={16} />} label="เลือกสถานีจุดเก็บตัวอย่างน้ำ" />
             </div>
+
             <div className="p-4 space-y-3">
+                <div className="flex items-center gap-1.5 p-1 bg-surface-subtle border border-border rounded-xl">
+                    {/* ปุ่ม GPS มือถือ */}
+                    <button
+                        type="button"
+                        onClick={handleGpsClick}
+                        className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            activeSource === "gps" && hasGps
+                                ? "bg-primary text-white shadow-xs"
+                                : !hasGps
+                                  ? "opacity-50 text-text-muted bg-transparent"
+                                  : "text-text-secondary hover:text-text-primary bg-surface/50"
+                        }`}
+                    >
+                        <Navigation size={13} />
+                        <span>GPS เครื่อง {hasGps ? " " : "(ปิดอยู่)"}</span>
+                    </button>
+
+                    {/* ปุ่ม EXIF รูปภาพ */}
+                    <button
+                        type="button"
+                        onClick={handleExifClick}
+                        className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            activeSource === "exif" && hasExif
+                                ? "bg-primary text-white shadow-xs"
+                                : !hasExif
+                                  ? "opacity-50 text-text-muted bg-transparent"
+                                  : "text-text-secondary hover:text-text-primary bg-surface/50"
+                        }`}
+                    >
+                        <ImageIcon size={13} />
+                        <span>พิกัดรูปภาพ {hasExif ? " " : "(ไม่มีข้อมูล)"}</span>
+                    </button>
+                </div>
+
+                {/* ช่องค้นหาสถานีตามปกติ */}
                 <div className="relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                     <input
@@ -32,6 +105,7 @@ export function LocationPicker({ searchQuery, setSearchQuery, locationName, curr
                     />
                 </div>
 
+                {/* แสดงผลรายการสถานีใกล้เคียง */}
                 {searchQuery.trim() ? (
                     <div className="space-y-1">
                         {allLocations
@@ -44,7 +118,9 @@ export function LocationPicker({ searchQuery, setSearchQuery, locationName, curr
                                         setCurrentLocationId(loc.id.toString());
                                         setSearchQuery("");
                                     }}
-                                    className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-lg border text-left transition-colors group min-h-11 ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-lg border text-left transition-colors group min-h-11 ${
+                                        currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"
+                                    }`}
                                 >
                                     <MapPin size={12} className="text-text-muted group-hover:text-teal-600 shrink-0" />
                                     <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
@@ -54,13 +130,21 @@ export function LocationPicker({ searchQuery, setSearchQuery, locationName, curr
                     </div>
                 ) : nearestLocations.length > 0 ? (
                     <div className="space-y-1">
-                        <p className="text-xs uppercase text-text-muted px-1">สถานีใกล้เคียง</p>
+                        <p className="text-[10px] uppercase font-bold text-text-muted px-1">
+                            {activeSource === "exif" && hasExif
+                                ? "สถานีใกล้เคียงพิกัดรูปภาพ"
+                                : activeSource === "gps" && hasGps
+                                  ? "สถานีใกล้เคียงพิกัดปัจจุบัน (GPS)"
+                                  : "สถานีแนะนำทั้งหมด"}
+                        </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {nearestLocations.map((loc) => (
                                 <button
                                     key={loc.id}
                                     onClick={() => setCurrentLocationId(loc.id.toString())}
-                                    className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-left transition-colors min-h-11 ${currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"}`}
+                                    className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-left transition-colors min-h-11 ${
+                                        currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"
+                                    }`}
                                 >
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${currentLocationId === loc.id.toString() ? "bg-teal-500" : "bg-text-muted"}`} />
                                     <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>

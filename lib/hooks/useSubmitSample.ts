@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
@@ -65,6 +65,34 @@ export function useSubmitSample() {
         return `${yymm}-${uniquePart}`;
     };
     const [sessionId, setSessionId] = useState<string>(generateSessionId);
+
+    // เพิ่ม State และ Ref สำหรับเก็บค่าพิกัดดิบทั้งสองฝั่ง
+    const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [exifCoords, setExifCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [activeSource, setActiveSource] = useState<"gps" | "exif" | "manual">("manual");
+
+    // ฟังก์ชันสำหรับคำนวณเรียงลำดับสถานีใกล้เคียงใหม่ตามพิกัดที่เลือก
+    const updateNearestByCoords = useCallback(
+        (coords: { lat: number; lng: number }) => {
+            if (!allLocations.length) return;
+            import("@/lib/exif").then(({ calculateDistance }) => {
+                const sorted = [...allLocations].sort((a, b) => calculateDistance(coords.lat, coords.lng, a.lat, a.lng) - calculateDistance(coords.lat, coords.lng, b.lat, b.lng));
+                setNearestLocations(sorted.slice(0, 5));
+            });
+        },
+        [allLocations],
+    );
+
+    // เมื่อคลิกเลือกแหล่งพิกัด (GPS หรือ EXIF)
+    // เมื่อคลิกเลือกแหล่งพิกัด (GPS หรือ EXIF)
+    const handleSelectSource = (source: "gps" | "exif") => {
+        setActiveSource(source);
+        if (source === "gps" && gpsCoords) {
+            updateNearestByCoords(gpsCoords);
+        } else if (source === "exif" && exifCoords) {
+            updateNearestByCoords(exifCoords);
+        }
+    };
     // ── Effects ──
     useEffect(() => {
         setIsLoadingParams(true);
@@ -122,20 +150,31 @@ export function useSubmitSample() {
             .catch(console.error);
     }, []);
 
+    // ─── 1. ดึง GPS มือถือปัจจุบัน และตั้งค่า activeSource อัตโนมัติ ───
     useEffect(() => {
-        if (allLocations.length === 0 || currentLocationId) return;
-        navigator.geolocation?.getCurrentPosition(
-            async (pos) => {
-                const { calculateDistance } = await import("@/lib/exif");
-                const sorted = [...allLocations].sort(
-                    (a, b) => calculateDistance(pos.coords.latitude, pos.coords.longitude, a.lat, a.lng) - calculateDistance(pos.coords.latitude, pos.coords.longitude, b.lat, b.lng),
-                );
-                setNearestLocations(sorted.slice(0, 5));
+        if (typeof window === "undefined" || !navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                setGpsCoords(coords);
+
+                // ตั้ง activeSource เป็น gps ทันทีถ้าเพิ่งเข้ามา และยังไม่มีการเลือก EXIF
+                setActiveSource((prev) => {
+                    if (prev === "manual" || prev === "gps") {
+                        updateNearestByCoords(coords);
+                        return "gps";
+                    }
+                    return prev;
+                });
             },
-            (err) => console.error("GPS Error:", err),
-            { enableHighAccuracy: true },
+            (err) => {
+                console.warn("ไม่สามารถดึง GPS ปัจจุบันได้:", err.message);
+                setGpsCoords(null);
+            },
+            { enableHighAccuracy: true, timeout: 10000 },
         );
-    }, [allLocations, currentLocationId]);
+    }, [allLocations, updateNearestByCoords]);
 
     useEffect(() => {
         if (!currentLocationId || !allLocations.length) return;
@@ -150,6 +189,49 @@ export function useSubmitSample() {
         if (!currentUser) return;
         if (currentUser.role !== "collector" && currentUser.role !== "admin") router.push("/map");
     }, [currentUser, router]);
+
+    // 1. แกะ EXIF และสลับมาใช้พิกัดรูปภาพทันที
+    const processImageExif = useCallback(
+        async (file: File) => {
+            try {
+                const { getExifLocation } = await import("@/lib/exif");
+                const coords = await getExifLocation(file);
+
+                if (coords) {
+                    const exif = { lat: coords.latitude, lng: coords.longitude };
+                    setExifCoords(exif);
+                    setActiveSource("exif");
+                    updateNearestByCoords(exif);
+                } else {
+                    console.warn("รูปภาพนี้ไม่มีข้อมูลพิกัด EXIF GPS");
+                    setExifCoords(null);
+                }
+            } catch (err) {
+                console.error("ไม่สามารถอ่านค่า EXIF จากรูปภาพได้:", err);
+                setExifCoords(null);
+            }
+        },
+        [updateNearestByCoords],
+    );
+    // 2. ฟังก์ชันสลับปุ่ม (ใช้ Functional Update อ่านค่า State ล่าสุดเสมอ ป้องกัน Stale Closure)
+    const onSelectSource = useCallback(
+        (source: "gps" | "exif") => {
+            setActiveSource(source);
+
+            setGpsCoords((latestGps) => {
+                setExifCoords((latestExif) => {
+                    if (source === "gps" && latestGps) {
+                        updateNearestByCoords(latestGps);
+                    } else if (source === "exif" && latestExif) {
+                        updateNearestByCoords(latestExif);
+                    }
+                    return latestExif;
+                });
+                return latestGps;
+            });
+        },
+        [updateNearestByCoords],
+    );
 
     // ── AI Image Plotter Canvas Helper ──
     const generateAiImagePlot = (file: File, aiData: any): Promise<File | null> =>
@@ -526,5 +608,12 @@ export function useSubmitSample() {
         handleSave,
         resetToUpload,
         clearLocation,
+
+        gpsCoords,
+        exifCoords,
+        activeSource,
+        handleSelectSource,
+        processImageExif,
+        onSelectSource,
     };
 }
