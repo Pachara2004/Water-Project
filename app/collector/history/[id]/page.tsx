@@ -439,29 +439,10 @@ export default function CollectorHistoryDetailPage() {
                         <h1 className="text-sm font-semibold text-primary">รายละเอียดประวัติการตรวจสอบ</h1>
                     )}
                 </div>
-                {currentUser?.role === "admin" ? (
-                    <div className="flex items-center">
-                        {isEditing ? (
-                            <div className="flex gap-1.5">
-                                <button onClick={() => setIsEditing(false)} className="text-xs font-bold text-text-secondary bg-surface-subtle border px-3 py-1.5 rounded-lg">
-                                    ยกเลิก
-                                </button>
-                                <button onClick={handleSave} disabled={saving || !isLocationValid} className="text-xs font-bold text-white bg-teal-700 px-3 py-1.5 rounded-lg disabled:opacity-40">
-                                    บันทึก
-                                </button>
-                            </div>
-                        ) : (
-                            <button onClick={startEdit} className="text-xs font-bold text-teal-700 border border-teal-600 bg-teal-50/40 px-3 py-1.5 rounded-lg flex items-center gap-1">
-                                <Pencil size={11} /> แก้ไข
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <div className="w-10" />
-                )}
+                <div className="w-15" />
             </div>
 
-            {/* 📱 MOBILE VIEW COMPONENT */}
+            {/* MOBILE VIEW COMPONENT */}
             <div className="md:hidden px-4 space-y-4 mt-4">
                 {resultEntries.map(({ key, param, measurement }) => (
                     <ImageZone

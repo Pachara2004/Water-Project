@@ -190,26 +190,86 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     })();
 
     // ⚡ React Compiler Optimization: แปลงลูปสารเคมีให้คลีน ไร้ปัญหา Dependency Array ขัดแย้งกัน
+    // 🧩 Jigsaw Assembly: รวมสารจากหลาย sessionGroup (ดึงค่าล่าสุดของแต่ละสารมาเติมช่องว่าง)
+    // 🧩 Jigsaw Assembly: รวมสารจากหลาย sessionGroup (ดึงค่าล่าสุดจริง 100%)
     const chemicalItems = (() => {
-        const latest = location?.latestSample;
         const samplesArr = location?.recentSamples || [];
-        const prev = samplesArr.length > 1 ? samplesArr[samplesArr.length - 2] : null;
-        if (!latest) return [];
+        if (samplesArr.length === 0) return [];
 
-        return Object.keys(latest)
-            .filter((key) => (key.endsWith("Val") || key.endsWith("Value")) && latest[key] !== undefined && latest[key] !== null)
-            .map((key) => {
-                const currentVal = Number(latest[key]);
-                const prevVal = prev && prev[key] !== undefined && prev[key] !== null ? Number(prev[key]) : null;
-                const diff = prevVal !== null ? currentVal - prevVal : 0;
-                const cleanLabel = key.replace(/Val(ue)?$/i, "");
+        // 🌟 STEP 1: เรียงลำดับประวัติจาก "ล่าสุดไปหาเก่าสุด" (Newest -> Oldest) ให้ชัวร์ก่อนทำจิ๊กซอว์
+        const sortedSamples = [...samplesArr].sort((a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime());
 
-                let colorClass = "text-teal-500";
-                if (cleanLabel.toLowerCase().includes("ammonia")) colorClass = "text-purple-500";
-                if (cleanLabel.toLowerCase().includes("nitrate")) colorClass = "text-blue-500";
+        const jigsawMap = new Map<string, { currentVal: number; prevVal: number | null; collectedAt: string }>();
 
-                return { key, currentVal, diff, displayLabel: cleanLabel.toUpperCase(), colorClass, hasPrev: !!prev };
-            });
+        // 🌟 STEP 2: ดึงค่าวัดแยกรายสารอิงตามตาราง measurements จริง (ถ้ามี) หรืออิง Property ก้อนใหญ่
+        sortedSamples.forEach((sample) => {
+            // ถ้ารายการนี้มี measurements array ตรงๆ ให้ดึงจากตรงนั้นเพื่อความแม่นยำสูงสุด
+            if (Array.isArray(sample.measurements) && sample.measurements.length > 0) {
+                sample.measurements.forEach((m: any) => {
+                    const paramName = m.parameter?.name?.toLowerCase();
+                    if (!paramName) return;
+                    const key = `${paramName}Val`;
+                    const val = Number(m.value);
+
+                    if (!jigsawMap.has(key)) {
+                        // ดึงได้ชิ้นส่วนล่าสุดแล้ว! บันทึกวันเวลาของ sample รอบนี้ไว้เลย
+                        jigsawMap.set(key, {
+                            currentVal: val,
+                            prevVal: null,
+                            collectedAt: sample.collectionTime || sample.collectedAt,
+                        });
+                    } else {
+                        // เจอค่าเดิมในรอบย้อนหลัง เอาไว้ทำ diff
+                        const existing = jigsawMap.get(key)!;
+                        if (existing.prevVal === null && Math.abs(existing.currentVal - val) > 0.0001) {
+                            existing.prevVal = val;
+                        }
+                    }
+                });
+            } else {
+                // Fallback: กรณีอ่านจาก Property แบนราบ (phosphateVal, ammoniaVal)
+                Object.keys(sample)
+                    .filter((key) => (key.endsWith("Val") || key.endsWith("Value")) && sample[key] !== undefined && sample[key] !== null)
+                    .forEach((key) => {
+                        const val = Number(sample[key]);
+
+                        if (!jigsawMap.has(key)) {
+                            jigsawMap.set(key, {
+                                currentVal: val,
+                                prevVal: null,
+                                collectedAt: sample.collectedAt,
+                            });
+                        } else {
+                            const existing = jigsawMap.get(key)!;
+                            if (existing.prevVal === null && Math.abs(existing.currentVal - val) > 0.0001) {
+                                existing.prevVal = val;
+                            }
+                        }
+                    });
+            }
+        });
+
+        // 🌟 STEP 3: แปลงผลลัพธ์ออกเป็น UI
+        return Array.from(jigsawMap.entries()).map(([key, data]) => {
+            const currentVal = data.currentVal;
+            const prevVal = data.prevVal;
+            const diff = prevVal !== null ? currentVal - prevVal : 0;
+            const cleanLabel = key.replace(/Val(ue)?$/i, "");
+
+            let colorClass = "text-teal-500";
+            if (cleanLabel.toLowerCase().includes("ammonia")) colorClass = "text-purple-500";
+            if (cleanLabel.toLowerCase().includes("nitrate")) colorClass = "text-blue-500";
+
+            return {
+                key,
+                currentVal,
+                diff,
+                displayLabel: cleanLabel.toUpperCase(),
+                colorClass,
+                hasPrev: prevVal !== null,
+                collectedAt: data.collectedAt,
+            };
+        });
     })();
 
     if (!location) return null;
@@ -231,7 +291,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         // ของ admin: เห็นเหมือนเดิมทุกอย่าง
         if (role === "admin") {
             return (
-                <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
+                <div className="bg-card-general border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
                     <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
                     <p className="text-md font-semibold text-black">{colName}</p>
                     <p className="text-sm font-semibold text-text-muted mt-0.5">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
@@ -243,7 +303,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         if (role === "collector") {
             const anonymizedName = colName && colName.length > 0 ? `${colName.slice(0, 5)}***` : "***";
             return (
-                <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
+                <div className="bg-card-general border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
                     <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกล่าสุด</span>
                     <p className="text-sm font-bold text-black mt-0.5">{anonymizedName}</p>
                 </div>
@@ -277,7 +337,19 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     //
     // ไม่ใช้ useMemo เพราะจุดนี้อยู่หลัง `if (!location) return null` ด้านบน — เป็น hook แบบมีเงื่อนไข
     // ซึ่งผิด Rules of Hooks และทำ React พังจริง ไม่ใช่แค่ lint บ่น (วนแค่ 6 ประเภท ไม่ต้อง memo อยู่แล้ว)
-    const latestValues = (location.latestByParameter ?? []).map((m) => ({ parameterId: m.parameterId, value: m.value }));
+    // 🧩 นำจิ๊กซอว์สารที่เติมเต็มแล้วไปประเมินกับเกณฑ์มาตรฐานประเภทแหล่งน้ำ
+    const latestValues =
+        location.latestByParameter && location.latestByParameter.length > 0
+            ? location.latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value }))
+            : chemicalItems.map((item) => {
+                  // Map ชื่อสารกลับไปหา parameterId จาก master parameter ถ้ามี
+                  const paramMeta = (location.recentSamples || []).flatMap((s) => s.measurements || []).find((m) => m.parameter?.name?.toLowerCase() === item.displayLabel.toLowerCase());
+
+                  return {
+                      parameterId: paramMeta?.parameterId ?? 0,
+                      value: item.currentVal,
+                  };
+              });
     const comparisonRows: ComparisonRow[] =
         latest && locationTypes.length > 0 && latestValues.length > 0
             ? locationTypes.map((type) => ({
@@ -303,7 +375,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
             {latest ? (
                 <div className="space-y-5">
-                    <div className="bg-surface border border-border rounded-xl p-4">
+                    <div className="bg-card-general border border-border rounded-xl p-4">
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-semibold text-primary">ผลวิเคราะห์ล่าสุด</span>
                             <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
@@ -318,33 +390,60 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                     {currentUser?.role !== "guest" && (
                         <div className="grid grid-cols-2 gap-2">
-                            {chemicalItems.map((item) => (
-                                <div
-                                    key={item.key}
-                                    className="bg-surface rounded-xl p-4 border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200"
-                                >
-                                    <div className="flex items-center content-center justify-center gap-1 mb-1">
-                                        <FlaskConical size={16} className={item.colorClass} />
-                                        <span className="text-sm font-bold text-primary uppercase">{item.displayLabel}</span>
-                                    </div>
-                                    <div className="flex items-center content-center justify-center gap-1.5">
-                                        <span className="text-2xl font-black text-black">{item.currentVal.toFixed(3)}</span>
-                                        <span className="text-xs text-black font-bold">mg/L</span>
-                                    </div>
-                                    {item.hasPrev && item.diff !== 0 && (
-                                        <div className={`flex items-center gap-1 text-xs font-black justify-center ${item.diff > 0 ? "text-red-500" : "text-emerald-500"}`}>
-                                            {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                            {item.diff > 0 ? "+" : ""}
-                                            {item.diff.toFixed(3)}
+                            {chemicalItems.map((item) => {
+                                // ฟังก์ชันแปลงเวลาสั้นๆ เช่น "21 ก.ค. 10:30" หรือ "เมื่อวาน 14:00"
+                                const formattedTime = item.collectedAt
+                                    ? new Date(item.collectedAt).toLocaleDateString("th-TH", {
+                                          day: "numeric",
+                                          month: "short",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                      })
+                                    : "";
+
+                                return (
+                                    <div
+                                        key={item.key}
+                                        className="bg-card-general rounded-xl p-4 sm:p-4 border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200"
+                                    >
+                                        <div className="flex items-center justify-center gap-1 mb-1">
+                                            <div className="flex items-center gap-1">
+                                                <FlaskConical size={14} className={item.colorClass} />
+                                                <span className="text-xs font-bold text-primary uppercase">{item.displayLabel}</span>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+
+                                        {/* ค่าที่วัดได้ */}
+                                        <div className="flex items-center justify-center gap-1.5 my-1">
+                                            <span className="text-2xl font-black text-black">{item.currentVal.toFixed(3)}</span>
+                                            <span className="text-[10px] text-black font-bold">mg/L</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-1 mt-1 border-t border-border/40 text-xs">
+                                            {/* แสดงผลต่าง diff */}
+                                            {item.hasPrev && item.diff !== 0 ? (
+                                                <div className={`flex items-center gap-0.5 font-black ${item.diff > 0 ? "text-text-danger" : "text-emerald-500"}`}>
+                                                    {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                                    {item.diff > 0 ? "+" : ""}
+                                                    {item.diff.toFixed(2)}
+                                                </div>
+                                            ) : (
+                                                <span className="text-text-muted">-</span>
+                                            )}
+
+                                            {/* ป้ายแสดงเวลาของจิ๊กซอว์ชิ้นนี้ */}
+                                            <span className="text-text-muted text-xs font-medium truncate max-w-22.5" title={formattedTime}>
+                                                {formattedTime}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
                     {currentUser?.role !== "guest" && latest.oxygen !== null && latest.oxygen !== undefined && (
-                        <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border">
+                        <div className="bg-card-general rounded-2xl p-4 flex items-center justify-between border border-border">
                             <div className="flex items-center gap-1.5">
                                 <FlaskConical size={16} className="text-blue-500" />
                                 <span className="text-sm font-bold text-primary uppercase">ค่าออกซิเจนละลายน้ำ</span>
@@ -363,8 +462,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             latest.temperature !== null ||
                             latest.rainVolume !== null ||
                             latest.weatherCondition !== null) && (
-                            <div className="bg-surface border border-border rounded-2xl p-6">
-                                <h4 className="text-xs font-semibold text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
+                            <div className="bg-card-general border border-border rounded-2xl p-6">
+                                <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
                                 <div className="grid grid-cols gap-3 text-center">
                                     {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
                                         <div className="bg-surface-subtle p-3 rounded-xl border border-border">
@@ -391,7 +490,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     <StandardsComparison title="การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน" rows={comparisonRows} />
 
                     {samplesArr.length > 0 && (
-                        <div className="bg-surface border border-border rounded-2xl p-4">
+                        <div className="bg-card-general border border-border rounded-2xl p-4">
                             <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text-secondary">
                                 <Minus size={12} className="text-border" />
                                 <span className="text-sm font-semibold text-black">สถานะพบบ่อยสุด:</span>
@@ -440,7 +539,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             )}
 
             {(currentUser?.role !== "guest" || !currentUser?.role) && chartData.length > 0 && (
-                <div className="bg-surface rounded-2xl">
+                <div className="bg-card-general rounded-2xl">
                     <TimeSeriesChart data={chartData} />
                 </div>
             )}
