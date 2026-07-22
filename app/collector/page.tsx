@@ -143,7 +143,7 @@ export default function CollectorDashboard() {
 
                     <button
                         onClick={() => router.push("/submit")}
-                        className="w-full py-3 bg-primary hover:bg-primary/95 text-text font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
+                        className="w-full py-3 bg-primary hover:bg-primary/95 text-card-general font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
                     >
                         <Camera size={18} strokeWidth={2.5} />
                         <span>ตรวจคุณภาพน้ำ</span>
