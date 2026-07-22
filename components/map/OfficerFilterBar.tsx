@@ -89,7 +89,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 <div className="absolute top-[calc(100%+6px)] left-0 w-64 bg-surface/95 backdrop-blur-md rounded-2xl shadow-2xl border border-border/80 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-700 will-change-transform">
                     {/* ── โซนค้นหา: ปรับให้พรีเมียม ไร้ขอบตัด ขยายพื้นที่ไอคอน ── */}
                     <div className="p-2.5 border-b border-border bg-bg flex items-center gap-2 sticky top-0 z-10">
-                        <Search size={14} className="text-text-muted shrink-0 ml-1" />
+                        <Search size={14} className="text-text shrink-0 ml-1" />
                         <input
                             type="text"
                             value={searchQuery}
@@ -104,7 +104,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                                     e.stopPropagation();
                                     setSearchQuery("");
                                 }}
-                                className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-surface-muted transition-colors"
+                                className="text-text hover:text-text p-1 rounded-lg hover:bg-surface-muted transition-colors"
                             >
                                 <X size={13} />
                             </button>
@@ -113,7 +113,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
 
                     <div className="p-1 flex flex-col gap-0.5 max-h-56 overflow-y-auto overscroll-contain reserve-scrollbar-gutter scrollbar-thin" onTouchMove={(e) => e.stopPropagation()}>
                         {filteredOptions.length === 0 ? (
-                            <div className="text-center py-6 text-xs text-text-muted font-medium tracking-wide">ไม่พบข้อมูลหน่วยงานนี้</div>
+                            <div className="text-center py-6 text-xs text-text font-medium tracking-wide">ไม่พบข้อมูลหน่วยงานนี้</div>
                         ) : (
                             filteredOptions.map((option) => {
                                 const isSelected = value === option.value;
