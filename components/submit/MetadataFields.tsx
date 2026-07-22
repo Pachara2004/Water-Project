@@ -10,6 +10,25 @@ interface MetadataFieldsProps {
 }
 
 export function MetadataFields({ collectionTime, setCollectionTime, oxygen, setOxygen }: MetadataFieldsProps) {
+    // 🌟 คำนวณเวลาปัจจุบันให้อยู่ในฟอร์แมต YYYY-MM-THH:mm สำหรับใส่ค่า max
+    const getNowMaxString = () => {
+        const now = new Date();
+        return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    };
+
+    const maxNow = getNowMaxString();
+
+    const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedValue = e.target.value;
+
+        // 🌟 ดักจับถ้าผู้ใช้พิมพ์เวลาอนาคตด้วยตัวเอง ให้บังคับใช้เวลาปัจจุบันสูงสุด
+        if (selectedValue > maxNow) {
+            setCollectionTime(maxNow);
+        } else {
+            setCollectionTime(selectedValue);
+        }
+    };
+
     return (
         <section className="rounded-xl bg-surface overflow-hidden border border-border">
             <div className="text-sm font-semibold ">
@@ -22,8 +41,9 @@ export function MetadataFields({ collectionTime, setCollectionTime, oxygen, setO
                         title="datatime"
                         type="datetime-local"
                         value={collectionTime}
+                        max={maxNow} // 🌟 ล็อกไม่ให้เลือกเวลาล่วงหน้าในอนาคต
                         required
-                        onChange={(e) => setCollectionTime(e.target.value)}
+                        onChange={handleTimeChange}
                         className="w-full px-3 py-2.5 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs focus:border-teal-500 focus:outline-none transition-colors min-h-11"
                     />
                 </div>
