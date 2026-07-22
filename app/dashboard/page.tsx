@@ -32,12 +32,12 @@ function kpiSpanClass(w: number | undefined): string {
     }
 }
 
-// สีโครงกราฟ (เส้นกริด/แกน/tooltip) ที่ Recharts กับ SVG ต้องรับเป็นค่าสีจริง ไม่ใช่ CSS variable
-// จึงต้องสลับตามธีมเอง — ค่าที่ใช้อิงชุดเดียวกับ AnalyticsCharts ให้กราฟทั้งระบบดูเป็นชุดเดียวกัน
+// สีโครงกราฟ (เส้นกริด/แกน/tooltip) แยกตามธีม
+// Recharts กับ SVG รับได้เฉพาะค่าสีจริง ใช้ CSS variable ไม่ได้ สีชุดนี้จึงอยู่นอกระบบ token ใน globals.css
 function chartTokens(isDark: boolean) {
     return {
         grid: isDark ? "#334155" : "#e2e8f0",
-        axis: "#94a3b8", // slate-400 อ่านได้ทั้งสองพื้น (บนพื้นเข้ม ~5.9:1) จึงคงค่าเดิมไว้ ไม่ต้องสลับ
+        axis: "#94a3b8", // slate-400 อ่านออกทั้งสองพื้น (บนพื้นเข้ม ~5.9:1) จึงใช้ค่าเดียวได้
         label: isDark ? "#cbd5e1" : "#64748b",
         tooltip: {
             backgroundColor: isDark ? "#1e293b" : "#ffffff",
@@ -593,12 +593,11 @@ function CorrelationSection({ correlation }: { correlation: any }) {
         mB = 26;
     const pw = VB_W - mL - mR,
         ph = VB_H - mT - mB;
-    // ไล่ความหนาแน่นด้วย "สีเดียว + ความทึบ" แทนบันไดสี 6 ขั้น:
-    // fill-opacity ทำให้ปลาย "จุดน้อย" กลืนไปกับพื้นการ์ดเองอัตโนมัติทั้งสองธีม
-    // ไม่ต้องมี ramp แยกและไม่ต้อง re-validate ใหม่ถ้าวันหลังสีพื้นการ์ดเปลี่ยน
-    // เหลือค่าที่ต้องสลับตามธีมแค่ "สีปลายจุดมาก" เพราะไม่มีสีเดียวที่เด่นสุดได้ทั้งบนพื้นขาวและพื้นเข้ม
+    // สเกลสีของ heatmap: สีเดียวไล่ความทึบ ช่องยิ่งหนาแน่นยิ่งทึบ
+    // ความทึบทำให้ช่องเบาบางจางลงหาสีพื้นการ์ดเองโดยไม่ต้องรู้ว่าพื้นเป็นสีอะไร
+    // ส่วนสีปลายทึบสุดไม่มีสีเดียวที่เด่นได้ทั้งบนพื้นขาวและพื้นเข้ม จึงต้องแยกตามธีม
     const HEAT_PEAK = isDark ? "#60a5fa" : "#1d4ed8";
-    const HEAT_MIN_ALPHA = 0.18; // ช่องที่มีข้อมูลน้อยสุดต้องยังเห็นราง ๆ ไม่ใช่หายไปเลย
+    const HEAT_MIN_ALPHA = 0.18; // ความทึบของช่องที่เบาบางที่สุด — ต่ำกว่านี้จะกลืนพื้นจนนึกว่าไม่มีข้อมูล
 
     const activeKey = `${axis}_${chem}`;
     const deferredKey = `${dAxis}_${dChem}`;
@@ -615,21 +614,21 @@ function CorrelationSection({ correlation }: { correlation: any }) {
         const cw = (hm.binW / dx) * pw;
         const chh = (hm.binH / dy) * ph;
 
-        // API ส่ง intensity มาเป็น count/maxCount (linear) ซึ่งพอมีช่องหนาแน่นจัดอยู่ช่องเดียว
-        // ช่องที่เหลือจะถูกกดไปกองรวมกันที่ก้นสเกลจนแยกไม่ออก — ช่อง 1 จุด กับ 2 จุด ต่างกันแค่ ΔL 1.4
-        // จึง normalize ใหม่ฝั่ง client แบบ log (ΔL ขึ้นเป็น 4.8) โดยคำนวณจาก count ที่ API ส่งมาอยู่แล้ว
-        // ไม่ต้องแก้ฝั่ง API — ถ้าไม่มี count ค่อย fallback ไปใช้ intensity เดิม
+        // ความหนาแน่นของช่อง → 0–1 สำหรับคุมความทึบ
+        // จำนวนจุดต่อช่องกระจายแบบเบ้ (ช่องส่วนใหญ่มีไม่กี่จุด ช่องหนาแน่นจัดมีอยู่ไม่กี่ช่อง)
+        // sqrt จึงเป็นเส้นโค้งที่ถ่างช่วงล่างที่ข้อมูลกระจุกอยู่ออก โดยไม่บีบช่วงบนจนแยกกันไม่ออก
+        // b.intensity คือ count/maxCount ที่ API คำนวณมาแล้ว ใช้แทนได้เมื่อไม่มี count ดิบ
         const maxCount = hm.bins.reduce((m: number, b: any) => (typeof b.count === "number" && b.count > m ? b.count : m), 0);
-        const logDenom = Math.log1p(maxCount);
-        const density = (b: any) => (logDenom > 0 && typeof b.count === "number" ? Math.log1p(b.count) / logDenom : Math.min(1, Math.max(0, b.intensity)));
+        const density = (b: any) =>
+            maxCount > 0 && typeof b.count === "number" ? Math.sqrt(b.count / maxCount) : Math.sqrt(Math.min(1, Math.max(0, b.intensity)));
 
         const rects = hm.bins.map((b: any, i: number) => ({
             key: i,
             x: sx(b.x) - cw / 2,
             y: sy(b.y) - chh / 2,
-            w: cw + 0.6,
-            h: chh + 0.6,
-            // ไล่ต่อเนื่องแทนการปัดลงเป็น 6 ขั้น — หมดปัญหาแถบสีเป็นชั้น ๆ (banding)
+            // ช่องต้องปูชนขอบพอดี ห้ามขยายให้ซ้อนกัน — สีเป็นแบบโปร่ง ส่วนที่ซ้อนจะทึบซ้อนกันจนเห็นเป็นเส้นตาราง
+            w: cw,
+            h: chh,
             opacity: HEAT_MIN_ALPHA + (1 - HEAT_MIN_ALPHA) * density(b),
         }));
         const xTicks = [xMin, (xMin + xMax) / 2, xMax].map((v) => ({ x: sx(v), label: v.toFixed(v >= 20 ? 0 : 1) }));
@@ -691,7 +690,7 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                         >
                             <rect x={mL} y={mT} width={pw} height={ph} fill="none" stroke={chartTone.grid} strokeWidth={1} />
                             {view.rects.map((r: any) => (
-                                <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={HEAT_PEAK} fillOpacity={r.opacity} />
+                                <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={HEAT_PEAK} fillOpacity={r.opacity} shapeRendering="crispEdges" />
                             ))}
                             {view.trendLine && (
                                 <line
