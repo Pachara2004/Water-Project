@@ -96,7 +96,7 @@ export default function Navbar() {
     return (
         <>
             {/* ── Mobile / Tablet: docked bottom bar */}
-            <nav className="lg:hidden fixed bottom-0 left-0 w-full z-950 bg-surface" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+            <nav className="lg:hidden fixed bottom-0 left-0 w-full z-950 bg-card-general" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
                 <div className="flex items-center justify-around h-20 px-4 w-full mx-auto">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
@@ -108,13 +108,13 @@ export default function Navbar() {
                                 key={item.href}
                                 href={item.href}
                                 className={`flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-all duration-75 relative active:scale-[0.95] will-change-transform ${
-                                    isActive ? "text-primary font-semibold" : "text-text hover:text-text-primary"
+                                    isActive ? "text-primary font-semibold" : "text-text hover:text-primary"
                                 }`}
                             >
                                 {isActive && <div className="absolute inset-x-0 inset-y-1 bg-primary/20 rounded-2xl shadow-sm" />}
                                 <div className="relative">
                                     <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-75 ${isActive ? "-translate-y-0.5 text-primary" : ""}`} />
-                                    {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface" />}
+                                    {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-text-danger rounded-full border-2 border-border-danger" />}
                                 </div>
                                 <span className={`text-xs mt-1 transition-all duration-75 whitespace-nowrap ${isActive ? "text-primary" : "font-medium"}`}>{displayLabel}</span>
                             </Link>
@@ -124,7 +124,7 @@ export default function Navbar() {
             </nav>
 
             {/* ── Desktop: Left Sidebar ── */}
-            <nav className="hidden lg:flex fixed left-0 top-0 h-full w-50 z-95 flex-col justify-between p-3 inset-shadow-sm shadow-xl bg-surface">
+            <nav className="hidden lg:flex fixed left-0 top-0 h-full w-50 z-95 flex-col justify-between p-3 inset-shadow-sm shadow-xl bg-card-general">
                 <div className="flex flex-col gap-6 w-full">
                     <div className="flex items-center justify-center gap-3 px-1.5 py-1 min-h-10 w-full">
                         <span className="leading-none font-bold text-md text-primary whitespace-nowrap">Water Quality</span>

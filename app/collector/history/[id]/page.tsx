@@ -195,53 +195,13 @@ export default function CollectorHistoryDetailPage() {
             .catch(console.error);
     }, [isEditing, locations.length]);
 
-    function startEdit() {
-        if (!sample) return;
-        setEditData({
-            collectionTime: new Date(new Date(sample.collectionTime).getTime() - new Date(sample.collectionTime).getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-            locationId: String(sample.location.id),
-            oxygen: sample.dissolvedOxygen !== null ? String(sample.dissolvedOxygen) : "",
-        });
-        setLocationSearch(sample.location.stationName);
-        setIsEditing(true);
-    }
-
-    async function handleSave() {
-        if (!sample || !currentUser) return;
-        setSaving(true);
-        try {
-            const res = await fetch(`/api/samples/${sample.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getAccessToken()}` },
-                body: JSON.stringify({ collectionTime: editData.collectionTime, locationId: editData.locationId, oxygen: editData.oxygen === "" ? null : editData.oxygen }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาด");
-            setIsEditing(false);
-
-            // การบันทึกไม่ได้แก้แถวเดิม แต่สร้างเวอร์ชันใหม่ที่มี id ใหม่ แล้วปิดเวอร์ชันเก่า
-            // จึงต้องพา URL ไปที่ id ใหม่ ไม่งั้น:
-            //   - refresh แล้วเจอ 404 เพราะ id เดิมถูกปิดไปแล้ว
-            //   - state ค้างอยู่กับ id ที่ตายแล้ว
-            //
-            // และตั้งใจไม่ setSample(data) เพราะ PUT ตอบคนละรูปกับ GET (ไม่มี location / collector /
-            // sampleImagesMap) ยัดเข้า state ตรง ๆ แล้วหน้าจะ crash ตอนอ่าน sample.collector.firstName
-            // การเปลี่ยน URL ทำให้ effect ที่ผูกกับ params.id ยิง GET ใหม่เอง → ได้ข้อมูลรูปแบบเดียวกับตอนโหลดหน้าปกติ
-            if (data?.id && String(data.id) !== String(params.id)) {
-                router.replace(`/collector/history/${data.id}`);
-            }
-        } catch (err) {
-            alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึก");
-        } finally {
-            setSaving(false);
-        }
-    }
+    
 
     const filteredLocations = locations.filter((l) => l.name?.toLowerCase().includes(locationSearch.toLowerCase()) || l.agency?.toLowerCase().includes(locationSearch.toLowerCase()));
     const isLocationValid = locations.some((l) => String(l.id) === editData.locationId && l.name === locationSearch) || (locations.length === 0 && editData.locationId !== "");
 
     // 1. หากเกิดปัญหาขึ้นจริงระหว่างยิง API ให้แสดงบล็อก Error ทันที
-    if (error) return <div className="min-h-screen text-center p-8 text-xs text-red-500">เกิดข้อผิดพลาด: {error}</div>;
+    if (error) return <div className="min-h-screen text-center p-8 text-xs text-text-danger">เกิดข้อผิดพลาด: {error}</div>;
     if (!sample) return null;
     if (!mockSubmitHook) return <div className="min-h-screen text-center p-8 text-xs text-text-muted">ไม่มีข้อมูลพารามิเตอร์เคมีในระบบ</div>;
 
@@ -274,7 +234,7 @@ export default function CollectorHistoryDetailPage() {
 
     const HistoryMetaBlocks = () => (
         <div className="space-y-4">
-            <section className="rounded-xl bg-surface overflow-hidden border border-border p-4 space-y-3">
+            <section className="rounded-xl bg-card-general overflow-hidden border border-border p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-border pb-2">
                     <span className="text-xs text-primary font-bold">ข้อมูลจุดตรวจวัด</span>
                     <StatusBadge status={sample.status} size="md" />
@@ -314,16 +274,16 @@ export default function CollectorHistoryDetailPage() {
                     </div>
                 ) : (
                     <div className="flex items-start gap-2 text-xs pt-1 p-1">
-                        <MapPin size={24} className="text-teal-600 mt-0.5 shrink-0" />
+                        <MapPin size={24} className="text-text-safe mt-0.5 shrink-0" />
                         <div>
-                            <p className="font-bold text-text-primary text-sm">{sample.location.stationName}</p>
+                            <p className="font-bold text-text text-sm">{sample.location.stationName}</p>
                             <p className="text-xs text-text-muted mt-0.5">{sample.location.governingAgency}</p>
                         </div>
                     </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary bg-card-general border border-border rounded-xl px-4 py-3">
                         <Calendar size={24} className="text-secondary shrink-0" />
                         {isEditing ? (
                             <input
@@ -337,7 +297,7 @@ export default function CollectorHistoryDetailPage() {
                             <span className="font-bold">{formatDateTime(sample.collectionTime)}</span>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface border border-border rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary bg-card-general border border-border rounded-xl px-4 py-3">
                         <User size={24} className="text-secondary" />
                         <span className="font-bold truncate">{collectorFullName}</span>
                     </div>
@@ -355,10 +315,10 @@ export default function CollectorHistoryDetailPage() {
                                 value={editData.oxygen}
                                 onChange={(e) => setEditData((p) => ({ ...p, oxygen: e.target.value }))}
                                 placeholder="ไม่ได้ระบุ"
-                                className="flex-1 text-xs font-bold text-text-primary bg-transparent text-right outline-none px-2"
+                                className="flex-1 text-xs font-bold text-text bg-transparent text-right outline-none px-2"
                             />
                         ) : (
-                            <span className="text-xs font-bold text-text-primary ml-auto pr-2">{sample.dissolvedOxygen === null ? "-" : sample.dissolvedOxygen.toFixed(2)}</span>
+                            <span className="text-xs font-bold text-text ml-auto pr-2">{sample.dissolvedOxygen === null ? "-" : sample.dissolvedOxygen.toFixed(2)}</span>
                         )}
                         <span className="text-xs font-bold shrink-0">mg/L</span>
                     </div>
@@ -371,7 +331,7 @@ export default function CollectorHistoryDetailPage() {
                                 <Thermometer size={24} className="text-secondary" />
                                 <p className="text-xs font-bold text-secondary">อุณหภูมิ</p>
                             </div>
-                            <p className="text-sm font-bold text-text-primary">{sample.airTemperature === null ? "-" : `${sample.airTemperature.toFixed(1)} °C`}</p>
+                            <p className="text-sm font-bold text-text">{sample.airTemperature === null ? "-" : `${sample.airTemperature.toFixed(1)} °C`}</p>
                         </div>
                     </div>
                     <div className="bg-surface-subtle border border-border rounded-xl p-4 text-center">
@@ -389,7 +349,7 @@ export default function CollectorHistoryDetailPage() {
                                 <Waves size={24} className="text-secondary" />
                                 <p className="text-xs font-bold text-secondary">สภาพอากาศ</p>
                             </div>
-                            <p className="text-sm font-bold text-text-primary truncate">{getWeatherConditionLabel(sample.weatherCondCode ?? undefined)}</p>
+                            <p className="text-sm font-bold text-text truncate">{getWeatherConditionLabel(sample.weatherCondCode ?? undefined)}</p>
                         </div>
                     </div>
                 </div>
@@ -397,7 +357,7 @@ export default function CollectorHistoryDetailPage() {
 
             {/* ผลประเมินของ "สถานที่" ณ วันที่ของ record นี้ — สารแต่ละตัวเทียบด้วยค่าที่ใกล้เคียงวันนี้ที่สุด (อาจคนละรอบเก็บ) */}
             {sample.locationStatus && latestByParameter.length > 0 && (
-                <section className="rounded-xl bg-surface overflow-hidden border border-border p-4 space-y-3">
+                <section className="rounded-xl bg-card-general overflow-hidden border border-border p-6 space-y-3">
                     <div className="flex items-center justify-between border-b border-border pb-2">
                         <div className="flex items-center gap-1.5">
                             <span className="text-xs text-primary font-bold">ผลประเมินของสถานที่ ณ วันที่บันทึกนี้</span>
@@ -409,9 +369,9 @@ export default function CollectorHistoryDetailPage() {
                     <div className="space-y-2">
                         {latestByParameter.map((m) => (
                             <div key={m.parameterId} className="flex items-center justify-between text-xs bg-surface-subtle border border-border rounded-xl px-4 py-2.5">
-                                <span className="font-bold text-text-primary uppercase">{m.parameterName || "-"}</span>
+                                <span className="font-bold text-text uppercase">{m.parameterName || "-"}</span>
                                 <div className="flex items-center gap-3">
-                                    <span className="font-bold text-text-primary">{m.value.toFixed(3)} mg/L</span>
+                                    <span className="font-bold text-text">{m.value.toFixed(3)} mg/L</span>
                                     <span className="text-xs text-text-muted">{formatDateTime(m.collectedAt)}</span>
                                 </div>
                             </div>

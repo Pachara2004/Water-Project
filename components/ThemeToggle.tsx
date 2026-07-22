@@ -9,12 +9,6 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        const isDark = document.documentElement.classList.contains("dark");
-        if (isDark) {
-            useAppStore.getState().setTheme("dark");
-        } else {
-            useAppStore.getState().setTheme("light");
-        }
 
         const timer = setTimeout(() => setMounted(true), 0);
         return () => clearTimeout(timer);

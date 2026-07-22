@@ -131,8 +131,8 @@ function SubmitContent() {
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Bar ── */}
-            <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text-secondary min-h-11">
+            <div className="bg-card-general border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text min-h-11">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
@@ -208,14 +208,14 @@ function SubmitContent() {
                         {!saved ? (
                             <div className="space-y-2.5">
                                 {hasDuplicateSubstance && (
-                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700 leading-relaxed font-medium">
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-bg-warning border-border-warning text-xs text-text-warning leading-relaxed font-medium">
                                         <Copy size={14} className="shrink-0 mt-0.5" />
                                         <span>ตรวจพบสารซ้ำกัน กรุณาแตะเลือกเก็บไว้เพียงรูปเดียว รูปที่ไม่ได้เลือกจะไม่ถูกเก็บ</span>
                                     </div>
                                 )}
 
                                 {hasLowConfidence && (
-                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700 leading-relaxed font-medium">
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-bg-warning border-border-warning text-xs text-text-warning leading-relaxed font-medium">
                                         <AlertCircle size={14} className="shrink-0 mt-0.5" />
                                         <span>ผลตรวจมีค่า confidence ต่ำกว่าเกณฑ์ หากส่งบันทึก ข้อมูลจะเข้าสู่สถานะ &quot;รออนุมัติ&quot; และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบ</span>
                                     </div>
@@ -224,8 +224,8 @@ function SubmitContent() {
                                 {/* ต้องรอ admin อนุมัติ (confidence ต่ำ / สารซ้ำ): ส่งได้แต่เข้าคิว pending | ปกติ: บันทึกทันที */}
                                 <button
                                     onClick={() => onConfirmSave(needsAdminReview)}
-                                    className={`w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
-                                        needsAdminReview ? "bg-amber-600 hover:bg-amber-700" : "bg-teal-700 hover:bg-teal-800"
+                                    className={`w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-text shadow-sm transition-all duration-200 ${
+                                        needsAdminReview ? "bg-bg-warning hover:bg-bg-warning" : "bg-bg-safe hover:bg-bg-safe"
                                     }`}
                                 >
                                     {needsAdminReview ? <Clock size={15} /> : <Database size={15} />}
@@ -235,7 +235,7 @@ function SubmitContent() {
                                 {/* ทางออกสำรอง — ผลลัพธ์นี้ไม่ใช่สิ่งที่ต้องการ กลับไปถ่ายใหม่ได้โดยไม่ต้องออกจากหน้า */}
                                 <button
                                     onClick={onResetClick}
-                                    className="w-full py-2.5 min-h-10 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-text-secondary border border-border bg-surface hover:bg-surface-subtle transition-all duration-200"
+                                    className="w-full py-2.5 min-h-10 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-text border border-border bg-card-general hover:bg-surface-subtle transition-all duration-200"
                                 >
                                     <RotateCcw size={13} /> ไม่ใช่สารที่ต้องการ · เริ่มใหม่
                                 </button>
@@ -244,12 +244,12 @@ function SubmitContent() {
                             /* บันทึก/ส่งสำเร็จ — ข้อความต่างกันตาม pending หรือไม่ */
                             <div
                                 className={`text-center p-6 border rounded-xl flex flex-col items-center gap-3 ${
-                                    needsAdminReview ? "border-amber-500/30 bg-amber-50/60" : "border-teal-500/30 bg-teal-50/60"
+                                    needsAdminReview ? "border-border-warning/30 bg-amber-50/60" : "border-border-safe/30 bg-teal-50/60"
                                 }`}
                             >
-                                {needsAdminReview ? <Clock className="text-amber-600" size={28} /> : <CheckCircle2 className="text-teal-600 animate-bounce" size={28} />}
+                                {needsAdminReview ? <Clock className="text-text-warning" size={28} /> : <CheckCircle2 className="text-text-safe animate-bounce" size={28} />}
                                 <div>
-                                    <p className={`text-sm font-semibold ${needsAdminReview ? "text-amber-900" : "text-teal-900"}`}>
+                                    <p className={`text-sm font-semibold ${needsAdminReview ? "text-text-warning" : "text-text-safe"}`}>
                                         {needsAdminReview ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
                                     </p>
                                 </div>
@@ -257,8 +257,8 @@ function SubmitContent() {
                                 {/* ปุ่มนำทาง — ถ้าเก็บ id ของ sample ที่เพิ่งบันทึกได้ พาไปหน้ารายละเอียดชุดนี้ตรง ๆ ไม่งั้น fallback กลับหน้ารวมประวัติ */}
                                 <button
                                     onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
-                                    className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
-                                        needsAdminReview ? "bg-amber-600 hover:bg-amber-700" : "bg-teal-700 hover:bg-teal-800"
+                                    className={`mt-2 px-5 py-2.5 min-h-10 text-text rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
+                                        needsAdminReview ? "bg-bg-warning-600 hover:bg-bg-warning-700" : "bg-bg-safe-700 hover:bg-bg-safe-800"
                                     }`}
                                 >
                                     {savedSampleId ? "ดูผลการตรวจของชุดนี้" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
@@ -271,7 +271,7 @@ function SubmitContent() {
 
             {/* DESKTOP VIEW COMPONENT */}
             <div className="hidden md:block m-4">
-                <div className="bg-surface border border-border rounded-xl overflow-hidden flex min-h-150">
+                <div className="bg-card-general border border-border rounded-xl overflow-hidden flex min-h-150">
                     <DesktopSidebar {...hook} />
                     <div className="flex flex-col flex-1 border-r border-border p-4 gap-4 max-h-[70vh] overflow-y-auto">
                         {step === "upload"
