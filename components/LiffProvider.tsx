@@ -239,7 +239,7 @@ liff.init({ liffId })
                 <div className="flex flex-col items-center">
                     <div className="h-9 w-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                     <p className="mt-4 text-primary font-semibold text-md uppercase tracking-widest animate-pulse">
-                        กำลังเชื่อมต่อ<span className="text-green-500">ระบบ</span>
+                        กำลังเชื่อมต่อ<span className="text-text-safe">ระบบ</span>
                     </p>
                 </div>
             </div>
@@ -250,7 +250,7 @@ liff.init({ liffId })
         return (
             <div className="flex h-screen w-full items-center justify-center p-4 bg-card-general">
                 <div className="rounded-2xl bg-surface border border-border/60 p-6 text-center shadow-lg max-w-sm w-full">
-                    <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <ShieldAlert className="w-12 h-12 text-text-danger mx-auto mb-4" />
                     <p className="font-black text-text-primary text-sm">เกิดข้อผิดพลาดในการโหลดระบบ</p>
                     <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">{liffError}</p>
                 </div>
@@ -270,7 +270,7 @@ liff.init({ liffId })
                                     <User size={36} strokeWidth={3} />
                                 </div>
                                 <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">ลงทะเบียนเข้าใช้งานครั้งแรก</h1>
-                                <p className="text-xs text-black leading-relaxed  mx-auto">กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำ</p>
+                                <p className="text-xs text-text leading-relaxed  mx-auto">กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำ</p>
                             </div>
 
                             <form onSubmit={handleNextStep} className="mt-6">
@@ -278,7 +278,7 @@ liff.init({ liffId })
                                 <div className="space-y-1 pb-1">
                                     <label htmlFor="firstName" className="text-xs font-semibold text-primary block">
                                         ชื่อจริง{" "}
-                                        <span className="text-red-500" aria-hidden="true">
+                                        <span className="text-text-danger" aria-hidden="true">
                                             *
                                         </span>
                                     </label>
@@ -295,13 +295,13 @@ liff.init({ liffId })
                                             required
                                             aria-invalid={!!errors.firstName}
                                             aria-describedby={errors.firstName ? "firstName-error" : undefined}
-                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
+                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     {/* จองพื้นที่ฟิกซ์ความสูงถาวรเพื่อป้องกันกล่องขยับตัวเด้งขึ้นเด้งลง */}
                                     <div className="h-4 flex items-center">
                                         {errors.firstName && (
-                                            <p id="firstName" role="alert" className="text-xs text-red-500 flex items-center gap-1">
+                                            <p id="firstName" role="alert" className="text-xs text-text-danger flex items-center gap-1">
                                                 {errors.firstName}
                                             </p>
                                         )}
@@ -311,7 +311,7 @@ liff.init({ liffId })
                                 <div className="space-y-1 pb-1">
                                     <label htmlFor="lastName" className="text-xs font-semibold text-primary block">
                                         นามสกุล{" "}
-                                        <span className="text-red-500" aria-hidden="true">
+                                        <span className="text-text-danger" aria-hidden="true">
                                             *
                                         </span>
                                     </label>
@@ -328,12 +328,12 @@ liff.init({ liffId })
                                             required
                                             aria-invalid={!!errors.lastName}
                                             aria-describedby={errors.lastName ? "lastName-error" : undefined}
-                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
+                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     <div className="h-4 flex items-center">
                                         {errors.lastName && (
-                                            <p id="lastName" role="alert" className="text-xs text-red-500 flex items-center gap-1">
+                                            <p id="lastName" role="alert" className="text-xs text-text-danger flex items-center gap-1">
                                                 {errors.lastName}
                                             </p>
                                         )}
@@ -345,7 +345,7 @@ liff.init({ liffId })
                                     <label htmlFor="phoneNumber" className="text-xs font-semibold text-primary block">
                                         <div>
                                             เบอร์โทรศัพท์มือถือ{" "}
-                                            <span className="text-red-500" aria-hidden="true">
+                                            <span className="text-text-danger" aria-hidden="true">
                                                 *
                                             </span>
                                         </div>
@@ -365,12 +365,12 @@ liff.init({ liffId })
                                             required
                                             aria-invalid={!!errors.phoneNumber}
                                             aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
-                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-black rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
+                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     <div className="h-4 flex items-center">
                                         {errors.phoneNumber && (
-                                            <p id="phoneNumber" role="alert" className="text-xs text-red-500 flex items-center gap-1">
+                                            <p id="phoneNumber" role="alert" className="text-xs text-text-danger flex items-center gap-1">
                                                 {errors.phoneNumber}
                                             </p>
                                         )}
@@ -380,7 +380,7 @@ liff.init({ liffId })
                                 {/* จองบล็อกสำหรับความปลอดภัยภายนอก (Global Error เช่น ชื่อผสมสองภาษา) */}
                                 <div className="h-5 flex items-center justify-center">
                                     {globalError && (
-                                        <div role="alert" className="text-xs text-red-500 flex items-center">
+                                        <div role="alert" className="text-xs text-text-danger flex items-center">
                                             <span>{globalError}</span>
                                         </div>
                                     )}
@@ -405,13 +405,13 @@ liff.init({ liffId })
                             <form onSubmit={handleFinalSubmit} className="mt-6 space-y-4">
                                 <div className="space-y-2.5">
                                     <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">เลือกตำแหน่งที่ต้องการขอสิทธิ์</h1>
-                                    <p className="text-xs text-black">โปรดเลือกสิทธิ์ที่ท่านต้องการใช้งานในระบบ คำร้องขอนี้จะได้รับการตรวจสอบและอนุมัติโดยเจ้าหน้าที่ดูแลระบบ</p>
+                                    <p className="text-xs text-text">โปรดเลือกสิทธิ์ที่ท่านต้องการใช้งานในระบบ คำร้องขอนี้จะได้รับการตรวจสอบและอนุมัติโดยเจ้าหน้าที่ดูแลระบบ</p>
 
                                     <div className="space-y-3 mt-2">
                                         <div
                                             onClick={() => setSelectedRole("collector")}
                                             className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                                selectedRole === "collector" ? "bg-secondary/5 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
+                                                selectedRole === "collector" ? "bg-secondary/10 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -421,7 +421,7 @@ liff.init({ liffId })
                                                     {selectedRole === "collector" && <div className="w-2 h-2 rounded-full bg-primary" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-black text-black">เจ้าหน้าที่ภาคสนาม (Collector)</p>
+                                                    <p className="text-sm font-black text-text">เจ้าหน้าที่ภาคสนาม (Collector)</p>
                                                     <p className="text-xs text-secondary mt-1">
                                                         สิทธิ์สำหรับผู้จัดเก็บข้อมูล, ตรวจวัดค่าสารเคมี และทำการอัปโหลดผลน้ำเข้าสู่ฐานข้อมูล
                                                     </p>
@@ -432,7 +432,7 @@ liff.init({ liffId })
                                         <div
                                             onClick={() => setSelectedRole("officer")}
                                             className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                                selectedRole === "officer" ? "bg-secondary/5 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
+                                                selectedRole === "officer" ? "bg-secondary/10 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -442,7 +442,7 @@ liff.init({ liffId })
                                                     {selectedRole === "officer" && <div className="w-2 h-2 rounded-full bg-primary" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-black">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
+                                                    <p className="text-sm font-bold text-text">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
                                                     <p className="text-xs text-secondary mt-1 ">
                                                         สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยของคุณภาพน้ำ
                                                     </p>
