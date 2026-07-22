@@ -377,7 +377,7 @@ export default function AdminLocationsPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-black block mb-1">LONGITUDE</label>
+                                    <label className="text-xs font-bold text-text uppercase tracking-wider block mb-1">LONGITUDE</label>
                                     <input
                                         type="number"
                                         step="any"

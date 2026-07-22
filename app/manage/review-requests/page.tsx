@@ -190,10 +190,10 @@ export default function AdminReviewRequestsPage() {
             <div className="w-full max-w-4xl mx-auto px-4 pt-5">
                 {/* Header card */}
                 <div className="bg-card-general rounded-2xl border border-border  p-5 mb-6 transition-colors duration-300">
-                    <h1 className="font-display text-lg font-bold text-black ">
+                    <h1 className="font-display text-lg font-bold text-text-primary ">
                         ตรวจสอบผลที่มี <span className="font-display text-primary">Confidence ต่ำ</span>
                     </h1>
-                    <p className="text-black text-xs mt-1 leading-relaxed">
+                    <p className="text-text-secondary text-xs mt-1 leading-relaxed">
                         ผลตรวจที่ AI วิเคราะห์ได้ค่าความมั่นใจต่ำกว่า {CONFIDENCE_THRESHOLD.toFixed(2)} จะถูกซ่อนจากแผนที่และแดชบอร์ดจนกว่าจะได้รับการยืนยันจากผู้ดูแลระบบ
                     </p>
                 </div>
@@ -206,7 +206,7 @@ export default function AdminReviewRequestsPage() {
                             key={t.id}
                             onClick={() => setTab(t.id)}
                             className={`flex-1 py-3 rounded-xl text-xs font-semibold border border-border transition-all cursor-pointer ${
-                                tab === t.id ? "bg-primary text-white border-primary" : "bg-card-general text-black border-border hover:border-primary/30"
+                                tab === t.id ? "bg-primary text-white border-primary" : "bg-card-general text-text-secondary border-border hover:border-primary/30"
                             }`}
                         >
                             {t.label}
@@ -227,9 +227,9 @@ export default function AdminReviewRequestsPage() {
                         </div>
                     ) : (
                         requests.map((item) => {
-                            let statusBadgeColor = "text-amber-600 bg-amber-50";
-                            if (tab === "approved") statusBadgeColor = "text-emerald-600 bg-emerald-50";
-                            if (tab === "rejected") statusBadgeColor = "text-red-600 bg-red-50";
+                            let statusBadgeColor = "text-text-warning bg-bg-warning border-border-warning";
+                            if (tab === "approved") statusBadgeColor = "text-text-safe bg-bg-safe border-border-safe";
+                            if (tab === "rejected") statusBadgeColor = "text-text-danger bg-bg-danger border-border-danger";
 
                             return (
                                 <div key={item.id} className="bg-card-general rounded-2xl border border-border overflow-hidden flex flex-col p-5 gap-3">
@@ -269,25 +269,27 @@ export default function AdminReviewRequestsPage() {
                                                         <div className="flex-1 min-w-0 space-y-1.5">
                                                             {s.measurements.map((m) => {
                                                                 const lowConf = isLowConfidence(m.confidence);
-                                                                let chemColor = "text-teal-600 bg-teal-500/10";
-                                                                if (m.parameterName?.toLowerCase().includes("ammonia")) chemColor = "text-purple-600 bg-purple-500/10";
+                                                                // สีไอคอนประจำสาร — แยกค่าต่อธีม เพราะเฉด 600 สว่างไม่พอบนพื้นการ์ดโหมดมืด (purple-600 ได้แค่ 3.16:1)
+                                                                const chemIconColor = m.parameterName?.toLowerCase().includes("ammonia")
+                                                                    ? "text-purple-600 dark:text-purple-400"
+                                                                    : "text-teal-600 dark:text-teal-400";
 
                                                                 return (
                                                                     <div
                                                                         key={m.parameterId}
-                                                                        className="flex items-center justify-between gap-2 bg-white border border-border/40 rounded-lg p-2 shadow-3xs"
+                                                                        className="flex items-center justify-between gap-2 bg-surface border border-border/40 rounded-lg p-2 shadow-3xs"
                                                                     >
                                                                         <div className="flex items-center gap-1 min-w-0">
-                                                                            <Beaker size={11} className={chemColor.split(" ")[0]} />
+                                                                            <Beaker size={11} className={chemIconColor} />
                                                                             <span className="text-xs font-bold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
                                                                         </div>
                                                                         <div className="flex items-center gap-2 shrink-0">
-                                                                            <span className="text-sm font-black text-black">
+                                                                            <span className="text-sm font-black text-text-primary">
                                                                                 {m.value.toFixed(3)} <span className="text-xs font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
                                                                             </span>
                                                                             <span
                                                                                 className={`font-mono text-xs px-1.5 py-0.2 rounded font-bold border shrink-0 ${
-                                                                                    lowConf ? "text-red-600 bg-red-50 border-red-100" : "text-teal-600 bg-teal-50 border-teal-100"
+                                                                                    lowConf ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
                                                                                 }`}
                                                                             >
                                                                                 {m.confidence.toFixed(2)}
@@ -303,7 +305,7 @@ export default function AdminReviewRequestsPage() {
                                                             {/* รูปถ่ายดิบ */}
                                                             <div
                                                                 onClick={() => s.rawImageUrl && setPreviewImgUrl(s.rawImageUrl)}
-                                                                className="relative w-12 h-12 rounded-lg border border-border bg-white overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
+                                                                className="relative w-12 h-12 rounded-lg border border-border bg-surface overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
                                                             >
                                                                 {s.rawImageUrl ? (
                                                                     <img src={s.rawImageUrl} alt="Raw sample" className="w-full h-full object-cover" />
@@ -316,7 +318,7 @@ export default function AdminReviewRequestsPage() {
                                                             {/* รูปกราฟสี */}
                                                             <div
                                                                 onClick={() => s.analyzedPlotUrl && setPreviewImgUrl(s.analyzedPlotUrl)}
-                                                                className="relative w-12 h-12 rounded-lg border border-border bg-white overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
+                                                                className="relative w-12 h-12 rounded-lg border border-border bg-surface overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
                                                             >
                                                                 {s.analyzedPlotUrl ? (
                                                                     <img src={s.analyzedPlotUrl} alt="Analyzed plot" className="w-full h-full object-cover" />
@@ -338,7 +340,7 @@ export default function AdminReviewRequestsPage() {
                                             <p>
                                                 ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
                                             </p>
-                                            {item.reviewNote && <p className="text-red-600 font-semibold bg-red-500/5 p-1.5 rounded-md border border-red-500/10 mt-1">เหตุผล: {item.reviewNote}</p>}
+                                            {item.reviewNote && <p className="text-text-danger font-semibold bg-red-500/5 p-1.5 rounded-md border border-red-500/10 mt-1">เหตุผล: {item.reviewNote}</p>}
                                         </div>
                                     )}
 
@@ -348,7 +350,7 @@ export default function AdminReviewRequestsPage() {
                                             <button
                                                 onClick={() => openReject(item)}
                                                 disabled={actingId === item.id}
-                                                className="flex-1 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-surface-subtle hover:bg-red-50 border border-border hover:border-red-200 text-text-secondary hover:text-red-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="flex-1 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-surface-subtle hover:bg-bg-danger border border-border hover:border-border-danger text-text-secondary hover:text-text-danger transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <X size={13} /> ปฏิเสธ
                                             </button>

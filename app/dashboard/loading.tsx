@@ -7,8 +7,8 @@ export default function Loading() {
                 <div className="space-y-3">
                     {/* Header Controls Mock */}
                     <div className="bg-card-general rounded-2xl p-5 border border-border flex flex-col items-start gap-3 h-32">
-                        <div className="h-6 bg-slate-200/70 rounded w-1/3" />
-                        <div className="h-4 bg-slate-200/70 rounded w-2/3" />
+                        <div className="h-6 bg-surface-subtle rounded w-1/3" />
+                        <div className="h-4 bg-surface-subtle rounded w-2/3" />
                     </div>
 
                     {/* Filter Bar Mock */}
@@ -23,14 +23,14 @@ export default function Loading() {
 
                     {/* ── เรียกใช้ Skeleton ก้อนข้างล่าง (ยกมาจากไฟล์เดิม) ── */}
                     <div className="flex items-center justify-end">
-                        <div className="h-6 w-24 bg-slate-200/70 rounded" />
+                        <div className="h-6 w-24 bg-surface-subtle rounded" />
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-12 gap-2">
                         {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="bg-surface rounded-xl border border-border p-2.5 flex flex-col border-l-10 border-l-slate-200 col-span-1 md:col-span-3 h-24">
-                                <div className="h-2.5 w-3/4 mb-2 bg-slate-200/70 rounded" />
-                                <div className="h-5 w-1/2 mb-2 bg-slate-200/70 rounded" />
-                                <div className="h-3 w-2/5 bg-slate-200/70 rounded" />
+                            <div key={i} className="bg-surface rounded-xl border border-border p-2.5 flex flex-col border-l-10 border-l-border col-span-1 md:col-span-3 h-24">
+                                <div className="h-2.5 w-3/4 mb-2 bg-surface-subtle rounded" />
+                                <div className="h-5 w-1/2 mb-2 bg-surface-subtle rounded" />
+                                <div className="h-3 w-2/5 bg-surface-subtle rounded" />
                             </div>
                         ))}
                     </div>

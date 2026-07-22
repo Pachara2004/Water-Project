@@ -301,7 +301,7 @@ export default function AdminUsersPage() {
                             <h1 className="text-xl font-bold tracking-tight text-text-primary">
                                 จัดการ<span className="text-primary font-bold">ผู้ใช้งานในระบบ</span>
                             </h1>
-                            <p className="text-black font-medium text-xs mt-0.5">อนุมัติสิทธิ์และจัดการบทบาทผู้ใช้งาน</p>
+                            <p className="text-text-secondary font-medium text-xs mt-0.5">อนุมัติสิทธิ์และจัดการบทบาทผู้ใช้งาน</p>
                         </div>
                     </div>
 
@@ -348,7 +348,7 @@ export default function AdminUsersPage() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="ค้นหาชื่อ..."
-                            className="w-full py-3 bg-transparent text-xs text-black outline-hidden placeholder:text-secondary"
+                            className="w-full py-3 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
                         />
                         <Search size={16} className="text-text-muted ml-2" />
                     </div>
@@ -360,7 +360,7 @@ export default function AdminUsersPage() {
                                 key={t}
                                 onClick={() => setTab(t)}
                                 className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
-                                    tab === t ? "bg-primary text-white shadow-xs" : "text-black hover:text-text-primary"
+                                    tab === t ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary"
                                 }`}
                             >
                                 {t === "all" && <Users size={12} />}
@@ -372,13 +372,13 @@ export default function AdminUsersPage() {
                     </div>
 
                     {/* แถบสรุปผลลัพธ์และปุ่มสลับการเรียงลำดับ */}
-                    <div className="flex items-center justify-between text-xs text-black px-0.5 pt-1 border-t border-border">
-                        <div className="text-black">พบ {processedUsers.length} บัญชี</div>
+                    <div className="flex items-center justify-between text-xs text-text-secondary px-0.5 pt-1 border-t border-border">
+                        <div className="text-text-secondary">พบ {processedUsers.length} บัญชี</div>
 
-                        <div onClick={() => setIsDesc(!isDesc)} className="flex items-center gap-1 cursor-pointer hover:text-text-primary text-black transition-colors py-0.5 select-none">
+                        <div onClick={() => setIsDesc(!isDesc)} className="flex items-center gap-1 cursor-pointer hover:text-text-primary text-text-secondary transition-colors py-0.5 select-none">
                             <span>{isDesc ? "ลงทะเบียนล่าสุด" : "ลงทะเบียนเก่าสุด"}</span>
-                            <div className="flex items-center text-black">
-                                {isDesc ? <ArrowDown size={12} className="text-black font-bold" /> : <ArrowUp size={12} className="text-text-primary font-bold" />}
+                            <div className="flex items-center text-text-secondary">
+                                {isDesc ? <ArrowDown size={12} className="text-text-primary font-bold" /> : <ArrowUp size={12} className="text-text-primary font-bold" />}
                             </div>
                         </div>
                     </div>
@@ -406,39 +406,39 @@ export default function AdminUsersPage() {
                                         <div key={user.id} className="bg-surface rounded-xl p-3 border border-border transition-all flex flex-col">
                                             {/* ── ส่วนบน: ชื่อผู้ใช้งาน ── */}
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <h3 className="px-2 pb-2 text-sm font-semibold text-black truncate max-w-35 sm:max-w-none">{displayName}</h3>
+                                                <h3 className="px-2 pb-2 text-sm font-semibold text-text-primary truncate max-w-35 sm:max-w-none">{displayName}</h3>
                                             </div>
 
                                             {/* ── ส่วนกลาง: ข้อมูลประวัติ จัดเป็น Grid 2 คอลัมน์ เว้นระยะเท่ากัน Gap-3 ── */}
                                             <div className="grid grid-cols-2 gap-1 w-full text-xs text-text-muted mb-2">
                                                 {/* แสดงเฉพาะสิทธิ์ปัจจุบันในส่วนข้อมูล (ถ้าเป็น Queue ก็โชว์แค่สิทธิ์ปัจจุบันก่อนเปลี่ยน) */}
-                                                <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
                                                     -
-                                                    <SquareChevronUp size={11} className="text-black shrink-0" />
-                                                    <span className="text-black font-normal">สิทธิ์ปัจจุบัน: {cfg}</span>
+                                                    <SquareChevronUp size={11} className="text-text-muted shrink-0" />
+                                                    <span className="text-text-secondary font-normal">สิทธิ์ปัจจุบัน: {cfg}</span>
                                                 </div>
 
                                                 {/* คอลัมน์ที่ 2: เบอร์โทรศัพท์ (ถ้ามี) */}
                                                 {user.phoneNumber && (
-                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
                                                         -
-                                                        <Phone size={11} className="text-black shrink-0" />
+                                                        <Phone size={11} className="text-text-muted shrink-0" />
                                                         <span className="">{user.phoneNumber}</span>
                                                     </div>
                                                 )}
 
                                                 {/* คอลัมน์ที่ 3: วันที่ลงทะเบียน */}
-                                                <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
                                                     -
-                                                    <CalendarDays size={11} className="text-black shrink-0" />
+                                                    <CalendarDays size={11} className="text-text-muted shrink-0" />
                                                     <span className="">{formatDate(user.registeredAt)}</span>
                                                 </div>
 
                                                 {/* คอลัมน์ที่ 4: จำนวนตัวอย่างน้ำ */}
                                                 {user.samplesCount > 0 && (
-                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-black">
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
                                                         -
-                                                        <Layers size={11} className="text-black shrink-0" />
+                                                        <Layers size={11} className="text-text-muted shrink-0" />
                                                         <span className="">{user.samplesCount} ตัวอย่าง</span>
                                                     </div>
                                                 )}
