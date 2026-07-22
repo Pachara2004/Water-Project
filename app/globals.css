@@ -73,6 +73,8 @@
 }
 
 :root {
+    color-scheme: light;
+
     /* Professional Corporate Palette (Light Mode) */
     --color-navy: #0f4c81;
     /* Classic Corporate Navy */
@@ -123,6 +125,8 @@
 }
 
 .dark {
+    color-scheme: dark;
+
     /* Base Backgrounds & Surfaces (ตามหลัก Material Design: ใช้ Dark Slate Tone) */
     --color-bg-gray: #0b0f17;
     --color-bg: #0b0f17;

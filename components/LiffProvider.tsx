@@ -99,6 +99,12 @@ liff.init({ liffId })
         // เผื่อกรณี liff init พัง ก็ปล่อยให้ใช้งานแบบ Guest ได้เช่นกันครับ
         setUser(null);
         setLiffLoaded(true);
+    })
+    .finally(() => {       
+        // ทับ color-scheme ที่เราตั้งไว้ก่อนหน้าไปด้วยเสมอ ไม่ว่า init จะสำเร็จหรือพัง จึงต้องตั้งค่าซ้ำทุกครั้งที่นี่
+        // อ่านจาก localStorage ตรงๆ (ไม่ใช่ store.theme) เพราะตอนนี้ children ของ LiffProvider (รวม ThemeToggle       
+        const isDark = typeof window !== "undefined" && localStorage.getItem("theme") === "dark";
+        useAppStore.getState().setTheme(isDark ? "dark" : "light");
     });
     }, [setUser]);
 

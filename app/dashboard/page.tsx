@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import ExportButtons from "@/components/dashboard/ExportButtons";
-import { LucideShieldAlert, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX } from "lucide-react";
+import { LucideShieldAlert, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX, LucideCalendarDays } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
@@ -46,6 +46,45 @@ function chartTokens(isDark: boolean) {
             color: isDark ? "#f8fafc" : "#112a33",
         },
     };
+}
+
+// ช่องเลือกวันที่ที่ใช้ไอคอนของเราเองแทนไอคอนปฏิทินของ browser
+// ไอคอนเดิมเป็น ::-webkit-calendar-picker-indicator ซึ่ง browser เป็นคนวาด กำหนดสี/ขนาดจาก CSS ไม่ได้
+// ซ่อนแล้วผูกปุ่มของเราเข้ากับ showPicker() แทน — ตัว input ยังพิมพ์/โฟกัสได้ตามปกติ
+function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const openPicker = () => {
+        const el = inputRef.current;
+        if (!el) return;
+        // showPicker เรียกได้เฉพาะจาก user gesture และไม่มีใน browser รุ่นเก่า — ถ้าไม่ได้ก็แค่โฟกัสช่องให้
+        try {
+            el.showPicker();
+        } catch {
+            el.focus();
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-1.5 px-2.5 flex-1 min-w-0">
+            <input
+                ref={inputRef}
+                type="date"
+                aria-label={label}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="bg-transparent outline-none text-text-primary font-semibold text-xs cursor-pointer w-full min-w-0 [&::-webkit-calendar-picker-indicator]:hidden"
+            />
+            <button
+                type="button"
+                onClick={openPicker}
+                aria-label={`เปิดปฏิทินเลือก${label}`}
+                className="shrink-0 text-text-muted hover:text-primary transition-colors cursor-pointer"
+            >
+                <LucideCalendarDays size={13} />
+            </button>
+        </div>
+    );
 }
 
 export default function ExecutiveAnalyticsDashboard() {
@@ -329,25 +368,11 @@ export default function ExecutiveAnalyticsDashboard() {
 
                     {/* แถบตัวกรองช่วงวันที่ — เชื่อมเป็นกล่องเดียวกัน คั่นกลางด้วยคำว่า "ถึง" สื่อว่าเป็นช่วงวันที่ */}
                     <div className="h-10 flex items-center w-full shrink-0 bg-card-general border border-border rounded-xl transition-all">
-                        <div className="flex items-center px-2.5 flex-1 min-w-0">
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="bg-transparent outline-none text-text-primary font-semibold text-xs cursor-pointer w-full min-w-0"
-                            />
-                        </div>
+                        <DateField label="วันที่เริ่มต้น" value={startDate} onChange={setStartDate} />
 
                         <span className="text-xs text-primary font-semibold shrink-0">ถึง</span>
 
-                        <div className="flex items-center px-2.5 flex-1 min-w-0">
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="bg-transparent outline-none text-text-primary font-semibold text-xs cursor-pointer w-full min-w-0"
-                            />
-                        </div>
+                        <DateField label="วันที่สิ้นสุด" value={endDate} onChange={setEndDate} />
                     </div>
 
                     {/* ส่วนการตรวจสอบสถานะและวาดสารสนเทศ */}
