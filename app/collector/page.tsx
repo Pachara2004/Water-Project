@@ -193,10 +193,10 @@ export default function CollectorDashboard() {
                 <div className="relative w-full rounded-2xl bg-card-general p-5 border border-border  flex flex-col gap-4">
                     <div className="flex justify-between items-start gap-3">
                         <div>
-                            <h1 className="text-lg font-bold tracking-tight text-black">
+                            <h1 className="text-lg font-bold tracking-tight text-text">
                                 ศูนย์ข้อมูล<span className="text-primary font-extrabold">ตรวจสอบคุณภาพน้ำ</span>
                             </h1>
-                            <p className="text-black font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
+                            <p className="text-text font-medium text-xs mt-0.5">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
                         {/* Officer เป็นสิทธิ์อ่านอย่างเดียว ไม่ได้เป็นคนเก็บตัวอย่างเอง จึงไม่มีการแจ้งเตือนของตัวเองให้ดู */}
                         {currentUser?.role !== "officer" && <NotificationBell />}

@@ -123,30 +123,53 @@
 }
 
 .dark {
-    /* Professional Corporate Palette (Dark Mode) */
-    --color-navy: #2563eb;
-    --color-navy-dark: #1d4ed8;
+    /* Base Backgrounds & Surfaces (ตามหลัก Material Design: ใช้ Dark Slate Tone) */
+    --color-bg-gray: #0b0f17;
+    --color-bg: #0b0f17;
+    --color-surface: #131c2e;         /* Surface หลักสำหรับ Cards/Panels */
+    --color-surface-muted: #0b0f17;   /* Surface พื้นหลังรวม */
+    --color-surface-subtle: #1e293b;  /* Surface ชั้นใน/Hover state */
+
+    --color-card-white: #131c2e;
+    --color-card-general: #131c2e;
+    --color-card-summary: #0f4c81;     /* ปรับ Deep Teal-Navy ให้อ่านง่าย */
+
+    /* Navy Brand Colors (Desaturated เพื่อความสบายตาในโหมดมืด) */
+    --color-navy: #3b82f6;
+    --color-navy-dark: #2563eb;
     --color-navy-light: #60a5fa;
-    --color-bg-gray: #020617;
-    --color-card-white: #0f172a;
 
-    --color-primary: #2563eb;
+    /* Primary & Secondary Accent Colors */
+    --color-primary: #38bdf8;          /* Bright Sky Blue (Contrast > 7:1 บนพื้นหลังเข้ม) */
     --color-primary-light: #1e293b;
-    --color-secondary: #3b82f6;
+    --color-secondary: #0284c7;
 
-    --color-safe: #10b981;
-    --color-warning: #f59e0b;
-    --color-danger: #ef4444;
+    /* Semantic Feedback Colors (Desaturated Tone เพื่อความสบายตา) */
+    --color-safe: #34d399;             /* Emerald Green */
+    --color-warning: #fbbf24;          /* Amber */
+    --color-danger: #f87171;           /* Soft Red */
+    --color-danger-hover: #ef4444;
 
-    --color-surface: #0f172a;
-    --color-surface-muted: #020617;
-    --color-surface-subtle: #1e293b;
+    /* Semantic Cards & Badges (Dark Mode Contrast Presets) */
+    --color-bg-danger: rgba(239, 68, 68, 0.15);
+    --color-border-danger: rgba(239, 68, 68, 0.35);
+    --color-text-danger: #fca5a5;
 
-    --color-text-primary: #f8fafc;
-    --color-text-secondary: #cbd5e1;
-    --color-text-muted: #94a3b8;
-    /* เดิม #64748B ให้ contrast แค่ 3.75:1 บนพื้น dark surface ไม่ผ่าน AA (4.5:1) สำหรับตัวอักษรขนาดปกติ */
+    --color-bg-safe: rgba(16, 185, 129, 0.15);
+    --color-border-safe: rgba(16, 185, 129, 0.35);
+    --color-text-safe: #6ee7b7;
 
+    --color-bg-warning: rgba(245, 158, 11, 0.15);
+    --color-border-warning: rgba(245, 158, 11, 0.35);
+    --color-text-warning: #fde047;
+
+    /* Typography Contrast Levels (WCAG AA Compliant) */
+    --color-text: #f8fafc;
+    --color-text-primary: #f8fafc;     /* Highest contrast (Off-White) */
+    --color-text-secondary: #cbd5e1;   /* Medium contrast (Slate 300) */
+    --color-text-muted: #94a3b8;       /* Muted text (Slate 400 - Contrast > 4.5:1) */
+
+    /* Borders & Dividers */
     --color-border: #1e293b;
 }
 
