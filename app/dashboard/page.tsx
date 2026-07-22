@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import ExportButtons from "@/components/dashboard/ExportButtons";
-import { LucideShieldAlert, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX } from "lucide-react";
+import { LucideShieldAlert, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX, LucideCalendarDays } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
@@ -32,8 +32,64 @@ function kpiSpanClass(w: number | undefined): string {
     }
 }
 
+// สีโครงกราฟ (เส้นกริด/แกน/tooltip) แยกตามธีม
+// Recharts กับ SVG รับได้เฉพาะค่าสีจริง ใช้ CSS variable ไม่ได้ สีชุดนี้จึงอยู่นอกระบบ token ใน globals.css
+function chartTokens(isDark: boolean) {
+    return {
+        grid: isDark ? "#334155" : "#e2e8f0",
+        axis: "#94a3b8", // slate-400 อ่านออกทั้งสองพื้น (บนพื้นเข้ม ~5.9:1) จึงใช้ค่าเดียวได้
+        label: isDark ? "#cbd5e1" : "#64748b",
+        tooltip: {
+            backgroundColor: isDark ? "#1e293b" : "#ffffff",
+            border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+            borderRadius: "8px",
+            color: isDark ? "#f8fafc" : "#112a33",
+        },
+    };
+}
+
+// ช่องเลือกวันที่ที่ใช้ไอคอนของเราเองแทนไอคอนปฏิทินของ browser
+// ไอคอนเดิมเป็น ::-webkit-calendar-picker-indicator ซึ่ง browser เป็นคนวาด กำหนดสี/ขนาดจาก CSS ไม่ได้
+// ซ่อนแล้วผูกปุ่มของเราเข้ากับ showPicker() แทน — ตัว input ยังพิมพ์/โฟกัสได้ตามปกติ
+function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const openPicker = () => {
+        const el = inputRef.current;
+        if (!el) return;
+        // showPicker เรียกได้เฉพาะจาก user gesture และไม่มีใน browser รุ่นเก่า — ถ้าไม่ได้ก็แค่โฟกัสช่องให้
+        try {
+            el.showPicker();
+        } catch {
+            el.focus();
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-1.5 px-2.5 flex-1 min-w-0">
+            <input
+                ref={inputRef}
+                type="date"
+                aria-label={label}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="bg-transparent outline-none text-text-primary font-semibold text-xs cursor-pointer w-full min-w-0 [&::-webkit-calendar-picker-indicator]:hidden"
+            />
+            <button
+                type="button"
+                onClick={openPicker}
+                aria-label={`เปิดปฏิทินเลือก${label}`}
+                className="shrink-0 text-text-muted hover:text-primary transition-colors cursor-pointer"
+            >
+                <LucideCalendarDays size={13} />
+            </button>
+        </div>
+    );
+}
+
 export default function ExecutiveAnalyticsDashboard() {
-    const { currentUser } = useAppStore();
+    const { currentUser, theme } = useAppStore();
+    const chartTone = chartTokens(theme === "dark");
     const router = useRouter();
     const [viewMode, setViewMode] = useState<"ALL" | "MINE">("ALL");
     const [analytics, setAnalytics] = useState<any>(null);
@@ -195,10 +251,10 @@ export default function ExecutiveAnalyticsDashboard() {
                     {/* Header ควบคุมส่วนบน */}
                     <div className="bg-card-general rounded-2xl p-5 border border-border flex flex-col items-start text-left gap-3 shrink-0">
                         <div>
-                            <h1 className="text-lg font-bold  text-black">
+                            <h1 className="text-lg font-bold  text-text-primary">
                                 แดชบอร์ดติดตาม<span className="text-primary">คุณภาพน้ำ</span>
                             </h1>
-                            <p className="text-xs text-black mt-1 leading-relaxed">ข้อมูลคุณภาพแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวัง</p>
+                            <p className="text-xs text-text-secondary mt-1 leading-relaxed">ข้อมูลคุณภาพแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวัง</p>
                         </div>
                         <ExportButtons />
                     </div>
@@ -255,7 +311,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                                     setAgencySearch("");
                                                     setShowAgencyMenu(false);
                                                 }}
-                                                className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle ${agency === "all" && !locationId ? "text-indigo-600 bg-indigo-50" : "text-text-primary"}`}
+                                                className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle ${agency === "all" && !locationId ? "text-primary bg-primary/10" : "text-text-primary"}`}
                                             >
                                                 ทุกหน่วยงาน
                                             </button>
@@ -273,7 +329,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                                                 setAgencySearch(item);
                                                                 setShowAgencyMenu(false);
                                                             }}
-                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${agency === item ? "text-indigo-600 bg-indigo-50" : "text-text-primary"}`}
+                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${agency === item ? "text-primary bg-primary/10" : "text-text-primary"}`}
                                                         >
                                                             {item}
                                                         </button>
@@ -294,7 +350,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                                                 setAgencySearch(loc.stationName);
                                                                 setShowAgencyMenu(false);
                                                             }}
-                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${locationId === loc.id ? "text-indigo-600 bg-indigo-50" : "text-text-primary"}`}
+                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${locationId === loc.id ? "text-primary bg-primary/10" : "text-text-primary"}`}
                                                         >
                                                             {loc.stationName}
                                                             <span className="text-text-muted font-normal"> · {loc.governingAgency}</span>
@@ -312,25 +368,11 @@ export default function ExecutiveAnalyticsDashboard() {
 
                     {/* แถบตัวกรองช่วงวันที่ — เชื่อมเป็นกล่องเดียวกัน คั่นกลางด้วยคำว่า "ถึง" สื่อว่าเป็นช่วงวันที่ */}
                     <div className="h-10 flex items-center w-full shrink-0 bg-card-general border border-border rounded-xl transition-all">
-                        <div className="flex items-center px-2.5 flex-1 min-w-0">
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="bg-transparent outline-none text-text-primary font-semibold text-xs cursor-pointer w-full min-w-0"
-                            />
-                        </div>
+                        <DateField label="วันที่เริ่มต้น" value={startDate} onChange={setStartDate} />
 
                         <span className="text-xs text-primary font-semibold shrink-0">ถึง</span>
 
-                        <div className="flex items-center px-2.5 flex-1 min-w-0">
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="bg-transparent outline-none text-text-primary font-semibold text-xs cursor-pointer w-full min-w-0"
-                            />
-                        </div>
+                        <DateField label="วันที่สิ้นสุด" value={endDate} onChange={setEndDate} />
                     </div>
 
                     {/* ส่วนการตรวจสอบสถานะและวาดสารสนเทศ */}
@@ -343,7 +385,7 @@ export default function ExecutiveAnalyticsDashboard() {
                             <div className="text-xs text-text-muted">เกิดข้อผิดพลาดขณะดึงข้อมูลจากระบบ กรุณาลองใหม่อีกครั้ง</div>
                             <button
                                 onClick={() => setRetryTick((t) => t + 1)}
-                                className="mt-2 px-4 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                                className="mt-2 px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
                             >
                                 ลองใหม่อีกครั้ง
                             </button>
@@ -353,7 +395,7 @@ export default function ExecutiveAnalyticsDashboard() {
                             {" "}
                             {fetchError && (
                                 // มีข้อมูลเก่าอยู่แล้ว แค่ refetch รอบนี้พัง — คงข้อมูลเดิมไว้ให้ดู แค่แจ้งเตือนว่าอาจไม่ใช่ข้อมูลล่าสุด
-                                <div className="bg-red-50 border border-red-100 text-red-600 text-xs font-semibold rounded-lg px-3 py-2 flex items-center gap-1.5">
+                                <div className="bg-bg-danger border border-border-danger text-text-danger text-xs font-semibold rounded-lg px-3 py-2 flex items-center gap-1.5">
                                     <LucideShieldAlert size={12} /> โหลดข้อมูลล่าสุดไม่สำเร็จ กำลังแสดงข้อมูลเดิมที่มีอยู่
                                 </div>
                             )}
@@ -361,14 +403,14 @@ export default function ExecutiveAnalyticsDashboard() {
                                 <div className="h-10 grid grid-cols-2 rounded-xl p-1 bg-card-general border border-border font-semibold text-center text-xs shrink-0">
                                     <button
                                         onClick={() => setViewMode("ALL")}
-                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${viewMode === "ALL" ? "bg-secondary text-white shadow-xs" : "text-black bg-surface-subtle"}`}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${viewMode === "ALL" ? "bg-secondary text-white shadow-xs" : "text-text-secondary bg-surface-subtle"}`}
                                     >
                                         ข้อมูลทั้งหมด
                                     </button>
                                     {userRole === "admin" && (
                                         <button
                                             onClick={() => setViewMode("MINE")}
-                                            className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${viewMode === "MINE" ? "bg-secondary text-white shadow-xs" : "text-black bg-surface-subtle"}`}
+                                            className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${viewMode === "MINE" ? "bg-secondary text-white shadow-xs" : "text-text-secondary bg-surface-subtle"}`}
                                         >
                                             ข้อมูลของฉัน
                                         </button>
@@ -380,13 +422,13 @@ export default function ExecutiveAnalyticsDashboard() {
                                 <div className="h-9 grid grid-cols-2 rounded-xl p-1 bg-card-general border border-border text-xs font-semibold">
                                     <button
                                         onClick={() => setTrendMode("wow")}
-                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "wow" ? "bg-secondary text-white shadow-xs" : "text-black bg-surface-subtle"}`}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "wow" ? "bg-secondary text-white shadow-xs" : "text-text-secondary bg-surface-subtle"}`}
                                     >
                                         รายสัปดาห์
                                     </button>
                                     <button
                                         onClick={() => setTrendMode("mom")}
-                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "mom" ? "bg-secondary text-white shadow-xs" : "text-black bg-surface-subtle"}`}
+                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "mom" ? "bg-secondary text-white shadow-xs" : "text-text-secondary bg-surface-subtle"}`}
                                     >
                                         รายเดือน
                                     </button>
@@ -438,7 +480,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                                                 <div className="text-xs text-text-muted truncate mt-0.5">{spot.agency}</div>
                                                             </td>
                                                             <td className="py-2 font-semibold text-text-danger text-center text-xs">{spot.failureRate}%</td>
-                                                            <td className="py-2 text-right font-semibold text-black text-xs">
+                                                            <td className="py-2 text-right font-semibold text-text-primary text-xs">
                                                                 {spot.dangerCount}/{spot.totalCount}
                                                             </td>
                                                         </tr>
@@ -457,7 +499,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                             <p>ความผันผวนของสารเคมี</p>(เปรียบเทียบช่วงเวลา เช้า vs เย็น แยกประเภท)
                                         </div>
                                         {analytics?.granularityInfo && (
-                                            <span className="w-full px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-indigo-100 py-0.5 rounded-md">
+                                            <span className="w-full px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
                                                 {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}
                                             </span>
                                         )}
@@ -471,10 +513,10 @@ export default function ExecutiveAnalyticsDashboard() {
                                                 <div className="w-full flex-1 min-h-0">
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <BarChart data={analytics?.temporalData} margin={{ top: 10, right: 5, left: -25, bottom: -5 }}>
-                                                            <CartesianGrid strokeDasharray="2 2" stroke="#e2e8f0" />
-                                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                                                            <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
-                                                            <Tooltip wrapperStyle={{ fontSize: "12px" }} cursor={false} />
+                                                            <CartesianGrid strokeDasharray="2 2" stroke={chartTone.grid} />
+                                                            <XAxis dataKey="name" stroke={chartTone.axis} fontSize={12} tickLine={false} />
+                                                            <YAxis stroke={chartTone.axis} fontSize={12} tickLine={false} />
+                                                            <Tooltip wrapperStyle={{ fontSize: "12px" }} contentStyle={chartTone.tooltip} cursor={false} />
                                                             <Legend iconSize={8} wrapperStyle={{ fontSize: "12px", bottom: -5 }} />
                                                             {group.items.map((bar: any, bIdx: number) => (
                                                                 <Bar key={bIdx} dataKey={bar.key} name={bar.name.replace(group.title, "").trim() || bar.name} fill={bar.color} radius={[2, 2, 0, 0]} />
@@ -492,7 +534,7 @@ export default function ExecutiveAnalyticsDashboard() {
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
                                     <div className="text-sm font-semibold text-text-primary mb-0.5">{analytics?.trendConfig?.title || " WaterTrendChart"}</div>
                                     {analytics?.granularityInfo && (
-                                        <span className="w-full px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-indigo-100 py-0.5 rounded-md">
+                                        <span className="w-full px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
                                             {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}
                                         </span>
                                     )}
@@ -500,10 +542,10 @@ export default function ExecutiveAnalyticsDashboard() {
                                 <div className="h-40 w-full mt-1">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={analytics?.trends} margin={{ top: 15, right: 5, left: -25, bottom: -5 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                            <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                                            <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
-                                            <Tooltip />
+                                            <CartesianGrid strokeDasharray="3 3" stroke={chartTone.grid} />
+                                            <XAxis dataKey="date" stroke={chartTone.axis} fontSize={12} tickLine={false} />
+                                            <YAxis stroke={chartTone.axis} fontSize={12} tickLine={false} />
+                                            <Tooltip contentStyle={chartTone.tooltip} />
                                             <Legend iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
 
                                             {analytics?.trendConfig?.references?.map((ref: any, rIdx: number) => (
@@ -550,7 +592,17 @@ export default function ExecutiveAnalyticsDashboard() {
 // สีประจำสารเคมี — ใช้ตัวเดียวกับที่ WaterTrendChart ใช้ (trendConfig.lines) ให้สื่อความหมายตรงกันทั้งหน้า ไม่ใช่คนละสีในแต่ละกราฟ
 const CHEM_COLOR: Record<"nh3" | "po4", string> = { nh3: "#f59e0b", po4: "#6366f1" };
 
+// 0–1 → คู่ hex ต่อท้ายสี (#RRGGBBAA) สำหรับใช้ใน CSS gradient ที่รับ fill-opacity แยกไม่ได้แบบ SVG
+function alphaHex(a: number): string {
+    return Math.round(Math.min(1, Math.max(0, a)) * 255)
+        .toString(16)
+        .padStart(2, "0");
+}
+
 function CorrelationSection({ correlation }: { correlation: any }) {
+    const { theme } = useAppStore();
+    const isDark = theme === "dark";
+    const chartTone = chartTokens(isDark);
     const [axis, setAxis] = useState<"rain" | "temp">("rain");
     const [chem, setChem] = useState<"nh3" | "po4">("nh3");
     // เลื่อนการวาด heatmap (rect หลายสิบช่อง) ไปทำเบื้องหลัง — ปุ่ม/การ์ดตอบสนองทันที
@@ -566,7 +618,11 @@ function CorrelationSection({ correlation }: { correlation: any }) {
         mB = 26;
     const pw = VB_W - mL - mR,
         ph = VB_H - mT - mB;
-    const ramp = ["#dbeafe", "#93c5fd", "#60a5fa", "#3b82f6", "#1d4ed8", "#1e3a8a"];
+    // สเกลสีของ heatmap: สีเดียวไล่ความทึบ ช่องยิ่งหนาแน่นยิ่งทึบ
+    // ความทึบทำให้ช่องเบาบางจางลงหาสีพื้นการ์ดเองโดยไม่ต้องรู้ว่าพื้นเป็นสีอะไร
+    // ส่วนสีปลายทึบสุดไม่มีสีเดียวที่เด่นได้ทั้งบนพื้นขาวและพื้นเข้ม จึงต้องแยกตามธีม
+    const HEAT_PEAK = isDark ? "#60a5fa" : "#1d4ed8";
+    const HEAT_MIN_ALPHA = 0.18; // ความทึบของช่องที่เบาบางที่สุด — ต่ำกว่านี้จะกลืนพื้นจนนึกว่าไม่มีข้อมูล
 
     const activeKey = `${axis}_${chem}`;
     const deferredKey = `${dAxis}_${dChem}`;
@@ -582,13 +638,23 @@ function CorrelationSection({ correlation }: { correlation: any }) {
         const sy = (v: number) => mT + (1 - (v - yMin) / dy) * ph;
         const cw = (hm.binW / dx) * pw;
         const chh = (hm.binH / dy) * ph;
+
+        // ความหนาแน่นของช่อง → 0–1 สำหรับคุมความทึบ
+        // จำนวนจุดต่อช่องกระจายแบบเบ้ (ช่องส่วนใหญ่มีไม่กี่จุด ช่องหนาแน่นจัดมีอยู่ไม่กี่ช่อง)
+        // sqrt จึงเป็นเส้นโค้งที่ถ่างช่วงล่างที่ข้อมูลกระจุกอยู่ออก โดยไม่บีบช่วงบนจนแยกกันไม่ออก
+        // b.intensity คือ count/maxCount ที่ API คำนวณมาแล้ว ใช้แทนได้เมื่อไม่มี count ดิบ
+        const maxCount = hm.bins.reduce((m: number, b: any) => (typeof b.count === "number" && b.count > m ? b.count : m), 0);
+        const density = (b: any) =>
+            maxCount > 0 && typeof b.count === "number" ? Math.sqrt(b.count / maxCount) : Math.sqrt(Math.min(1, Math.max(0, b.intensity)));
+
         const rects = hm.bins.map((b: any, i: number) => ({
             key: i,
             x: sx(b.x) - cw / 2,
             y: sy(b.y) - chh / 2,
-            w: cw + 0.6,
-            h: chh + 0.6,
-            fill: ramp[Math.min(ramp.length - 1, Math.floor(b.intensity * ramp.length))],
+            // ช่องต้องปูชนขอบพอดี ห้ามขยายให้ซ้อนกัน — สีเป็นแบบโปร่ง ส่วนที่ซ้อนจะทึบซ้อนกันจนเห็นเป็นเส้นตาราง
+            w: cw,
+            h: chh,
+            opacity: HEAT_MIN_ALPHA + (1 - HEAT_MIN_ALPHA) * density(b),
         }));
         const xTicks = [xMin, (xMin + xMax) / 2, xMax].map((v) => ({ x: sx(v), label: v.toFixed(v >= 20 ? 0 : 1) }));
         const yTicks = [yMin, (yMin + yMax) / 2, yMax].map((v) => ({ y: sy(v), label: v.toFixed(2) }));
@@ -612,7 +678,7 @@ function CorrelationSection({ correlation }: { correlation: any }) {
         return { rects, xTicks, yTicks, trendLine, hasData: true };
     }, [hm, dAxis, dChem, activeMetric]);
     const xLabel = dAxis === "rain" ? "ฝนสะสม (mm)" : "อุณหภูมิอากาศ (°C)";
-    const pill = (on: boolean) => `px-2 py-0.5 rounded-md transition-all cursor-pointer ${on ? "bg-surface text-indigo-600 shadow-xs" : "text-text-muted"}`;
+    const pill = (on: boolean) => `px-2 py-0.5 rounded-md transition-all cursor-pointer ${on ? "bg-surface text-primary shadow-xs" : "text-text-muted"}`;
 
     return (
         <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
@@ -647,9 +713,9 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                             role="img"
                             aria-label={`density heatmap ของ ${xLabel} กับความเข้มข้น${chem === "nh3" ? " Ammonia" : " Phosphate"}`}
                         >
-                            <rect x={mL} y={mT} width={pw} height={ph} fill="none" stroke="#e2e8f0" strokeWidth={1} />
+                            <rect x={mL} y={mT} width={pw} height={ph} fill="none" stroke={chartTone.grid} strokeWidth={1} />
                             {view.rects.map((r: any) => (
-                                <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} />
+                                <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={HEAT_PEAK} fillOpacity={r.opacity} shapeRendering="crispEdges" />
                             ))}
                             {view.trendLine && (
                                 <line
@@ -664,19 +730,19 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                                 />
                             )}
                             {view.xTicks.map((t: any, i: number) => (
-                                <text key={`x${i}`} x={t.x} y={VB_H - 13} fontSize={12} fill="#94a3b8" textAnchor="middle">
+                                <text key={`x${i}`} x={t.x} y={VB_H - 13} fontSize={12} fill={chartTone.axis} textAnchor="middle">
                                     {t.label}
                                 </text>
                             ))}
                             {view.yTicks.map((t: any, i: number) => (
-                                <text key={`y${i}`} x={mL - 5} y={t.y + 3} fontSize={12} fill="#94a3b8" textAnchor="end">
+                                <text key={`y${i}`} x={mL - 5} y={t.y + 3} fontSize={12} fill={chartTone.axis} textAnchor="end">
                                     {t.label}
                                 </text>
                             ))}
-                            <text x={mL + pw / 2} y={VB_H - 2} fontSize={12} fill="#64748b" textAnchor="middle">
+                            <text x={mL + pw / 2} y={VB_H - 2} fontSize={12} fill={chartTone.label} textAnchor="middle">
                                 {xLabel}
                             </text>
-                            <text x={11} y={mT + ph / 2} fontSize={12} fill="#64748b" textAnchor="middle" transform={`rotate(-90 11 ${mT + ph / 2})`}>
+                            <text x={11} y={mT + ph / 2} fontSize={12} fill={chartTone.label} textAnchor="middle" transform={`rotate(-90 11 ${mT + ph / 2})`}>
                                 ความเข้มข้น (mg/L)
                             </text>
                         </svg>
@@ -687,7 +753,11 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted flex-wrap">
                         <div className="flex items-center gap-1">
                             <span>จุดน้อย</span>
-                            <span className="inline-block w-16 h-2 rounded" style={{ background: "linear-gradient(90deg,#dbeafe,#3b82f6,#1e3a8a)" }} />
+                            {/* แถบ legend ใช้สูตรความทึบชุดเดียวกับช่องในกราฟ จะได้ไม่มีวันเพี้ยนจากกัน */}
+                            <span
+                                className="inline-block w-16 h-2 rounded"
+                                style={{ background: `linear-gradient(90deg, ${HEAT_PEAK}${alphaHex(HEAT_MIN_ALPHA)}, ${HEAT_PEAK})` }}
+                            />
                             <span>จุดมาก</span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -709,7 +779,7 @@ function CorrelationSection({ correlation }: { correlation: any }) {
                                     setAxis(a === "temp" ? "temp" : "rain");
                                     setChem(c === "po4" ? "po4" : "nh3");
                                 }}
-                                className={`rounded-lg border p-2 text-center transition-all cursor-pointer ${active ? "border-indigo-300 bg-indigo-50/60" : "border-border bg-surface-subtle/40 opacity-50 hover:opacity-80"}`}
+                                className={`rounded-lg border p-2 text-center transition-all cursor-pointer ${active ? "border-primary/40 bg-primary/10" : "border-border bg-surface-subtle/40 opacity-50 hover:opacity-80"}`}
                             >
                                 <div className={`text-base font-bold ${rColor}`}>{m.r === null ? "—" : (m.r > 0 ? "+" : "") + m.r}</div>
                                 <div className="text-xs text-text-muted font-semibold mt-0.5 truncate">{m.label}</div>

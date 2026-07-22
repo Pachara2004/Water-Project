@@ -260,7 +260,7 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
         <div className="bg-card-general rounded-2xl border border-border p-4">
             <div className="flex flex-col gap-1">
                 <div className="flex justify-between items-start gap-4 p-2 pb-0">
-                    <h2 className="text-xl font-semibold text-black truncate flex-1">{userDisplayName}</h2>
+                    <h2 className="text-xl font-semibold text-text-primary truncate flex-1">{userDisplayName}</h2>
 
                     <button
                         onClick={onEdit}
@@ -404,7 +404,7 @@ export default function ManagePage() {
                                                     </span>
                                                 )}
                                                 {pendingCount > 0 && (
-                                                    <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                                    <span className="text-xs font-bold text-text-danger bg-bg-danger border border-border-danger px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                                                         {pendingCount} รายการ
                                                     </span>
                                                 )}

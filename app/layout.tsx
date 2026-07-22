@@ -30,11 +30,9 @@ export default function RootLayout({
                     dangerouslySetInnerHTML={{
                         __html: `
               try {
-                if (localStorage.getItem('theme') === 'dark') {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
+                var isDark = localStorage.getItem('theme') === 'dark';
+                document.documentElement.classList.toggle('dark', isDark);
+                document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
               } catch (_) {}
             `,
                     }}

@@ -39,11 +39,8 @@ export const useAppStore = create<AppState>((set) => ({
             const nextTheme = state.theme === "light" ? "dark" : "light";
             if (typeof window !== "undefined") {
                 localStorage.setItem("theme", nextTheme);
-                if (nextTheme === "dark") {
-                    document.documentElement.classList.add("dark");
-                } else {
-                    document.documentElement.classList.remove("dark");
-                }
+                document.documentElement.classList.toggle("dark", nextTheme === "dark");
+                document.documentElement.style.colorScheme = nextTheme
             }
             return { theme: nextTheme };
         }),
@@ -52,11 +49,8 @@ export const useAppStore = create<AppState>((set) => ({
         set(() => {
             if (typeof window !== "undefined") {
                 localStorage.setItem("theme", theme);
-                if (theme === "dark") {
-                    document.documentElement.classList.add("dark");
-                } else {
-                    document.documentElement.classList.remove("dark");
-                }
+                document.documentElement.classList.toggle("dark", theme === "dark");
+                document.documentElement.style.colorScheme = theme;
             }
             return { theme };
         }),
