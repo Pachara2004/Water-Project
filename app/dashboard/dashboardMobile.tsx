@@ -3,10 +3,10 @@
 import ExportButtons from "@/components/dashboard/ExportButtons";
 import { LucideShieldAlert, LucideSearch, LucideX } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
-import { useDashboardAnalytics } from "@/lib/hooks/useDashboardAnalytics";
+import type { DashboardAnalyticsState } from "@/lib/hooks/useDashboardAnalytics";
 import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection } from "@/components/dashboard/dashboardHelpers";
 
-export default function DashboardMobile() {
+export default function DashboardMobile(props: DashboardAnalyticsState) {
     const {
         theme,
         router,
@@ -32,7 +32,7 @@ export default function DashboardMobile() {
         setShowAgencyMenu,
         agencyMenuRef,
         currentUser,
-    } = useDashboardAnalytics();
+    } = props;
     const chartTone = chartTokens(theme === "dark");
 
     // หมายเหตุ: การบังคับจริงอยู่ที่ backend (verifyAuth ที่ route.ts ไม่รับ role guest อยู่แล้ว) นี่คือแค่ UX กันไม่ให้เห็นหน้าเปล่าๆ ตอนถูก 401 กลับมา
@@ -311,7 +311,7 @@ export default function DashboardMobile() {
                                             <p>ความผันผวนของสารเคมี</p>(เปรียบเทียบช่วงเวลา เช้า vs เย็น แยกประเภท)
                                         </div>
                                         {analytics?.granularityInfo && (
-                                            <span className="w-full px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
+                                            <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
                                                 {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}
                                             </span>
                                         )}
@@ -346,7 +346,7 @@ export default function DashboardMobile() {
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
                                     <div className="text-sm font-semibold text-text-primary mb-0.5">{analytics?.trendConfig?.title || " WaterTrendChart"}</div>
                                     {analytics?.granularityInfo && (
-                                        <span className="w-full px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
+                                        <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
                                             {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}
                                         </span>
                                     )}
@@ -356,7 +356,21 @@ export default function DashboardMobile() {
                                         <LineChart data={analytics?.trends} margin={{ top: 15, right: 5, left: -25, bottom: -5 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke={chartTone.grid} />
                                             <XAxis dataKey="date" stroke={chartTone.axis} fontSize={12} tickLine={false} />
-                                            <YAxis stroke={chartTone.axis} fontSize={12} tickLine={false} />
+                                            {/* domain รวม max ของเส้นเกณฑ์ควบคุม PCD ด้วย — ไม่งั้น Recharts auto-scale ตามข้อมูลจริงอย่างเดียว เส้นเกณฑ์ที่สูงกว่าข้อมูลจะหลุดกรอบจนมองไม่เห็น */}
+                                            <YAxis
+                                                stroke={chartTone.axis}
+                                                fontSize={12}
+                                                tickLine={false}
+                                                domain={[
+                                                    0,
+                                                    (dataMax: number) => {
+                                                        const refMax = analytics?.trendConfig?.references?.length
+                                                            ? Math.max(...analytics.trendConfig.references.map((r: any) => r.value))
+                                                            : 0;
+                                                        return Math.max(dataMax, refMax) * 1.05;
+                                                    },
+                                                ]}
+                                            />
                                             <Tooltip contentStyle={chartTone.tooltip} />
                                             <Legend iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
 

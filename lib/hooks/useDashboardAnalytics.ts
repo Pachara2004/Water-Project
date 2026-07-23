@@ -6,6 +6,8 @@ import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import { toISODate } from "@/components/dashboard/dashboardHelpers";
 
+export type DashboardAnalyticsState = ReturnType<typeof useDashboardAnalytics>;
+
 export function useDashboardAnalytics() {
     const { currentUser, theme } = useAppStore();
     const router = useRouter();

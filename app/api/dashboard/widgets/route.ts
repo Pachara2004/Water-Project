@@ -165,6 +165,20 @@ export async function GET(request: NextRequest) {
 
         // ค่าเฉลี่ยสารเคมี: ให้ DB รวม avg/count ต่อ parameter ครั้งเดียว แล้วค่อยจับคู่ชื่อสารในหน่วยความจำ
         const allParameters = await prisma.parameter.findMany({ select: { id: true, name: true } });
+
+        // เส้นเกณฑ์ควบคุม PCD บน WaterTrendChart — อิงจากตาราง standards จริง ไม่ hardcode
+        // สารหนึ่งตัวมีเกณฑ์ได้หลายค่า (ต่อประเภทการใช้ประโยชน์) เอาค่าน้อยสุด (เข้มงวดสุด) มาเป็นเส้นอ้างอิง
+        // เพราะกราฟนี้ไม่ได้ผูกกับประเภทการใช้ประโยชน์ใดประเภทเดียว
+        const ammoniaParam = allParameters.find((p) => p.name.toLowerCase() === "ammonia");
+        const phosphateParam = allParameters.find((p) => p.name.toLowerCase() === "phosphate");
+        const trendParamIds = [ammoniaParam?.id, phosphateParam?.id].filter((id): id is number => id !== undefined);
+        const trendStandards = trendParamIds.length > 0 ? await prisma.standard.findMany({ where: { parameterId: { in: trendParamIds } }, select: { parameterId: true, maxValue: true } }) : [];
+        const minStandardFor = (parameterId: number | undefined): number | null =>
+            parameterId === undefined
+                ? null
+                : trendStandards.filter((s) => s.parameterId === parameterId).reduce<number | null>((min, s) => (min === null || s.maxValue < min ? s.maxValue : min), null);
+        const ammoniaMax = minStandardFor(ammoniaParam?.id);
+        const phosphateMax = minStandardFor(phosphateParam?.id);
         const measurementGroups = await prisma.waterSampleMeasurement.groupBy({
             by: ["parameterId"],
             where: { sample: baseWhere },
@@ -562,8 +576,8 @@ export async function GET(request: NextRequest) {
             trendConfig: {
                 title: "WaterTrendChart: สหสัมพันธ์แนวโน้มความเข้มข้นสารเคมีสะสมพร้อมเกณฑ์ควบคุม PCD",
                 references: [
-                    { value: 0.5, color: "#ef4444", label: "Max Ammonia (0.5)" },
-                    { value: 0.3, color: "#a855f7", label: "Max Phosphate (0.3)" },
+                    ...(ammoniaMax !== null ? [{ value: ammoniaMax, color: "#ef4444", label: `Max Ammonia (${ammoniaMax})` }] : []),
+                    ...(phosphateMax !== null ? [{ value: phosphateMax, color: "#a855f7", label: `Max Phosphate (${phosphateMax})` }] : []),
                 ],
                 lines: [
                     { key: "ammonia", name: "Ammonia", color: "#f59e0b" },

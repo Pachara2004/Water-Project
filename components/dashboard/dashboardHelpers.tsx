@@ -190,7 +190,9 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
         VB_H = 240,
         mL = 40,
         mR = 10,
-        mT = 10,
+        // mT = 0 ให้เส้นขอบบนของกราฟชิดขอบบนกล่องพอดี ตรงกับขอบบนการ์ดค่า Pearson r ฝั่งขวาที่อยู่แถวกริดเดียวกัน
+        // (ตัวเลขแกน Y บนสุดล้นขึ้นไปเล็กน้อย ต้องเปิด overflow="visible" ที่ <svg> ไม่งั้นโดนตัด)
+        mT = 0,
         mB = 26;
     const pw = VB_W - mL - mR,
         ph = VB_H - mT - mB;
@@ -258,10 +260,10 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
 
     return (
         <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
-            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                <div className="text-sm font-semibold text-text-primary truncate">{correlation.title || "Correlation"}</div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="grid grid-cols-2 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
+            <div className="grid grid-cols-1 md:grid-cols-12 md:items-center gap-2 md:gap-2.5 mb-2">
+                <div className="md:col-span-8 text-sm font-semibold text-text-primary">{correlation.title || "Correlation"}</div>
+                <div className="flex items-center gap-1.5 w-full md:col-span-4">
+                    <div className="grid grid-cols-2 flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
                         <button onClick={() => setAxis("rain")} className={pill(axis === "rain")}>
                             ฝน
                         </button>
@@ -269,7 +271,7 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                             อุณหภูมิ
                         </button>
                     </div>
-                    <div className="grid grid-cols-2 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
+                    <div className="grid grid-cols-2 flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
                         <button onClick={() => setChem("nh3")} className={pill(chem === "nh3")} style={chem === "nh3" ? { color: CHEM_COLOR.nh3 } : undefined}>
                             Ammonia
                         </button>
@@ -285,7 +287,7 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                     {view.hasData ? (
                         <svg
                             viewBox={`0 0 ${VB_W} ${VB_H}`}
-                            style={{ width: "100%", height: "auto" }}
+                            style={{ width: "100%", height: "auto", overflow: "visible" }}
                             role="img"
                             aria-label={`density heatmap ของ ${xLabel} กับความเข้มข้น${chem === "nh3" ? " Ammonia" : " Phosphate"}`}
                         >
