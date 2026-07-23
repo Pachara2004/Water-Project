@@ -3,15 +3,12 @@
 import { Suspense, useEffect } from "react";
 import { useSubmitSample } from "@/lib/hooks/useSubmitSample";
 import { isLowConfidence } from "@/lib/standards";
-import { ImageZone } from "@/components/submit/ImageZone";
-import { LocationPicker } from "@/components/submit/LocationPicker";
-import { MetadataFields } from "@/components/submit/MetadataFields";
-import { ResultsPanel } from "@/components/submit/ResultsPanel";
-import { DesktopSidebar, AnalyzeButton } from "@/components/submit/NavWorkflow";
-import { SubmitSteps } from "@/components/submit/SubmitSteps";
-import { ArrowLeft, Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy } from "lucide-react";
 import type { DbParameter } from "@/components/submit/types";
 import { confirmDialog, alertError, loadingDialog, closeDialog } from "@/lib/swal";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+import SubmitMobile from "./submitMobile";
+import SubmitDesktop from "./submitDesktop";
 
 function SubmitContent() {
     const hook = useSubmitSample();
@@ -40,18 +37,17 @@ function SubmitContent() {
         processImageExif,
     } = hook;
 
-    // จองพื้นที่ scrollbar ไว้ล่วงหน้าเฉพาะหน้านี้ กัน layout ขยับตอน popup ยืนยันล็อกการ scroll
+    const isMobile = useMediaQuery("(max-width: 767px)");
+
     useEffect(() => {
         document.documentElement.classList.add("reserve-scrollbar-gutter");
         return () => document.documentElement.classList.remove("reserve-scrollbar-gutter");
     }, []);
 
-    // เปลี่ยน step (upload → analyzing → results) ทีไร เด้งจอขึ้นบนสุดให้เห็นสถานะใหม่ทุกครั้ง
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, [step]);
 
-    // เมื่อวิเคราะห์แล้วเจอสารที่ถูกบล็อก (verifyErrors) → เด้งจอไปหาการ์ดแรกที่มีปัญหาให้ผู้ใช้เห็นทันที
     useEffect(() => {
         const errorIds = Object.keys(verifyErrors);
         if (errorIds.length === 0) return;
@@ -62,7 +58,6 @@ function SubmitContent() {
     const handleImageSelect = async (paramId: number, file: File) => {
         setImageFiles((prev) => ({ ...prev, [paramId]: file }));
 
-        // สั่งแกะ EXIF จากรูปภาพที่เพิ่งอัปโหลด
         hook.processImageExif(file);
         processImageExif(file);
 
@@ -80,8 +75,6 @@ function SubmitContent() {
         reader.readAsDataURL(file);
     };
 
-    // ที่ step ผลลัพธ์: แต่ละรายการใน results คือ 1 การ์ดจริง (virtual key เมื่อสารซ้ำ ไม่ใช่ parameter id เสมอไป)
-    // ต้องหา DbParameter ของแต่ละรายการจาก measurement.parameterId เอง ไม่ใช้ activeParameters ตรง ๆ
     const resultEntries: { key: number; param: DbParameter; measurement: (typeof results)[number] }[] = Object.entries(results)
         .map(([keyStr, measurement]) => {
             const key = Number(keyStr);
@@ -99,7 +92,6 @@ function SubmitContent() {
         });
         if (!confirmed) return;
 
-        // เปิดสถานะหมุนโหลดตัวเต็มจอ บล็อกปุ่มกดเล่นซ้ำซ้อน
         loadingDialog("กำลังบันทึกข้อมูล...", "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล");
 
         try {
@@ -110,10 +102,8 @@ function SubmitContent() {
         }
     };
 
-    // นับ confidence ต่ำเฉพาะภาพที่จะถูกบันทึกจริง (สารซ้ำ: เฉพาะภาพที่ผู้ส่งเลือก) — ภาพที่ถูกทิ้งต้องไม่ดัน session เข้า pending
     const hasLowConfidence = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && isLowConfidence(r.confidence));
     const hasDuplicateSubstance = Object.values(results).some((r) => r.isDuplicateSubstance);
-    // สารซ้ำไม่ต้องรอ admin แล้ว — ผู้ส่งเลือกภาพเองตอนนี้; เหลือแค่ confidence ต่ำที่ยังเข้าคิว review
     const needsAdminReview = hasLowConfidence;
 
     const onResetClick = async () => {
@@ -126,217 +116,33 @@ function SubmitContent() {
         if (confirmed) resetToUpload();
     };
 
-    return (
-        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
-            <canvas ref={hook.hiddenCanvasRef} className="hidden" />
+    const submitProps = {
+        hook,
+        systemParameters,
+        activeParameters,
+        enabledParamIds,
+        toggleParam,
+        verifyErrors,
+        imagePreviews,
+        imagePlotFiles,
+        handleImageSelect,
+        setNearestLocations,
+        allLocations,
+        setIsRecommending,
+        step,
+        results,
+        resultEntries,
+        hasDuplicateSubstance,
+        hasLowConfidence,
+        needsAdminReview,
+        onConfirmSave,
+        onResetClick,
+        saved,
+        savedSampleId,
+        router,
+    };
 
-            {/* ── Top Navigation Bar ── */}
-            <div className="bg-card-general border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text min-h-11">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">ส่งตรวจคุณภาพน้ำ</h1>
-                </div>
-                <div className="w-15" />
-            </div>
-
-            {/* MOBILE VIEW COMPONENT */}
-            <div className="md:hidden px-4 pb-24 space-y-4 mt-3">
-                <SubmitSteps step={step} />
-                {step === "upload"
-                    ? // step upload: แสดงหัวการ์ด+toggle ของทุกสารในระบบเสมอ (ไม่ผูกกับจำนวนสาร) เปิดค่อยโผล่พื้นที่อัปรูป
-                      systemParameters.map((param) => (
-                          <ImageZone
-                              key={param.id}
-                              param={param}
-                              step={step}
-                              preview={imagePreviews[param.id]}
-                              plotFile={imagePlotFiles[param.id]}
-                              measurement={results[param.id]}
-                              verifyError={verifyErrors[param.id]}
-                              onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                              onNearestLocationsUpdate={setNearestLocations}
-                              allLocations={allLocations}
-                              setIsRecommending={setIsRecommending}
-                              enabled={enabledParamIds.has(param.id)}
-                              onToggle={() => toggleParam(param.id)}
-                          />
-                      ))
-                    : step === "analyzing"
-                      ? // step analyzing: แสดงเฉพาะสารที่เปิดไว้จริง (ยังไม่รู้ผล ใช้ key ของช่องเดิมได้)
-                        activeParameters.map((param) => (
-                            <ImageZone
-                                key={param.id}
-                                param={param}
-                                step={step}
-                                preview={imagePreviews[param.id]}
-                                plotFile={imagePlotFiles[param.id]}
-                                measurement={results[param.id]}
-                                verifyError={verifyErrors[param.id]}
-                                onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                                onNearestLocationsUpdate={setNearestLocations}
-                                allLocations={allLocations}
-                                setIsRecommending={setIsRecommending}
-                            />
-                        ))
-                      : // step results: 1 การ์ดต่อ 1 รายการใน results จริง — สารซ้ำจะได้ 2 การ์ดแยกกัน
-                        resultEntries.map(({ key, param, measurement }) => (
-                            <ImageZone
-                                key={key}
-                                param={param}
-                                step={step}
-                                preview={imagePreviews[key]}
-                                plotFile={imagePlotFiles[key]}
-                                measurement={measurement}
-                                onImageFilesChange={() => {}}
-                                onNearestLocationsUpdate={setNearestLocations}
-                                allLocations={allLocations}
-                                setIsRecommending={setIsRecommending}
-                            />
-                        ))}
-                {step === "upload" && (
-                    <>
-                        <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
-                        <MetadataFields {...hook} />
-                        <AnalyzeButton {...hook} />
-                    </>
-                )}
-                {step === "results" && (
-                    <>
-                        <ResultsPanel {...hook} />
-                        {!saved ? (
-                            <div className="space-y-2.5">
-                                {hasDuplicateSubstance && (
-                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-bg-warning border-border-warning text-xs text-text-warning leading-relaxed font-medium">
-                                        <Copy size={14} className="shrink-0 mt-0.5" />
-                                        <span>ตรวจพบสารซ้ำกัน กรุณาแตะเลือกเก็บไว้เพียงรูปเดียว รูปที่ไม่ได้เลือกจะไม่ถูกเก็บ</span>
-                                    </div>
-                                )}
-
-                                {hasLowConfidence && (
-                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-bg-warning border-border-warning text-xs text-text-warning leading-relaxed font-medium">
-                                        <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                                        <span>ผลตรวจมีค่า confidence ต่ำกว่าเกณฑ์ หากส่งบันทึก ข้อมูลจะเข้าสู่สถานะ &quot;รออนุมัติ&quot; และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบ</span>
-                                    </div>
-                                )}
-
-                                {/* ต้องรอ admin อนุมัติ (confidence ต่ำ / สารซ้ำ): ส่งได้แต่เข้าคิว pending | ปกติ: บันทึกทันที */}
-                                <button
-                                    onClick={() => onConfirmSave(needsAdminReview)}
-                                    className={`w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
-                                        needsAdminReview ? "bg-text-warning hover:bg-bg-warning" : "bg-secondary hover:bg-bg-safe"
-                                    }`}
-                                >
-                                    {needsAdminReview ? <Clock size={15} /> : <Database size={15} />}
-                                    {needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกผลตรวจ"}
-                                </button>
-
-                                {/* ทางออกสำรอง — ผลลัพธ์นี้ไม่ใช่สิ่งที่ต้องการ กลับไปถ่ายใหม่ได้โดยไม่ต้องออกจากหน้า */}
-                                <button
-                                    onClick={onResetClick}
-                                    className="w-full py-3.5 min-h-13 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 text-text border border-border bg-card-general hover:bg-surface-subtle transition-all duration-200"
-                                >
-                                    <RotateCcw size={13} /> ไม่ใช่สารที่ต้องการ · เริ่มใหม่
-                                </button>
-                            </div>
-                        ) : (
-                            /* บันทึก/ส่งสำเร็จ — ข้อความต่างกันตาม pending หรือไม่ */
-                            <div
-                                className={`text-center p-6 border rounded-xl flex flex-col items-center gap-3 ${
-                                    needsAdminReview ? "border-border-warning/30 bg-card-general" : "border-border-safe/30 bg-card-general"
-                                }`}
-                            >
-                                {needsAdminReview ? <Clock className="text-text-warning" size={28} /> : <CheckCircle2 className="text-text-safe animate-bounce" size={28} />}
-                                <div>
-                                    <p className={`text-sm font-semibold ${needsAdminReview ? "text-text-warning" : "text-text-safe"}`}>
-                                        {needsAdminReview ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
-                                    </p>
-                                </div>
-
-                                {/* ปุ่มนำทาง — ถ้าเก็บ id ของ sample ที่เพิ่งบันทึกได้ พาไปหน้ารายละเอียดชุดนี้ตรง ๆ ไม่งั้น fallback กลับหน้ารวมประวัติ */}
-                                <button
-                                    onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
-                                    className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
-                                        needsAdminReview ? "bg-bg-warning hover:bg-bg-warning" : "bg-secondary hover:bg-bg-safe"
-                                    }`}
-                                >
-                                    {savedSampleId ? "ดูผลการตรวจของชุดนี้" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
-                                </button>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
-
-            {/* DESKTOP VIEW COMPONENT */}
-            <div className="hidden md:block m-4">
-                <div className="bg-card-general border border-border rounded-xl overflow-hidden flex min-h-150">
-                    <DesktopSidebar {...hook} />
-                    <div className="flex flex-col flex-1 border-r border-border p-4 gap-4 max-h-[70vh] overflow-y-auto">
-                        {step === "upload"
-                            ? systemParameters.map((param) => (
-                                  <ImageZone
-                                      key={param.id}
-                                      param={param}
-                                      step={step}
-                                      preview={imagePreviews[param.id]}
-                                      plotFile={imagePlotFiles[param.id]}
-                                      measurement={results[param.id]}
-                                      verifyError={verifyErrors[param.id]}
-                                      onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                                      onNearestLocationsUpdate={setNearestLocations}
-                                      allLocations={allLocations}
-                                      setIsRecommending={setIsRecommending}
-                                      enabled={enabledParamIds.has(param.id)}
-                                      onToggle={() => toggleParam(param.id)}
-                                  />
-                              ))
-                            : step === "analyzing"
-                              ? activeParameters.map((param) => (
-                                    <ImageZone
-                                        key={param.id}
-                                        param={param}
-                                        step={step}
-                                        preview={imagePreviews[param.id]}
-                                        plotFile={imagePlotFiles[param.id]}
-                                        measurement={results[param.id]}
-                                        verifyError={verifyErrors[param.id]}
-                                        onImageFilesChange={(file) => handleImageSelect(param.id, file)}
-                                        onNearestLocationsUpdate={setNearestLocations}
-                                        allLocations={allLocations}
-                                        setIsRecommending={setIsRecommending}
-                                    />
-                                ))
-                              : resultEntries.map(({ key, param, measurement }) => (
-                                    <ImageZone
-                                        key={key}
-                                        param={param}
-                                        step={step}
-                                        preview={imagePreviews[key]}
-                                        plotFile={imagePlotFiles[key]}
-                                        measurement={measurement}
-                                        onImageFilesChange={() => {}}
-                                        onNearestLocationsUpdate={setNearestLocations}
-                                        allLocations={allLocations}
-                                        setIsRecommending={setIsRecommending}
-                                    />
-                                ))}
-                        {step === "upload" && <AnalyzeButton {...hook} />}
-                    </div>
-                    <div className="flex flex-col flex-1 p-4 gap-4">
-                        {step === "upload" && (
-                            <>
-                                <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
-                                <MetadataFields {...hook} />
-                            </>
-                        )}
-                        {step === "results" && <ResultsPanel setStep={hook.setStep} {...hook} />}{" "}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    return isMobile ? <SubmitMobile {...submitProps} /> : <SubmitDesktop {...submitProps} />;
 }
 
 export default function SubmitPage() {
