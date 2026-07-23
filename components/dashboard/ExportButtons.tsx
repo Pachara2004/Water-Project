@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import liff from "@line/liff";
 
-export default function ExportButtons() {
+export default function ExportButtons({ className = "w-full" }: { className?: string }) {
     const [isExporting, setIsExporting] = useState<"csv" | "excel" | null>(null);
 
     // 1. ฟังก์ชันส่งออกเป็นไฟล์ CSV
@@ -69,7 +69,7 @@ export default function ExportButtons() {
     };
 
     return (
-        <div className="grid grid-cols-2 gap-3 w-full">
+        <div className={`grid grid-cols-2 gap-3 ${className}`}>
             {/* ปุ่มดาวน์โหลด CSV */}
             <button
                 onClick={handleExportCSV}

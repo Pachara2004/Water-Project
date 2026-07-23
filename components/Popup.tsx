@@ -1,0 +1,84 @@
+"use client";
+
+import { useEffect } from "react";
+import { X } from "lucide-react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+// เปลือก modal กลางใช้ซ้ำได้ทุกหน้า (แก้ไขโปรไฟล์, แก้ไขสถานี ฯลฯ)
+// desktop = การ์ดลอยกลางจอ (popup) | mobile = bottom-sheet เลื่อนขึ้นจากขอบล่าง
+// เลือกให้อัตโนมัติตามขนาดจอ หรือบังคับผ่าน prop variant ก็ได้
+// backdrop / หัวข้อ / ปุ่มปิด / Esc / แอนิเมชัน จัดการให้ครบ เนื้อหาส่งผ่าน children
+export default function Popup({
+    onClose,
+    title,
+    children,
+    maxWidth = "max-w-lg",
+    variant,
+}: {
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+    // ปรับความกว้างสูงสุดของการ์ด (มีผลเฉพาะโหมด popup)
+    maxWidth?: string;
+    // บังคับรูปแบบเอง; ไม่ส่ง = เลือกตามจอ (mobile = sheet, desktop = popup)
+    variant?: "popup" | "sheet";
+}) {
+    const isMobile = useMediaQuery("(max-width: 767px)");
+    const isSheet = (variant ?? (isMobile ? "sheet" : "popup")) === "sheet";
+
+    // กด Esc เพื่อปิด
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [onClose]);
+
+    // ส่วนหัว (หัวข้อ + ปุ่มปิด) ใช้ร่วมกันทั้งสองโหมด
+    const header = (
+        <div className="flex items-center justify-between mb-7">
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">{title}</h3>
+            <button
+                title="ปิด"
+                onClick={onClose}
+                className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
+            >
+                <X size={14} className="text-text-secondary" />
+            </button>
+        </div>
+    );
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 bg-black/40 z-800 backdrop-blur-xs transition-opacity" onClick={onClose} />
+
+            {isSheet ? (
+                // Mobile: bottom-sheet ยึดขอบล่างเต็มความกว้าง พร้อมแถบจับและเว้น safe-area
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    className="fixed bottom-0 left-0 right-0 z-801 bg-surface rounded-t-4xl border-t border-border max-w-lg mx-auto px-6 pt-6 animate-slide-up transition-colors duration-300"
+                    style={{ paddingBottom: "calc(88px + env(safe-area-inset-bottom))" }}
+                >
+                    <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
+                    {header}
+                    {children}
+                </div>
+            ) : (
+                // Desktop: การ์ดลอยกลางจอ; pointer-events-none ที่ตัวครอบเพื่อให้คลิกนอกการ์ดทะลุไปโดน backdrop ได้
+                <div className="fixed inset-0 z-801 flex items-center justify-center p-4 pointer-events-none">
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        className={`pointer-events-auto w-full ${maxWidth} max-h-[90dvh] overflow-y-auto bg-surface rounded-3xl border border-border px-6 py-6 shadow-2xl animate-scale-in transition-colors duration-300`}
+                    >
+                        {header}
+                        {children}
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
