@@ -10,7 +10,7 @@ interface MetadataFieldsProps {
 }
 
 export function MetadataFields({ collectionTime, setCollectionTime, oxygen, setOxygen }: MetadataFieldsProps) {
-    // 🌟 คำนวณเวลาปัจจุบันให้อยู่ในฟอร์แมต YYYY-MM-THH:mm สำหรับใส่ค่า max
+    // คำนวณเวลาปัจจุบันให้อยู่ในฟอร์แมต YYYY-MM-THH:mm สำหรับใส่ค่า max
     const getNowMaxString = () => {
         const now = new Date();
         return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -21,11 +21,51 @@ export function MetadataFields({ collectionTime, setCollectionTime, oxygen, setO
     const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedValue = e.target.value;
 
-        // 🌟 ดักจับถ้าผู้ใช้พิมพ์เวลาอนาคตด้วยตัวเอง ให้บังคับใช้เวลาปัจจุบันสูงสุด
+        // ดักจับถ้าผู้ใช้พิมพ์เวลาอนาคตด้วยตัวเอง ให้บังคับใช้เวลาปัจจุบันสูงสุด
         if (selectedValue > maxNow) {
             setCollectionTime(maxNow);
         } else {
             setCollectionTime(selectedValue);
+        }
+    };
+
+    const handleOxygenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value;
+
+        // 1. ถ้ายอมให้ว่างเวลากดลบตัวเลขทั้งหมด
+        if (val === "") {
+            setOxygen("");
+            return;
+        }
+
+        // 2. ตัดทุกตัวอักษรที่ไม่ใช่ตัวเลขและจุดทศนิยมออกทันที
+        val = val.replace(/[^0-9.]/g, "");
+
+        // 3. ป้องกันการพิมพ์จุดซ้ำ (เช่น 6.5.5) ให้เหลือจุดแรกจุดเดียว
+        const parts = val.split(".");
+        if (parts.length > 2) {
+            val = `${parts[0]}.${parts.slice(1).join("")}`;
+        }
+
+        // 4. ถ้าพิมพ์แค่จุดตัวเดียว "." ให้ปล่อยไว้ก่อน เพื่อให้พิมพ์ทศนิยมต่อได้ (เช่น .5)
+        if (val === ".") {
+            setOxygen("0.");
+            return;
+        }
+
+        const num = parseFloat(val);
+        if (isNaN(num)) {
+            setOxygen("");
+            return;
+        }
+
+        // 5. ดักขอบเขต 0 - 20 mg/L
+        if (num < 0) {
+            setOxygen("0");
+        } else if (num > 20) {
+            setOxygen("20");
+        } else {
+            setOxygen(val);
         }
     };
 
@@ -41,26 +81,29 @@ export function MetadataFields({ collectionTime, setCollectionTime, oxygen, setO
                         title="datatime"
                         type="datetime-local"
                         value={collectionTime}
-                        max={maxNow} // 🌟 ล็อกไม่ให้เลือกเวลาล่วงหน้าในอนาคต
+                        max={maxNow}
                         required
                         onChange={handleTimeChange}
                         className="w-full px-3 py-2.5 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs focus:border-teal-500 focus:outline-none transition-colors min-h-11"
                     />
                 </div>
                 <div>
-                    <label className="text-xs text-text-muted block mb-1.5">ออกซิเจนละลายน้ำ — ไม่จำเป็น</label>
-                    <div className="relative">
-                        <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="20"
-                            value={oxygen}
-                            onChange={(e) => setOxygen(e.target.value)}
-                            placeholder="เช่น 6.5"
-                            className="w-full px-3 py-2.5 pr-12 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs focus:border-teal-500 focus:outline-none transition-colors min-h-11"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">mg/L</span>
+                    <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs text-text-muted block">ออกซิเจนละลายน้ำ ( ไม่บังคับ )</label>
+                            <span className="text-[10px] text-text-muted font-medium">( ค่าควรอยู่ระหว่าง 0.0 - 20.0 )</span>
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                value={oxygen}
+                                onChange={handleOxygenChange}
+                                placeholder="เช่น 6.5"
+                                className="w-full px-3 py-2.5 pr-12 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs focus:border-teal-500 focus:outline-none transition-colors min-h-11 font-mono font-medium"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted font-semibold">mg/L</span>
+                        </div>
                     </div>
                 </div>
             </div>

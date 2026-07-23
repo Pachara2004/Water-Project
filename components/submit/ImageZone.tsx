@@ -73,6 +73,9 @@ export function ImageZone({
 }: ImageZoneProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const galleryInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+
     const [viewMode, setViewMode] = useState<"raw" | "analyzed">("analyzed");
     const [showExampleModal, setShowExampleModal] = useState(false);
 
@@ -267,15 +270,33 @@ export function ImageZone({
                             </>
                         ) : (
                             <div className="flex flex-col items-center gap-3 px-8 text-center py-8">
-                                <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center border border-border">
-                                    <ImagePlus size={24} className="text-slate-700" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-text-primary">แตะเพื่อถ่ายหรือเลือกภาพ ({param.name})</p>
+                                <p className="text-xs font-semibold text-text">เพิ่มภาพถ่ายผลการตรวจ</p>
+
+                                <div className="flex items-center gap-2 w-full max-w-xs pt-1">
+                                    {/* ปุ่ม 1: ถ่ายรูปสดจากกล้องหลัง */}
+                                    <button
+                                        type="button"
+                                        onClick={() => cameraInputRef.current?.click()}
+                                        className="p-3 w-30 rounded-xl bg-primary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                                    >
+                                        <Camera size={15} />
+                                        <span>ถ่ายภาพสด</span>
+                                    </button>
+
+                                    {/* ปุ่ม 2: เลือกรูปจากแกลเลอรี */}
+                                    <button
+                                        type="button"
+                                        onClick={() => galleryInputRef.current?.click()}
+                                        className="p-3 w-30 rounded-xl bg-surface border border-border text-text text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-surface-subtle transition-all cursor-pointer"
+                                    >
+                                        <ImagePlus size={15} />
+                                        <span>เลือกรูปภาพ</span>
+                                    </button>
                                 </div>
                             </div>
                         )}
-                        <input title="input" ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                        <input title="เลือกรูปภาพ" ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                        <input title="ถ่ายรูปสด" ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />{" "}
                     </div>
                 </div>
             )}

@@ -105,7 +105,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                             </span>
                                         )}
                                     </div>
-                                    <div className="text-xl font-semibold text-black text-right">
+                                    <div className="text-xl font-semibold text-text text-right">
                                         {measurement.concentrated.toFixed(3)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
                                     </div>
                                 </div>
