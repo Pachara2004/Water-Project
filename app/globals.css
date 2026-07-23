@@ -360,6 +360,23 @@ body {
     animation: fade-in 0.4s ease-out forwards;
 }
 
+/* Popup ลอยกลางจอ: ผุดขึ้นพร้อมขยายจากเล็กไปเต็มขนาด */
+@keyframes scale-in {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.animate-scale-in {
+    animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @keyframes slide-in-right {
     from {
         transform: translateX(100%);

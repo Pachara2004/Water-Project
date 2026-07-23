@@ -1,6 +1,7 @@
 "use client";
 
-import { Building2, MapPin, Pencil, Trash2, X, Check } from "lucide-react";
+import { Building2, MapPin, Pencil, Trash2, Check } from "lucide-react";
+import Popup from "@/components/Popup";
 
 export interface LocationItem {
     id: number;
@@ -76,26 +77,7 @@ export function LocationEditDrawer({
     onSave: () => void;
 }) {
     return (
-        <>
-            <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={onClose} />
-            <div
-                className="fixed bottom-0 left-0 right-0 z-1001 bg-surface rounded-t-4xl border-t border-border max-w-lg mx-auto px-6 pt-6 space-y-6 animate-slide-up transition-colors duration-300"
-                style={{
-                    paddingBottom: "calc(88px + env(safe-area-inset-bottom))",
-                }}
-            >
-                <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5 pointer-events-none" />
-
-                <div className="flex items-center justify-between mb-7">
-                    <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">แก้ไขข้อมูลสถานีตรวจ</h3>
-                    <button
-                        onClick={onClose}
-                        className="w-8 h-8 bg-surface-subtle border border-border rounded-full flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
-                    >
-                        <X size={14} className="text-text-secondary" />
-                    </button>
-                </div>
-
+        <Popup title="แก้ไขข้อมูลสถานีตรวจ" onClose={onClose}>
                 <div className="space-y-5">
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-text-primary uppercase tracking-wide block">ชื่อสถานีตรวจ</label>
@@ -151,7 +133,6 @@ export function LocationEditDrawer({
                         <span>บันทึกข้อมูลการแก้ไข</span>
                     </button>
                 </div>
-            </div>
-        </>
+        </Popup>
     );
 }
