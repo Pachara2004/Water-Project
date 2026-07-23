@@ -71,8 +71,6 @@ export function ImageZone({
     enabled = true,
     onToggle,
 }: ImageZoneProps) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
     const galleryInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,7 +128,6 @@ export function ImageZone({
     const displayImgSrc = getDisplayedImage();
 
     return (
-        /* ใช้ overflow-visible เพื่อให้ Popover ลอยพ้นขอบการ์ดออกไปได้เมื่อ scroll */
         <section
             id={`param-zone-${param.id}`}
             className={`rounded-xl overflow-visible border transition-all duration-300 bg-surface relative ${verifyError ? "border-red-400 ring-1 ring-red-300" : "border-border"}`}
@@ -156,16 +153,13 @@ export function ImageZone({
                     )}
                 </div>
 
-                {/* Popover แสดงตัวอย่างสี + แถบเฉดสีเคมีจริง — ใช้ absolute เพื่อให้ติดอยู่กับการ์ดเวลาน้ำเลื่อน scroll */}
+                {/* Popover แสดงตัวอย่างสี + แถบเฉดสีเคมีจริง */}
                 {showExampleModal && exampleImage && (
                     <>
-                        {/* คลิกพื้นที่ว่างข้างนอกเพื่อปิด Popover */}
                         <div className="fixed inset-0 z-40" onClick={() => setShowExampleModal(false)} />
-                        <div className="absolute right-3 top-full mt-1 z-50 w-76 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-2xl shadow-2xl p-3.5 animate-fade-in space-y-3">
+                        <div className="absolute right-3 top-full mt-1 z-50 w-80 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-2xl shadow-2xl p-3.5 animate-fade-in space-y-3">
                             <div className="flex items-center justify-between pb-1 border-b border-border">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-semibold text-text">เกณฑ์เทียบสี {param.name.toUpperCase()}</span>
-                                </div>
+                                <span className="text-xs font-semibold text-text">เกณฑ์เทียบสี {param.name.toUpperCase()}</span>
                                 <button
                                     onClick={() => setShowExampleModal(false)}
                                     className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:bg-surface-subtle transition-colors cursor-pointer shrink-0"
@@ -174,25 +168,23 @@ export function ImageZone({
                                 </button>
                             </div>
 
-                            {/* บล็อก Swatch เฉดสีจริง + ค่าความเข้มข้น */}
+                            {/* Swatches เฉดสี */}
                             {colorSwatches && colorSwatches.length > 0 && (
-                                <div className="">
-                                    <div className="grid grid-cols-6 gap-1.5">
-                                        {colorSwatches.map((item, idx) => (
-                                            <div key={idx} className="flex flex-col items-center gap-1">
-                                                <div
-                                                    className="w-full h-7 rounded-lg border border-black/15 dark:border-white/20 shadow-xs transition-transform hover:scale-105"
-                                                    style={{ backgroundColor: item.color }}
-                                                    title={`${item.value} mg/L`}
-                                                />
-                                                <span className="text-xs font-semibold text-text">{item.value}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <div className="grid grid-cols-6 gap-1.5">
+                                    {colorSwatches.map((item, idx) => (
+                                        <div key={idx} className="flex flex-col items-center gap-1">
+                                            <div
+                                                className="w-full h-7 rounded-lg border border-black/15 dark:border-white/20 shadow-xs transition-transform hover:scale-105"
+                                                style={{ backgroundColor: item.color }}
+                                                title={`${item.value} mg/L`}
+                                            />
+                                            <span className="text-[11px] font-semibold text-text">{item.value}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
-                            {/* รูปภาพการ์ดเทียบสีจริง */}
+                            {/* รูปภาพการ์ดเทียบสี */}
                             <div className="rounded-xl overflow-hidden border border-border bg-surface-subtle">
                                 <img src={exampleImage} alt={`ตัวอย่างสี ${param.name}`} className="w-full h-auto object-contain" />
                             </div>
@@ -227,7 +219,7 @@ export function ImageZone({
 
                     {hasConf && (
                         <div
-                            className={`mb-3 flex items-center gap-1.5 px-2.5 py-1.5 p-1 rounded-lg text-xs font-medium ${
+                            className={`mb-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${
                                 isLowConf ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200" : "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
                             }`}
                         >
@@ -235,15 +227,16 @@ export function ImageZone({
                         </div>
                     )}
 
+                    {/* Responsive Image Container: ปรับ Aspect Ratio ตาม Device */}
                     <div
-                        onClick={() => step === "upload" && fileInputRef.current?.click()}
-                        className={`relative w-full rounded-xl border-3 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
+                        onClick={() => step === "upload" && galleryInputRef.current?.click()}
+                        className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
                         ${
                             step === "analyzing"
-                                ? "aspect-4/3 border-slate-700 bg-slate-950 cursor-default"
+                                ? "aspect-square sm:aspect-4/3 md:aspect-video border-slate-700 bg-slate-950 cursor-default"
                                 : displayImgSrc
-                                  ? "aspect-4/3 border-teal-500/30 bg-surface-subtle cursor-pointer"
-                                  : "aspect-square border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"
+                                  ? "aspect-square sm:aspect-4/3 md:aspect-video border-teal-500/30 bg-surface-subtle cursor-pointer"
+                                  : "aspect-square sm:aspect-4/3 border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"
                         }
                         ${isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                     >
@@ -256,28 +249,32 @@ export function ImageZone({
                             <>
                                 <img src={displayImgSrc} alt={param.name} className="w-full h-full object-contain" />
                                 {step === "results" && hasPlotImg && (
-                                    <div
-                                        className="absolute top-3 right-3 flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                    <button
+                                        type="button"
+                                        className="absolute top-3 right-3 flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setViewMode(viewMode === "analyzed" ? "raw" : "analyzed");
                                         }}
                                     >
-                                        <Eye size={12} strokeWidth={2.5} />
+                                        <Eye size={13} strokeWidth={2.5} />
                                         <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
-                                    </div>
+                                    </button>
                                 )}
                             </>
                         ) : (
-                            <div className="flex flex-col items-center gap-3 px-8 text-center py-8">
+                            <div className="flex flex-col items-center gap-3 px-4 text-center py-6 sm:py-8">
                                 <p className="text-xs font-semibold text-text">เพิ่มภาพถ่ายผลการตรวจ</p>
 
-                                <div className="flex items-center gap-2 w-full max-w-xs pt-1">
+                                <div className="flex flex-wrap items-center justify-center gap-2.5 w-full max-w-xs pt-1">
                                     {/* ปุ่ม 1: ถ่ายรูปสดจากกล้องหลัง */}
                                     <button
                                         type="button"
-                                        onClick={() => cameraInputRef.current?.click()}
-                                        className="p-3 w-30 rounded-xl bg-primary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            cameraInputRef.current?.click();
+                                        }}
+                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-primary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
                                     >
                                         <Camera size={15} />
                                         <span>ถ่ายภาพสด</span>
@@ -286,8 +283,11 @@ export function ImageZone({
                                     {/* ปุ่ม 2: เลือกรูปจากแกลเลอรี */}
                                     <button
                                         type="button"
-                                        onClick={() => galleryInputRef.current?.click()}
-                                        className="p-3 w-30 rounded-xl bg-surface border border-border text-text text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-surface-subtle transition-all cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            galleryInputRef.current?.click();
+                                        }}
+                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-surface border border-border text-text text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-surface-subtle transition-all cursor-pointer"
                                     >
                                         <ImagePlus size={15} />
                                         <span>เลือกรูปภาพ</span>
@@ -296,7 +296,7 @@ export function ImageZone({
                             </div>
                         )}
                         <input title="เลือกรูปภาพ" ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-                        <input title="ถ่ายรูปสด" ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />{" "}
+                        <input title="ถ่ายรูปสด" ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
                     </div>
                 </div>
             )}
