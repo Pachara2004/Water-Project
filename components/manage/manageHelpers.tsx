@@ -50,24 +50,34 @@ export const ROLE_LABEL: Record<string, string> = {
     guest: "ผู้ใช้งานทั่วไป",
 };
 
-const NAME_RE = /^[ก-๙a-zA-Z0-9\s\-'.]+$/;
-const PHONE_RE = /^(\+66[0-9]{8,9}|0[2-9][0-9]{7,8})$/;
+// ชื่อ-นามสกุลรับได้เฉพาะไทยล้วนหรืออังกฤษล้วน (กฎเดียวกับหน้าลงทะเบียนใน LiffProvider)
+const NAME_LATIN_RE = /^[A-Za-z]+$/;
+const NAME_THAI_RE = /^[ก-์]+$/;
 
-export function validateName(v: string): string {
-    const s = v.trim().replace(/\s+/g, " ");
-    if (!s) return "กรุณากรอกชื่อ-นามสกุลจริง";
-    if (s.length < 2) return "ชื่อต้องมีอย่างน้อย 2 ตัวอักษร";
-    if (s.length > 100) return "ชื่อต้องไม่เกิน 100 ตัวอักษร";
-    if (!NAME_RE.test(s)) return "ชื่อมีอักขระที่ไม่อนุญาต";
+// ตรวจชื่อจริง/นามสกุลทีละช่อง; label ใช้เติมในข้อความเมื่อเว้นว่าง
+export function validateNameField(v: string, label: string): string {
+    const s = v.trim();
+    if (!s) return `กรุณากรอก${label}`;
+    if (s.length < 2) return "ต้องยาวอย่างน้อย 2 ตัวอักษร";
+    if (!NAME_LATIN_RE.test(s) && !NAME_THAI_RE.test(s)) return "ใช้ได้เฉพาะ ไทย หรือ อังกฤษ ล้วน";
+    if (NAME_THAI_RE.test(s) && /^([ก-ฮ])\1{2,}$/.test(s)) return "รูปแบบตัวอักษรซ้ำไม่ถูกต้อง";
+    if (NAME_LATIN_RE.test(s) && (/([A-Za-z])\1{2,}/.test(s) || /asdf|qwerty|zxcv/i.test(s))) return "รูปแบบอักษรไม่เหมาะสม";
     return "";
 }
 
-export function validatePhone(v: string): string {
-    const clean = v.trim().replace(/[-\s]/g, "");
-    if (!clean) return "กรุณากรอกเบอร์โทรศัพท์";
-    if (!PHONE_RE.test(clean)) return "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)";
+// เบอร์มือถือไทย 10 หลัก ขึ้นต้น 06/08/09 กันเลขซ้ำล้วนและเลขเรียงติดกัน
+export function validatePhoneField(v: string): string {
+    const s = v.trim();
+    if (!s) return "กรุณากรอกเบอร์โทรศัพท์";
+    if (!/^[0-9]{10}$/.test(s)) return "ต้องเป็นตัวเลขครบ 10 หลัก";
+    if (!/^(06|08|09)/.test(s)) return "ต้องขึ้นต้นด้วย 06, 08 หรือ 09";
+    if (/^(\d)\1{9}$/.test(s)) return "ไม่รองรับเลขซ้ำล้วน";
+    if ("01234567890987654321".includes(s)) return "ไม่รองรับเลขเรียงกันกระชั้นชิด";
     return "";
 }
+
+// true เมื่อชื่อเป็นภาษาไทย ใช้เทียบว่าชื่อกับนามสกุลเป็นภาษาเดียวกัน
+const isThaiName = (v: string) => NAME_THAI_RE.test(v.trim());
 
 export function MenuBoxDisable(status: boolean) {
     return !status;
@@ -76,32 +86,33 @@ export function MenuBoxDisable(status: boolean) {
 export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showToast: (message: string, variant?: "success" | "danger") => void }) {
     const { currentUser, setUser } = useAppStore();
 
-    // ประกอบชื่อฟิลด์เดี่ยวจากฐานข้อมูลใหม่มาให้พิมพ์แก้ง่ายๆ
-    const initialFullName = currentUser ? `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim() : "";
-
-    const [fullName, setFullName] = useState(initialFullName || currentUser?.lineProfileName || "");
+    const [firstName, setFirstName] = useState(currentUser?.firstName ?? "");
+    const [lastName, setLastName] = useState(currentUser?.lastName ?? "");
     const [phone, setPhone] = useState(currentUser?.phoneNumber ?? "");
-    const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+    const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; phone?: string }>({});
     const [saving, setSaving] = useState(false);
     const [serverError, setServerError] = useState("");
 
     const validate = () => {
         const e: typeof errors = {};
-        const ne = validateName(fullName);
-        const pe = validatePhone(phone);
-        if (ne) e.name = ne;
+        const fe = validateNameField(firstName, "ชื่อจริง");
+        const le = validateNameField(lastName, "นามสกุล");
+        const pe = validatePhoneField(phone);
+        if (fe) e.firstName = fe;
+        if (le) e.lastName = le;
         if (pe) e.phone = pe;
+
+        // ชื่อและนามสกุลต้องเป็นภาษาเดียวกัน (เช็คเฉพาะเมื่อสองช่องผ่านกฎรายช่องแล้ว)
+        if (!fe && !le && isThaiName(firstName) !== isThaiName(lastName)) {
+            e.lastName = "กรุณาใช้ภาษาเดียวกันทั้งชื่อและนามสกุล";
+        }
+
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
     const handleSave = async () => {
         if (!validate() || !currentUser) return;
-
-        const trimmedName = fullName.trim().replace(/\s+/g, " ");
-        const nameParts = trimmedName.split(/\s+/);
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(" ") || "";
 
         setSaving(true);
         setServerError("");
@@ -113,8 +124,8 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
                 body: JSON.stringify({
-                    firstName,
-                    lastName,
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
                     phoneNumber: phone.trim().replace(/[-\s]/g, ""),
                 }),
             });
@@ -138,7 +149,10 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
         }
     };
 
-    const isDirty = fullName.trim() !== initialFullName || (phone.trim().replace(/[-\s]/g, "") || null) !== (currentUser?.phoneNumber ?? null);
+    const isDirty =
+        firstName.trim() !== (currentUser?.firstName ?? "") ||
+        lastName.trim() !== (currentUser?.lastName ?? "") ||
+        (phone.trim().replace(/[-\s]/g, "") || null) !== (currentUser?.phoneNumber ?? null);
 
     return (
         <>
@@ -166,30 +180,54 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
                 </div>
 
                 <div className="space-y-5">
-                    {/* Name field */}
+                    {/* First name field */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                            <User size={10} /> ชื่อ-นามสกุลจริง <span className="text-danger">*</span>
+                            <User size={10} /> ชื่อจริง <span className="text-danger">*</span>
                         </label>
                         <input
                             type="text"
-                            value={fullName}
+                            value={firstName}
                             onChange={(e) => {
-                                setFullName(e.target.value);
-                                if (errors.name) setErrors((p) => ({ ...p, name: "" }));
+                                setFirstName(e.target.value);
+                                if (errors.firstName) setErrors((p) => ({ ...p, firstName: "" }));
                             }}
-                            placeholder="เช่น นายสมชาย ใจดี"
-                            maxLength={100}
+                            placeholder="กรอกชื่อ"
+                            maxLength={50}
                             className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-semibold
-                ${errors.name ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
+                ${errors.firstName ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
                         />
-                        {errors.name && (
+                        {errors.firstName && (
                             <p className="flex items-center gap-1.5 text-xs text-danger font-semibold animate-fade-in">
                                 <AlertCircle size={11} />
-                                {errors.name}
+                                {errors.firstName}
                             </p>
                         )}
-                        <p className="text-xs text-text-muted text-right">{fullName.length}/100</p>
+                    </div>
+
+                    {/* Last name field */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                            <User size={10} /> นามสกุล <span className="text-danger">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={lastName}
+                            onChange={(e) => {
+                                setLastName(e.target.value);
+                                if (errors.lastName) setErrors((p) => ({ ...p, lastName: "" }));
+                            }}
+                            placeholder="กรอกนามสกุล"
+                            maxLength={50}
+                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-semibold
+                ${errors.lastName ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
+                        />
+                        {errors.lastName && (
+                            <p className="flex items-center gap-1.5 text-xs text-danger font-semibold animate-fade-in">
+                                <AlertCircle size={11} />
+                                {errors.lastName}
+                            </p>
+                        )}
                     </div>
 
                     {/* Phone field */}
@@ -201,11 +239,11 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
                             type="tel"
                             value={phone}
                             onChange={(e) => {
-                                setPhone(e.target.value.replace(/[^0-9+]/g, ""));
+                                setPhone(e.target.value.replace(/[^0-9]/g, ""));
                                 if (errors.phone) setErrors((p) => ({ ...p, phone: "" }));
                             }}
-                            placeholder="เช่น 0812345678"
-                            maxLength={15}
+                            placeholder="0XXXXXXXXX"
+                            maxLength={10}
                             className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-mono font-semibold
                 ${errors.phone ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
                         />
