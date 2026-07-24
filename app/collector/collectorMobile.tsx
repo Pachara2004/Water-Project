@@ -341,7 +341,7 @@ export default function CollectorMobile({ samples, loading }: CollectorProps) {
                                                                     </div>
 
                                                                     {/* แถวล่าง: แสดงค่าสารเคมี */}
-                                                                    <div className="flex flex-wrap items-center gap-2 mt-1 w-full">
+                                                                    <div className="flex items-center gap-2 mt-1 w-full">
                                                                         {[
                                                                             { key: "phosphateVal", label: "P", color: "text-teal-500" },
                                                                             { key: "ammoniaVal", label: "N", color: "text-purple-500" },
