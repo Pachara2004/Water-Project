@@ -90,7 +90,7 @@ export default function CollectorDesktop({ samples, loading }: CollectorProps) {
                     <div className="flex items-center gap-3 z-10">
                         <button
                             onClick={() => router.back()}
-                            className="flex items-center gap-2 text-xs font-medium text-text hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle transition-all cursor-pointer"
+                            className="flex items-center gap-2 text-xs font-medium text-tex hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle transition-all cursor-pointer"
                         >
                             <ArrowLeft size={16} />
                             <span>ย้อนกลับ</span>

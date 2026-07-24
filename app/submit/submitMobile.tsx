@@ -41,7 +41,7 @@ export default function SubmitMobile(props: any) {
 
             {/* ── Top Navigation Bar ── */}
             <div className="bg-card-general border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text min-h-11">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text min-h-11 font-semibold">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
@@ -160,10 +160,10 @@ export default function SubmitMobile(props: any) {
                                 <button
                                     onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                     className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
-                                        needsAdminReview ? "bg-bg-warning hover:bg-bg-warning" : "bg-secondary hover:bg-bg-safe"
+                                        needsAdminReview ? "bg-[#FE9A00] hover:bg-bg-warning " : "bg-secondary hover:bg-bg-safe"
                                     }`}
                                 >
-                                    {savedSampleId ? "ดูผลการตรวจของชุดนี้" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
+                                    {savedSampleId ? "ตรวจสอบข้อมูล" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
                                 </button>
                             </div>
                         )}

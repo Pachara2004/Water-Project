@@ -13,7 +13,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
             <div className="bg-card-general border-b border-border px-8 h-13 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-text min-h-11">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
@@ -21,7 +21,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 </div>
                 <div className="w-15" />
             </div>
-            <div className="w-full max-w-[1600px] mx-auto px-8 pt-8">
+            <div className="w-full max-w-400 mx-auto px-8 pt-8">
                 {/* Header card */}
                 <div className="bg-card-general rounded-2xl border border-border p-6 mb-6 transition-colors duration-300">
                     <h1 className="font-display text-lg font-bold text-text-primary ">
@@ -69,7 +69,14 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
 
             {/* Reject drawer — บังคับกรอกเหตุผลก่อนส่ง */}
             {rejectTarget && (
-                <RejectDrawer rejectTarget={rejectTarget} rejectNote={rejectNote} setRejectNote={setRejectNote} rejectSaving={rejectSaving} onClose={() => setRejectTarget(null)} onSubmit={submitReject} />
+                <RejectDrawer
+                    rejectTarget={rejectTarget}
+                    rejectNote={rejectNote}
+                    setRejectNote={setRejectNote}
+                    rejectSaving={rejectSaving}
+                    onClose={() => setRejectTarget(null)}
+                    onSubmit={submitReject}
+                />
             )}
             {previewImgUrl && <ImageLightbox previewImgUrl={previewImgUrl} onClose={() => setPreviewImgUrl(null)} />}
             {/* Toast */}
