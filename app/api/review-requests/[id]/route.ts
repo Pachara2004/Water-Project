@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
-import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
+import { REVIEW_NOTE_MAX_LENGTH, PARTIAL_REJECT_NOTE } from "@/lib/reviewConstants";
+import { generateSessionGroup } from "@/lib/sessionGroup";
 import { ReviewStatus } from "@prisma/client";
 
 // ========================================================
@@ -83,17 +84,36 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
             // 6. reject → soft-delete ทุกแถว WaterSample ในกลุ่ม session นี้
             //    approve ปกติไม่ต้องแตะ WaterSample — แถวยัง isDeleted:false อยู่แล้ว พอคำร้องไม่ pending ก็โผล่เอง
-            //    approve แบบเลือกบางสาร → soft-delete เฉพาะสารที่ "ไม่ถูกเลือก" (ปฏิเสธรายสาร)
             if (action === "reject") {
                 await tx.waterSample.updateMany({
                     where: { sessionGroup: existing.sessionGroup, isDeleted: false },
                     data: { isDeleted: true, lastModifiedBy: auth.user!.id },
                 });
             } else if (approvedSampleIds) {
-                await tx.waterSample.updateMany({
+                // approve แบบเลือกบางสาร → แยกสารที่ "ไม่ถูกเลือก" ออกไปเป็นคำร้อง rejected แยกกลุ่มใหม่
+                //    เพราะสถานะรีวิวอยู่ที่ระดับคำร้อง (1 sessionGroup = 1 สถานะ) การปฏิเสธบางสารในคำร้องที่ approved
+                //    จะทำให้สารนั้นหายไปจากทุกแท็บ จึงย้ายไป sessionGroup ใหม่ + สร้าง ReviewRequest rejected ให้มันโผล่ในแท็บปฏิเสธ
+                const rejectedSamples = await tx.waterSample.findMany({
                     where: { sessionGroup: existing.sessionGroup, isDeleted: false, id: { notIn: approvedSampleIds } },
-                    data: { isDeleted: true, lastModifiedBy: auth.user!.id },
+                    select: { id: true, collectionTime: true },
                 });
+
+                if (rejectedSamples.length > 0) {
+                    const newGroup = await generateSessionGroup(tx, rejectedSamples[0].collectionTime);
+                    await tx.waterSample.updateMany({
+                        where: { id: { in: rejectedSamples.map((s) => s.id) } },
+                        data: { sessionGroup: newGroup, isDeleted: true, lastModifiedBy: auth.user!.id },
+                    });
+                    await tx.reviewRequest.create({
+                        data: {
+                            sessionGroup: newGroup,
+                            statusRequest: "rejected",
+                            reviewedById: auth.user!.id,
+                            reviewedAt: new Date(),
+                            reviewNote: PARTIAL_REJECT_NOTE,
+                        },
+                    });
+                }
             }
 
             return { count: 1 };
