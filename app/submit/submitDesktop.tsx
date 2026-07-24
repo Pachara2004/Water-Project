@@ -6,7 +6,8 @@ import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { AnalyzeButton } from "@/components/submit/NavWorkflow";
 import { SubmitSteps } from "@/components/submit/SubmitSteps";
-import { ArrowLeft, Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy } from "lucide-react";
+import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 export default function SubmitDesktop(props: any) {
     const {
@@ -40,28 +41,7 @@ export default function SubmitDesktop(props: any) {
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Header ── */}
-            <header className="bg-card-general border-b border-border sticky top-0 z-20">
-                <div className="w-full px-4 h-13 flex items-center justify-between relative">
-                    {/* ฝั่งซ้าย: ปุ่มย้อนกลับ */}
-                    <div className="flex items-center gap-3 z-10">
-                        <button
-                            onClick={() => router.back()}
-                            className="flex items-center gap-2 text-xs font-medium text-text hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle transition-all cursor-pointer"
-                        >
-                            <ArrowLeft size={16} />
-                            <span>ย้อนกลับ</span>
-                        </button>
-                    </div>
-
-                    {/* ตรงกลาง: หัวข้อ (อยู่ตรงกลางของ Header เสมอ) */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <h1 className="text-sm font-medium text-text pointer-events-auto">ระบบส่งตรวจคุณภาพน้ำ</h1>
-                    </div>
-
-                    {/* ฝั่งขวา: Spacer เพื่อความสมดุล */}
-                    <div className="w-20" />
-                </div>
-            </header>
+            <PageHeader title="ระบบส่งตรวจคุณภาพน้ำ" onBack={() => router.back()} />
 
             {/* ── Main Layout (2 Columns Page Flow) ── */}
             <main className="w-full mx-auto p-4">

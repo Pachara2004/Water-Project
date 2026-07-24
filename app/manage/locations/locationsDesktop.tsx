@@ -1,6 +1,7 @@
 "use client";
 
-import { MapPin, MapPinPlus, MapPinned, Building2, Save, Plus, Search, FileText, ArrowLeft } from "lucide-react";
+import { MapPin, MapPinPlus, MapPinned, Building2, Save, Plus, Search, FileText } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { StationListRow, LocationEditDrawer } from "@/components/manage/locationsHelpers";
 import type { LocationsPageProps } from "./locationsMobile";
 
@@ -57,15 +58,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
-            <div className="bg-surface border-b border-border px-8 h-13 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">จัดการจุดตรวจวัดน้ำ</h1>
-                </div>
-                <div className="w-15" />
-            </div>
+            <PageHeader title="จัดการจุดตรวจวัดน้ำ" onBack={() => router.back()} />
 
             <div className="w-full max-w-[1600px] mx-auto px-8 pt-8 space-y-5">
                 {/* ─── ส่วนฟอร์มเพิ่มสถานีใหม่ (Add New Form Card) — ฟิลด์ซ้าย/แผนที่ขวา ─── */}

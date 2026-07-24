@@ -1,10 +1,11 @@
 "use client";
 
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
-import { ArrowLeft, ClipboardCheck } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import { TAB_CONFIG, RequestCard, RejectDrawer, ImageLightbox } from "@/components/manage/reviewRequestsHelpers";
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
 import { ReviewRequestCardSkeleton } from "./loading";
+import PageHeader from "@/components/PageHeader";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, การ์ดคำร้องจัดเป็นกริด 2 คอลัมน์)
 // ไม่เปลี่ยน logic/handler — ใช้ state ชุดเดียวกับ reviewRequestsMobile ที่มาจาก page.tsx
@@ -13,15 +14,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
-            <div className="bg-card-general border-b border-border px-8 h-13 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">คุณภาพน้ำที่ต้องการยืนยัน</h1>
-                </div>
-                <div className="w-15" />
-            </div>
+            <PageHeader title="คุณภาพน้ำที่ต้องการยืนยัน" onBack={() => router.back()} />
             <div className="w-full max-w-[1600px] mx-auto px-8 pt-8">
                 {/* Header card */}
                 <div className="bg-card-general rounded-2xl border border-border p-6 mb-6 transition-colors duration-300">

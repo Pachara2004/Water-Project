@@ -1,7 +1,8 @@
 "use client";
 
 import type { useRouter } from "next/navigation";
-import { ArrowLeft, Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { type Role, type UserItem, UserListRow } from "@/components/manage/usersHelpers";
 
 export interface UsersPageProps {
@@ -38,15 +39,7 @@ export default function UsersMobile(props: UsersPageProps) {
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
             {/* Top Back Navigation Navbar */}
-            <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">จัดการผู้ใช้งาน</h1>
-                </div>
-                <div className="w-15" />
-            </div>
+            <PageHeader title="จัดการผู้ใช้งาน" onBack={() => router.back()} />
 
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
                 {/* ─── 1. Header Welcome Card ─── */}

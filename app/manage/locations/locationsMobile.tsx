@@ -2,7 +2,8 @@
 
 import type { ComponentType } from "react";
 import type { useRouter } from "next/navigation";
-import { MapPin, MapPinPlus, MapPinned, Building2, Save, Plus, Search, FileText, ArrowLeft } from "lucide-react";
+import { MapPin, MapPinPlus, MapPinned, Building2, Save, Plus, Search, FileText } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { type LocationItem, StationListRow, LocationEditDrawer } from "@/components/manage/locationsHelpers";
 
 type PickedPosition = { lat: number; lng: number } | null;
@@ -107,15 +108,7 @@ export default function LocationsMobile(props: LocationsPageProps) {
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
-            <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">จัดการจุดตรวจวัดน้ำ</h1>
-                </div>
-                <div className="w-15" />
-            </div>
+            <PageHeader title="จัดการจุดตรวจวัดน้ำ" onBack={() => router.back()} />
             {/* คุมขนาด Content Wrapper ให้กางกว้าง max-w-xl เท่าหน้าคอลเลกเตอร์ */}
             <div className="w-full max-w-xl mx-auto px-4 space-y-5 pt-6">
                 {/* ─── ส่วนฟอร์มเพิ่มสถานีใหม่ (Add New Form Card) ─── */}

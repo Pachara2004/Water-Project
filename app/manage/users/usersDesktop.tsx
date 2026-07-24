@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown, Phone, CalendarDays, Layers, ChevronDown } from "lucide-react";
+import { Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown, Phone, CalendarDays, Layers, ChevronDown } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { ROLE_OPTIONS, ROLE_CONFIG, formatDate, type Role, type UserItem } from "@/components/manage/usersHelpers";
 import type { UsersPageProps } from "./usersMobile";
 
@@ -18,15 +19,7 @@ export default function UsersDesktop(props: UsersPageProps) {
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
-            <div className="bg-surface border-b border-border px-8 h-13 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">จัดการผู้ใช้งาน</h1>
-                </div>
-                <div className="w-15" />
-            </div>
+            <PageHeader title="จัดการผู้ใช้งาน" onBack={() => router.back()} />
 
             <div className="w-full max-w-[1600px] mx-auto px-8 pt-8 space-y-5">
                 {/* ─── 1. Header Welcome Card ── */}
