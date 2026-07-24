@@ -35,6 +35,24 @@ export default function Popup({
         return () => window.removeEventListener("keydown", onKey);
     }, [onClose]);
 
+    // ล็อก scroll พื้นหลังตอนเปิด + จอง gutter ไว้กัน layout กระตุก
+    // scrollbar บน desktop เป็นของ <html> (เพราะ body ตั้ง overflow-x:hidden) จึงล็อกที่ documentElement
+    // ถ้าหน้านั้นจอง gutter ไว้แล้ว (reserve-scrollbar-gutter) จะไม่แตะ class เดิม ปล่อยให้เจ้าของหน้าคุมเอง
+    useEffect(() => {
+        const docEl = document.documentElement;
+        const ownsGutter = !docEl.classList.contains("reserve-scrollbar-gutter");
+        if (ownsGutter) docEl.classList.add("reserve-scrollbar-gutter");
+        const prevOverflow = docEl.style.overflow;
+        docEl.style.overflow = "hidden";
+        // ย้อม body ให้กลืน backdrop กันแถบ scrollbar gutter สว่างโผล่ (ดู body.popup-shown ใน globals.css)
+        document.body.classList.add("popup-shown");
+        return () => {
+            docEl.style.overflow = prevOverflow;
+            if (ownsGutter) docEl.classList.remove("reserve-scrollbar-gutter");
+            document.body.classList.remove("popup-shown");
+        };
+    }, []);
+
     // ส่วนหัว (หัวข้อ + ปุ่มปิด) ใช้ร่วมกันทั้งสองโหมด
     const header = (
         <div className="flex items-center justify-between mb-7">
@@ -51,8 +69,8 @@ export default function Popup({
 
     return (
         <>
-            {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/40 z-800 backdrop-blur-xs transition-opacity" onClick={onClose} />
+            {/* Backdrop — blur-md (แทน blur-xs เดิม) กันรายละเอียดพื้นหลัง (เช่นเงาหมุดแผนที่) ลอดผ่านมาเห็นจางๆ */}
+            <div className="fixed inset-0 bg-black/40 z-800 backdrop-blur-md transition-opacity" onClick={onClose} />
 
             {isSheet ? (
                 // Mobile: bottom-sheet ยึดขอบล่างเต็มความกว้าง พร้อมแถบจับและเว้น safe-area

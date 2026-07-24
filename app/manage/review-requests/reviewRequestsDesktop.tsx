@@ -4,11 +4,12 @@ import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
 import { TAB_CONFIG, RequestCard, RejectDrawer, ImageLightbox } from "@/components/manage/reviewRequestsHelpers";
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
+import { ReviewRequestCardSkeleton } from "./loading";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, การ์ดคำร้องจัดเป็นกริด 2 คอลัมน์)
 // ไม่เปลี่ยน logic/handler — ใช้ state ชุดเดียวกับ reviewRequestsMobile ที่มาจาก page.tsx
 export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
-    const { router, toastElement, tab, setTab, requests, actingId, previewImgUrl, setPreviewImgUrl, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
+    const { router, toastElement, tab, setTab, requests, isLoadingRequests, actingId, previewImages, setPreviewImages, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
@@ -49,7 +50,13 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 </div>
 
                 {/* List */}
-                {requests.length === 0 ? (
+                {isLoadingRequests ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <ReviewRequestCardSkeleton key={i} />
+                        ))}
+                    </div>
+                ) : requests.length === 0 ? (
                     <div className="bg-surface rounded-2xl p-14 text-center border border-border flex flex-col items-center justify-center">
                         <div className="w-12 h-12 bg-surface-subtle border border-border rounded-xl flex items-center justify-center mb-4">
                             <ClipboardCheck size={18} className="text-text-muted" />
@@ -61,7 +68,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {requests.map((item) => (
-                            <RequestCard key={item.id} item={item} tab={tab} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImgUrl} />
+                            <RequestCard key={item.id} item={item} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} />
                         ))}
                     </div>
                 )}
@@ -71,7 +78,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
             {rejectTarget && (
                 <RejectDrawer rejectTarget={rejectTarget} rejectNote={rejectNote} setRejectNote={setRejectNote} rejectSaving={rejectSaving} onClose={() => setRejectTarget(null)} onSubmit={submitReject} />
             )}
-            {previewImgUrl && <ImageLightbox previewImgUrl={previewImgUrl} onClose={() => setPreviewImgUrl(null)} />}
+            {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}
             {/* Toast */}
             {toastElement}
         </div>

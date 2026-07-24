@@ -3,7 +3,8 @@
 import type { useRouter } from "next/navigation";
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
-import { TAB_CONFIG, RequestCard, RejectDrawer, ImageLightbox, type ReviewStatusFilter, type ReviewRequestItem } from "@/components/manage/reviewRequestsHelpers";
+import { TAB_CONFIG, RequestCard, RejectDrawer, ImageLightbox, type ReviewStatusFilter, type ReviewRequestItem, type PreviewImages } from "@/components/manage/reviewRequestsHelpers";
+import { ReviewRequestCardSkeleton } from "./loading";
 
 export interface ReviewRequestsPageProps {
     router: ReturnType<typeof useRouter>;
@@ -13,11 +14,12 @@ export interface ReviewRequestsPageProps {
     setTab: (v: ReviewStatusFilter) => void;
 
     requests: ReviewRequestItem[];
+    isLoadingRequests: boolean;
 
     actingId: number | null;
 
-    previewImgUrl: string | null;
-    setPreviewImgUrl: (v: string | null) => void;
+    previewImages: PreviewImages | null;
+    setPreviewImages: (v: PreviewImages | null) => void;
 
     rejectTarget: ReviewRequestItem | null;
     setRejectTarget: (v: ReviewRequestItem | null) => void;
@@ -25,13 +27,13 @@ export interface ReviewRequestsPageProps {
     setRejectNote: (v: string) => void;
     rejectSaving: boolean;
 
-    handleApprove: (item: ReviewRequestItem) => void;
+    handleApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
     openReject: (item: ReviewRequestItem) => void;
     submitReject: () => void;
 }
 
 export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
-    const { router, toastElement, tab, setTab, requests, actingId, previewImgUrl, setPreviewImgUrl, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
+    const { router, toastElement, tab, setTab, requests, isLoadingRequests, actingId, previewImages, setPreviewImages, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
@@ -73,7 +75,9 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
 
                 {/* List */}
                 <div className="space-y-4">
-                    {requests.length === 0 ? (
+                    {isLoadingRequests ? (
+                        Array.from({ length: 2 }).map((_, i) => <ReviewRequestCardSkeleton key={i} />)
+                    ) : requests.length === 0 ? (
                         <div className="bg-surface rounded-2xl p-10 text-center border border-border flex flex-col items-center justify-center">
                             <div className="w-12 h-12 bg-surface-subtle border border-border rounded-xl flex items-center justify-center mb-4">
                                 <ClipboardCheck size={18} className="text-text-muted" />
@@ -84,7 +88,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                         </div>
                     ) : (
                         requests.map((item) => (
-                            <RequestCard key={item.id} item={item} tab={tab} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImgUrl} />
+                            <RequestCard key={item.id} item={item} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} mobile />
                         ))
                     )}
                 </div>
@@ -94,7 +98,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
             {rejectTarget && (
                 <RejectDrawer rejectTarget={rejectTarget} rejectNote={rejectNote} setRejectNote={setRejectNote} rejectSaving={rejectSaving} onClose={() => setRejectTarget(null)} onSubmit={submitReject} />
             )}
-            {previewImgUrl && <ImageLightbox previewImgUrl={previewImgUrl} onClose={() => setPreviewImgUrl(null)} />}
+            {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}
             {/* Toast */}
             {toastElement}
         </div>
