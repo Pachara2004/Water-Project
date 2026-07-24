@@ -70,9 +70,9 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
     const HEIGHTS = useMemo(
         () => ({
-            collapsed: 120,
+            collapsed: 125,
             half: windowHeight * 0.5,
-            full: windowHeight * 0.85,
+            full: windowHeight * 0.90,
         }),
         [windowHeight],
     );
@@ -357,204 +357,221 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
               }))
             : [];
 
-    const renderContent = () => (
-        <div className="flex-1 ">
-            <div className="flex items-start gap-3 mb-4">
-                <div className="p-2 bg-primary text-white border border-primary/10 rounded-2xl shrink-0">
-                    <MapPin size={24} />
-                </div>
-                <div className="flex-1">
-                    <h3 className="font-bold text-primary text-base truncate">{location.name}</h3>
-                    <div className="flex items-center gap-2 text-secondary text-xs">
-                        <span className="font-semibold">{location.organization}</span>
-                    </div>
-                </div>
-            </div>
+    const renderContent = () => {
+        const isCollapsed = sheetHeight === "collapsed";
 
-            {latest ? (
-                <div className="space-y-5">
-                    <div className="bg-card-general border border-border rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-primary">ผลวิเคราะห์ล่าสุด</span>
+        return (
+            <div className="flex-1">
+                {/* Header Section */}
+                <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="p-2 bg-primary text-white border border-primary/10 rounded-2xl shrink-0">
+                            <MapPin size={22} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-primary text-base truncate">{location.name}</h3>
+                            <div className="flex items-center gap-2 text-secondary text-xs truncate">
+                                <span className="font-semibold truncate">{location.organization}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* แสดง Status Badge ตรงขวามือเฉพาะตอนย่อลงมาต่ำสุด (Collapsed Mode) */}
+                    {isCollapsed && latest && (
+                        <div className="shrink-0 sm:hidden">
                             <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-text">
-                            <Calendar size={16} />
-                            <span className="font-bold">{formatDate(latest.collectedAt)}</span>
-                        </div>
-                    </div>
+                    )}
+                </div>
 
-                    {renderCollectorInfo()}
+                {/* เนื้อหาทั้งหมดจะแสดงก็ต่อเมื่อ NOT collapsed (หรืออยู่บนหน้าจอใหญ่/Desktop) */}
+                {(!isCollapsed || (typeof window !== "undefined" && window.innerWidth >= 640)) && (
+                    <>
+                        {latest ? (
+                            <div className="space-y-5 mt-4">
+                                <div className="bg-card-general border border-border rounded-xl p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs font-semibold text-primary">ผลวิเคราะห์ล่าสุด</span>
+                                        <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-text">
+                                        <Calendar size={16} />
+                                        <span className="font-bold">{formatDate(latest.collectedAt)}</span>
+                                    </div>
+                                </div>
 
-                    {currentUser?.role !== "guest" && (
-                        <div className="grid grid-cols-2 gap-2">
-                            {chemicalItems.map((item) => {
-                                // ฟังก์ชันแปลงเวลาสั้นๆ เช่น "21 ก.ค. 10:30" หรือ "เมื่อวาน 14:00"
-                                const formattedTime = item.collectedAt
-                                    ? new Date(item.collectedAt).toLocaleDateString("th-TH", {
-                                          day: "numeric",
-                                          month: "short",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                      })
-                                    : "";
+                                {renderCollectorInfo()}
 
-                                return (
-                                    <div
-                                        key={item.key}
-                                        className="bg-card-general rounded-xl p-4 sm:p-4 border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200"
-                                    >
-                                        <div className="flex items-center justify-center gap-1 mb-1">
-                                            <div className="flex items-center gap-1">
-                                                <FlaskConical size={14} className={item.colorClass} />
-                                                <span className="text-xs font-bold text-primary uppercase">{item.displayLabel}</span>
-                                            </div>
-                                        </div>
+                                {currentUser?.role !== "guest" && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {chemicalItems.map((item) => {
+                                            const formattedTime = item.collectedAt
+                                                ? new Date(item.collectedAt).toLocaleDateString("th-TH", {
+                                                      day: "numeric",
+                                                      month: "short",
+                                                      hour: "2-digit",
+                                                      minute: "2-digit",
+                                                  })
+                                                : "";
 
-                                        {/* ค่าที่วัดได้ */}
-                                        <div className="flex items-center justify-center gap-1.5 my-1">
-                                            <span className="text-3xl font-black text-text">{item.currentVal.toFixed(3)}</span>
-                                            <span className="text-[10px] text-text font-bold">mg/L</span>
-                                        </div>
+                                            return (
+                                                <div
+                                                    key={item.key}
+                                                    className="bg-card-general rounded-xl p-4 sm:p-4 border border-border flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200"
+                                                >
+                                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                                        <div className="flex items-center gap-1">
+                                                            <FlaskConical size={14} className={item.colorClass} />
+                                                            <span className="text-xs font-bold text-primary uppercase">{item.displayLabel}</span>
+                                                        </div>
+                                                    </div>
 
-                                        <div className="flex items-center justify-between pt-1 mt-1 border-t border-border text-xs">
-                                            {/* แสดงผลต่าง diff */}
-                                            {item.hasPrev && item.diff !== 0 ? (
-                                                <div className={`flex items-center gap-0.5 font-black ${item.diff > 0 ? "text-text-danger" : "text-text-safe"}`}>
-                                                    {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                                    {item.diff > 0 ? "+" : ""}
-                                                    {item.diff.toFixed(2)}
+                                                    <div className="flex items-center justify-center gap-1.5 my-1">
+                                                        <span className="text-3xl font-black text-text">{item.currentVal.toFixed(3)}</span>
+                                                        <span className="text-[10px] text-text font-bold">mg/L</span>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between pt-1 mt-1 border-t border-border text-xs">
+                                                        {item.hasPrev && item.diff !== 0 ? (
+                                                            <div className={`flex items-center gap-0.5 font-black ${item.diff > 0 ? "text-text-danger" : "text-text-safe"}`}>
+                                                                {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                                                {item.diff > 0 ? "+" : ""}
+                                                                {item.diff.toFixed(2)}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-text">-</span>
+                                                        )}
+
+                                                        <span className="text-text text-xs font-medium truncate max-w-22.5" title={formattedTime}>
+                                                            {formattedTime}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            ) : (
-                                                <span className="text-text">-</span>
-                                            )}
+                                            );
+                                        })}
+                                    </div>
+                                )}
 
-                                            {/* ป้ายแสดงเวลาของจิ๊กซอว์ชิ้นนี้ */}
-                                            <span className="text-text text-xs font-medium truncate max-w-22.5" title={formattedTime}>
-                                                {formattedTime}
-                                            </span>
+                                {currentUser?.role !== "guest" && latest.oxygen !== null && latest.oxygen !== undefined && (
+                                    <div className="bg-card-general rounded-2xl p-4 flex items-center justify-between border border-border">
+                                        <div className="flex items-center gap-1.5">
+                                            <FlaskConical size={16} className="text-blue-500" />
+                                            <span className="text-sm font-bold text-primary uppercase">ค่าออกซิเจนละลายน้ำ</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1 text-right">
+                                            <span className="text-3xl font-black text-text">{latest.oxygen.toFixed(2)}</span>
+                                            <span className="text-xs text-text font-bold">mg/L</span>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                )}
 
-                    {currentUser?.role !== "guest" && latest.oxygen !== null && latest.oxygen !== undefined && (
-                        <div className="bg-card-general rounded-2xl p-4 flex items-center justify-between border border-border">
-                            <div className="flex items-center gap-1.5">
-                                <FlaskConical size={16} className="text-blue-500" />
-                                <span className="text-sm font-bold text-primary uppercase">ค่าออกซิเจนละลายน้ำ</span>
-                            </div>
-                            <div className="flex items-baseline gap-1 text-right">
-                                <span className="text-3xl font-black text-text">{latest.oxygen.toFixed(2)}</span>
-                                <span className="text-xs text-text font-bold">mg/L</span>
-                            </div>
-                        </div>
-                    )}
+                                {(currentUser?.role !== "guest" || !currentUser?.role) &&
+                                    (latest.airTemperature !== null ||
+                                        latest.rainAccumulation !== null ||
+                                        latest.weatherCondCode !== null ||
+                                        latest.temperature !== null ||
+                                        latest.rainVolume !== null ||
+                                        latest.weatherCondition !== null) && (
+                                        <div className="bg-card-general border border-border rounded-2xl p-6">
+                                            <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
+                                            <div className="grid grid-cols gap-3 text-center">
+                                                {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
+                                                        <span className="text-xs font-bold text-secondary block uppercase">อุณหภูมิ</span>
+                                                        <span className="text-xl font-bold text-text mt-1 block">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                                    </div>
+                                                )}
+                                                {((latest.rainAccumulation !== null && latest.rainAccumulation !== undefined) || latest.rainVolume !== null) && (
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
+                                                        <span className="text-xs font-bold text-secondary block uppercase">ปริมาณฝน</span>
+                                                        <span className="text-xl font-bold text-text mt-1 block">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                                    </div>
+                                                )}
+                                                {((latest.weatherCondCode !== null && latest.weatherCondCode !== undefined) || latest.weatherCondition !== null) && (
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
+                                                        <span className="text-xs font-bold text-secondary block uppercase">สภาพอากาศ</span>
+                                                        <span className="text-xl font-bold text-text mt-1 block truncate">
+                                                            {getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
 
-                    {(currentUser?.role !== "guest" || !currentUser?.role) &&
-                        (latest.airTemperature !== null ||
-                            latest.rainAccumulation !== null ||
-                            latest.weatherCondCode !== null ||
-                            latest.temperature !== null ||
-                            latest.rainVolume !== null ||
-                            latest.weatherCondition !== null) && (
-                            <div className="bg-card-general border border-border rounded-2xl p-6">
-                                <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
-                                <div className="grid grid-cols gap-3 text-center">
-                                    {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
-                                        <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                            <span className="text-xs font-bold text-secondary block uppercase">อุณหภูมิ</span>
-                                            <span className="text-xl font-bold text-text mt-1 block">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                <StandardsComparison title="การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน" rows={comparisonRows} />
+
+                                {samplesArr.length > 0 && (
+                                    <div className="bg-card-general border border-border rounded-2xl p-4">
+                                        <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text-secondary">
+                                            <Minus size={12} className="text-border" />
+                                            <span className="text-sm font-semibold text-text">สถานะพบบ่อยสุด:</span>
+                                            <StatusBadge status={(modeStatus ?? "").toLowerCase() as any} size="md" />
+                                            <Minus size={12} className="text-border" />
                                         </div>
-                                    )}
-                                    {((latest.rainAccumulation !== null && latest.rainAccumulation !== undefined) || latest.rainVolume !== null) && (
-                                        <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                            <span className="text-xs font-bold text-secondary block uppercase">ปริมาณฝน</span>
-                                            <span className="text-xl font-bold text-text mt-1 block">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                        <h4 className="text-xs font-semibold text-primary mb-1">บันทึกประวัติย้อนหลัง</h4>
+                                        <div className="space-y-3">
+                                            {[...samplesArr]
+                                                .reverse()
+                                                .slice(0, 5)
+                                                .map((s, idx) => {
+                                                    const pVal = s.phosphateVal ?? s.phosphateValue ?? null;
+                                                    const aVal = s.ammoniaVal ?? s.ammoniaValue ?? null;
+                                                    return (
+                                                        <div key={idx} className="flex justify-between items-center text-xs bg-bg border border-border px-4 py-3 rounded-xl">
+                                                            <span className="text-text font-bold">
+                                                                {new Date(s.collectedAt).toLocaleDateString("th-TH", {
+                                                                    day: "numeric",
+                                                                    month: "short",
+                                                                })}
+                                                            </span>
+                                                            <div className="flex items-center gap-2.5">
+                                                                {(currentUser?.role !== "guest" || !currentUser?.role) && (
+                                                                    <span className="text-xs text-text bg-card-general p-1 w-30 border border-border rounded">
+                                                                        P: {pVal ? Number(pVal).toFixed(2) : "-"} | A: {aVal ? Number(aVal).toFixed(2) : "-"}
+                                                                    </span>
+                                                                )}
+
+                                                                <StatusBadge status={s.status.toLowerCase() as any} size="md" />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                         </div>
-                                    )}
-                                    {((latest.weatherCondCode !== null && latest.weatherCondCode !== undefined) || latest.weatherCondition !== null) && (
-                                        <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                            <span className="text-xs font-bold text-secondary block uppercase">สภาพอากาศ</span>
-                                            <span className="text-xl font-bold text-text mt-1 block truncate">{getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}</span>
-                                        </div>
-                                    )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <div className="w-14 h-14 bg-bg border border-border rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                    <FlaskConical size={14} className="text-text" />
                                 </div>
+                                <p className="text-xs font-bold text-text">ยังไม่พบประวัติผลการวิเคราะห์ในพิกัดนี้</p>
                             </div>
                         )}
 
-                    <StandardsComparison title="การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน" rows={comparisonRows} />
-
-                    {samplesArr.length > 0 && (
-                        <div className="bg-card-general border border-border rounded-2xl p-4">
-                            <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text-secondary">
-                                <Minus size={12} className="text-border" />
-                                <span className="text-sm font-semibold text-text">สถานะพบบ่อยสุด:</span>
-                                <StatusBadge status={(modeStatus ?? "").toLowerCase() as any} size="md" />
-                                <Minus size={12} className="text-border" />
+                        {(currentUser?.role !== "guest" || !currentUser?.role) && chartData.length > 0 && (
+                            <div className="bg-card-general rounded-2xl mt-4">
+                                <TimeSeriesChart data={chartData} />
                             </div>
-                            <h4 className="text-xs font-semibold text-primary mb-1">บันทึกประวัติย้อนหลัง</h4>
-                            <div className="space-y-3">
-                                {[...samplesArr]
-                                    .reverse()
-                                    .slice(0, 5)
-                                    .map((s, idx) => {
-                                        const pVal = s.phosphateVal ?? s.phosphateValue ?? null;
-                                        const aVal = s.ammoniaVal ?? s.ammoniaValue ?? null;
-                                        return (
-                                            <div key={idx} className="flex justify-between items-center text-xs bg-bg border border-border px-4 py-3 rounded-xl">
-                                                <span className="text-text font-bold">
-                                                    {new Date(s.collectedAt).toLocaleDateString("th-TH", {
-                                                        day: "numeric",
-                                                        month: "short",
-                                                    })}
-                                                </span>
-                                                <div className="flex items-center gap-4">
-                                                    {(currentUser?.role !== "guest" || !currentUser?.role) && (
-                                                        <span className="text-xs text-text bg-card-general px-1.5 py-0.5 border border-border rounded">
-                                                            P: {pVal ? Number(pVal).toFixed(2) : "-"} | A: {aVal ? Number(aVal).toFixed(2) : "-"}
-                                                        </span>
-                                                    )}
+                        )}
 
-                                                    <StatusBadge status={s.status.toLowerCase() as any} size="md" />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                        {currentUser && (currentUser.role === "admin" || currentUser.role === "collector") && (
+                            <div className="mt-8">
+                                <button
+                                    onClick={() => router.push(`/submit?locationId=${location.id}`)}
+                                    className="w-full py-4 h-full bg-primary hover:bg-navy-dark active:scale-[0.97] text-white font-bold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                                >
+                                    <FlaskConical size={16} />
+                                    ส่งผลตรวจคุณภาพน้ำจุดนี้
+                                </button>
                             </div>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <div className="text-center py-8">
-                    <div className="w-14 h-14 bg-bg border border-border rounded-2xl flex items-center justify-center mx-auto mb-3">
-                        <FlaskConical size={14} className="text-text" />
-                    </div>
-                    <p className="text-xs font-bold text-text">ยังไม่พบประวัติผลการวิเคราะห์ในพิกัดนี้</p>
-                </div>
-            )}
-
-            {(currentUser?.role !== "guest" || !currentUser?.role) && chartData.length > 0 && (
-                <div className="bg-card-general rounded-2xl">
-                    <TimeSeriesChart data={chartData} />
-                </div>
-            )}
-
-            {currentUser && (currentUser.role === "admin" || currentUser.role === "collector") && (
-                <div className="mt-8">
-                    <button
-                        onClick={() => router.push(`/submit?locationId=${location.id}`)}
-                        className="w-full py-4 h-full bg-primary hover:bg-navy-dark active:scale-[0.97] text-text font-bold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-                    >
-                        <FlaskConical size={16} />
-                        ส่งผลตรวจคุณภาพน้ำจุดนี้
-                    </button>
-                </div>
-            )}
-        </div>
-    );
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    };
 
     return (
         <>
@@ -590,7 +607,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     </button>
                 </div>
                 <div
-                    className="flex-1 flex flex-col overflow-y-auto scrollbar-none px-6 pb-4 pointer-events-auto"
+                    className={`flex-1 flex flex-col px-6 pb-4 pointer-events-auto transition-all ${sheetHeight === "collapsed" ? "overflow-hidden" : "overflow-y-auto scrollbar-none"}`}
                     style={{
                         paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
                     }}

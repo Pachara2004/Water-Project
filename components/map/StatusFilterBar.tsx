@@ -65,7 +65,7 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
                                         setIsOpen(false);
                                     }}
                                     className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center gap-2.5 cursor-pointer
-                                ${isSelected ? "text-text bg-secondary" : "text-text hover:bg-surface-subtle"}`}
+                                ${isSelected ? "text-white bg-secondary" : "text-text hover:bg-surface-subtle"}`}
                                 >
                                     <span className={`rounded-full shrink-0 transition-all ${isSelected ? "scale-110 opacity-100" : "scale-90 opacity-60"}`} />
                                     <span className="font-semibold truncate">{option.label}</span>
