@@ -40,7 +40,10 @@ export default function Popup({
     // ถ้าหน้านั้นจอง gutter ไว้แล้ว (reserve-scrollbar-gutter) จะไม่แตะ class เดิม ปล่อยให้เจ้าของหน้าคุมเอง
     useEffect(() => {
         const docEl = document.documentElement;
-        const ownsGutter = !docEl.classList.contains("reserve-scrollbar-gutter");
+        // จอง gutter เฉพาะเมื่อหน้ามี scrollbar อยู่จริง (ถ้าไม่มี การจองจะทำให้ layout ขยับเสียเอง)
+        // และเฉพาะเมื่อหน้านั้นยังไม่ได้จองไว้เอง (persistent) จึงจะแตะ class
+        const hasScrollbar = window.innerWidth - docEl.clientWidth > 0;
+        const ownsGutter = hasScrollbar && !docEl.classList.contains("reserve-scrollbar-gutter");
         if (ownsGutter) docEl.classList.add("reserve-scrollbar-gutter");
         const prevOverflow = docEl.style.overflow;
         docEl.style.overflow = "hidden";

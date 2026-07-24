@@ -28,7 +28,10 @@ export const ICON_SVG = {
 let swalReservedGutter = false;
 function reserveGutterForSwal() {
     const docEl = document.documentElement;
-    if (!docEl.classList.contains("reserve-scrollbar-gutter")) {
+    // จองเฉพาะเมื่อหน้านั้นมี scrollbar อยู่จริง (คือมีของที่ swal จะเอาออกตอน lock scroll)
+    // ถ้าหน้าไม่มี scrollbar อยู่แล้ว การจอง gutter จะกลับกลายเป็นตัวทำให้ layout ขยับเสียเอง
+    const hasScrollbar = window.innerWidth - docEl.clientWidth > 0;
+    if (hasScrollbar && !docEl.classList.contains("reserve-scrollbar-gutter")) {
         docEl.classList.add("reserve-scrollbar-gutter");
         swalReservedGutter = true;
     }
