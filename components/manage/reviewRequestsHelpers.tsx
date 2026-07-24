@@ -82,13 +82,17 @@ export function RequestCard({
     if (item.statusRequest === "rejected") statusBadgeColor = "text-text-danger bg-bg-danger border-border-danger";
 
     // เลือกอนุมัติรายสาร — ใช้เฉพาะการ์ดที่มีหลายสารในแท็บรออนุมัติ (สารเดียวอนุมัติทั้งใบเสมอ)
-    // ค่าเริ่มต้น: ติ๊กทุกสาร | สารที่ไม่ติ๊ก = จะถูก soft-delete ตอนกดอนุมัติ
+    // ค่าเริ่มต้น: ติ๊กเฉพาะสารที่ confidence ผ่านเกณฑ์ปกติ (ไม่มีตัวชี้วัดไหน low confidence) — สาร low confidence
+    // เป็นเหตุผลที่คำร้องนี้ต้องมาให้ admin ตรวจอยู่แล้ว จึงไม่ควรถูกเลือกอนุมัติอัตโนมัติ
+    // สารที่ไม่ติ๊ก = จะถูก soft-delete ตอนกดอนุมัติ
     const isMultiSample = item.samples.length > 1;
     const showSampleSelect = item.statusRequest === "pending" && isMultiSample;
-    const [selectedSampleIds, setSelectedSampleIds] = useState<number[]>(() => item.samples.map((s) => s.id));
+    const [selectedSampleIds, setSelectedSampleIds] = useState<number[]>(() =>
+        item.samples.filter((s) => !s.measurements.some((m) => isLowConfidence(m.confidence))).map((s) => s.id)
+    );
     const toggleSample = (id: number) => setSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-    // ไม่ติ๊กเลย = ปฏิเสธทั้งก้อน → บล็อกปุ่มอนุมัติ ให้ไปใช้ปุ่มปฏิเสธแทน
+    // ไม่ติ๊กเลย = ปฏิเสธทั้งก้อน → บล็อกปุ่มอนุมัติ ให้ไปใช้ปุ่มปฏิเสธทั้งหมดแทน
     const noneSelected = showSampleSelect && selectedSampleIds.length === 0;
 
     return (
@@ -232,12 +236,12 @@ export function RequestCard({
                         disabled={actingId === item.id}
                         className="flex-1 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-surface-subtle hover:bg-bg-danger border border-border hover:border-border-danger text-text-secondary hover:text-text-danger transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <X size={13} /> ปฏิเสธ
+                        <X size={13} /> ปฏิเสธทั้งหมด
                     </button>
                     <button
                         onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
                         disabled={actingId === item.id || noneSelected}
-                        title={noneSelected ? "ไม่ได้เลือกสารใดเลย — กรุณาใช้ปุ่มปฏิเสธแทน" : undefined}
+                        title={noneSelected ? "ไม่ได้เลือกสารใดเลย — กรุณาใช้ปุ่มปฏิเสธทั้งหมดแทน" : undefined}
                         className="flex-1 py-2 min-h-9.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-800 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {actingId === item.id ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={13} />}
