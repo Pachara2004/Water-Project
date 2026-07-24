@@ -5,6 +5,7 @@ import { LucideShieldAlert, LucideSearch, LucideX } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import type { DashboardAnalyticsState } from "@/lib/hooks/useDashboardAnalytics";
 import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection } from "@/components/dashboard/dashboardHelpers";
+import { DashboardContentSkeleton } from "./loading";
 
 export default function DashboardMobile(props: DashboardAnalyticsState) {
     const {
@@ -202,7 +203,10 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                 ลองใหม่อีกครั้ง
                             </button>
                         </div>
-                    ) : !analytics ? null : (
+                    ) : !analytics ? (
+                        // โหลดครั้งแรก (ยังไม่มีข้อมูลเลย) → โชว์ skeleton ส่วนข้อมูล (route loading.tsx ไม่ครอบ client fetch)
+                        <DashboardContentSkeleton />
+                    ) : (
                         <div className={`space-y-3 transition-opacity duration-200 ${!analytics ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
                             {" "}
                             {fetchError && (

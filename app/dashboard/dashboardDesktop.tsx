@@ -5,6 +5,7 @@ import { LucideShieldAlert, LucideSearch, LucideX } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import type { DashboardAnalyticsState } from "@/lib/hooks/useDashboardAnalytics";
 import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection } from "@/components/dashboard/dashboardHelpers";
+import { DashboardContentSkeleton } from "./loading";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, แถบควบคุมเรียงแนวนอน)
 // ไม่เปลี่ยน logic/สี/การคำนวณ ใช้ state ชุดเดียวกับ dashboardMobile (มาจาก useDashboardAnalytics ที่ page.tsx เรียกครั้งเดียว)
@@ -218,7 +219,10 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                 ลองใหม่อีกครั้ง
                             </button>
                         </div>
-                    ) : !analytics ? null : (
+                    ) : !analytics ? (
+                        // โหลดครั้งแรก (ยังไม่มีข้อมูลเลย) → โชว์ skeleton ส่วนข้อมูล (route loading.tsx ไม่ครอบ client fetch)
+                        <DashboardContentSkeleton />
+                    ) : (
                         <div className={`space-y-4 transition-opacity duration-200 ${!analytics ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
                             {fetchError && (
                                 // มีข้อมูลเก่าอยู่แล้ว แค่ refetch รอบนี้พัง — คงข้อมูลเดิมไว้ให้ดู แค่แจ้งเตือนว่าอาจไม่ใช่ข้อมูลล่าสุด
