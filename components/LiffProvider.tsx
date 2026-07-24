@@ -428,9 +428,7 @@ liff.init({ liffId })
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-black text-text">เจ้าหน้าที่ภาคสนาม (Collector)</p>
-                                                    <p className="text-xs text-secondary mt-1">
-                                                        สิทธิ์สำหรับผู้จัดเก็บข้อมูล, ตรวจวัดค่าสารเคมี และทำการอัปโหลดผลน้ำเข้าสู่ฐานข้อมูล
-                                                    </p>
+                                                    <p className="text-xs text-secondary mt-1">สิทธิ์สำหรับผู้จัดเก็บข้อมูล, ตรวจวัดค่าสารเคมี และทำการอัปโหลดผลน้ำเข้าสู่ฐานข้อมูล</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -449,9 +447,7 @@ liff.init({ liffId })
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-bold text-text">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
-                                                    <p className="text-xs text-secondary mt-1 ">
-                                                        สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยของคุณภาพน้ำ
-                                                    </p>
+                                                    <p className="text-xs text-secondary mt-1 ">สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยของคุณภาพน้ำ</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -474,7 +470,7 @@ liff.init({ liffId })
                                             setStep(1);
                                             setGlobalError(null);
                                         }}
-                                        className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-primary font-semibold rounded-xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-text font-semibold rounded-xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
                                         <ArrowLeft size={14} /> ย้อนกลับ
                                     </button>

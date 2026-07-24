@@ -108,7 +108,7 @@ export default function LocationsMobile(props: LocationsPageProps) {
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
             <div className="bg-surface border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-secondary min-h-11">
+                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs font-semibold text-text min-h-11">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </button>
                 <div className="text-center">
