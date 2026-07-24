@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { isLowConfidence } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
-import { MapPin, Check, X, ImageOff } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock } from "lucide-react";
 import Popup from "@/components/Popup";
 
 export type ReviewStatusFilter = "pending" | "approved" | "rejected";
@@ -44,11 +44,37 @@ export interface ReviewRequestItem {
     samples: ReviewSample[];
 }
 
-export const TAB_CONFIG: { id: ReviewStatusFilter; label: string }[] = [
-    { id: "pending", label: "รออนุมัติ" },
-    { id: "approved", label: "อนุมัติแล้ว" },
-    { id: "rejected", label: "ปฏิเสธแล้ว" },
+export const TAB_CONFIG: { id: ReviewStatusFilter; label: string; icon: typeof Check }[] = [
+    { id: "pending", label: "รออนุมัติ", icon: Clock },
+    { id: "approved", label: "อนุมัติแล้ว", icon: Check },
+    { id: "rejected", label: "ปฏิเสธแล้ว", icon: X },
 ];
+
+// แท็บเลือกสถานะที่ต้องการดู — สไตล์ segmented pill พร้อมไอคอน (แท็บ active = pill ทึบสี primary)
+// สไตล์เดียวกับแท็บกรองในหน้าจัดการผู้ใช้ | ใช้ร่วมกันทั้ง desktop และ mobile
+export function StatusTabs({ tab, setTab }: { tab: ReviewStatusFilter; setTab: (v: ReviewStatusFilter) => void }) {
+    return (
+        <div className="mb-5">
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-surface-subtle border border-border rounded-xl">
+                {TAB_CONFIG.map((t) => {
+                    const Icon = t.icon;
+                    return (
+                        <button
+                            key={t.id}
+                            onClick={() => setTab(t.id)}
+                            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                                tab === t.id ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary"
+                            }`}
+                        >
+                            <Icon size={12} />
+                            <span>{t.label}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 export function formatDateTime(value: string | null) {
     if (!value) return "-";

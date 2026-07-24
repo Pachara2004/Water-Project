@@ -2,7 +2,7 @@
 
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { ClipboardCheck } from "lucide-react";
-import { TAB_CONFIG, RequestCard, RejectDrawer, ImageLightbox } from "@/components/manage/reviewRequestsHelpers";
+import { StatusTabs, RequestCard, RejectDrawer, ImageLightbox } from "@/components/manage/reviewRequestsHelpers";
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
 import { ReviewRequestCardSkeleton } from "./loading";
 import PageHeader from "@/components/PageHeader";
@@ -27,20 +27,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 </div>
 
                 {/* Tabs */}
-                <div className="px-2 mb-1 text-sm text-primary font-semibold">สถานะที่ต้องการดู</div>
-                <div className="flex items-center gap-2 mb-5 max-w-2xl">
-                    {TAB_CONFIG.map((t) => (
-                        <button
-                            key={t.id}
-                            onClick={() => setTab(t.id)}
-                            className={`flex-1 py-3 rounded-xl text-xs font-semibold border border-border transition-all cursor-pointer ${
-                                tab === t.id ? "bg-primary text-white border-primary" : "bg-card-general text-text-secondary border-border hover:border-primary/30"
-                            }`}
-                        >
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
+                <StatusTabs tab={tab} setTab={setTab} />
 
                 {/* List */}
                 {isLoadingRequests ? (
