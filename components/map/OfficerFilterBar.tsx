@@ -129,7 +129,9 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                                     >
                                         {/* แถบสี่เหลี่ยมมินิมอลแสดงสถานะด้านหน้าชิปรายการที่เลือก */}
 
-                                        <span className={`truncate text-left w-full transition-transform text-text duration-100 ${isSelected ? "font-semibold" : "group-hover:translate-x-0.5"}`}>
+                                        <span
+                                            className={`truncate text-left w-full transition-transform text-text duration-100 ${isSelected ? "text-white bg-secondary" : "text-text hover:bg-surface-subtle"}`}
+                                        >
                                             {option.label}
                                         </span>
                                     </button>

@@ -56,7 +56,7 @@ export function StandardsComparison({ title, rows, compact = false }: { title: s
 
     return (
         <div className={compact ? "space-y-2" : "bg-card-general border border-border rounded-2xl p-6"}>
-            <h4 className={`text-sm font-semibold text-primary ${compact ? "border-b border-primary pb-1" : "mb-3 text-center"}`}>{title}</h4>
+            <h4 className={`text- font-semibold text-primary ${compact ? "border-b border-primary pb-1" : "mb-3 text-center"}`}>{title}</h4>
 
             <div className={compact ? "space-y-2" : "grid grid-cols-1 gap-3 text-start"}>
                 {rows.map((row) => {
@@ -69,17 +69,16 @@ export function StandardsComparison({ title, rows, compact = false }: { title: s
                             className={
                                 compact
                                     ? "flex items-center justify-between gap-2 text-xs py-1 border-b border-border/60 last:border-0 last:pb-0"
-                                    : `flex items-center gap-3.5 text-xs font-bold px-4 py-3 rounded-xl border ${style?.chip ?? NO_STANDARD_STYLE.chip}`
+                                    : `flex items-center gap-3.5 text-xs font-semibold p-3 rounded-xl border ${style?.chip ?? NO_STANDARD_STYLE.chip}`
                             }
                         >
-                            {!compact && <Icon size={16} className={`shrink-0 ${style?.iconClass ?? NO_STANDARD_STYLE.iconClass}`} />}
 
-                            <div className="flex flex-col min-w-0 flex-1">
-                                <span className={`truncate ${compact ? "font-medium text-text-primary" : ""}`}>{row.label}</span>
-                                {row.detail && <span className="text-xs text-text-secondary font-normal">{row.detail}</span>}
+                            <div className="flex flex-col items-center min-w-0 flex-1">
+                                <span className={`truncate w-full ${compact ? "font-medium text-text-primary" : ""}`}>{row.label}</span>
+                                {row.detail && <span className="text-xs text-text-secondary">{row.detail}</span>}
                             </div>
 
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded border shrink-0 ${style?.chip ?? NO_STANDARD_STYLE.chip}`}>
+                            <span className={`text-xs font-semibold rounded border shrink-0 w-18 p-1 text-center ${style?.chip ?? NO_STANDARD_STYLE.chip}`}>
                                 {style?.label ?? NO_STANDARD_STYLE.label}
                             </span>
                         </div>

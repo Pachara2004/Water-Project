@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
-import { User, Shield, Eye, ShieldAlert, ChevronRight } from "lucide-react";
+import { User, Shield, Eye, ShieldAlert, ChevronRight, Sun, Moon } from "lucide-react";
 import { refreshNavDots } from "@/lib/navEvents";
 
 type Role = "guest" | "collector" | "officer" | "admin";
 
 export default function DevRoleSwitcher() {
-    // ── 🌟 ดึงเฉพาะ currentUser มาใช้งาน (ไม่แกะ setCurrentUser ออกมาแล้ว) ──
-    const { currentUser } = useAppStore();
+    const { currentUser, theme, toggleTheme } = useAppStore();
     const [isOpen, setIsOpen] = useState(false);
 
     const roles: { id: Role; label: string; icon: any; color: string }[] = [
@@ -22,7 +21,6 @@ export default function DevRoleSwitcher() {
     const changeRole = async (roleId: Role) => {
         if (!currentUser) return;
 
-        // 1. อัปเดต Frontend State ทันทีให้ UI เปลี่ยนไว
         useAppStore.setState({
             currentUser: {
                 ...currentUser,
@@ -31,7 +29,6 @@ export default function DevRoleSwitcher() {
             },
         });
 
-        // 2. [เพิ่มส่วนนี้] ยิงไปเปลี่ยน Role ใน Database จริงๆ
         try {
             await fetch("/api/dev/switch-role", {
                 method: "POST",
@@ -54,7 +51,6 @@ export default function DevRoleSwitcher() {
         }
     };
 
-    // ป้องกันการสกรอลล์หน้าจอด้านหลังเวลาเปิดแถบสไลด์
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = "hidden";
@@ -66,12 +62,14 @@ export default function DevRoleSwitcher() {
         };
     }, [isOpen]);
 
+    const isDark = theme === "dark";
+
     return (
         <div className="fixed inset-y-0 left-0 z-9999 pointer-events-none select-none flex items-center">
             {/* 🌫️ 1. ฉากหลังล่องหนเต็มจอเพื่อแตะพื้นที่อื่นแล้วปิดเมนู */}
             {isOpen && <div className="pointer-events-auto fixed inset-0 bg-transparent" onClick={() => setIsOpen(false)} />}
 
-            {/* 📍 2. เส้นขีดสัมผัสขอบจอ (Edge Handle Trigger) ── ซ่อนตัวทันทีเมื่อเปิดเมนู */}
+            {/* 📍 2. เส้นขีดสัมผัสขอบจอ (Edge Handle Trigger) */}
             {!isOpen && (
                 <div
                     onClick={() => setIsOpen(true)}
@@ -82,11 +80,10 @@ export default function DevRoleSwitcher() {
                 </div>
             )}
 
-            {/* 📋 3. แผงเมนูบทบาทสไตล์มินิมอล ── ล็อคพิกัด left-2 นิ่งสนิท พร้อมจับแต่งสีธีมระบบ */}
+            {/* 📋 3. แผงเมนูบทบาทสไตล์มินิมอล + ปุ่มสลับธีม */}
             <div
                 className={`pointer-events-auto fixed inset-y-0 left-2 my-auto h-fit w-14 bg-card-summary border border-white/10 py-3 px-1.5 flex flex-col gap-2 rounded-2xl transition-all duration-300 ease-out z-10 ${
                     isOpen ? "translate-x-0 opacity-100 scale-100" : "-translate-x-20 opacity-0 scale-95 pointer-events-none"
-                    /* 💡 ควบคุมการ Fade & Scale สไลด์เข้า-ออก โดยจุดกางหลักจะตรึงอยู่ที่ left-2 ไม่ขยับเยื้อง */
                 }`}
             >
                 {/* รายการปุ่มสิทธิ์ทรงไอคอนสี่เหลี่ยมมน */}
@@ -101,21 +98,27 @@ export default function DevRoleSwitcher() {
                                 onClick={() => changeRole(r.id)}
                                 title={r.label}
                                 className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all border active:scale-[0.90] cursor-pointer relative group ${
-                                    isCurrent
-                                        ? "bg-white text-card-summary border-white shadow-md font-bold"
-                                        : /* ── 🌟 ชิ้นที่ถูกเลือก: สลับเป็นสีขาวผ่องตัดกับพื้นหลังการ์ดหลัก ── */
-                                          "bg-card-summary text-white/80 border-white/10 hover:bg-white/10 hover:text-white"
-                                    /* ── 🌟 ชิ้นทั่วไป: ใช้โทน bg-card-summary แนบเนียนกลมกลืนตามธีม ── */
+                                    isCurrent ? "bg-white text-card-summary border-white shadow-md font-bold" : "bg-card-summary text-white/80 border-white/10 hover:bg-white/10 hover:text-white"
                                 }`}
                             >
                                 <Icon size={18} />
-
-                                {/* จุดแจ้งเตือนสิทธิ์ปัจจุบันด้านมุมขวาบนปุ่ม */}
                                 {isCurrent && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-card-summary border border-white animate-pulse" />}
                             </button>
                         );
                     })}
                 </div>
+
+                {/* 🌟 เส้นกั้นแบ่งโซน */}
+                <div className="w-8 h-[1px] bg-white/15 mx-auto my-0.5" />
+
+                {/* 🌟 ปุ่มสลับ Theme Mode (Dark/Light) */}
+                <button
+                    onClick={toggleTheme}
+                    title={isDark ? "สลับเป็นโหมดสว่าง" : "สลับเป็นโหมดมืด"}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center transition-all border border-white/10 bg-card-summary text-white/80 hover:bg-white/10 hover:text-white active:scale-[0.90] cursor-pointer relative overflow-hidden"
+                >
+                    {isDark ? <Sun size={18} className="text-amber-400 fill-amber-400/20" /> : <Moon size={18} className="text-indigo-300 fill-indigo-300/20" />}
+                </button>
             </div>
         </div>
     );
