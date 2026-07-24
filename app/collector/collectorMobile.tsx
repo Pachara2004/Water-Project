@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import { Camera, FileText, Calendar, Beaker, ImageOff, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react";
+import { Camera, FileText, Calendar, Beaker, MapPin, FileScan, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
 import { useCollectorFilters, type CollectorSample } from "@/lib/hooks/useCollectorFilters";
@@ -302,85 +302,81 @@ export default function CollectorMobile({ samples, loading }: CollectorProps) {
                                 <div className="flex flex-col gap-3">
                                     {displayedRows.map((row) => {
                                         const sample = row.original;
-                                        const hasImageError = imageErrors[sample.id];
-
                                         return (
                                             <div
                                                 key={sample.id}
                                                 onClick={() => router.push(`/collector/history/${sample.id}`)}
-                                                className="bg-card-general rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
+                                                className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
                                             >
-                                                {/* รูปภาพ - ล็อกขนาดไม่ให้โดนบีบ */}
-                                                <div className="w-14 h-14 rounded-xl bg-surface-subtle border border-border shrink-0 overflow-hidden flex items-center justify-center relative transition-all">
-                                                    {sample.imageUrl && !hasImageError ? (
-                                                        <img
-                                                            src={sample.imageUrl}
-                                                            alt="sample data"
-                                                            onError={() => handleImageError(sample.id)}
-                                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
-                                                        />
-                                                    ) : (
-                                                        <ImageOff size={15} className="text-text-muted" />
-                                                    )}
-                                                </div>
-
                                                 {/* ฝั่งเนื้อหาข้อมูล - ถอด h-15 ออกเพื่อให้ขยายแนวตั้งได้ตามจริง */}
                                                 <div className="flex-1 min-w-0 flex flex-col ">
                                                     {/* แถวบน: ชื่อสถานที่ และ สถานะ */}
                                                     <div className="flex items-start justify-between gap-4 w-full">
                                                         {/* ฝั่งซ้าย: ชื่อสถานที่ + วันที่ */}
                                                         <div className="flex-1 min-w-0">
-                                                            {/* แสดงบรรทัดเดียวแล้วตัดด้วย ... */}
-                                                            <h4 className="font-semibold text-sm text-text text-left truncate">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+                                                            {/* จัดให้อยู่ตรงกลางแนวตั้งด้วย items-center */}
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                {/* ไอคอน MapPin อยู่ตรงกลางแนวตั้งขนานกับกลุ่มข้อความ */}
+                                                                <MapPin size={36} className="text-primary shrink-0" />
 
-                                                            {/* แถวกลาง: เมทาดาต้า วันที่ */}
-                                                            <div className="flex flex-wrap items-center text-xs text-text-muted font-medium">
-                                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                                    <Calendar size={14} className="text-text-muted shrink-0" />
-                                                                    <span>
-                                                                        {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                                                                            day: "numeric",
-                                                                            month: "short",
-                                                                            year: "2-digit",
+                                                                {/* กลุ่มข้อความ ชื่อสถานที่, วันที่ และค่าสารเคมี */}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <h4 className="font-semibold text-sm text-text">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+                                                                    {/* แถวกลาง: เมทาดาต้า วันที่ */}
+                                                                    <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5">
+                                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                                            <FileScan size={13} className="text-text-muted shrink-0" />
+                                                                            <span>{sample.code}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                                            <Calendar size={13} className="text-text-muted shrink-0" />
+                                                                            <span>
+                                                                                {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                                                    day: "numeric",
+                                                                                    month: "short",
+                                                                                    year: "2-digit",
+                                                                                })}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* แถวล่าง: แสดงค่าสารเคมี */}
+                                                                    <div className="flex flex-wrap items-center gap-2 mt-1 w-full">
+                                                                        {[
+                                                                            { key: "phosphateVal", label: "P", color: "text-teal-500" },
+                                                                            { key: "ammoniaVal", label: "N", color: "text-purple-500" },
+                                                                        ].map((indicator) => {
+                                                                            const value = sample[indicator.key];
+                                                                            if (value === undefined || value === null) return null;
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={indicator.key}
+                                                                                    className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
+                                                                                >
+                                                                                    <Beaker size={10} className={indicator.color} />
+                                                                                    <span>
+                                                                                        {indicator.label}: {Number(value).toFixed(2)}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
                                                                         })}
-                                                                    </span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
 
                                                         {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
-                                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                                        <div className="flex flex-col items-end text-center gap-1 shrink-0">
                                                             <StatusBadge status={sample.status} size="sm" />
                                                             {sample.reviewStatus === "PENDING" && (
-                                                                <span className="inline-flex items-center gap-1 text-xs font-bold text-text-warning bg-bg-warning border border-border-warning px-2 py-0.5 rounded-md whitespace-nowrap">
-                                                                    รออนุมัติ
+                                                                <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                                                                    รอตรวจสอบ
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </div>
                                                     {/* แถวล่าง: ค่าสารเคมี - เอา grid และ justify-end ออกเพื่อให้ชิดซ้ายตามปกติ */}
-                                                    <div className="flex flex-wrap items-center gap-2 mt-1 w-full">
-                                                        {[
-                                                            { key: "phosphateVal", label: "P", color: "text-teal-500" },
-                                                            { key: "ammoniaVal", label: "N", color: "text-purple-500" },
-                                                            // อนาคตเพิ่มสารใหม่ใน DB แค่มาหยอดบรรทัดเพิ่มตรงนี้ได้เลย
-                                                        ].map((indicator) => {
-                                                            const value = sample[indicator.key];
-                                                            if (value === undefined || value === null) return null;
-
-                                                            return (
-                                                                <div
-                                                                    key={indicator.key}
-                                                                    className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
-                                                                >
-                                                                    <Beaker size={10} className={indicator.color} />
-                                                                    <span>
-                                                                        {indicator.label}: {Number(value).toFixed(2)}
-                                                                    </span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
                                                 </div>
                                             </div>
                                         );
