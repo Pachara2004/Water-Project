@@ -52,10 +52,10 @@ export default function ManageMobile({ currentUser, isAdmin, pendingCounts, show
                 )}
 
                 <div className="space-y-2">
-                    <div className="p-1 flex flex-wrap justify-between items-center gap-y-2 gap-x-4">
-                        <p className="text-sm font-semibold text-primary mt-1">เมนูการจัดการ</p>
+                    <div className="flex flex-wrap justify-between items-center gap-y-1.5 gap-x-4">
+                        <p className="text-sm font-semibold text-primary mt-1.5 px-1 ">เมนูการจัดการ</p>
                         {/* flex-wrap ที่แถวนอก: จอแคบให้ปุ่มตกลงบรรทัดใหม่ทั้งคู่ ดีกว่าบีบจนข้อความล้น */}
-                        <div className="shrink-0 mt-1 flex items-center gap-2">
+                        <div className="shrink-0 flex items-center gap-2">
                             <ThemeToggle showLabel />
                             <GpsAutoTrackToggle />
                         </div>
@@ -87,7 +87,7 @@ export default function ManageMobile({ currentUser, isAdmin, pendingCounts, show
                                                     </span>
                                                 )}
                                                 {pendingCount > 0 && (
-                                                    <span className="text-xs font-bold text-text-danger bg-bg-danger border border-border-danger px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                                    <span className="text-xs font-semibold text-text-danger bg-bg-danger border border-border-danger p-0.5 rounded-md px-2 uppercase tracking-wider shrink-0">
                                                         {pendingCount} รายการ
                                                     </span>
                                                 )}

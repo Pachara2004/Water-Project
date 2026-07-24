@@ -33,7 +33,7 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
         return (
             <button
                 onClick={toggleTheme}
-                className="flex items-center gap-2.5 h-10 px-5 rounded-md bg-card-general border border-border text-text-primary   transition-all duration-75 active:scale-[0.96] cursor-pointer relative overflow-hidden"
+                className="flex items-center gap-2.5 h-10 p-5 rounded-xl bg-card-general border border-border text-text-primary   transition-all duration-75 active:scale-[0.96] cursor-pointer relative overflow-hidden"
                 aria-label="Toggle Light/Dark Theme"
             >
                 {/* Icon */}
@@ -47,7 +47,7 @@ export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean
                 </div>
 
                 {/* Label — จองความกว้างตามข้อความที่ยาวสุด ("โหมดสว่าง") เสมอ เพื่อให้ปุ่มกว้างเท่ากันทั้งสองโหมด */}
-                <span className="grid justify-items-center text-xs font-bold text-text-secondary whitespace-nowrap">
+                <span className="grid justify-items-center text-xs font-semibold text-text whitespace-nowrap">
                     <span aria-hidden className="col-start-1 row-start-1 invisible">โหมดสว่าง</span>
                     <span className="col-start-1 row-start-1">{isDark ? "โหมดสว่าง" : "โหมดมืด"}</span>
                 </span>

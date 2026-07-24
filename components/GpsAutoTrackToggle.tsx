@@ -75,16 +75,16 @@ export default function GpsAutoTrackToggle() {
             disabled={busy}
             aria-pressed={enabled}
             title={enabled ? "ปิดการติดตามตำแหน่งอัตโนมัติเมื่อเข้าหน้าแผนที่" : "เปิดการติดตามตำแหน่งอัตโนมัติเมื่อเข้าหน้าแผนที่"}
-            className="flex items-center gap-2.5 h-10 px-5 rounded-md bg-card-general border border-border text-text-primary transition-all duration-75 active:scale-[0.96] cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+            className="flex items-center gap-2.5 h-10 px-5 rounded-xl bg-card-general border border-border text-text-primary transition-all duration-75 active:scale-[0.96] cursor-pointer disabled:opacity-50 disabled:cursor-wait"
         >
             <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-                {enabled ? <LocateFixed size={16} className="text-primary" /> : <LocateOff size={16} className="text-text-muted" />}
+                {enabled ? <LocateFixed size={16} className="text-text" /> : <LocateOff size={16} className="text-text-muted" />}
             </div>
 
-            <span className="text-xs font-bold text-text-secondary whitespace-nowrap">GPS อัตโนมัติ</span>
+            <span className="text-xs font-semibold text-text whitespace-nowrap">GPS อัตโนมัติ</span>
 
             {/* จุดบอกสถานะ แทนการสลับข้อความ เพื่อให้ปุ่มกว้างคงที่ตลอด */}
-            <span className={`w-2 h-2 rounded-full shrink-0 ${enabled ? "bg-green-500" : "bg-text-muted/40"}`} />
+            <span className={`w-2 h-2 rounded-full shrink-0 ${enabled ? "bg-green-500" : "bg-text"}`} />
         </button>
     );
 }
