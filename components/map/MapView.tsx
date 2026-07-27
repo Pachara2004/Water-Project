@@ -21,9 +21,6 @@ interface LocationData {
     lat: number;
     lng: number;
     createdAt: string;
-    // สถานะของสถานที่ = ค่าล่าสุดของแต่ละสาร (ข้ามรอบเก็บได้) เทียบกับทุกเกณฑ์ แล้วเอาผลแย่สุด
-    // คนละอย่างกับ latestSample.status ซึ่งเป็นสถานะของตัวอย่างใบเดียว — ห้ามเอามาใช้แทนกัน
-    // null = ยังไม่เคยมีผลตรวจ
     locationStatus: "safe" | "warning" | "danger" | null;
     latestSample: {
         id: number;
@@ -56,7 +53,7 @@ function MapController({
 }) {
     const map = useMap();
 
-    // 🌟 1. ย้ายกล้องไปที่ตำแหน่งปักหมุด/เลือกสถานที่ (pickedPosition)
+    // ย้ายกล้องไปที่ตำแหน่งปักหมุด/เลือกสถานที่ (pickedPosition)
     useEffect(() => {
         if (pickedPosition) {
             map.flyTo([pickedPosition.lat, pickedPosition.lng], 15, {
@@ -66,7 +63,7 @@ function MapController({
         }
     }, [pickedPosition, map]);
 
-    // 2. ย้ายกล้องเมื่อค้นหา GPS ผู้ใช้ (centerPos)
+    // ย้ายกล้องเมื่อค้นหา GPS ผู้ใช้ (centerPos)
     useEffect(() => {
         if (centerPos) {
             const timer = setTimeout(() => {
@@ -79,7 +76,7 @@ function MapController({
         }
     }, [centerPos, map]);
 
-    // 3. ย้ายกล้องเมื่อเลือกสถานที่จาก BottomSheet
+    // ย้ายกล้องเมื่อเลือกสถานที่จาก BottomSheet
     useEffect(() => {
         if (selectedLocation) {
             map.flyTo([selectedLocation.lat, selectedLocation.lng], 15, { duration: 0.5 });
@@ -138,7 +135,6 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     }, []);
 
     // ดึงพิกัดอัตโนมัติตอนเข้าหน้า เฉพาะเมื่อผู้ใช้เปิดสวิตช์ "GPS อัตโนมัติ" ไว้ที่หน้าจัดการ
-    // (ค่าเริ่มต้นคือเปิดให้เองเมื่ออนุญาตสิทธิ์ตำแหน่งแล้ว — ดู lib/gpsAutoTrack.ts)
     useEffect(() => {
         if (!isMounted) return;
         let cancelled = false;
@@ -163,8 +159,6 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             if (!Array.isArray(data)) data = [];
 
             if (statusFilter !== "ALL") {
-                // กรองด้วยสถานะของสถานที่ ให้ตรงกับสีหมุดที่ผู้ใช้เห็น — เดิมกรองด้วย latestSample.status
-                // ซึ่งเป็นสถานะของตัวอย่างใบเดียว ทำให้ตัวกรองไม่ตรงกับสีที่แสดง
                 const targetStatus = statusFilter.toLowerCase();
                 data = data.filter((loc: LocationData) => loc.locationStatus === targetStatus);
             }
@@ -207,15 +201,26 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     return (
         <div className="relative w-full h-full">
             {mode === "explorer" && (
-                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-2 break-all">
-                    <MapSearchBar
-                        locations={locations}
-                        onSelectLocation={(loc) => {
-                            setSelectedLocation(loc);
-                        }}
-                    />
-                    <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
-                    <StatusFilterBar value={statusFilter} onChange={setStatusFilter} />
+                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-2">
+                    {/* ช่อง Search ค้นหา */}
+                    <div className="w-full sm:w-auto flex-1 min-w-[240px]">
+                        <MapSearchBar
+                            locations={locations}
+                            onSelectLocation={(loc) => {
+                                setSelectedLocation(loc);
+                            }}
+                        />
+                    </div>
+
+                    {/* กลุ่มปุ่ม Filter ทั้งสองตัว: จะอยู่บรรทัดเดียวกัน หรือขยายเต็มเมื่อตกบรรทัด */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-1 min-w-[280px]">
+                        <div className="flex-1 min-w-0">
+                            <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <StatusFilterBar value={statusFilter} onChange={setStatusFilter} />
+                        </div>
+                    </div>
                 </div>
             )}
 

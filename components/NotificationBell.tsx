@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import liff from "@line/liff";
-import { Bell, X, MapPin, Calendar, AlertCircle, ImageOff, Check, BellOff } from "lucide-react";
+import { Bell, X, MapPin, FileScan, Calendar, AlertCircle, ImageOff, Check, BellOff } from "lucide-react";
 import { refreshNavDots } from "@/lib/navEvents";
 
 interface NotificationItem {
     id: number;
     sessionGroup: string;
+    code?: string | null;
     reviewNote: string | null;
     reviewedAt: string | null;
     acknowledgedAt: string | null;
@@ -33,6 +34,122 @@ export default function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [ackingId, setAckingId] = useState<number | null>(null);
     const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+
+    // ─── Bottom Sheet Dragging States ───
+    const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("collapsed");
+    const isDraggingRef = useRef(false);
+    const dragStartYRef = useRef(0);
+    const dragBaseHeightRef = useRef(0);
+    const lastYRef = useRef(0);
+    const lastTimeRef = useRef(0);
+    const velocityRef = useRef(0);
+    const sheetRef = useRef<HTMLDivElement>(null);
+    const animationFrameRef = useRef<number | null>(null);
+
+    const [windowHeight, setWindowHeight] = useState(700);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            setWindowHeight(window.innerHeight);
+        }
+    }, []);
+
+    // คำนวณความสูง 3 ระดับ: collapsed (พอดีกับ 1 รายการ) / half (50%) / full (80%)
+    const HEIGHTS = useMemo(
+        () => ({
+            collapsed: 210, // ความสูงระดับแรกสำหรับโชว์ 1 การ์ด
+            half: windowHeight * 0.5,
+            full: windowHeight * 0.8,
+        }),
+        [windowHeight],
+    );
+
+    const getSnapHeight = useCallback((snap: "collapsed" | "half" | "full"): number => HEIGHTS[snap], [HEIGHTS]);
+
+    const getNearestSnapPoint = (height: number): "collapsed" | "half" | "full" => {
+        const dists = {
+            collapsed: Math.abs(height - HEIGHTS.collapsed),
+            half: Math.abs(height - HEIGHTS.half),
+            full: Math.abs(height - HEIGHTS.full),
+        };
+        return (Object.keys(dists) as Array<"collapsed" | "half" | "full">).reduce((a, b) => (dists[a] < dists[b] ? a : b));
+    };
+
+    const snapTo = (point: "collapsed" | "half" | "full") => {
+        if (sheetRef.current) {
+            sheetRef.current.style.transition = "height 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
+            sheetRef.current.style.height = `${getSnapHeight(point)}px`;
+        }
+        setSheetHeight(point);
+    };
+
+    const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
+        const clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        isDraggingRef.current = true;
+        dragStartYRef.current = clientY;
+        lastYRef.current = clientY;
+        lastTimeRef.current = Date.now();
+        velocityRef.current = 0;
+        dragBaseHeightRef.current = sheetRef.current ? sheetRef.current.getBoundingClientRect().height : getSnapHeight(sheetHeight);
+        if (sheetRef.current) sheetRef.current.style.transition = "none";
+    };
+
+    const handleDragMove = useCallback(
+        (clientY: number) => {
+            if (!isDraggingRef.current) return;
+
+            const now = Date.now();
+            const dt = now - lastTimeRef.current;
+            if (dt > 0) {
+                velocityRef.current = (lastYRef.current - clientY) / dt;
+            }
+            lastYRef.current = clientY;
+            lastTimeRef.current = now;
+
+            const delta = dragStartYRef.current - clientY;
+            const newHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, dragBaseHeightRef.current + delta));
+
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+
+            animationFrameRef.current = requestAnimationFrame(() => {
+                if (sheetRef.current) {
+                    sheetRef.current.style.height = `${newHeight}px`;
+                }
+            });
+        },
+        [HEIGHTS],
+    );
+
+    const handleDragEnd = () => {
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+
+        const currentHeight = sheetRef.current ? sheetRef.current.getBoundingClientRect().height : getSnapHeight(sheetHeight);
+        const velocity = velocityRef.current;
+        const VELOCITY_THRESHOLD = 0.25;
+
+        let nextPoint: "collapsed" | "half" | "full";
+
+        if (Math.abs(velocity) > VELOCITY_THRESHOLD) {
+            if (velocity > 0) {
+                nextPoint = sheetHeight === "collapsed" ? "half" : "full";
+            } else {
+                nextPoint = sheetHeight === "full" ? "half" : "collapsed";
+            }
+        } else {
+            nextPoint = getNearestSnapPoint(currentHeight);
+        }
+
+        snapTo(nextPoint);
+    };
+
+    useEffect(() => {
+        if (open && sheetRef.current) {
+            sheetRef.current.style.transition = "height 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
+            sheetRef.current.style.height = `${getSnapHeight(sheetHeight)}px`;
+        }
+    }, [open, getSnapHeight, sheetHeight]);
 
     const fetchNotifications = useCallback(async () => {
         try {
@@ -60,6 +177,7 @@ export default function NotificationBell() {
     useEffect(() => {
         if (open) {
             document.body.style.overflow = "hidden";
+            setSheetHeight("collapsed"); // รีเซ็ตเป็นระดับแรกเมื่อเปิด
             return () => {
                 document.body.style.overflow = "";
             };
@@ -91,6 +209,9 @@ export default function NotificationBell() {
         }
     };
 
+    // แสดงรายการแรกรายการเดียวถ้าอยู่ในโหมด collapsed
+    const displayedItems = sheetHeight === "collapsed" ? items.slice(0, 1) : items;
+
     return (
         <>
             {/* ปุ่มกระดิ่ง */}
@@ -102,41 +223,64 @@ export default function NotificationBell() {
             >
                 <Bell size={18} strokeWidth={2.2} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-4.5 h-4.5 px-1 bg-red-500 text-white text-xs leading-none font-bold rounded-full flex items-center justify-center border-2 border-surface">
+                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 p-2 bg-text-danger text-white text-xs leading-none font-bold rounded-full flex items-center justify-center border-2 border-border-danger">
                         {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                 )}
             </button>
 
-            {/* ป็อปอัปแบบ bottom-sheet ตาม convention โปรเจกต์ */}
+            {/* ป็อปอัปแบบ bottom-sheet เลื่อนได้ 3 ระดับ */}
             {open && (
                 <>
                     <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={() => setOpen(false)} />
                     <div
-                        className="fixed bottom-0 left-0 right-0 z-1001 bg-card-general rounded-t-4xl shadow-2xl border-t border-border max-w-lg mx-auto flex flex-col max-h-[80dvh] animate-slide-up transition-colors duration-300"
-                        style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom))" }}
+                        ref={sheetRef}
+                        className="fixed bottom-0 left-0 right-0 z-1001 bg-bg rounded-t-3xl shadow-2xl border-t border-border max-w-lg mx-auto flex flex-col will-change-[height]"
+                        style={{
+                            height: `${getSnapHeight(sheetHeight)}px`,
+                            maxHeight: "85vh",
+                            touchAction: "none",
+                        }}
+                        onMouseUp={handleDragEnd}
+                        onMouseLeave={handleDragEnd}
+                        onTouchEnd={handleDragEnd}
+                        onMouseMove={(e) => handleDragMove(e.clientY)}
+                        onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
                     >
-                        <div className="w-12 h-1 bg-secondary rounded-full mx-auto mt-3 mb-1 pointer-events-none shrink-0" />
+                        {/* Drag Handle Bar */}
+                        <div
+                            className="relative w-full flex items-center justify-center pt-3 pb-1 px-4 cursor-grab active:cursor-grabbing select-none"
+                            onMouseDown={handleDragStart}
+                            onTouchStart={handleDragStart}
+                        >
+                            {/* ขีดดึงตรงกลาง */}
+                            <div className="w-12 h-1 bg-secondary rounded-full pointer-events-none" />
 
-                        {/* หัวข้อ */}
-                        <div className="flex items-center justify-between px-6 pt-3 pb-4 shrink-0">
-                            <div className="flex items-center gap-2">
-                                <Bell size={18} className="text-primary" />
-                                <h3 className="text-sm font-bold text-primary">การแจ้งเตือน</h3>
-                                {unreadCount > 0 && (
-                                    <span className="text-xs leading-none font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-full inline-flex items-center">{unreadCount} ใหม่</span>
-                                )}
-                            </div>
+                            {/* ปุ่มปิดชิดขวาสุด */}
                             <button
                                 onClick={() => setOpen(false)}
-                                className="w-8 h-8 flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
+                                className="absolute right-4 w-8 h-8 mt-5 flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
                             >
                                 <X size={24} className="text-secondary" />
                             </button>
                         </div>
 
-                        {/* รายการ */}
-                        <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-3">
+                        {/* หัวข้อ */}
+                        <div className="flex items-center justify-between px-6 mt-3 pb-4 shrink-0">
+                            <div className="flex items-center gap-2.5 w-full">
+                                {/* ไอคอนกระดิ่ง */}
+                                <Bell size={20} className="text-primary shrink-0" />
+
+                                {/* ข้อความหัวข้อ + คำอธิบาย */}
+                                <div className="flex flex-col min-w-0 flex-1">
+                                    <h3 className="text-md font-bold text-primary leading-tight">การแจ้งเตือน</h3>
+                                    <p className="text-xs text-text-muted truncate">รายการที่รับทราบแล้วจะไม่แสดงในรายการหลังครบ 7 วัน</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* รายการการแจ้งเตือน (คง UI เดิมไว้ทั้งหมด) */}
+                        <div className={`flex-1 px-4 pb-2 space-y-3 ${sheetHeight === "collapsed" ? "overflow-hidden" : "overflow-y-auto"}`}>
                             {items.length === 0 ? (
                                 <div className="text-center py-12 flex flex-col items-center justify-center">
                                     <div className="w-12 h-12 bg-bg border border-border rounded-2xl flex items-center justify-center mb-3 text-text-muted">
@@ -145,58 +289,55 @@ export default function NotificationBell() {
                                     <p className="text-xs font-semibold text-secondary">ยังไม่มีการแจ้งเตือน</p>
                                 </div>
                             ) : (
-                                items.map((item) => {
+                                displayedItems.map((item) => {
                                     const isRead = !!item.acknowledgedAt;
-                                    const hasImageError = imageErrors[item.id];
+
                                     return (
                                         <div
                                             key={item.id}
-                                            className={`rounded-2xl border p-3.5 transition-all ${
-                                                isRead ? "bg-surface border-border opacity-60" : "bg-red-500/5 border-red-200"
-                                            }`}
+                                            className={`rounded-2xl  shadow-xs border p-3 transition-all ${isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-red-500/5 border-red-200"}`}
                                         >
                                             <div className="flex items-start gap-3">
-                                                {/* รูป */}
-                                                <div className="w-12 h-12 rounded-xl bg-surface-subtle border border-border shrink-0 overflow-hidden flex items-center justify-center">
-                                                    {item.rawImageUrl && !hasImageError ? (
-                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                        <img
-                                                            src={item.rawImageUrl}
-                                                            alt="sample"
-                                                            onError={() => setImageErrors((prev) => ({ ...prev, [item.id]: true }))}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <ImageOff size={15} className="text-text-muted" />
-                                                    )}
-                                                </div>
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                    <div className="flex-1 min-w-0">
+                                                        {/* แถวเดียวกัน: สถานะปฏิเสธ (ซ้าย) + Code (ขวา) */}
+                                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                                            {item.code && (
+                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                    <FileScan size={12} className="text-text-muted shrink-0" />
+                                                                    <span className="font-medium text-text text-xs">{item.code}</span>
+                                                                </div>
+                                                            )}
 
-                                                <div className="flex-1 min-w-0">
-                                                    {/* หัว: สถานะปฏิเสธ + สถานที่ */}
-                                                    <div className="flex items-center gap-1.5 mb-1">
-                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md shrink-0">
-                                                            ถูกปฏิเสธ
-                                                        </span>
-                                                        {!isRead && <span className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />}
+                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                <span className="inline-flex items-center gap-1 text-xs font-bold text-text-danger bg-bg-danger border border-border-danger p-1 rounded-md shrink-0">
+                                                                    ถูกปฏิเสธ
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* CODE และ วันที่ */}
+                                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium mt-0.5">
+                                                            {item.code && (
+                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                    <MapPin size={12} className="shrink-0" />
+                                                                    <span className="font-medium text-text">{item.location?.name ?? "ไม่ทราบสถานที่"}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                <Calendar size={12} className="shrink-0" />
+                                                                <span>{formatDateTime(item.collectionTime)}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* เหตุผลการปฏิเสธ */}
+                                                        {item.reviewNote && (
+                                                            <p className="flex items-start gap-1.5 text-xs font-semibold text-text-danger mt-1.5 leading-relaxed bg-bg-danger p-1.5 rounded-lg border border-border-danger">
+                                                                <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                                                                <span>{item.reviewNote}</span>
+                                                            </p>
+                                                        )}
                                                     </div>
-
-                                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-text-primary min-w-0">
-                                                        <MapPin size={12} className="text-text-muted shrink-0" />
-                                                        <span className="truncate">{item.location?.name ?? "ไม่ทราบสถานที่"}</span>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1.5 text-xs text-text-muted mt-0.5">
-                                                        <Calendar size={11} className="shrink-0" />
-                                                        <span className="truncate">{formatDateTime(item.collectionTime)}</span>
-                                                    </div>
-
-                                                    {/* เหตุผล */}
-                                                    {item.reviewNote && (
-                                                        <p className="flex items-start gap-1.5 text-xs text-red-600 mt-2 leading-relaxed">
-                                                            <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                                                            <span>{item.reviewNote}</span>
-                                                        </p>
-                                                    )}
                                                 </div>
                                             </div>
 
@@ -207,11 +348,6 @@ export default function NotificationBell() {
                                                     disabled={ackingId === item.id}
                                                     className="w-full mt-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-surface border border-border text-text-secondary hover:bg-surface-subtle hover:text-text-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    {ackingId === item.id ? (
-                                                        <div className="w-3.5 h-3.5 border-2 border-text-muted border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <Check size={14} />
-                                                    )}
                                                     รับทราบ
                                                 </button>
                                             )}

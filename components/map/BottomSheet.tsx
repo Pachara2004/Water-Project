@@ -391,7 +391,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             <div className="space-y-5 mt-4">
                                 <div className="bg-card-general border border-border rounded-xl p-4">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-primary">ผลวิเคราะห์ล่าสุด</span>
+                                        <span className="text-xs font-semibold text-primary">ผลการวิเคราะห์ล่าสุด</span>
                                         <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-text">
@@ -473,7 +473,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                         latest.rainVolume !== null ||
                                         latest.weatherCondition !== null) && (
                                         <div className="bg-card-general border border-border rounded-2xl p-6">
-                                            <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">สภาพอากาศขณะเก็บตัวอย่าง</h4>
+                                            <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">ข้อมูลสภาพอากาศขณะเก็บตัวอย่าง</h4>
                                             <div className="grid grid-cols gap-3 text-center">
                                                 {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
                                                     <div className="bg-surface-subtle p-3 rounded-xl border border-border">
@@ -499,17 +499,17 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                         </div>
                                     )}
 
-                                <StandardsComparison title="การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน" rows={comparisonRows} />
+                                <StandardsComparison title="เกณฑ์มาตรฐานตามประเภทการใช้งาน" rows={comparisonRows} />
 
                                 {samplesArr.length > 0 && (
                                     <div className="bg-card-general border border-border rounded-2xl p-4">
                                         <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text-secondary">
                                             <Minus size={12} className="text-border" />
-                                            <span className="text-sm font-semibold text-text">สถานะพบบ่อยสุด:</span>
+                                            <span className="text-sm font-semibold text-text">สถานะที่พบสูงสุด:</span>
                                             <StatusBadge status={(modeStatus ?? "").toLowerCase() as any} size="md" />
                                             <Minus size={12} className="text-border" />
                                         </div>
-                                        <h4 className="text-xs font-semibold text-primary mb-1">บันทึกประวัติย้อนหลัง</h4>
+                                        <h4 className="text-xs font-semibold text-primary mb-1">ประวัติผลการตรวจวิเคราะห์</h4>
                                         <div className="space-y-3">
                                             {[...samplesArr]
                                                 .reverse()
