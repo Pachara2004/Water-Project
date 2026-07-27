@@ -3,9 +3,15 @@
 import { useState } from "react";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import liff from "@line/liff";
+import { useAppStore } from "@/lib/store";
+
+// สิทธิ์ส่งออกไฟล์ตรงกับ allowedRoles ของ /api/samples/export และ /export-csv
+// collector เข้าหน้าแดชบอร์ดได้แต่ส่งออกไม่ได้ ปุ่มจึงต้องไม่โผล่
+const EXPORT_ROLES = ["officer", "admin"];
 
 export default function ExportButtons({ className = "w-full" }: { className?: string }) {
     const [isExporting, setIsExporting] = useState<"csv" | "excel" | null>(null);
+    const currentUser = useAppStore((state) => state.currentUser);
 
     // 1. ฟังก์ชันส่งออกเป็นไฟล์ CSV
     const handleExportCSV = async () => {
@@ -67,6 +73,8 @@ export default function ExportButtons({ className = "w-full" }: { className?: st
             setIsExporting(null);
         }
     };
+
+    if (!currentUser || !EXPORT_ROLES.includes(currentUser.role)) return null;
 
     return (
         <div className={`grid grid-cols-2 gap-3 ${className}`}>
