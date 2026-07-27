@@ -272,8 +272,8 @@ liff.init({ liffId })
                     {step === 1 && (
                         <>
                             <div className="text-center space-y-2.5">
-                                <div className="w-14 h-14 text-primary rounded-xl flex items-center justify-center mx-auto border border-border/40 inset-shadow-sm shadow-sm mb-4">
-                                    <User size={36} strokeWidth={3} />
+                                <div className="w-14 h-14 text-primary flex items-center justify-center mx-auto">
+                                    <User size={56} strokeWidth={2} />
                                 </div>
                                 <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">ลงทะเบียนเข้าใช้งานครั้งแรก</h1>
                                 <p className="text-xs text-text leading-relaxed  mx-auto">กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำ</p>
@@ -282,16 +282,23 @@ liff.init({ liffId })
                             <form onSubmit={handleNextStep} className="mt-6">
                                 {/* ช่องกรอกชื่อจริง */}
                                 <div className="space-y-1 pb-1">
-                                    <label htmlFor="firstName" className="text-xs font-semibold text-primary block">
-                                        ชื่อจริง{" "}
-                                        <span className="text-text-danger" aria-hidden="true">
-                                            *
+                                    <div className="flex items-center justify-between">
+                                        <label htmlFor="firstName" className="text-xs font-semibold text-primary block">
+                                            ชื่อจริง{" "}
+                                            <span className="text-text-danger" aria-hidden="true">
+                                                *
+                                            </span>
+                                        </label>
+                                        {/* ตัวนับอักษร: เปลี่ยนเป็นสีแดงเมื่อครบ 50 ตัว */}
+                                        <span className={`text-xs font-semibold transition-colors ${firstName.length >= 50 ? "text-text-danger font-semibold" : "text-text-muted"}`}>
+                                            {firstName.length}/50
                                         </span>
-                                    </label>
+                                    </div>
                                     <div className="relative">
                                         <input
                                             id="firstName"
                                             type="text"
+                                            maxLength={50} // ล็อกไม่ให้พิมพ์เกิน 50 ตัว
                                             value={firstName}
                                             onChange={(e) => {
                                                 setFirstName(e.target.value);
@@ -300,31 +307,37 @@ liff.init({ liffId })
                                             placeholder="กรอกชื่อ"
                                             required
                                             aria-invalid={!!errors.firstName}
-                                            aria-describedby={errors.firstName ? "firstName-error" : undefined}
                                             className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
-                                    {/* จองพื้นที่ฟิกซ์ความสูงถาวรเพื่อป้องกันกล่องขยับตัวเด้งขึ้นเด้งลง */}
                                     <div className="h-4 flex items-center">
                                         {errors.firstName && (
-                                            <p id="firstName" role="alert" className="text-xs text-text-danger flex items-center gap-1">
+                                            <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
                                                 {errors.firstName}
                                             </p>
                                         )}
                                     </div>
                                 </div>
 
+                                {/* ช่องกรอกนามสกุล */}
                                 <div className="space-y-1 pb-1">
-                                    <label htmlFor="lastName" className="text-xs font-semibold text-primary block">
-                                        นามสกุล{" "}
-                                        <span className="text-text-danger" aria-hidden="true">
-                                            *
+                                    <div className="flex items-center justify-between">
+                                        <label htmlFor="lastName" className="text-xs font-semibold text-primary block">
+                                            นามสกุล{" "}
+                                            <span className="text-text-danger" aria-hidden="true">
+                                                *
+                                            </span>
+                                        </label>
+                                        {/* ตัวนับอักษร: เปลี่ยนเป็นสีแดงเมื่อครบ 50 ตัว */}
+                                        <span className={`text-xs font-semibold transition-colors ${lastName.length >= 50 ? "text-text-danger font-semibold" : "text-text-muted"}`}>
+                                            {lastName.length}/50
                                         </span>
-                                    </label>
+                                    </div>
                                     <div className="relative">
                                         <input
                                             id="lastName"
                                             type="text"
+                                            maxLength={50} // ล็อกไม่ให้พิมพ์เกิน 50 ตัว
                                             value={lastName}
                                             onChange={(e) => {
                                                 setLastName(e.target.value);
@@ -333,13 +346,12 @@ liff.init({ liffId })
                                             placeholder="กรอกนามสกุล"
                                             required
                                             aria-invalid={!!errors.lastName}
-                                            aria-describedby={errors.lastName ? "lastName-error" : undefined}
                                             className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     <div className="h-4 flex items-center">
                                         {errors.lastName && (
-                                            <p id="lastName" role="alert" className="text-xs text-text-danger flex items-center gap-1">
+                                            <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
                                                 {errors.lastName}
                                             </p>
                                         )}
@@ -348,19 +360,23 @@ liff.init({ liffId })
 
                                 {/* ช่องกรอกเบอร์โทรศัพท์ */}
                                 <div className="space-y-1">
-                                    <label htmlFor="phoneNumber" className="text-xs font-semibold text-primary block">
-                                        <div>
+                                    <div className="flex items-center justify-between">
+                                        <label htmlFor="phoneNumber" className="text-xs font-semibold text-primary block">
                                             เบอร์โทรศัพท์มือถือ{" "}
                                             <span className="text-text-danger" aria-hidden="true">
                                                 *
                                             </span>
-                                        </div>
-                                    </label>
+                                        </label>
+                                        {/* ตัวนับอักษร: เปลี่ยนเป็นสีแดงเมื่อครบ 10 ตัว */}
+                                        <span className={`text-xs font-semibold transition-colors ${phoneNumber.length >= 10 ? "text-text-danger font-semibold" : "text-text-muted"}`}>
+                                            {phoneNumber.length}/10
+                                        </span>
+                                    </div>
                                     <div className="relative">
                                         <input
                                             id="phoneNumber"
                                             type="tel"
-                                            maxLength={10}
+                                            maxLength={10} // ล็อกไม่ให้พิมพ์เกิน 10 ตัว
                                             value={phoneNumber}
                                             onChange={(e) => {
                                                 const numericVal = e.target.value.replace(/[^0-9]/g, "");
@@ -370,13 +386,12 @@ liff.init({ liffId })
                                             placeholder="0XXXXXXXXX"
                                             required
                                             aria-invalid={!!errors.phoneNumber}
-                                            aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
                                             className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
                                         />
                                     </div>
                                     <div className="h-4 flex items-center">
                                         {errors.phoneNumber && (
-                                            <p id="phoneNumber" role="alert" className="text-xs text-text-danger flex items-center gap-1">
+                                            <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
                                                 {errors.phoneNumber}
                                             </p>
                                         )}
