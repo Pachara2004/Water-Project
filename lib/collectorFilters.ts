@@ -14,7 +14,8 @@ export interface CollectorFilterState {
     startDate: string;
     endDate: string;
     sortDesc: boolean;
-    pageIndex: number;
+    /** เลขหน้าแบบ 1-based ผูกกับ query param `page` ของ /api/samples (ไม่ใช่ pageIndex 0-based ของ TanStack เหมือนเดิม) */
+    page: number;
 }
 
 export function readCollectorFilters(): CollectorFilterState | null {
@@ -32,7 +33,7 @@ export function readCollectorFilters(): CollectorFilterState | null {
             startDate: typeof parsed.startDate === "string" ? parsed.startDate : "",
             endDate: typeof parsed.endDate === "string" ? parsed.endDate : "",
             sortDesc: typeof parsed.sortDesc === "boolean" ? parsed.sortDesc : true,
-            pageIndex: Number.isInteger(parsed.pageIndex) && parsed.pageIndex >= 0 ? parsed.pageIndex : 0,
+            page: Number.isInteger(parsed.page) && parsed.page >= 1 ? parsed.page : 1,
         };
     } catch {
         return null;

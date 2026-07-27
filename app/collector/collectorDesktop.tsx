@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Camera, FileText, Calendar, Beaker, ImageOff, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check, ArrowLeft } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
-import { useCollectorFilters } from "@/lib/hooks/useCollectorFilters";
 import { CollectorProps } from "./collectorMobile";
 
 const statusOptions = [
@@ -15,12 +14,16 @@ const statusOptions = [
     { id: "danger", label: "อันตราย", color: "bg-bg-danger" },
 ];
 
-export default function CollectorDesktop({ samples, loading }: CollectorProps) {
+export default function CollectorDesktop(props: CollectorProps) {
     const { currentUser } = useAppStore();
     const router = useRouter();
 
     const {
-        table,
+        samples,
+        total,
+        page,
+        totalPages,
+        setPage,
         showOnlyMine,
         setShowOnlyMine,
         globalFilter,
@@ -31,10 +34,10 @@ export default function CollectorDesktop({ samples, loading }: CollectorProps) {
         setStartDate,
         endDate,
         setEndDate,
-        sorting,
+        sortDesc,
         toggleSortDirection,
         clearDateRange,
-    } = useCollectorFilters({ samples, currentUser, loading });
+    } = props;
 
     const [isDatePanelOpen, setIsDatePanelOpen] = useState(false);
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
@@ -59,11 +62,6 @@ export default function CollectorDesktop({ samples, loading }: CollectorProps) {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
-    const totalFilteredRecords = table.getFilteredRowModel().rows.length;
-    const displayedRows = table.getRowModel().rows;
-    const pageIndex = table.getState().pagination.pageIndex;
-    const pageCount = table.getPageCount();
 
     const isDateActive = Boolean(startDate || endDate);
 
@@ -277,18 +275,18 @@ export default function CollectorDesktop({ samples, loading }: CollectorProps) {
                         {/* Status Summary & Sort Order */}
                         <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-border">
                             <div className="text-text font-medium">
-                                พบทั้งหมด <span className="font-medium text-primary">{totalFilteredRecords}</span> รายการ
+                                พบทั้งหมด <span className="font-medium text-primary">{total}</span> รายการ
                             </div>
 
                             <button onClick={toggleSortDirection} className="flex items-center gap-1.5 cursor-pointer hover:text-text text-text transition-colors py-0.5 select-none font-medium">
-                                <span>เรียงตาม: {sorting[0]?.id === "collectedAt" && sorting[0]?.desc ? "ล่าสุดไปเก่าสุด" : "เก่าสุดไปล่าสุด"}</span>
-                                {sorting[0]?.id === "collectedAt" && (sorting[0]?.desc ? <ArrowDown size={14} className="text-primary" /> : <ArrowUp size={14} className="text-primary" />)}
+                                <span>เรียงตาม: {sortDesc ? "ล่าสุดไปเก่าสุด" : "เก่าสุดไปล่าสุด"}</span>
+                                {sortDesc ? <ArrowDown size={14} className="text-primary" /> : <ArrowUp size={14} className="text-primary" />}
                             </button>
                         </div>
 
                         {/* Records Render Area */}
                         {(() => {
-                            if (totalFilteredRecords === 0) {
+                            if (total === 0) {
                                 return (
                                     <div className="text-center p-12 bg-surface-subtle/40 rounded-2xl border border-border flex flex-col items-center justify-center">
                                         <div className="w-12 h-12 bg-card-general rounded-2xl flex items-center justify-center mb-3 text-text-muted border border-border shadow-xs">
@@ -304,8 +302,7 @@ export default function CollectorDesktop({ samples, loading }: CollectorProps) {
                                 <div className="space-y-6">
                                     {/* Desktop Grid Layout: 2 Columns */}
                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                        {displayedRows.map((row) => {
-                                            const sample = row.original;
+                                        {samples.map((sample) => {
                                             const hasImageError = imageErrors[sample.id];
 
                                             return (
@@ -386,22 +383,22 @@ export default function CollectorDesktop({ samples, loading }: CollectorProps) {
                                     </div>
 
                                     {/* Pagination Bar */}
-                                    {pageCount > 1 && (
+                                    {totalPages > 1 && (
                                         <div className="flex items-center justify-between border-t border-border pt-4 select-none">
                                             <div className="text-xs text-text-muted font-medium">
-                                                หน้า <span className="font-medium text-text">{pageIndex + 1}</span> จาก <span className="font-medium text-text">{pageCount}</span>
+                                                หน้า <span className="font-medium text-text">{page}</span> จาก <span className="font-medium text-text">{totalPages}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <button
-                                                    disabled={!table.getCanPreviousPage()}
-                                                    onClick={() => table.previousPage()}
+                                                    disabled={page <= 1}
+                                                    onClick={() => setPage(page - 1)}
                                                     className="px-4 py-2 text-xs font-medium rounded-xl border border-border bg-card-general text-text hover:bg-surface-subtle disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                                                 >
                                                     ก่อนหน้า
                                                 </button>
                                                 <button
-                                                    disabled={!table.getCanNextPage()}
-                                                    onClick={() => table.nextPage()}
+                                                    disabled={page >= totalPages}
+                                                    onClick={() => setPage(page + 1)}
                                                     className="px-4 py-2 text-xs font-medium rounded-xl border border-border bg-card-general text-text hover:bg-surface-subtle disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                                                 >
                                                     ถัดไป

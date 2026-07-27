@@ -10,6 +10,13 @@ import { isLowConfidence, evaluateSample } from "@/lib/standards";
 import { loadStandardsForParameters } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 import { generateSessionGroup } from "@/lib/sessionGroup";
+import { parsePageParams, pageResult } from "@/lib/pagination";
+
+/** ลำดับความรุนแรงของสถานะ ใช้หาค่า "แย่สุด" ของกลุ่มตัวอย่าง (หนึ่ง sessionGroup อาจมีหลายแถว หนึ่งแถวต่อสาร) */
+const STATUS_SEVERITY: Record<WaterStatus, number> = { safe: 0, warning: 1, danger: 2 };
+function worseStatus(a: WaterStatus, b: WaterStatus): WaterStatus {
+    return STATUS_SEVERITY[b] > STATUS_SEVERITY[a] ? b : a;
+}
 
 /**
  * FILENAME SANITIZER WITH DATE STAMP
@@ -57,7 +64,12 @@ async function generateSampleCode(tx: any, locationId: number, collectionTime: D
 const antiSpam = new Map<string, number>();
 
 // ==========================================
-// GET /api/samples — ประวัติผลตรวจ เวอร์ชันรวมกลุ่มตาม sessionGroup
+// GET /api/samples?search=&status=&startDate=&endDate=&sort=&mine=&page=&pageSize=
+// ประวัติผลตรวจ แบ่งหน้าระดับ "กลุ่ม" (sessionGroup) ไม่ใช่ระดับแถว เพราะ 1 กลุ่ม = หลายแถว (1 แถวต่อสาร)
+// แบ่งเป็น query 2 รอบ:
+//   รอบ 1 (เบา) — select แคบ ไม่ join หนัก ใช้ group/กรอง status/นับ/ตัดหน้า
+//   รอบ 2 (หนัก) — join เต็ม (location/collector/measurements) เฉพาะกลุ่มของหน้าที่ขอ
+// ข้อจำกัด: รอบ 1 ยังอ่านทุกแถวที่ตรง filter อยู่ดี (ต้องรู้ทุกแถวถึงจะนับ/group ถูก)
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
@@ -66,16 +78,78 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
+        const { searchParams } = new URL(request.url);
+        const search = searchParams.get("search")?.trim() ?? "";
+        const statusParam = searchParams.getAll("status").flatMap((s) => s.split(",")).filter(Boolean);
+        const selectedStatuses = new Set(statusParam.map((s) => s.toLowerCase()));
+        const startDate = searchParams.get("startDate");
+        const endDate = searchParams.get("endDate");
+        const sort = searchParams.get("sort") === "asc" ? "asc" : "desc";
+        const mine = searchParams.get("mine") === "true";
+        const pageParams = parsePageParams(searchParams, 10);
+
         const where: any = { isDeleted: false };
         if (auth.user!.roleName === "collector") {
             where.collectorId = auth.user!.id;
+        } else if (auth.user!.roleName === "admin" && mine) {
+            where.collectorId = auth.user!.id;
+        }
+
+        if (search) {
+            where.OR = [{ location: { stationName: { contains: search } } }, { code: { contains: search } }];
+        }
+
+        if (startDate || endDate) {
+            where.collectionTime = {};
+            if (startDate) where.collectionTime.gte = new Date(`${startDate}T00:00:00`);
+            if (endDate) where.collectionTime.lte = new Date(`${endDate}T23:59:59.999`);
         }
 
         const pendingGroups = await getPendingSessionGroups();
         const pendingSet = new Set(pendingGroups);
 
-        const samples = await prisma.waterSample.findMany({
+        // ─── รอบ 1: ฟิลด์เบา ใช้ group/กรอง status/เรียง/นับ/ตัดหน้า ───
+        const lightRows = await prisma.waterSample.findMany({
             where,
+            select: { id: true, sessionGroup: true, collectionTime: true, status: true },
+            orderBy: { collectionTime: sort },
+        });
+
+        // group ตาม sessionGroup — แถวที่เจอก่อน (ตามลำดับที่ query มาแล้ว) กำหนด collectionTime ของกลุ่ม
+        // เพราะ orderBy มาจาก DB แล้ว แถวแรกของกลุ่มจึงเป็นค่าปลายสุด (ล่าสุด/เก่าสุดตาม sort) เสมอ
+        const groupOrder: string[] = [];
+        const groupStatus = new Map<string, WaterStatus>();
+        for (const s of lightRows) {
+            const groupKey = s.sessionGroup || `single-${s.id}`;
+            const existing = groupStatus.get(groupKey);
+            if (existing === undefined) {
+                groupOrder.push(groupKey);
+                groupStatus.set(groupKey, s.status);
+            } else {
+                groupStatus.set(groupKey, worseStatus(existing, s.status));
+            }
+        }
+
+        // status filter เป็น group-level (แย่สุดของกลุ่ม) ต้องกรองหลัง group เสร็จเท่านั้น
+        const filteredGroupKeys = selectedStatuses.size > 0 ? groupOrder.filter((key) => selectedStatuses.has(groupStatus.get(key)!)) : groupOrder;
+
+        const total = filteredGroupKeys.length;
+        const pageGroupKeys = filteredGroupKeys.slice(pageParams.skip, pageParams.skip + pageParams.take);
+
+        if (pageGroupKeys.length === 0) {
+            return NextResponse.json(pageResult([], total, pageParams));
+        }
+
+        const pageGroupKeySet = new Set(pageGroupKeys);
+        const sessionGroupsInPage = pageGroupKeys.filter((k) => !k.startsWith("single-"));
+        const singleIdsInPage = pageGroupKeys.filter((k) => k.startsWith("single-")).map((k) => Number(k.replace("single-", "")));
+
+        // ─── รอบ 2: รายละเอียดเต็ม เฉพาะกลุ่มของหน้านี้ ───
+        const samples = await prisma.waterSample.findMany({
+            where: {
+                ...where,
+                OR: [...(sessionGroupsInPage.length > 0 ? [{ sessionGroup: { in: sessionGroupsInPage } }] : []), ...(singleIdsInPage.length > 0 ? [{ id: { in: singleIdsInPage } }] : [])],
+            },
             include: {
                 location: true,
                 collector: {
@@ -93,13 +167,14 @@ export async function GET(request: NextRequest) {
                     },
                 },
             },
-            orderBy: { collectionTime: "desc" },
+            orderBy: { collectionTime: sort },
         });
 
         const groupedSamples = new Map<string, any>();
 
         samples.forEach((s: any) => {
             const groupKey = s.sessionGroup || `single-${s.id}`;
+            if (!pageGroupKeySet.has(groupKey)) return; // เผื่อ search/date filter ของ where ดัก group อื่นติดมาด้วยจาก OR
 
             const currentMeasurements: Record<string, number> = {};
             s.measurements.forEach((m: any) => {
@@ -159,8 +234,10 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        const formattedSamples = Array.from(groupedSamples.values());
-        return NextResponse.json(formattedSamples);
+        // เรียงผลลัพธ์ตามลำดับ groupKeys จากรอบ 1 — รอบ 2 ใช้ OR หลายเงื่อนไข ลำดับที่ DB คืนมาไม่รับประกันตรงกับที่ตัดหน้าไว้
+        const formattedSamples = pageGroupKeys.map((key) => groupedSamples.get(key)).filter(Boolean);
+
+        return NextResponse.json(pageResult(formattedSamples, total, pageParams));
     } catch (error) {
         console.error("GET /api/samples error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" }, { status: 500 });

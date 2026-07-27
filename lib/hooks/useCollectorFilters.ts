@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, ColumnFiltersState, SortingState } from "@tanstack/react-table";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import liff from "@line/liff";
 import { readCollectorFilters, writeCollectorFilters, type CollectorFilterState } from "@/lib/collectorFilters";
 import type { CurrentUser } from "@/lib/store";
 
@@ -26,186 +28,151 @@ export interface CollectorSample {
 }
 
 interface UseCollectorFiltersArgs {
-    samples: CollectorSample[];
     currentUser: CurrentUser | null;
-    /** ยังโหลดข้อมูลไม่เสร็จ — ใช้รอจังหวะที่ปลอดภัยในการคืนหน้าที่เปิดค้างไว้ */
-    loading: boolean;
 }
 
+export type CollectorFiltersState = ReturnType<typeof useCollectorFilters>;
+
+const SEARCH_DEBOUNCE_MS = 400;
 const SAVE_DEBOUNCE_MS = 300;
+const PAGE_SIZE = 10;
 
-/* ตัวกรองทั้งหมดของหน้าประวัติผลตรวจ (/collector) รวมถึงการจำค่าไว้ข้ามการเปิดหน้ารายละเอียด
+/* ตัวกรอง + ข้อมูลทั้งหมดของหน้าประวัติผลตรวจ (/collector) รวมถึงการจำค่าไว้ข้ามการเปิดหน้ารายละเอียด
 
+   Hook นี้เป็นเจ้าของ fetch เอง (ตาม pattern ของ useDashboardAnalytics) — การกรอง/เรียง/แบ่งหน้า
+   ทั้งหมดเกิดที่ฝั่ง API (/api/samples) ไม่ใช่ในหน่วยความจำฝั่ง client แล้ว
    รวมไว้ที่เดียวเพราะลำดับการทำงานของ effect ในนี้ผูกกันแน่น (ดูคอมเมนต์แต่ละจุด)
    ถ้ากระจายอยู่ในหน้า 700 บรรทัด การย้ายบล็อกโค้ดสลับที่จะทำให้การกู้ค่าพังเงียบๆ */
-export function useCollectorFilters({ samples, currentUser, loading }: UseCollectorFiltersArgs) {
+export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
+    const [samples, setSamples] = useState<CollectorSample[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [page, setPage] = useState(1);
+
     const [showOnlyMine, setShowOnlyMine] = useState(true);
-
-    // ─── TanStack Table States ───
     const [globalFilter, setGlobalFilter] = useState("");
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [sorting, setSorting] = useState<SortingState>([{ id: "collectedAt", desc: true }]);
-
-    // ─── State สำหรับระบบ Multi-Select สถานะ (เก็บเป็น Array) ───
+    const [debouncedFilter, setDebouncedFilter] = useState("");
     const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-
-    // ─── States สำหรับระบบควบคุมช่วงเวลา (Date Range) ───
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [sortDesc, setSortDesc] = useState(true);
 
     // กันไม่ให้เขียนทับค่าที่เก็บไว้ด้วยค่าว่างตอน render แรก ก่อนจะกู้ค่าเดิมขึ้นมาสำเร็จ
+    // ยังกันไม่ให้ยิง fetch แรกด้วยค่า default ที่ไม่ตรงกับที่บันทึกไว้ (รอ restore เสร็จก่อนค่อย fetch ครั้งแรก)
     const [filtersRestored, setFiltersRestored] = useState(false);
-    // ค่าที่อ่านจาก storage รอบเดียวตอน mount — ใช้ร่วมกันระหว่างการกู้ตัวกรองกับการกู้หน้า
-    const savedFiltersRef = useRef<CollectorFilterState | null>(null);
-    // ค่าตัวกรองล่าสุด สำหรับเขียนทิ้งไว้ตอน unmount
     const latestFiltersRef = useRef<CollectorFilterState | null>(null);
-    const pageRestoredRef = useRef(false);
 
-    // ─── 1. เตรียมข้อมูล Data Source หลัก ───
-    // สวิตช์ "เฉพาะของฉัน" มีความหมายเฉพาะ admin เท่านั้น (เลือกดูของตัวเอง vs ดูทุกคน)
-    //   collector: API กรองเป็นของตัวเองอยู่แล้วเสมอ ไม่ต้องมีสวิตช์ก็เห็นแค่ของตัวเอง
-    //   officer: สิทธิ์อ่านอย่างเดียว ต้องเห็นข้อมูลทุกคนเสมอ ไม่มีแนวคิด "ของฉัน" เพราะไม่ได้เป็นคนเก็บตัวอย่าง
-    const tableData = useMemo(() => {
-        return samples
-            .filter((s) => !s.isDeleted)
-            .filter((s) => {
-                if (currentUser?.role === "admin") {
-                    return !showOnlyMine || s.collectedBy === currentUser?.id;
-                }
-                return s.collectedBy === currentUser?.id;
-            });
-    }, [samples, showOnlyMine, currentUser]);
-
-    // ─── 2. นิยามโครงสร้าง Columns พร้อม Custom Filter ฟังก์ชัน ───
-    const columns = useMemo(
-        () => [
-            {
-                accessorKey: "status",
-                header: "สถานะ",
-                // ฟังก์ชันคัดกรองแบบ Multi-select ตรวจสอบจาก Array
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                filterFn: (row: any, columnId: string, filterValue: string[]) => {
-                    if (!filterValue || filterValue.length === 0) return true;
-                    const rowStatus = row.getValue(columnId) as string;
-                    return filterValue.includes(rowStatus.toLowerCase());
-                },
-            },
-            {
-                accessorFn: (row: CollectorSample) => row.location?.name || "",
-                id: "locationName",
-                header: "ชื่อสถานที่",
-            },
-            {
-                accessorKey: "collectedAt",
-                header: "วันที่เก็บตัวอย่าง",
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                filterFn: (row: any, columnId: string, filterValue: [string, string]) => {
-                    const [start, end] = filterValue;
-                    if (!start && !end) return true;
-
-                    const rowDateStr = new Date(row.getValue(columnId)).toISOString().split("T")[0];
-                    const rowTime = new Date(rowDateStr).getTime();
-
-                    const startTime = start ? new Date(start).getTime() : -Infinity;
-                    const endTime = end ? new Date(end).getTime() : Infinity;
-
-                    return rowTime >= startTime && rowTime <= endTime;
-                },
-            },
-        ],
-        [],
-    );
-
-    // ─── 3. เรียกใช้งาน TanStack Table Engine ───
-    const table = useReactTable({
-        data: tableData,
-        columns,
-        state: {
-            globalFilter,
-            columnFilters,
-            sorting,
-        },
-        onGlobalFilterChange: setGlobalFilter,
-        onColumnFiltersChange: setColumnFilters,
-        onSortingChange: setSorting,
-        getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        initialState: {
-            pagination: {
-                pageSize: 10,
-            },
-        },
-    });
-
-    const pageIndex = table.getState().pagination.pageIndex;
-
-    /* ─── ลำดับของ effect ตั้งแต่นี้ลงไปมีผลต่อความถูกต้อง ห้ามสลับที่ ───
-       (ก) วันที่ และ (ข) สถานะ ส่งค่าเข้า TanStack และดีด pageIndex กลับเป็น 0
-       (ค) กู้ค่าจาก storage
-       (ง) กู้หน้าที่เปิดค้างไว้ ต้องอยู่หลัง (ก)/(ข) ไม่งั้นถูกดีดกลับเป็นหน้าแรก */
-
-    // (ก) ส่งฟิลเตอร์ช่วงวันที่เข้า TanStack
+    // หน่วงคำค้นหาก่อนยิง API — ทุกตัวอักษรที่พิมพ์คือ query DB ใหม่ ไม่ใช่การกรองในหน่วยความจำ
     useEffect(() => {
-        if (startDate || endDate) {
-            table.getColumn("collectedAt")?.setFilterValue([startDate, endDate]);
-        } else {
-            table.getColumn("collectedAt")?.setFilterValue(undefined);
-        }
-        table.setPageIndex(0);
-    }, [startDate, endDate, table]);
+        const timer = setTimeout(() => setDebouncedFilter(globalFilter), SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(timer);
+    }, [globalFilter]);
 
-    // (ข) ส่งฟิลเตอร์สถานะเข้า TanStack — ทางเข้าทางเดียวทั้งตอนผู้ใช้กดเลือกและตอนกู้ค่าคืน
-    useEffect(() => {
-        table.getColumn("status")?.setFilterValue(selectedStatuses.length === 0 ? undefined : selectedStatuses);
-    }, [selectedStatuses, table]);
-
-    // (ค) กู้ตัวกรองที่ค้างไว้ตอนกลับมาจากหน้ารายละเอียด
-    // กู้ใน effect ไม่ใช่ initial state เพื่อเลี่ยง hydration mismatch (sessionStorage ไม่มีตอน SSR)
-    // ระหว่างนี้หน้ายังโชว์ skeleton รอโหลดข้อมูลอยู่ ผู้ใช้จึงไม่เห็นตารางกะพริบก่อนถูกกรอง
+    // กู้ตัวกรองที่ค้างไว้ตอนกลับมาจากหน้ารายละเอียด — กู้ใน effect ไม่ใช่ initial state เพื่อเลี่ยง
+    // hydration mismatch (sessionStorage ไม่มีตอน SSR)
     useEffect(() => {
         const saved = readCollectorFilters();
-        savedFiltersRef.current = saved;
         if (saved) {
             setShowOnlyMine(saved.showOnlyMine);
             setGlobalFilter(saved.globalFilter);
+            setDebouncedFilter(saved.globalFilter);
             setSelectedStatuses(saved.selectedStatuses);
             setStartDate(saved.startDate);
             setEndDate(saved.endDate);
-            setSorting([{ id: "collectedAt", desc: saved.sortDesc }]);
+            setSortDesc(saved.sortDesc);
+            setPage(saved.page);
         }
         setFiltersRestored(true);
     }, []);
 
-    // (ง) คืนหน้าที่เปิดค้างไว้ — ต้องรอจนข้อมูลโหลดเสร็จ ไม่งั้น TanStack จะหนีบ pageIndex กลับเป็น 0
-    // เพราะตอนนั้นตารางยังไม่มีแถวให้แบ่งหน้าเลย
+    /* ตัวกรองทุกตัวย้ายไปทำงานฝั่ง server แล้ว การเปลี่ยนค่าจึงต้องดีดกลับหน้า 1 เสมอ
+       ไม่งั้นจะค้างอยู่หน้าที่ชุดผลลัพธ์ใหม่ไม่มี แล้วเห็นรายการว่าง
+       ไม่รวม page ในรายการที่รีเซ็ต เพราะการกู้ค่าหน้าที่เปิดค้างไว้ก็เดินผ่าน setPage เหมือนกัน (ด้านบน) */
     useEffect(() => {
-        if (!filtersRestored || loading || pageRestoredRef.current) return;
-        pageRestoredRef.current = true;
-        const saved = savedFiltersRef.current;
-        if (saved && saved.pageIndex > 0) table.setPageIndex(saved.pageIndex);
-    }, [filtersRestored, loading, table]);
+        if (!filtersRestored) return;
+        setPage(1);
+    }, [showOnlyMine, debouncedFilter, JSON.stringify(selectedStatuses), startDate, endDate, sortDesc, filtersRestored]);
+
+    useEffect(() => {
+        if (!filtersRestored || !currentUser) return;
+
+        // ยกเลิก request เก่าเวลาสลับ filter/หน้าเร็วๆ — กัน response เก่าที่มาช้ากว่ามาทับผลลัพธ์ปัจจุบัน
+        const controller = new AbortController();
+        setLoading(true);
+
+        const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), sort: sortDesc ? "desc" : "asc" });
+        if (debouncedFilter) params.set("search", debouncedFilter);
+        if (startDate) params.set("startDate", startDate);
+        if (endDate) params.set("endDate", endDate);
+        selectedStatuses.forEach((s) => params.append("status", s));
+        // "เฉพาะของฉัน" มีความหมายเฉพาะ admin (เลือกดูของตัวเอง vs ดูทุกคน) — collector เห็นแค่ของตัวเองอยู่แล้วจาก API เสมอ
+        if (currentUser.role === "admin" && showOnlyMine) params.set("mine", "true");
+
+        fetch(`/api/samples?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
+            signal: controller.signal,
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error("ไม่สามารถโหลดข้อมูลประวัติผลน้ำได้");
+                return res.json();
+            })
+            .then((data) => {
+                const items = Array.isArray(data.items) ? data.items : [];
+                const mapped: CollectorSample[] = items.map((s: any) => ({
+                    id: s.id,
+                    locationId: s.locationId,
+                    status: s.status,
+                    collectedAt: s.collectionTime,
+                    collectedBy: s.collectorId,
+                    imageUrl: s.rawImageUrl,
+                    imagePlotUrl: s.analyzedPlotUrl,
+                    isDeleted: s.isDeleted,
+                    updatedBy: s.lastModifiedBy,
+
+                    ...s,
+
+                    location: s.location
+                        ? {
+                              id: s.locationId,
+                              name: s.location.name,
+                              organization: s.location.organization,
+                          }
+                        : null,
+                }));
+                setSamples(mapped);
+                setTotal(data.total ?? 0);
+                setTotalPages(data.totalPages ?? 0);
+
+                // หน้าที่เปิดอยู่อาจเกินจำนวนจริงหลังตัวกรองเปลี่ยน (เช่น กู้ค่าหน้า 5 มาจาก storage
+                // แต่ค้นหาแล้วเหลือแค่ 2 หน้า) — เลื่อนไปหน้าสุดท้ายที่ยังมีจริง
+                if (data.totalPages > 0 && page > data.totalPages) {
+                    setPage(data.totalPages);
+                } else if (data.totalPages === 0 && page !== 1) {
+                    setPage(1);
+                }
+            })
+            .catch((err) => {
+                if (err.name === "AbortError") return;
+                console.error(err);
+            })
+            .finally(() => setLoading(false));
+
+        return () => controller.abort();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filtersRestored, currentUser, page, sortDesc, debouncedFilter, startDate, endDate, JSON.stringify(selectedStatuses), showOnlyMine]);
 
     // เก็บตัวกรองปัจจุบันทุกครั้งที่เปลี่ยน
     // หน่วงไว้เพราะ sessionStorage.setItem เป็น API แบบ synchronous — ถ้าเขียนทุกตัวอักษรที่พิมพ์ในช่องค้นหา
     // จะไปบล็อก main thread ถี่ๆ บนเครื่องช้า และเราไม่ได้ต้องการความสดระดับ keystroke อยู่แล้ว
     useEffect(() => {
         if (!filtersRestored) return;
-        const payload: CollectorFilterState = {
-            showOnlyMine,
-            globalFilter,
-            selectedStatuses,
-            startDate,
-            endDate,
-            sortDesc: !!sorting[0]?.desc,
-            pageIndex,
-        };
+        const payload: CollectorFilterState = { showOnlyMine, globalFilter, selectedStatuses, startDate, endDate, sortDesc, page };
         latestFiltersRef.current = payload;
 
         const timer = setTimeout(() => writeCollectorFilters(payload), SAVE_DEBOUNCE_MS);
         return () => clearTimeout(timer);
-    }, [filtersRestored, showOnlyMine, globalFilter, selectedStatuses, startDate, endDate, sorting, pageIndex]);
+    }, [filtersRestored, showOnlyMine, globalFilter, selectedStatuses, startDate, endDate, sortDesc, page]);
 
     // เขียนค่าล่าสุดทิ้งไว้ตอนออกจากหน้า — ถ้าผู้ใช้เปลี่ยนตัวกรองแล้วกดดูรายละเอียดภายในช่วงหน่วง
     // cleanup ด้านบนจะล้าง timer ทิ้งก่อนได้เขียน การเปลี่ยนครั้งสุดท้ายจะหายไปเฉยๆ
@@ -217,10 +184,9 @@ export function useCollectorFilters({ samples, currentUser, loading }: UseCollec
 
     // ─── Handlers ───
 
-    // ติ๊กเลือก/เอาออกสถานะแบบ Multi-Select — ค่าถูกส่งต่อเข้า TanStack ด้วย effect (ข)
+    // ติ๊กเลือก/เอาออกสถานะแบบ Multi-Select
     const handleStatusToggle = (status: string) => {
         setSelectedStatuses((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]));
-        table.setPageIndex(0);
     };
 
     const clearDateRange = () => {
@@ -228,13 +194,15 @@ export function useCollectorFilters({ samples, currentUser, loading }: UseCollec
         setEndDate("");
     };
 
-    const toggleSortDirection = () => {
-        const isDesc = sorting[0]?.id === "collectedAt" && sorting[0]?.desc;
-        setSorting([{ id: "collectedAt", desc: !isDesc }]);
-    };
+    const toggleSortDirection = () => setSortDesc((prev) => !prev);
 
     return {
-        table,
+        samples,
+        loading,
+        total,
+        page,
+        totalPages,
+        setPage,
         showOnlyMine,
         setShowOnlyMine,
         globalFilter,
@@ -245,7 +213,7 @@ export function useCollectorFilters({ samples, currentUser, loading }: UseCollec
         setStartDate,
         endDate,
         setEndDate,
-        sorting,
+        sortDesc,
         toggleSortDirection,
         clearDateRange,
     };
