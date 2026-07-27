@@ -28,7 +28,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export async function POST(request: NextRequest) {
     try {
         // SECURITY STEP 1: ตรวจสิทธิ์ Token LINE
-        const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
+        // officer (ผู้บริหาร) ไม่มีสิทธิ์ — เป็นสิทธิ์อ่านอย่างเดียว ไม่มีขั้นตอนไหนที่ต้องอัปโหลดไฟล์
+        const auth = await verifyAuth(request, ["collector", "admin"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }

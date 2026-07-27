@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
     }
     antiSpam.set(spamKey, Date.now());
 
-    const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
+    // เส้นนี้ป้อนหน้า /submit เท่านั้น — officer (ผู้บริหาร) ไม่มีสิทธิ์ส่งตรวจจึงไม่ต้องวิเคราะห์ภาพ
+    const auth = await verifyAuth(request, ["collector", "admin"]);
     if (!auth.isValid) {
         return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
     }

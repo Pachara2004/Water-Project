@@ -73,7 +73,8 @@ const antiSpam = new Map<string, number>();
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
-        const auth = await verifyAuth(request, ["collector", "admin", "officer"]);
+        // เส้นนี้ป้อนหน้า /collector เท่านั้น — officer (ผู้บริหาร) ไม่มีสิทธิ์ ใช้ /api/dashboard/widgets แทน
+        const auth = await verifyAuth(request, ["collector", "admin"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }

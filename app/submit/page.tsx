@@ -35,9 +35,14 @@ function SubmitContent() {
         handleSave,
         resetToUpload,
         processImageExif,
+        currentUser,
     } = hook;
 
     const isMobile = useMediaQuery("(max-width: 767px)");
+
+    // หน้านี้เฉพาะ collector กับ admin — การเด้งออกทำใน useSubmitSample (useEffect)
+    // แต่ effect ทำงานหลัง paint แรก จึงต้องกันตอน render ด้วย ไม่งั้นคนไม่มีสิทธิ์เห็นฟอร์มแวบหนึ่ง
+    const isAllowed = !currentUser || currentUser.role === "collector" || currentUser.role === "admin";
 
     useEffect(() => {
         document.documentElement.classList.add("reserve-scrollbar-gutter");
@@ -141,6 +146,8 @@ function SubmitContent() {
         savedSampleId,
         router,
     };
+
+    if (!isAllowed) return null;
 
     return isMobile ? <SubmitMobile {...submitProps} /> : <SubmitDesktop {...submitProps} />;
 }
