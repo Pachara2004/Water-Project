@@ -6,6 +6,7 @@ import { ClipboardCheck } from "lucide-react";
 import { StatusTabs, RequestCard, RejectDrawer, ImageLightbox, type ReviewStatusFilter, type ReviewRequestItem, type PreviewImages } from "@/components/manage/reviewRequestsHelpers";
 import { ReviewRequestCardSkeleton } from "./loading";
 import PageHeader from "@/components/PageHeader";
+import PaginationBar from "@/components/PaginationBar";
 
 export interface ReviewRequestsPageProps {
     router: ReturnType<typeof useRouter>;
@@ -14,7 +15,11 @@ export interface ReviewRequestsPageProps {
     tab: ReviewStatusFilter;
     setTab: (v: ReviewStatusFilter) => void;
 
+    /** คำร้องของหน้าปัจจุบันเท่านั้น — แบ่งหน้ามาจากฝั่ง API แล้ว */
     requests: ReviewRequestItem[];
+    page: number;
+    totalPages: number;
+    setPage: (p: number) => void;
     isLoadingRequests: boolean;
 
     actingId: number | null;
@@ -34,7 +39,7 @@ export interface ReviewRequestsPageProps {
 }
 
 export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
-    const { router, toastElement, tab, setTab, requests, isLoadingRequests, actingId, previewImages, setPreviewImages, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
+    const { router, toastElement, tab, setTab, requests, page, totalPages, setPage, isLoadingRequests, actingId, previewImages, setPreviewImages, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
@@ -71,6 +76,8 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                             <RequestCard key={item.id} item={item} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} mobile />
                         ))
                     )}
+
+                    {!isLoadingRequests && <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />}
                 </div>
             </div>
 

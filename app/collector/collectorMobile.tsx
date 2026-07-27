@@ -6,12 +6,9 @@ import { useRouter } from "next/navigation";
 import { Camera, FileText, Calendar, Beaker, MapPin, FileScan, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
-import { useCollectorFilters, type CollectorSample } from "@/lib/hooks/useCollectorFilters";
+import type { CollectorFiltersState } from "@/lib/hooks/useCollectorFilters";
 
-export interface CollectorProps {
-    samples: CollectorSample[];
-    loading: boolean;
-}
+export type CollectorProps = CollectorFiltersState;
 
 const statusOptions = [
     { id: "safe", label: "ปลอดภัย", color: "bg-bg-safe" },
@@ -19,13 +16,17 @@ const statusOptions = [
     { id: "danger", label: "อันตราย", color: "bg-bg-danger" },
 ];
 
-export default function CollectorMobile({ samples, loading }: CollectorProps) {
+export default function CollectorMobile(props: CollectorProps) {
     const { currentUser } = useAppStore();
     const router = useRouter();
 
-    // ตัวกรองทั้งหมด + ตาราง + การจำค่าไว้ข้ามการเปิดหน้ารายละเอียด อยู่ในฮุกตัวเดียว
+    // ตัวกรอง + ข้อมูล + การจำค่าไว้ข้ามการเปิดหน้ารายละเอียด มาจาก useCollectorFilters ทั้งก้อน (ผูกกับ props ที่ page.tsx ส่งมา)
     const {
-        table,
+        samples,
+        total,
+        page,
+        totalPages,
+        setPage,
         showOnlyMine,
         setShowOnlyMine,
         globalFilter,
@@ -36,10 +37,10 @@ export default function CollectorMobile({ samples, loading }: CollectorProps) {
         setStartDate,
         endDate,
         setEndDate,
-        sorting,
+        sortDesc,
         toggleSortDirection,
         clearDateRange,
-    } = useCollectorFilters({ samples, currentUser, loading });
+    } = props;
 
     // ─── State สำหรับควบคุมป็อปอัปช่วงเวลา / Dropdown สถานะ (เรื่อง UI ล้วน ไม่เกี่ยวกับค่าที่ถูกจำ) ───
     const [isDatePanelOpen, setIsDatePanelOpen] = useState(false);
@@ -66,11 +67,6 @@ export default function CollectorMobile({ samples, loading }: CollectorProps) {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
-    const totalFilteredRecords = table.getFilteredRowModel().rows.length;
-    const displayedRows = table.getRowModel().rows;
-    const pageIndex = table.getState().pagination.pageIndex;
-    const pageCount = table.getPageCount();
 
     const isDateActive = startDate || endDate;
 
@@ -272,19 +268,17 @@ export default function CollectorMobile({ samples, loading }: CollectorProps) {
 
                         {/* สรุปข้อมูลผลลัพธ์และระบบสลับ ล่าสุด/เก่าสุด */}
                         <div className="flex items-center justify-between text-xs text-text-muted  px-0.5 pt-1 border-t border-border">
-                            <div className="text-text">พบ {totalFilteredRecords} รายการ</div>
+                            <div className="text-text">พบ {total} รายการ</div>
 
                             <div onClick={toggleSortDirection} className="flex items-center gap-1 cursor-pointer hover:text-text text-text transition-colors py-0.5 select-none">
-                                <span>{sorting[0]?.id === "collectedAt" && sorting[0]?.desc ? "ล่าสุด" : "เก่าสุด"}</span>
-                                <div className="flex items-center text-text-muted">
-                                    {sorting[0]?.id === "collectedAt" && (sorting[0]?.desc ? <ArrowDown size={13} className="text-text" /> : <ArrowUp size={13} className="text-text" />)}
-                                </div>
+                                <span>{sortDesc ? "ล่าสุด" : "เก่าสุด"}</span>
+                                <div className="flex items-center text-text-muted">{sortDesc ? <ArrowDown size={13} className="text-text" /> : <ArrowUp size={13} className="text-text" />}</div>
                             </div>
                         </div>
                     </div>
                     {/* Content Core Render */}
                     {(() => {
-                        if (totalFilteredRecords === 0) {
+                        if (total === 0) {
                             return (
                                 <div className="text-center p-10 bg-card-general rounded-2xl border border-border flex flex-col items-center justify-center">
                                     <div className="w-10 h-10 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
@@ -300,8 +294,7 @@ export default function CollectorMobile({ samples, loading }: CollectorProps) {
                             <div className="space-y-4">
                                 {/* รายการประวัติแบบการ์ดประมวลผล */}
                                 <div className="flex flex-col gap-3">
-                                    {displayedRows.map((row) => {
-                                        const sample = row.original;
+                                    {samples.map((sample) => {
                                         return (
                                             <div
                                                 key={sample.id}
@@ -384,22 +377,22 @@ export default function CollectorMobile({ samples, loading }: CollectorProps) {
                                 </div>
 
                                 {/* Pagination Controls */}
-                                {pageCount > 1 && (
+                                {totalPages > 1 && (
                                     <div className="flex items-center justify-between border-t border-border pt-4 mt-2 select-none">
                                         <div className="text-xs text-text-muted font-medium">
-                                            หน้า <span className="font-bold text-text">{pageIndex + 1}</span> จาก <span className="font-bold text-text">{pageCount}</span>
+                                            หน้า <span className="font-bold text-text">{page}</span> จาก <span className="font-bold text-text">{totalPages}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <button
-                                                disabled={!table.getCanPreviousPage()}
-                                                onClick={() => table.previousPage()}
+                                                disabled={page <= 1}
+                                                onClick={() => setPage(page - 1)}
                                                 className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
                                             >
                                                 ก่อนหน้า
                                             </button>
                                             <button
-                                                disabled={!table.getCanNextPage()}
-                                                onClick={() => table.nextPage()}
+                                                disabled={page >= totalPages}
+                                                onClick={() => setPage(page + 1)}
                                                 className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer "
                                             >
                                                 ถัดไป

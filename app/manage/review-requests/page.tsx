@@ -26,20 +26,34 @@ export default function AdminReviewRequestsPage() {
     const [isLoadingRequests, setIsLoadingRequests] = useState(false);
     const [actingId, setActingId] = useState<number | null>(null);
 
+    // การแบ่งหน้าเกิดที่ฝั่ง API — `requests` คือคำร้องของหน้าปัจจุบันเท่านั้น
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+
     // Reject drawer — reason ต้องกรอกเสมอก่อนส่ง (บังคับที่ API ด้วย)
     const [rejectTarget, setRejectTarget] = useState<ReviewRequestItem | null>(null);
     const [rejectNote, setRejectNote] = useState("");
     const [rejectSaving, setRejectSaving] = useState(false);
 
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
-    const fetchRequests = useCallback(async (status: ReviewStatusFilter, silent = false) => {
+    const fetchRequests = useCallback(async (status: ReviewStatusFilter, targetPage: number, silent = false) => {
         if (!silent) setIsLoadingRequests(true);
         try {
-            const res = await fetch(`/api/review-requests?status=${status}`, {
+            const res = await fetch(`/api/review-requests?status=${status}&page=${targetPage}`, {
                 headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
             });
             const data = await res.json();
-            setRequests(Array.isArray(data) ? data : []);
+            if (!res.ok) throw new Error(data?.error);
+
+            setRequests(Array.isArray(data.items) ? data.items : []);
+            setTotalPages(data.totalPages ?? 0);
+
+            // หน้าที่เปิดอยู่อาจหายไปหลังอนุมัติ/ปฏิเสธคำร้องสุดท้ายของหน้า — เลื่อนไปหน้าสุดท้ายที่ยังมีจริง
+            if (data.totalPages > 0 && targetPage > data.totalPages) {
+                setPage(data.totalPages);
+            } else if (data.totalPages === 0 && targetPage !== 1) {
+                setPage(1);
+            }
         } catch (err) {
             console.error("Failed to fetch review requests:", err);
             setRequests([]);
@@ -51,11 +65,17 @@ export default function AdminReviewRequestsPage() {
     useEffect(() => {
         if (currentUser?.role === "admin") {
             const timer = setTimeout(() => {
-                fetchRequests(tab);
+                fetchRequests(tab, page);
             }, 0);
             return () => clearTimeout(timer);
         }
-    }, [currentUser?.role, tab, fetchRequests]);
+    }, [currentUser?.role, tab, page, fetchRequests]);
+
+    // สลับแท็บ = ชุดผลลัพธ์คนละชุด ต้องกลับหน้า 1 ไม่งั้นค้างอยู่หน้าที่แท็บใหม่อาจไม่มี
+    const changeTab = (v: ReviewStatusFilter) => {
+        setTab(v);
+        setPage(1);
+    };
 
     // จองพื้นที่ scrollbar ไว้ตลอด — กัน layout ขยับตอน SweetAlert (approve/reject) lock scroll บนหน้าที่ไม่มี scrollbar
     useEffect(() => {
@@ -87,7 +107,7 @@ export default function AdminReviewRequestsPage() {
             if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการอนุมัติคำร้อง");
 
             showToast(`อนุมัติผลตรวจของ "${item.location?.name ?? "จุดตรวจ"}" แล้ว`, "success");
-            fetchRequests(tab, true);
+            fetchRequests(tab, page, true);
             refreshNavDots();
         } catch (err) {
             alertError("อนุมัติไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
@@ -116,7 +136,7 @@ export default function AdminReviewRequestsPage() {
 
             showToast(`ปฏิเสธผลตรวจของ "${rejectTarget.location?.name ?? "จุดตรวจ"}" แล้ว`, "danger");
             setRejectTarget(null);
-            fetchRequests(tab, true);
+            fetchRequests(tab, page, true);
             refreshNavDots();
         } catch (err) {
             alertError("ปฏิเสธไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
@@ -148,8 +168,11 @@ export default function AdminReviewRequestsPage() {
         router,
         toastElement,
         tab,
-        setTab,
+        setTab: changeTab,
         requests,
+        page,
+        totalPages,
+        setPage,
         isLoadingRequests,
         actingId,
         previewImages,

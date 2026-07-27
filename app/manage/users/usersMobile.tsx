@@ -4,6 +4,7 @@ import type { useRouter } from "next/navigation";
 import { Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { type Role, type UserItem, UserListRow } from "@/components/manage/usersHelpers";
+import PaginationBar from "@/components/PaginationBar";
 
 export interface UsersPageProps {
     router: ReturnType<typeof useRouter>;
@@ -18,7 +19,13 @@ export interface UsersPageProps {
     isDesc: boolean;
     setIsDesc: (v: boolean) => void;
 
-    processedUsers: UserItem[];
+    /** แถวของหน้าปัจจุบันเท่านั้น — กรองและเรียงมาจากฝั่ง API แล้ว ห้ามกรองซ้ำที่นี่ */
+    users: UserItem[];
+    /** จำนวนทั้งหมดหลังกรอง (ทุกหน้ารวมกัน) */
+    total: number;
+    page: number;
+    totalPages: number;
+    setPage: (p: number) => void;
 
     updating: number | null;
     openDropdown: number | null;
@@ -33,7 +40,7 @@ export interface UsersPageProps {
 }
 
 export default function UsersMobile(props: UsersPageProps) {
-    const { router, toastElement, stats, tab, setTab, search, setSearch, isDesc, setIsDesc, processedUsers, updating, openDropdown, setOpenDropdown, rejectingAll, handleRejectAll, handleRoleChange, handleApprove, handleReject } =
+    const { router, toastElement, stats, tab, setTab, search, setSearch, isDesc, setIsDesc, users, total, page, totalPages, setPage, updating, openDropdown, setOpenDropdown, rejectingAll, handleRejectAll, handleRoleChange, handleApprove, handleReject } =
         props;
 
     return (
@@ -77,7 +84,7 @@ export default function UsersMobile(props: UsersPageProps) {
                             <h2 className="text-sm uppercase text-primary font-bold tracking-wider">บัญชีผู้ใช้งาน</h2>
                         </div>
 
-                        {tab === "queue" && processedUsers.length > 0 && (
+                        {tab === "queue" && stats.pending > 0 && (
                             <button
                                 onClick={handleRejectAll}
                                 disabled={rejectingAll}
@@ -121,7 +128,7 @@ export default function UsersMobile(props: UsersPageProps) {
 
                     {/* แถบสรุปผลลัพธ์และปุ่มสลับการเรียงลำดับ */}
                     <div className="flex items-center justify-between text-xs text-text-secondary px-0.5 pt-1 border-t border-border">
-                        <div className="text-text-secondary">พบ {processedUsers.length} บัญชี</div>
+                        <div className="text-text-secondary">พบ {total} บัญชี</div>
 
                         <div onClick={() => setIsDesc(!isDesc)} className="flex items-center gap-1 cursor-pointer hover:text-text-primary text-text-secondary transition-colors py-0.5 select-none">
                             <span>{isDesc ? "ลงทะเบียนล่าสุด" : "ลงทะเบียนเก่าสุด"}</span>
@@ -133,7 +140,7 @@ export default function UsersMobile(props: UsersPageProps) {
 
                     {/* ─── 3. Content Core Render (List รายการ) ─── */}
                     <div className="space-y-3 pt-2">
-                        {processedUsers.length === 0 ? (
+                        {users.length === 0 ? (
                             <div className="text-center p-10 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center">
                                 <div className="w-10 h-10 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
                                     {tab === "queue" ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Users size={18} />}
@@ -143,7 +150,7 @@ export default function UsersMobile(props: UsersPageProps) {
                             </div>
                         ) : (
                             <div className="flex flex-col gap-3">
-                                {processedUsers.map((user) => (
+                                {users.map((user) => (
                                     <UserListRow
                                         key={user.id}
                                         user={user}
@@ -158,6 +165,8 @@ export default function UsersMobile(props: UsersPageProps) {
                                 ))}
                             </div>
                         )}
+
+                        <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
                     </div>
                 </div>
             </div>

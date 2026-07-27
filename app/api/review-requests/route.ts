@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { ReviewStatus } from "@prisma/client";
+import { parsePageParams, pageResult } from "@/lib/pagination";
 
 const VALID_STATUSES: ReviewStatus[] = ["pending", "approved", "rejected"];
 
 // ==========================================
-// GET /api/review-requests?status=pending — กล่องคำร้องสำหรับ admin ตัดสิน
+// GET /api/review-requests?status=pending&page=&pageSize= — กล่องคำร้องสำหรับ admin ตัดสิน
 // เฉพาะ admin เท่านั้น | ไม่ระบุ status = default "pending" (ใช้ index บน statusRequest)
+// คืน { items, total, page, pageSize, totalPages } ไม่ใช่ array เปล่า
+// การดึง sample/ผู้ตัดสินจะเกิดเฉพาะคำร้องของหน้าที่ขอเท่านั้น (ไม่ใช่ทุกคำร้องใน status นั้น)
 // ==========================================
 export async function GET(request: NextRequest) {
     const auth = await verifyAuth(request, ["admin"]);
@@ -19,16 +22,29 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const statusParam = searchParams.get("status");
         const status: ReviewStatus = VALID_STATUSES.includes(statusParam as ReviewStatus) ? (statusParam as ReviewStatus) : "pending";
+        const pageParams = parsePageParams(searchParams, 10);
 
-        const reviewRequests = await prisma.reviewRequest.findMany({
-            where: { statusRequest: status },
-            orderBy: { createdAt: "asc" }, // คำร้องค้างนานสุดควรถูกตัดสินก่อน
-        });
+        const where = { statusRequest: status };
+
+        // นับพร้อมกันใน transaction เดียว เพื่อให้ total กับ items มาจาก snapshot เดียวกัน
+        const [reviewRequests, total] = await prisma.$transaction([
+            prisma.reviewRequest.findMany({
+                where,
+                // เรียงด้วย id ไม่ใช่ createdAt เพราะ id เป็น primary key ที่มี index อยู่แล้ว
+                // ใช้แทนกันได้เพราะ createdAt เป็น @default(now()) ที่ไม่มีโค้ดไหนเขียนทับ ลำดับจึงตรงกันเสมอ
+                // asc = คำร้องค้างนานสุดถูกตัดสินก่อน (เจตนาเดิม)
+                orderBy: { id: "asc" },
+                skip: pageParams.skip,
+                take: pageParams.take,
+            }),
+            prisma.reviewRequest.count({ where }),
+        ]);
 
         if (reviewRequests.length === 0) {
-            return NextResponse.json([]);
+            return NextResponse.json(pageResult([], total, pageParams));
         }
 
+        // เฉพาะคำร้องของหน้านี้ (~10 กลุ่ม) — ตัวที่ทำให้ query ด้านล่างไม่โตตามจำนวนคำร้องสะสมทั้งหมด
         const sessionGroups = reviewRequests.map((r) => r.sessionGroup);
 
         // ดึงข้อมูล sample ที่เกี่ยวข้องทั้งหมดมาครั้งเดียว (กัน N+1 ต่อคำร้อง)
@@ -98,7 +114,7 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        return NextResponse.json(result);
+        return NextResponse.json(pageResult(result, total, pageParams));
     } catch (error) {
         console.error("GET /api/review-requests error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงรายการคำร้องขอตรวจสอบ" }, { status: 500 });
