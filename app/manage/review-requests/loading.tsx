@@ -34,7 +34,7 @@ export default function Loading() {
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased animate-pulse">
             {/* Top Bar Mock */}
             <div className="bg-card-general border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10 h-11">
-                <div className="flex items-center gap-1.5 text-xs text-secondary opacity-50">
+                <div className="flex items-center gap-1.5 text-xs text-text opacity-50 font-semibold">
                     <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
                 </div>
                 <div className="h-4 bg-surface-subtle rounded w-44" />

@@ -56,7 +56,14 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
 
             {/* Reject drawer — บังคับกรอกเหตุผลก่อนส่ง */}
             {rejectTarget && (
-                <RejectDrawer rejectTarget={rejectTarget} rejectNote={rejectNote} setRejectNote={setRejectNote} rejectSaving={rejectSaving} onClose={() => setRejectTarget(null)} onSubmit={submitReject} />
+                <RejectDrawer
+                    rejectTarget={rejectTarget}
+                    rejectNote={rejectNote}
+                    setRejectNote={setRejectNote}
+                    rejectSaving={rejectSaving}
+                    onClose={() => setRejectTarget(null)}
+                    onSubmit={submitReject}
+                />
             )}
             {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}
             {/* Toast */}

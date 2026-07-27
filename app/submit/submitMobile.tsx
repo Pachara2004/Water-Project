@@ -153,10 +153,10 @@ export default function SubmitMobile(props: any) {
                                 <button
                                     onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                     className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
-                                        needsAdminReview ? "bg-bg-warning hover:bg-bg-warning" : "bg-secondary hover:bg-bg-safe"
+                                        needsAdminReview ? "bg-[#FE9A00] hover:bg-bg-warning " : "bg-secondary hover:bg-bg-safe"
                                     }`}
                                 >
-                                    {savedSampleId ? "ดูผลการตรวจของชุดนี้" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
+                                    {savedSampleId ? "ตรวจสอบข้อมูล" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
                                 </button>
                             </div>
                         )}
