@@ -3,7 +3,8 @@
 import type { useRouter } from "next/navigation";
 import { Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import { type Role, type UserItem, UserListRow, PaginationBar } from "@/components/manage/usersHelpers";
+import { type Role, type UserItem, UserListRow } from "@/components/manage/usersHelpers";
+import PaginationBar from "@/components/PaginationBar";
 
 export interface UsersPageProps {
     router: ReturnType<typeof useRouter>;

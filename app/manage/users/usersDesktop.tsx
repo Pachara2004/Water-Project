@@ -2,7 +2,8 @@
 
 import { Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown, Phone, CalendarDays, Layers, ChevronDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import { ROLE_OPTIONS, ROLE_CONFIG, formatDate, PaginationBar, type Role, type UserItem } from "@/components/manage/usersHelpers";
+import { ROLE_OPTIONS, ROLE_CONFIG, formatDate, type Role, type UserItem } from "@/components/manage/usersHelpers";
+import PaginationBar from "@/components/PaginationBar";
 import type { UsersPageProps } from "./usersMobile";
 
 // Desktop = ออกแบบใหม่ทั้งหน้าให้เหมาะกับจอกว้าง (การ์ดสถิติ, แถบควบคุม, การ์ดผู้ใช้) — ไม่แตะ mobile

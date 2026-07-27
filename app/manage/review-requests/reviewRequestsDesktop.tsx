@@ -6,11 +6,12 @@ import { StatusTabs, RequestCard, RejectDrawer, ImageLightbox } from "@/componen
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
 import { ReviewRequestCardSkeleton } from "./loading";
 import PageHeader from "@/components/PageHeader";
+import PaginationBar from "@/components/PaginationBar";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, การ์ดคำร้องจัดเป็นกริด 2 คอลัมน์)
 // ไม่เปลี่ยน logic/handler — ใช้ state ชุดเดียวกับ reviewRequestsMobile ที่มาจาก page.tsx
 export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
-    const { router, toastElement, tab, setTab, requests, isLoadingRequests, actingId, previewImages, setPreviewImages, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
+    const { router, toastElement, tab, setTab, requests, page, totalPages, setPage, isLoadingRequests, actingId, previewImages, setPreviewImages, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
@@ -50,6 +51,12 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                         {requests.map((item) => (
                             <RequestCard key={item.id} item={item} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} />
                         ))}
+                    </div>
+                )}
+
+                {!isLoadingRequests && (
+                    <div className="mt-6">
+                        <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
                     </div>
                 )}
             </div>
