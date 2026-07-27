@@ -9,6 +9,7 @@ import { verifyAuth } from "@/lib/auth-guard";
 import { isLowConfidence, evaluateSample } from "@/lib/standards";
 import { loadStandardsForParameters } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
+import { generateSessionGroup } from "@/lib/sessionGroup";
 
 /**
  * FILENAME SANITIZER WITH DATE STAMP
@@ -24,33 +25,6 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
     const cleanExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
 
     return `${prefix}-${dateStamp}-${crypto.randomUUID()}.${cleanExt}`;
-}
-
-/**
- * GENERATOR: SessionGroup Format -> SES[YYMMDD][Sequence 0001-9999]
- */
-async function generateSessionGroup(tx: any, collectionTime: Date): Promise<string> {
-    const yy = String(collectionTime.getFullYear()).slice(-2);
-    const mm = String(collectionTime.getMonth() + 1).padStart(2, "0");
-    const dd = String(collectionTime.getDate()).padStart(2, "0");
-    const datePrefix = `SES${yy}${mm}${dd}`;
-
-    const startOfDay = new Date(collectionTime);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(collectionTime);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    // นับกลุ่ม sessionGroup ที่เริ่มด้วย SES[YYMMDD] ในวันนั้น
-    const groups = await tx.waterSample.groupBy({
-        by: ["sessionGroup"],
-        where: {
-            collectionTime: { gte: startOfDay, lte: endOfDay },
-            sessionGroup: { startsWith: datePrefix },
-        },
-    });
-
-    const nextSeq = String(groups.length + 1).padStart(4, "0");
-    return `${datePrefix}${nextSeq}`;
 }
 
 /**

@@ -9,7 +9,7 @@ import { useToast } from "@/components/useToast";
 import { refreshNavDots } from "@/lib/navEvents";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ShieldAlert } from "lucide-react";
-import { type ReviewStatusFilter, type ReviewRequestItem } from "@/components/manage/reviewRequestsHelpers";
+import { type ReviewStatusFilter, type ReviewRequestItem, type PreviewImages } from "@/components/manage/reviewRequestsHelpers";
 import ReviewRequestsMobile from "./reviewRequestsMobile";
 import ReviewRequestsDesktop from "./reviewRequestsDesktop";
 
@@ -19,10 +19,11 @@ export default function AdminReviewRequestsPage() {
     const { showToast, toastElement } = useToast();
     const isMobile = useMediaQuery("(max-width: 767px)");
 
-    const [previewImgUrl, setPreviewImgUrl] = useState<string | null>(null);
+    const [previewImages, setPreviewImages] = useState<PreviewImages | null>(null);
 
     const [tab, setTab] = useState<ReviewStatusFilter>("pending");
     const [requests, setRequests] = useState<ReviewRequestItem[]>([]);
+    const [isLoadingRequests, setIsLoadingRequests] = useState(false);
     const [actingId, setActingId] = useState<number | null>(null);
 
     // Reject drawer — reason ต้องกรอกเสมอก่อนส่ง (บังคับที่ API ด้วย)
@@ -32,6 +33,7 @@ export default function AdminReviewRequestsPage() {
 
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
     const fetchRequests = useCallback(async (status: ReviewStatusFilter, silent = false) => {
+        if (!silent) setIsLoadingRequests(true);
         try {
             const res = await fetch(`/api/review-requests?status=${status}`, {
                 headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
@@ -41,6 +43,8 @@ export default function AdminReviewRequestsPage() {
         } catch (err) {
             console.error("Failed to fetch review requests:", err);
             setRequests([]);
+        } finally {
+            if (!silent) setIsLoadingRequests(false);
         }
     }, []);
 
@@ -53,10 +57,20 @@ export default function AdminReviewRequestsPage() {
         }
     }, [currentUser?.role, tab, fetchRequests]);
 
-    const handleApprove = async (item: ReviewRequestItem) => {
+    // จองพื้นที่ scrollbar ไว้ตลอด — กัน layout ขยับตอน SweetAlert (approve/reject) lock scroll บนหน้าที่ไม่มี scrollbar
+    useEffect(() => {
+        document.documentElement.classList.add("reserve-scrollbar-gutter");
+        return () => document.documentElement.classList.remove("reserve-scrollbar-gutter");
+    }, []);
+
+    // approvedSampleIds: ระบุเฉพาะการ์ดหลายสารที่เลือกอนุมัติบางสาร | undefined = อนุมัติทั้งใบ
+    const handleApprove = async (item: ReviewRequestItem, approvedSampleIds?: number[]) => {
+        const isPartial = Array.isArray(approvedSampleIds) && approvedSampleIds.length < item.samples.length;
         const confirmed = await confirmDialog({
             title: "ยืนยันอนุมัติคำร้อง?",
-            text: `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที`,
+            text: isPartial
+                ? `จะอนุมัติ ${approvedSampleIds!.length} จาก ${item.samples.length} สารของ "${item.location?.name ?? "จุดตรวจนี้"}" ส่วนสารที่ไม่ได้เลือกจะถูกปฏิเสธ`
+                : `ผลตรวจของ "${item.location?.name ?? "จุดตรวจนี้"}" จะแสดงบนแผนที่และแดชบอร์ดทันที`,
             confirmText: "อนุมัติ",
             tone: "primary",
         });
@@ -67,7 +81,7 @@ export default function AdminReviewRequestsPage() {
             const res = await fetch(`/api/review-requests/${item.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getAccessToken()}` },
-                body: JSON.stringify({ action: "approve" }),
+                body: JSON.stringify({ action: "approve", ...(approvedSampleIds ? { approvedSampleIds } : {}) }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการอนุมัติคำร้อง");
@@ -136,9 +150,10 @@ export default function AdminReviewRequestsPage() {
         tab,
         setTab,
         requests,
+        isLoadingRequests,
         actingId,
-        previewImgUrl,
-        setPreviewImgUrl,
+        previewImages,
+        setPreviewImages,
         rejectTarget,
         setRejectTarget,
         rejectNote,

@@ -6,7 +6,8 @@ import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { AnalyzeButton } from "@/components/submit/NavWorkflow";
 import { SubmitSteps } from "@/components/submit/SubmitSteps";
-import { ArrowLeft, Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy } from "lucide-react";
+import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 
 export default function SubmitMobile(props: any) {
     const {
@@ -40,15 +41,7 @@ export default function SubmitMobile(props: any) {
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Bar ── */}
-            <div className="bg-card-general border-b border-border px-4 py-1 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text min-h-11 font-semibold">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">ส่งตรวจคุณภาพน้ำ</h1>
-                </div>
-                <div className="w-15" />
-            </div>
+            <PageHeader title="ส่งตรวจคุณภาพน้ำ" onBack={() => router.back()} />
 
             {/* MOBILE VIEW COMPONENT */}
             <div className="px-4 pb-24 space-y-4 mt-3">

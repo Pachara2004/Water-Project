@@ -446,6 +446,15 @@ body {
     background: var(--color-surface-subtle);
 }
 
+/* Leaflet's own CSS hardcodes z-index:1000 on the corner control containers (zoom buttons,
+   attribution). That's higher than --z-modal (800), --z-toast (900), even --z-navbar (950) —
+   so those controls punch through any modal/dialog backdrop wherever a map is visible behind it.
+   Pin them to the app's --z-control layer instead so they stay under modals/toasts. */
+.leaflet-top,
+.leaflet-bottom {
+    z-index: var(--z-control, 500);
+}
+
 .custom-marker {
     background: none !important;
     border: none !important;
@@ -472,6 +481,12 @@ html.reserve-scrollbar-gutter body {
    showing the page's own background color. */
 body.swal2-shown:not(.swal2-no-backdrop, .swal2-toast-shown) {
     background-color: var(--swal2-backdrop, rgba(0, 0, 0, 0.4));
+}
+
+/* เคสเดียวกันสำหรับ custom Popup (components/Popup.tsx) — ย้อม body ให้กลืน backdrop (bg-black/40)
+   กันแถบ scrollbar gutter สว่างโผล่ตัดกับ backdrop เข้ม */
+body.popup-shown {
+    background-color: rgba(0, 0, 0, 0.4);
 }
 
 /* ── SweetAlert dialog theme (ใช้คู่กับ lib/swal.ts) ──

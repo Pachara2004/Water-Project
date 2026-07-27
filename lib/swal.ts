@@ -1,6 +1,5 @@
 "use client";
 
-import { COLOR_PANEL } from "recharts/types/util/Constants";
 import Swal from "sweetalert2";
 
 /* Dialog กลางของแอปตาม prototype: การ์ดขาวมุมโค้ง ไอคอนวงกลมทึบ
@@ -23,6 +22,27 @@ export const ICON_SVG = {
     cross: `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
 };
 
+/* จองพื้นที่ scrollbar (gutter) ตลอดที่ dialog เปิด กัน layout ขยับตอน swal lock scroll (body overflow:hidden)
+   ทำที่นี่ครั้งเดียวแทนการเติม class ทีละหน้า — ครอบคลุมทุกหน้าที่เรียก dialog อัตโนมัติ
+   guard ownsGutter: ถ้าหน้านั้นจอง gutter ไว้เองอยู่แล้ว (persistent) จะไม่ไปแตะ/ถอด class ของเขา */
+let swalReservedGutter = false;
+function reserveGutterForSwal() {
+    const docEl = document.documentElement;
+    // จองเฉพาะเมื่อหน้านั้นมี scrollbar อยู่จริง (คือมีของที่ swal จะเอาออกตอน lock scroll)
+    // ถ้าหน้าไม่มี scrollbar อยู่แล้ว การจอง gutter จะกลับกลายเป็นตัวทำให้ layout ขยับเสียเอง
+    const hasScrollbar = window.innerWidth - docEl.clientWidth > 0;
+    if (hasScrollbar && !docEl.classList.contains("reserve-scrollbar-gutter")) {
+        docEl.classList.add("reserve-scrollbar-gutter");
+        swalReservedGutter = true;
+    }
+}
+function releaseGutterForSwal() {
+    if (swalReservedGutter) {
+        document.documentElement.classList.remove("reserve-scrollbar-gutter");
+        swalReservedGutter = false;
+    }
+}
+
 /* heightAuto: false กัน layout พังใน LINE LIFF (100dvh)
    scrollbarPadding: false ทำงานคู่กับ scroll-lock fix ใน globals.css */
 export const baseSwal = Swal.mixin({
@@ -38,6 +58,9 @@ export const baseSwal = Swal.mixin({
         cancelButton: "app-swal-cancel",
         icon: "app-swal-icon",
     },
+    // willOpen/didClose ไม่ถูก fire ตัวไหน override จึงทำงานกับทุก dialog ที่ผ่าน baseSwal
+    willOpen: reserveGutterForSwal,
+    didClose: releaseGutterForSwal,
 });
 
 export interface ConfirmDialogOptions {

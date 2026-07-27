@@ -1,27 +1,21 @@
 "use client";
 
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
-import { ArrowLeft, ClipboardCheck } from "lucide-react";
-import { TAB_CONFIG, RequestCard, RejectDrawer, ImageLightbox } from "@/components/manage/reviewRequestsHelpers";
+import { ClipboardCheck } from "lucide-react";
+import { StatusTabs, RequestCard, RejectDrawer, ImageLightbox } from "@/components/manage/reviewRequestsHelpers";
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
+import { ReviewRequestCardSkeleton } from "./loading";
+import PageHeader from "@/components/PageHeader";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, การ์ดคำร้องจัดเป็นกริด 2 คอลัมน์)
 // ไม่เปลี่ยน logic/handler — ใช้ state ชุดเดียวกับ reviewRequestsMobile ที่มาจาก page.tsx
 export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
-    const { router, toastElement, tab, setTab, requests, actingId, previewImgUrl, setPreviewImgUrl, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
+    const { router, toastElement, tab, setTab, requests, isLoadingRequests, actingId, previewImages, setPreviewImages, rejectTarget, setRejectTarget, rejectNote, setRejectNote, rejectSaving, handleApprove, openReject, submitReject } = props;
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
-            <div className="bg-card-general border-b border-border px-8 h-13 flex items-center justify-between sticky top-0 z-10">
-                <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-text min-h-11">
-                    <ArrowLeft size={16} /> <span>ย้อนกลับ</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-sm font-semibold text-primary">คุณภาพน้ำที่ต้องการยืนยัน</h1>
-                </div>
-                <div className="w-15" />
-            </div>
-            <div className="w-full max-w-400 mx-auto px-8 pt-8">
+            <PageHeader title="คุณภาพน้ำที่ต้องการยืนยัน" onBack={() => router.back()} />
+            <div className="w-full max-w-[1600px] mx-auto px-8 pt-8">
                 {/* Header card */}
                 <div className="bg-card-general rounded-2xl border border-border p-6 mb-6 transition-colors duration-300">
                     <h1 className="font-display text-lg font-bold text-text-primary ">
@@ -33,23 +27,16 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 </div>
 
                 {/* Tabs */}
-                <div className="px-2 mb-1 text-sm text-primary font-semibold">สถานะที่ต้องการดู</div>
-                <div className="flex items-center gap-2 mb-5 max-w-2xl">
-                    {TAB_CONFIG.map((t) => (
-                        <button
-                            key={t.id}
-                            onClick={() => setTab(t.id)}
-                            className={`flex-1 py-3 rounded-xl text-xs font-semibold border border-border transition-all cursor-pointer ${
-                                tab === t.id ? "bg-primary text-white border-primary" : "bg-card-general text-text-secondary border-border hover:border-primary/30"
-                            }`}
-                        >
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
+                <StatusTabs tab={tab} setTab={setTab} />
 
                 {/* List */}
-                {requests.length === 0 ? (
+                {isLoadingRequests ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <ReviewRequestCardSkeleton key={i} />
+                        ))}
+                    </div>
+                ) : requests.length === 0 ? (
                     <div className="bg-surface rounded-2xl p-14 text-center border border-border flex flex-col items-center justify-center">
                         <div className="w-12 h-12 bg-surface-subtle border border-border rounded-xl flex items-center justify-center mb-4">
                             <ClipboardCheck size={18} className="text-text-muted" />
@@ -61,7 +48,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {requests.map((item) => (
-                            <RequestCard key={item.id} item={item} tab={tab} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImgUrl} />
+                            <RequestCard key={item.id} item={item} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} />
                         ))}
                     </div>
                 )}
@@ -78,7 +65,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     onSubmit={submitReject}
                 />
             )}
-            {previewImgUrl && <ImageLightbox previewImgUrl={previewImgUrl} onClose={() => setPreviewImgUrl(null)} />}
+            {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}
             {/* Toast */}
             {toastElement}
         </div>
