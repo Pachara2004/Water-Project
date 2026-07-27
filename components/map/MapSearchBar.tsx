@@ -38,7 +38,7 @@ export default function MapSearchBar({ locations, onSelectLocation }: MapSearchB
     return (
         <div ref={containerRef} className="relative w-full z-700">
             {/* Input ค้นหา */}
-            <div className="flex items-center w-full h-12 px-3 bg-card-general rounded-xl shadow-sm transition-all">
+            <div className="flex items-center w-full h-13 px-3 bg-card-general rounded-xl shadow-sm transition-all">
                 <Search size={16} strokeWidth={3} className="text-primary shrink-0 mr-2" />
                 <input
                     type="text"
@@ -48,8 +48,8 @@ export default function MapSearchBar({ locations, onSelectLocation }: MapSearchB
                         setKeyword(e.target.value);
                         setIsOpen(true);
                     }}
-                    placeholder="ค้นหาชื่อสถานที่หรือหน่วยงาน..."
-                    className="w-full h-7 bg-transparent text-xs font-semibold text-text  placeholder:text-text-muted"
+                    placeholder="ค้นหาจุดเก็บตัวอย่างหรือหน่วยงาน"
+                    className="w-full h-7 bg-transparent text-xs font-semibold text-text  placeholder:text-text-muted "
                 />
                 {keyword && (
                     <button

@@ -35,15 +35,15 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
     }, []);
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative w-full" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="bg-card-general flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform w-40 cursor-pointer max-w-45 sm:max-w-xs"
+                className="w-full bg-card-general flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform cursor-pointer"
             >
                 <div className="shrink-0">
                     <Droplets size={18} strokeWidth={3} className="text-primary" />
                 </div>
-                <div className="flex flex-col items-start leading-none min-w-0">
+                <div className="flex flex-col items-start leading-none min-w-0 flex-1">
                     <span className="text-xs text-primary font-semibold">คุณภาพน้ำ</span>
                     <span className="font-semibold text-text text-xs flex items-center gap-1.5 mt-0.5 w-full">
                         <span className="truncate text-left">{currentOption.label}</span>

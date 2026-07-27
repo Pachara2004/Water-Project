@@ -143,12 +143,14 @@ export default function Navbar() {
                                         isActive ? "bg-primary text-white" : "hover:bg-secondary hover:text-text-primary"
                                     }`}
                                 >
-                                    <div className="relative shrink-0">
-                                        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-150 group-hover:translate-x-0.5" />
-                                        {item.showDot && (
-                                            <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border-2 ${isActive ? "border-primary" : "border-surface"}`} />
-                                        )}
-                                    </div>
+                                    {currentUser?.role === "admin" && (
+                                        <div className="relative shrink-0">
+                                            <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-150 group-hover:translate-x-0.5" />
+                                            {item.showDot && (
+                                                <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border-2 ${isActive ? "border-primary" : "border-surface"}`} />
+                                            )}
+                                        </div>
+                                    )}
                                     <span className="whitespace-nowrap truncate">{item.label}</span>
                                 </Link>
                             );

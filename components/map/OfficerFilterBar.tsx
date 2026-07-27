@@ -68,10 +68,10 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
     }, []);
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative w-full" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="bg-card-general flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform cursor-pointer w-45 shrink-0"
+                className="w-full bg-card-general flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform cursor-pointer"
             >
                 <div className="shrink-0">
                     <Filter size={16} strokeWidth={3} className="text-primary" />
