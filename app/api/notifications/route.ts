@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         const samples = await prisma.waterSample.findMany({
             where: { sessionGroup: { in: groups }, collectorId },
             select: {
+                code: true,
                 sessionGroup: true,
                 collectionTime: true,
                 rawImageUrl: true,
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
             return {
                 id: r.id,
                 sessionGroup: r.sessionGroup,
+                code: s?.code ?? null,
                 reviewNote: r.reviewNote,
                 reviewedAt: r.reviewedAt,
                 acknowledgedAt: r.acknowledgedAt,
