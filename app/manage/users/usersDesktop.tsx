@@ -2,13 +2,13 @@
 
 import { Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown, Phone, CalendarDays, Layers, ChevronDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import { ROLE_OPTIONS, ROLE_CONFIG, formatDate, type Role, type UserItem } from "@/components/manage/usersHelpers";
+import { ROLE_OPTIONS, ROLE_CONFIG, formatDate, PaginationBar, type Role, type UserItem } from "@/components/manage/usersHelpers";
 import type { UsersPageProps } from "./usersMobile";
 
 // Desktop = ออกแบบใหม่ทั้งหน้าให้เหมาะกับจอกว้าง (การ์ดสถิติ, แถบควบคุม, การ์ดผู้ใช้) — ไม่แตะ mobile
 // ไม่เปลี่ยน logic/handler — ใช้ state ชุดเดียวกับ usersMobile ที่มาจาก page.tsx
 export default function UsersDesktop(props: UsersPageProps) {
-    const { router, toastElement, stats, tab, setTab, search, setSearch, isDesc, setIsDesc, processedUsers, updating, openDropdown, setOpenDropdown, rejectingAll, handleRejectAll, handleRoleChange, handleApprove, handleReject } =
+    const { router, toastElement, stats, tab, setTab, search, setSearch, isDesc, setIsDesc, users, total, page, totalPages, setPage, updating, openDropdown, setOpenDropdown, rejectingAll, handleRejectAll, handleRoleChange, handleApprove, handleReject } =
         props;
 
     const TAB_META: Record<"all" | "staff" | "queue", { label: string; icon: typeof Users }> = {
@@ -54,7 +54,7 @@ export default function UsersDesktop(props: UsersPageProps) {
                             <h2 className="text-sm uppercase text-primary font-bold tracking-wider">บัญชีผู้ใช้งาน</h2>
                         </div>
 
-                        {tab === "queue" && processedUsers.length > 0 && (
+                        {tab === "queue" && stats.pending > 0 && (
                             <button
                                 onClick={handleRejectAll}
                                 disabled={rejectingAll}
@@ -100,7 +100,7 @@ export default function UsersDesktop(props: UsersPageProps) {
 
                     {/* แถบสรุปผลลัพธ์และปุ่มสลับการเรียงลำดับ */}
                     <div className="flex items-center justify-between text-xs text-text-secondary px-0.5 pt-1 border-t border-border">
-                        <div className="text-text-secondary">พบ {processedUsers.length} บัญชี</div>
+                        <div className="text-text-secondary">พบ {total} บัญชี</div>
 
                         <div onClick={() => setIsDesc(!isDesc)} className="flex items-center gap-1 cursor-pointer hover:text-text-primary text-text-secondary transition-colors py-0.5 select-none">
                             <span>{isDesc ? "ลงทะเบียนล่าสุด" : "ลงทะเบียนเก่าสุด"}</span>
@@ -114,7 +114,7 @@ export default function UsersDesktop(props: UsersPageProps) {
                 {/* ─── 3. รายชื่อผู้ใช้ — กริดหลายคอลัมน์ ── */}
                 {/* min-h กันหน้ายุบฮวบตอนสลับ tab/ค้นหาแล้วผลลัพธ์น้อยลงมาก — เบราว์เซอร์จะ auto-scroll ขึ้นเองถ้าพื้นที่ scroll หายไปกะทันหัน */}
                 <div className="min-h-100">
-                    {processedUsers.length === 0 ? (
+                    {users.length === 0 ? (
                         <div className="text-center p-14 bg-surface rounded-2xl border border-border flex flex-col items-center justify-center">
                             <div className="w-12 h-12 bg-surface-subtle rounded-xl flex items-center justify-center mb-3 text-text-muted border border-border">
                                 {tab === "queue" ? <CheckCircle2 size={20} className="text-emerald-500" /> : <Users size={20} />}
@@ -124,7 +124,7 @@ export default function UsersDesktop(props: UsersPageProps) {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {processedUsers.map((user) => (
+                            {users.map((user) => (
                                 <UserCardDesktop
                                     key={user.id}
                                     user={user}
@@ -140,6 +140,8 @@ export default function UsersDesktop(props: UsersPageProps) {
                         </div>
                     )}
                 </div>
+
+                <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
 
             {/* Toast Component */}

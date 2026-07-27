@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ต Guard กลางเข้ามาสลักนิรภัย
+import { parsePageParams, pageResult } from "@/lib/pagination";
 
+type UserTab = "all" | "staff" | "queue";
+
+/**
+ * เงื่อนไขของแต่ละแท็บ — ต้องตรงกับที่ GET /api/users/stats ใช้นับ
+ * ถ้าแก้ที่นี่แล้วไม่แก้ที่นั่น ตัวเลขบนการ์ดสรุปจะไม่ตรงกับจำนวนแถวที่แสดงจริง
+ */
+const TAB_FILTERS: Record<UserTab, object> = {
+    all: {},
+    staff: { systemRole: { roleName: { not: "guest" } } },
+    queue: { roleRequests: { some: { status: "pending" } } },
+};
+
+// ==========================================
+// GET /api/users?tab=&search=&role=&sort=&page=&pageSize= — รายชื่อผู้ใช้แบบแบ่งหน้า
+// คืน { items, total, page, pageSize, totalPages } ไม่ใช่ array เปล่า
+// กรอง/เรียง/แบ่งหน้าที่ฝั่ง DB ทั้งหมด ฝั่งหน้าเว็บเอาไปแสดงได้เลยโดยไม่ต้องกรองซ้ำ
+// ==========================================
 export async function GET(request: NextRequest) {
     // SECURITY GUARD: อนุญาตให้เฉพาะระดับสิทธิ์ 'admin' เท่านั้นที่เปิดดูรายชื่อและคำร้องขอสิทธิ์ทั้งหมดได้
     const auth = await verifyAuth(request, ["admin"]);
@@ -13,8 +31,13 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const search = searchParams.get("search")?.trim() ?? "";
         const role = searchParams.get("role")?.trim() ?? "";
+        const tabParam = searchParams.get("tab") as UserTab | null;
+        const tab: UserTab = tabParam && tabParam in TAB_FILTERS ? tabParam : "all";
+        const sort = searchParams.get("sort") === "asc" ? "asc" : "desc";
+        // 10 แถวต่อหน้า ให้เท่ากับตารางประวัติผลตรวจของ collector ซึ่งเป็นรายการแบ่งหน้าอีกที่เดียวในระบบ
+        const pageParams = parsePageParams(searchParams, 10);
 
-        const where: any = {};
+        const where: any = { ...TAB_FILTERS[tab] };
 
         if (search) {
             where.OR = [{ firstName: { contains: search } }, { lastName: { contains: search } }, { lineProfileName: { contains: search } }];
@@ -24,31 +47,43 @@ export async function GET(request: NextRequest) {
             where.systemRole = { roleName: role.toLowerCase() };
         }
 
-        const users = await prisma.user.findMany({
-            where,
-            select: {
-                id: true,
-                lineUniqueId: true,
-                lineProfileName: true,
-                firstName: true,
-                lastName: true,
-                phoneNumber: true,
-                registeredAt: true,
-                lastActiveAt: true,
-                systemRole: { select: { roleName: true } },
-                _count: { select: { samples: true } },
-                roleRequests: {
-                    where: { status: "pending" },
-                    orderBy: { createdAt: "desc" },
-                    take: 1,
-                    select: {
-                        id: true,
-                        requestedRole: { select: { roleName: true } },
+        // นับพร้อมกันใน transaction เดียว เพื่อให้ total กับ items มาจาก snapshot เดียวกัน
+        // ไม่งั้นถ้ามีคนสมัครแทรกระหว่างสอง query ตัวเลขจำนวนหน้าจะเพี้ยนกับรายการที่แสดง
+        const [users, total] = await prisma.$transaction([
+            prisma.user.findMany({
+                where,
+                select: {
+                    id: true,
+                    lineUniqueId: true,
+                    lineProfileName: true,
+                    firstName: true,
+                    lastName: true,
+                    phoneNumber: true,
+                    registeredAt: true,
+                    lastActiveAt: true,
+                    systemRole: { select: { roleName: true } },
+                    _count: { select: { samples: true } },
+                    roleRequests: {
+                        where: { status: "pending" },
+                        orderBy: { createdAt: "desc" },
+                        take: 1,
+                        select: {
+                            id: true,
+                            requestedRole: { select: { roleName: true } },
+                        },
                     },
                 },
-            },
-            orderBy: { registeredAt: "desc" },
-        });
+                // เรียงด้วย id ไม่ใช่ registeredAt เพราะ id เป็น primary key ที่มี index อยู่แล้ว
+                // ทำให้ MySQL หยิบเฉพาะแถวของหน้าที่ขอโดยไม่ต้องอ่านทั้งตารางมาเรียง
+                // ใช้แทนกันได้เพราะ registeredAt เป็น @default(now()) ที่ไม่มีโค้ดไหนเขียนทับ ลำดับจึงตรงกันเสมอ
+                // ⚠️ ถ้าวันหลังมีการ import ผู้ใช้เก่าพร้อมเซ็ต registeredAt ย้อนหลัง สมมติฐานนี้จะพัง
+                //    ตอนนั้นต้องเพิ่ม @@index([registeredAt]) ใน schema แล้วกลับมาเรียงด้วยคอลัมน์นั้น
+                orderBy: { id: sort },
+                skip: pageParams.skip,
+                take: pageParams.take,
+            }),
+            prisma.user.count({ where }),
+        ]);
 
         const formattedUsers = users.map((u) => {
             const pendingRequest = u.roleRequests[0];
@@ -66,7 +101,7 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        return NextResponse.json(formattedUsers);
+        return NextResponse.json(pageResult(formattedUsers, total, pageParams));
     } catch (error) {
         console.error("GET /api/users error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลบัญชีผู้ใช้งาน" }, { status: 500 });

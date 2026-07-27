@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { confirmDialog } from "@/lib/swal";
@@ -31,6 +31,12 @@ export default function AdminUsersPage() {
     // สเตทสำหรับควบคุมทิศทางการเรียงลำดับ (เลียนแบบ Collector)
     const [isDesc, setIsDesc] = useState(true);
 
+    // การแบ่งหน้าเกิดที่ฝั่ง API ทั้งหมด — `users` คือแถวของหน้าปัจจุบันที่กรองและเรียงมาแล้ว
+    // `total` เป็นจำนวนหลังกรองทั้งชุด (ไม่ใช่แค่หน้านี้) จึงเอาไปโชว์ "พบ N บัญชี" ได้ตรง
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+
     useEffect(() => {
         document.documentElement.classList.add("reserve-scrollbar-gutter");
         return () => document.documentElement.classList.remove("reserve-scrollbar-gutter");
@@ -49,35 +55,65 @@ export default function AdminUsersPage() {
         }
     }, []);
 
-    const fetchUsers = useCallback(async (keyword: string) => {
+    // หน่วงคำค้นหาก่อนยิง API — ตอนนี้ทุกตัวอักษรที่พิมพ์คือ query ใหม่ที่ฝั่ง DB ไม่ใช่การกรองในหน่วยความจำ
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const fetchUsers = useCallback(async () => {
         try {
-            const params = new URLSearchParams();
-            if (keyword) params.set("search", keyword);
+            const params = new URLSearchParams({ tab, page: String(page), sort: isDesc ? "desc" : "asc" });
+            if (debouncedSearch) params.set("search", debouncedSearch);
 
             const res = await fetch(`/api/users?${params.toString()}`, {
                 method: "GET",
                 headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
             });
             const data = await res.json();
-            setUsers(Array.isArray(data) ? data : []);
+            if (!res.ok) return;
+
+            setUsers(Array.isArray(data.items) ? data.items : []);
+            setTotal(data.total ?? 0);
+            setTotalPages(data.totalPages ?? 0);
+
+            // หน้าที่เปิดอยู่อาจหายไปหลังอนุมัติ/ปฏิเสธรายการสุดท้ายของหน้า — เลื่อนไปหน้าสุดท้ายที่ยังมีจริง
+            // การ setPage ตรงนี้จะไปกระตุ้น effect ให้ fetch รอบใหม่เอง
+            if (data.totalPages > 0 && page > data.totalPages) {
+                setPage(data.totalPages);
+            } else if (data.totalPages === 0 && page !== 1) {
+                setPage(1);
+            }
         } catch (e) {
             console.error(e);
         }
-    }, []);
+    }, [tab, page, isDesc, debouncedSearch]);
 
     useEffect(() => {
         if (currentUser?.role === "admin") {
-            fetchUsers("");
+            fetchUsers();
             fetchStats();
         }
     }, [currentUser?.role, fetchUsers, fetchStats]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (currentUser?.role === "admin") fetchUsers(search);
-        }, 400);
-        return () => clearTimeout(timer);
-    }, [search, currentUser?.role, fetchUsers]);
+    /* ตัวกรองทุกตัวย้ายไปทำงานฝั่ง server แล้ว การเปลี่ยนค่าจึงต้องดีดกลับหน้า 1 เสมอ
+       ไม่งั้นจะค้างอยู่หน้าที่ชุดผลลัพธ์ใหม่ไม่มี แล้วเห็นรายการว่าง
+       ห่อ setter แทนที่จะใช้ effect เพื่อไม่ให้ยิง API ซ้ำสองรอบ (รอบหนึ่งด้วยเลขหน้าเดิม อีกรอบด้วยหน้า 1) */
+    const changeTab = (v: "all" | "staff" | "queue") => {
+        setTab(v);
+        setPage(1);
+    };
+
+    const changeSearch = (v: string) => {
+        setSearch(v);
+        setPage(1);
+    };
+
+    const changeSortDirection = (v: boolean) => {
+        setIsDesc(v);
+        setPage(1);
+    };
 
     const handleRoleChange = async (userId: number, role: Role) => {
         setOpenDropdown(null);
@@ -98,8 +134,9 @@ export default function AdminUsersPage() {
                 body: JSON.stringify({ userId, role }),
             });
             if (res.ok) {
-                setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
-                fetchStats();
+                // ต้องดึงใหม่ทั้งหน้าแทนการแก้แถวในมือ เพราะแถวที่เปลี่ยนสิทธิ์อาจหลุดออกจากแท็บที่เปิดอยู่
+                // (เช่น เปลี่ยนจาก collector เป็น guest ขณะอยู่แท็บ "เจ้าหน้าที่") หรือย้ายไปอยู่คนละหน้า
+                await Promise.all([fetchUsers(), fetchStats()]);
                 showToast(`อัปเดตสิทธิ์ ${name} เป็น ${ROLE_CONFIG[role].label} สำเร็จ`, "success");
             }
         } catch (e) {
@@ -134,8 +171,7 @@ export default function AdminUsersPage() {
                 }),
             });
             if (res.ok) {
-                setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: user.requestedRole!, pendingRequestId: null, requestedRole: null } : u)));
-                fetchStats();
+                await Promise.all([fetchUsers(), fetchStats()]);
                 showToast(`อนุมัติ ${displayName} เป็นสิทธิ์ ${ROLE_CONFIG[user.requestedRole!].label} สำเร็จ`, "success");
             }
         } catch (e) {
@@ -165,8 +201,7 @@ export default function AdminUsersPage() {
                 }),
             });
             if (res.ok) {
-                setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, pendingRequestId: null, requestedRole: null } : u)));
-                fetchStats();
+                await Promise.all([fetchUsers(), fetchStats()]);
                 refreshNavDots();
                 showToast(`ปฏิเสธคำร้องของ ${displayName} แล้ว`, "danger");
             }
@@ -177,13 +212,12 @@ export default function AdminUsersPage() {
         }
     };
 
-    const staffUsers = users.filter((u) => u.role !== "guest");
-    const queue = users.filter((u) => u.pendingRequestId !== null);
-
     const handleRejectAll = async () => {
+        // ใช้ stats.pending ไม่ใช่จำนวนแถวบนหน้าจอ เพราะตอนนี้หน้าจอโชว์แค่หน้าเดียว
+        // แต่ปุ่มนี้ปฏิเสธคำร้อง pending ทั้งระบบ (updateMany ที่ฝั่ง API)
         const confirmed = await confirmDialog({
             title: "ปฏิเสธคำร้องทั้งหมด?",
-            text: `คำร้องขอสิทธิ์ที่รออนุมัติทั้ง ${queue.length} รายการจะถูกปฏิเสธ ไม่สามารถย้อนกลับได้`,
+            text: `คำร้องขอสิทธิ์ที่รออนุมัติทั้ง ${stats.pending} รายการจะถูกปฏิเสธ ไม่สามารถย้อนกลับได้`,
             confirmText: "ปฏิเสธทั้งหมด",
             tone: "danger",
         });
@@ -200,10 +234,10 @@ export default function AdminUsersPage() {
                 body: JSON.stringify({ action: "rejectAll" }),
             });
             if (res.ok) {
-                setUsers((prev) => prev.map((u) => (u.pendingRequestId !== null ? { ...u, pendingRequestId: null, requestedRole: null } : u)));
-                fetchStats();
+                const rejectedCount = stats.pending;
+                await Promise.all([fetchUsers(), fetchStats()]);
                 refreshNavDots();
-                showToast(`ปฏิเสธคำร้องทั้งหมด ${queue.length} รายการแล้ว`, "danger");
+                showToast(`ปฏิเสธคำร้องทั้งหมด ${rejectedCount} รายการแล้ว`, "danger");
             }
         } catch (e) {
             console.error(e);
@@ -211,16 +245,6 @@ export default function AdminUsersPage() {
             setRejectingAll(false);
         }
     };
-
-    // คำนวณลำดับข้อมูลแบบ Client Sorting (เลียนแบบ Collector)
-    const processedUsers = useMemo(() => {
-        const base = tab === "queue" ? queue : tab === "staff" ? staffUsers : users;
-        return [...base].sort((a, b) => {
-            const timeA = new Date(a.registeredAt).getTime();
-            const timeB = new Date(b.registeredAt).getTime();
-            return isDesc ? timeB - timeA : timeA - timeB;
-        });
-    }, [tab, users, queue, staffUsers, isDesc]);
 
     if (!currentUser || currentUser.role !== "admin") {
         return (
@@ -242,12 +266,16 @@ export default function AdminUsersPage() {
         toastElement,
         stats,
         tab,
-        setTab,
+        setTab: changeTab,
         search,
-        setSearch,
+        setSearch: changeSearch,
         isDesc,
-        setIsDesc,
-        processedUsers,
+        setIsDesc: changeSortDirection,
+        users,
+        total,
+        page,
+        totalPages,
+        setPage,
         updating,
         openDropdown,
         setOpenDropdown,
