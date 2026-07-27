@@ -143,13 +143,14 @@ export default function CollectorHistoryDetailPage() {
 
     useEffect(() => {
         if (!currentUser) return;
-        if (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") router.push("/map");
+        // officer (ผู้บริหาร) ไม่มีสิทธิ์หน้านี้ — ดูภาพรวมได้ที่ /dashboard เท่านั้น
+        if (currentUser.role !== "collector" && currentUser.role !== "admin") router.push("/map");
     }, [currentUser, router]);
 
     useEffect(() => {
         let cancelled = false;
         async function fetchSample() {
-            if (!currentUser || (currentUser.role !== "collector" && currentUser.role !== "admin" && currentUser.role !== "officer") || !params.id) return;
+            if (!currentUser || (currentUser.role !== "collector" && currentUser.role !== "admin") || !params.id) return;
             try {
                 setError(null);
                 const response = await fetch(`/api/samples/${params.id}`, {

@@ -175,7 +175,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 // 🔍 GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำพร้อมควบรวมรูปภาพแยกตาม Parameter ID
 // ========================================================
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await verifyAuth(request, ["collector", "officer", "admin"]);
+    // เส้นนี้ป้อนหน้า /collector/history/[id] เท่านั้น — officer (ผู้บริหาร) ไม่มีสิทธิ์
+    const auth = await verifyAuth(request, ["collector", "admin"]);
     if (!auth.isValid) {
         return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
     }
