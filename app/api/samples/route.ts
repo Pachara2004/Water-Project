@@ -35,13 +35,17 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
 }
 
 /**
- * GENERATOR: Sample Code Format -> SP[YYMMDD][LocationID][Sequence 0001-9999]
+ * GENERATOR: Sample Code Format -> SP[YYMMDD][LocationID 3 หลัก][Sequence 0001-9999]
+ *
+ * ความยาวคงที่ 15 ตัวอักษร — locationId pad เป็น 3 หลักเพื่อไม่ให้ขอบเขตระหว่างฟิลด์กำกวม
+ * (ถ้าไม่ pad: location 1 ลำดับ 20001 กับ location 12 ลำดับ 0001 จะได้สตริงเดียวกัน)
+ * ข้อจำกัด: รองรับ locationId ได้ถึง 999 เท่านั้น เกินกว่านั้นความยาวจะเลื่อน
  */
 async function generateSampleCode(tx: any, locationId: number, collectionTime: Date): Promise<string> {
     const yy = String(collectionTime.getFullYear()).slice(-2);
     const mm = String(collectionTime.getMonth() + 1).padStart(2, "0");
     const dd = String(collectionTime.getDate()).padStart(2, "0");
-    const prefix = `SP${yy}${mm}${dd}${locationId}`;
+    const prefix = `SP${yy}${mm}${dd}${String(locationId).padStart(3, "0")}`;
 
     const startOfDay = new Date(collectionTime);
     startOfDay.setHours(0, 0, 0, 0);

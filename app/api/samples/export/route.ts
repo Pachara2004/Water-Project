@@ -4,6 +4,14 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { promises as fs } from "fs";
 import { verifyAuth } from "@/lib/auth-guard";
+import { buildContentDisposition, buildExportMetadata, formatThaiDateTime, resolveExportContext } from "@/lib/sampleFilters";
+
+export const dynamic = "force-dynamic";
+
+// เพดานถาวรของ XLSX — ต่างจาก CSV ที่ stream ได้ไม่จำกัด
+// ExcelJS ต้องประกอบทั้ง workbook (รวมรูปภาพฝังทุกแถว) ในหน่วยความจำก่อนส่ง จึงสเกลตามข้อมูลไม่ได้โดยธรรมชาติ
+// ไฟล์นี้คือ "รายงานของข้อมูลชุดเล็ก" ถ้าต้องการข้อมูลทั้งก้อนให้ใช้ CSV
+const MAX_XLSX_ROWS = 2000;
 
 export async function GET(request: NextRequest) {
     // 🔒 SECURITY GUARD: ล็อกกลอนขั้นสูง อนุญาตเฉพาะสิทธิ์ "officer" และ "admin" เท่านั้นที่ส่งออกรายงานได้
@@ -13,31 +21,56 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // 1. ดึงมาสเตอร์สารเคมีทั้งหมดที่มีอยู่ในระบบตอนนี้จาก Database (ไม่ฟิกซ์ชื่อแล้ว)
-        const activeParameters = await prisma.parameter.findMany({
-            orderBy: { id: "asc" },
-        });
+        const { scope, filters, where, stationName, exporterName } = await resolveExportContext(request, auth.user!);
 
-        // 2. ดึงข้อมูลตัวอย่างน้ำทั้งหมดที่ยังไม่โดนลบ (isDeleted: false)
+        const totalRows = await prisma.waterSample.count({ where });
+        if (totalRows > MAX_XLSX_ROWS) {
+            return NextResponse.json(
+                {
+                    error: `ข้อมูลที่เลือกมี ${totalRows.toLocaleString("th-TH")} แถว เกินเพดาน ${MAX_XLSX_ROWS.toLocaleString("th-TH")} แถวของไฟล์ Excel — กรุณาแคบช่วงวันที่หรือเลือกสถานีให้แคบลง หรือใช้การส่งออกแบบ CSV ที่ไม่จำกัดจำนวนแถว`,
+                    totalRows,
+                    limit: MAX_XLSX_ROWS,
+                },
+                { status: 413 }
+            );
+        }
+
+        // 1. ดึงมาสเตอร์สารเคมีทั้งหมดที่มีอยู่ในระบบตอนนี้จาก Database (ไม่ฟิกซ์ชื่อแล้ว)
+        const activeParameters = await prisma.parameter.findMany({ orderBy: { id: "asc" } });
+
+        // 2. ดึงข้อมูลตัวอย่างน้ำตามขอบเขตที่ผู้ใช้เลือก (where เดียวกับที่แดชบอร์ดใช้คำนวณสถิติ)
         const samples = await prisma.waterSample.findMany({
-            where: { isDeleted: false },
+            where,
             include: {
                 location: true,
                 measurements: true, // ดึงค่าวัดทั้งหมดออกมา
+                collector: { select: { firstName: true, lastName: true, lineProfileName: true } },
             },
-            orderBy: { collectionTime: "desc" },
+            orderBy: [{ collectionTime: "desc" }, { id: "desc" }],
         });
 
         const workbook = new ExcelJS.Workbook();
+
+        // Sheet แรก = เมทาดาทาบอกที่มาของไฟล์ แยกออกจากตารางข้อมูลเพื่อไม่ให้พิกัดแถวของรูปภาพเลื่อน
+        const infoSheet = workbook.addWorksheet("ข้อมูลการส่งออก");
+        infoSheet.columns = [
+            { header: "รายการ", key: "label", width: 28 },
+            { header: "รายละเอียด", key: "value", width: 70 },
+        ];
+        infoSheet.getRow(1).font = { bold: true };
+        for (const [label, value] of buildExportMetadata(filters, scope, stationName, exporterName, totalRows)) {
+            infoSheet.addRow({ label, value });
+        }
+
         const worksheet = workbook.addWorksheet("Water Quality Report");
 
         // 3. ประกอบโครงสร้างคอลัมน์รายงาน (Columns) แบบ Dynamic
-        // คอลัมน์พื้นฐานส่วนต้น (เพิ่ม Sample Code และ Session Group)
+        // คอลัมน์พื้นฐานส่วนต้น
         const baseColumns = [
             { header: "No.", key: "no", width: 8 },
-            { header: "Sample Code", key: "code", width: 20 }, // 🌟 เพิ่มคอลัมน์ Sample Code (SP260720...)
-            { header: "Session Group", key: "sessionGroup", width: 20 }, // 🌟 เพิ่มคอลัมน์ Session Group (SES260720...)
-            { header: "Collection Time", key: "cTime", width: 20 },
+            { header: "Sample Code", key: "code", width: 20 },
+            { header: "Session Group", key: "sessionGroup", width: 20 },
+            { header: "Collection Time (GMT+7)", key: "cTime", width: 22 },
             { header: "Location Name", key: "locName", width: 25 },
             { header: "Agency", key: "agency", width: 20 },
             { header: "Latitude", key: "lat", width: 12 },
@@ -57,6 +90,7 @@ export async function GET(request: NextRequest) {
             { header: "Temperature (°C)", key: "temp", width: 16 },
             { header: "Rain Volume (mm)", key: "rain", width: 16 },
             { header: "Water Status", key: "status", width: 14 },
+            { header: "Collector", key: "collector", width: 22 },
             { header: "Visual Image", key: "image", width: 22 },
             { header: "AI Plot Detection", key: "imagePlot", width: 22 },
         ];
@@ -66,7 +100,8 @@ export async function GET(request: NextRequest) {
         worksheet.getRow(1).font = { bold: true };
 
         // คำนวณหาตำแหน่งคอลัมน์รูปภาพแบบ Dynamic (ExcelJS นับเริ่มที่ 0)
-        const imageColIndex = baseColumns.length + parameterColumns.length + 4; // ถัดจาก status
+        // = จำนวนคอลัมน์ทั้งหมดก่อนถึงคอลัมน์รูป (oxygen, temp, rain, status, collector = 5 ช่อง)
+        const imageColIndex = baseColumns.length + parameterColumns.length + 5;
         const imagePlotColIndex = imageColIndex + 1;
 
         // 4. วนลูปสร้างแถวข้อมูลและฝังไฟล์ภาพลงตาราง Excel
@@ -75,17 +110,18 @@ export async function GET(request: NextRequest) {
             // สร้างก้อน Object ข้อมูลพื้นฐานส่วนต้น
             const rowData: Record<string, any> = {
                 no: index++,
-                code: sample.code || "N/A", // 🌟 แปะค่า code
-                sessionGroup: sample.sessionGroup || "N/A", // 🌟 แปะค่า sessionGroup
-                cTime: sample.collectionTime.toISOString().replace("T", " ").substring(0, 16),
+                code: sample.code || "N/A",
+                sessionGroup: sample.sessionGroup || "N/A",
+                cTime: formatThaiDateTime(sample.collectionTime),
                 locName: sample.location?.stationName || "N/A",
                 agency: sample.location?.governingAgency || "N/A",
                 lat: sample.location?.latitude || null,
                 lon: sample.location?.longitude || null,
-                oxygen: sample.dissolvedOxygen || "N/A",
-                temp: sample.airTemperature || "N/A",
-                rain: sample.rainAccumulation || "N/A",
+                oxygen: sample.dissolvedOxygen ?? "N/A",
+                temp: sample.airTemperature ?? "N/A",
+                rain: sample.rainAccumulation ?? "N/A",
                 status: sample.status,
+                collector: [sample.collector?.firstName, sample.collector?.lastName].filter(Boolean).join(" ") || sample.collector?.lineProfileName || "N/A",
                 image: sample.rawImageUrl ? "" : "N/A",
                 imagePlot: sample.analyzedPlotUrl ? "" : "N/A",
             };
@@ -138,7 +174,9 @@ export async function GET(request: NextRequest) {
         return new Response(buffer, {
             headers: {
                 "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "Content-Disposition": `attachment; filename=Water_Quality_Report_${Date.now()}.xlsx`,
+                "Content-Disposition": buildContentDisposition(filters, scope, stationName, "xlsx"),
+                "X-Total-Rows": String(totalRows),
+                "Cache-Control": "no-store",
             },
         });
     } catch (error) {
