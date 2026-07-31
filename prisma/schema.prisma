@@ -153,6 +153,12 @@ model WaterSample {
   // เชื่อมกับ ReviewRequest ผ่าน sessionGroup (string link ไม่ใช่ FK จริง — ดู ReviewRequest ด้านล่าง)
   @@index([sessionGroup])
   @@index([code]) // [NEW] Index สำหรับค้นหา code
+
+  // ทุก query ของแดชบอร์ด/ส่งออก กรองด้วยช่วงเวลาเสมอ และเรียงด้วย collection_time + id (cursor ของ streaming export)
+  // ไม่มี index ชุดนี้ = full table scan ทุกครั้ง ซึ่งเริ่มรู้สึกที่หลักหมื่นแถวขึ้นไป
+  @@index([collectionTime])
+  @@index([locationId, collectionTime])
+  @@index([status, collectionTime])
   @@map("samples")
 }
 
