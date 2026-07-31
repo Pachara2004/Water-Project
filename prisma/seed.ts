@@ -9,6 +9,35 @@ import { evaluateSample, type StandardRow } from "../lib/standards";
 
 const prisma = new PrismaClient();
 
+// ─────────────────────────────────────────────────────────
+// ตัวเจน sessionGroup / code ให้ตรงรูปแบบ production
+//   sessionGroup -> SES[YYMMDD][ลำดับกลุ่ม 4 หลัก]        นับรวมทั้งระบบ รีเซ็ตรายวัน
+//   code         -> SP[YYMMDD][locationId 3 หลัก][ลำดับ 4 หลัก]  นับแยกรายสถานี รีเซ็ตรายวัน
+//
+// นับด้วย Map ในหน่วยความจำแทนการ query DB ทุกครั้ง (ตอน seed ตารางว่างอยู่แล้ว
+// และ seed เขียนข้อมูลแบบเรียงลำดับ ผลลัพธ์จึงตรงกับตรรกะของ generateSessionGroup /
+// generateSampleCode) ข้อจำกัด: ใช้ได้เฉพาะกรณี seed เริ่มจากตารางว่างเท่านั้น
+// ─────────────────────────────────────────────────────────
+const dateKey = (d: Date) => `${String(d.getFullYear()).slice(-2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+
+const sessionSeqByDay = new Map<string, number>(); // YYMMDD -> ลำดับกลุ่มล่าสุดของวันนั้น
+const sampleSeqByDayLocation = new Map<string, number>(); // YYMMDD:locationId -> ลำดับตัวอย่างล่าสุดของสถานีในวันนั้น
+
+function nextSessionGroup(collectionTime: Date): string {
+    const ymd = dateKey(collectionTime);
+    const seq = (sessionSeqByDay.get(ymd) ?? 0) + 1;
+    sessionSeqByDay.set(ymd, seq);
+    return `SES${ymd}${String(seq).padStart(4, "0")}`;
+}
+
+function nextSampleCode(locationId: number, collectionTime: Date): string {
+    const ymd = dateKey(collectionTime);
+    const key = `${ymd}:${locationId}`;
+    const seq = (sampleSeqByDayLocation.get(key) ?? 0) + 1;
+    sampleSeqByDayLocation.set(key, seq);
+    return `SP${ymd}${String(locationId).padStart(3, "0")}${String(seq).padStart(4, "0")}`;
+}
+
 async function main() {
     console.log("🌱 Starting database seeding based on actual schema.prisma...");
 
@@ -189,8 +218,8 @@ async function main() {
         insertedLocations.push(createdLoc);
     }
 
-    // ─── 8. WATER SAMPLES WITH PARAMETER MEASUREMENTS (250 ตัวอย่าง) ───
-    console.log("🧪 Generating 250 water samples with actual required EAV fields...");
+    // ─── 8. WATER SAMPLES WITH PARAMETER MEASUREMENTS (250 กลุ่ม = 500 แถว) ───
+    console.log("🧪 Generating 250 sample sessions (2 rows each: ammonia + phosphate)...");
     const samplesCount = 250;
 
     for (let i = 0; i < samplesCount; i++) {
@@ -214,36 +243,45 @@ async function main() {
         const ammoniaValue = parseFloat((strictestAmmonia * scaleFor(severityBucket)).toFixed(3));
         const phosphateValue = parseFloat((strictestPhosphate * scaleFor(severityBucket)).toFixed(4));
 
-        const computedStatus = computeStatus(phosphateValue, ammoniaValue);
-
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
         const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
 
-        const bulkSessionGroup = `SEED-BULK-${String(i + 1).padStart(4, "0")}`;
-        const sampleCode = `SAMP-${bulkSessionGroup}-01`;
+        const bulkSessionGroup = nextSessionGroup(sampleDate);
+        const rawImageUrl = Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null;
+        const analyzedPlotUrl = Math.random() > 0.5 ? `/uploads/mock-plot.jpg` : null;
+
+        // ฟิลด์สภาพแวดล้อมและรูปเป็นของ "การเก็บครั้งนั้น" จึงซ้ำเหมือนกันทุกแถวในกลุ่ม
+        const sharedFields = {
+            collectorId: randomCollectorObj.id,
+            locationId: randomLocation.id,
+            collectionTime: sampleDate,
+            dissolvedOxygen: doValue,
+            airTemperature: tempValue,
+            rainAccumulation: rainVol,
+            weatherCondCode: weatherCode,
+            sessionGroup: bulkSessionGroup,
+            rawImageUrl,
+            analyzedPlotUrl,
+        };
+
+        // 1 แถวต่อ 1 สาร ตรงกับที่ production เขียน (ผู้ใช้ยิงทีละขวด แล้วจับรวมเป็นกลุ่มด้วย sessionGroup)
+        // status ของแต่ละแถวคิดจากสารของแถวนั้นตัวเดียว ส่วนสถานะรวมของกลุ่มฝั่งอ่านจะหาค่าแย่สุดเอง
+        await prisma.waterSample.create({
+            data: {
+                ...sharedFields,
+                code: nextSampleCode(randomLocation.id, sampleDate),
+                status: computeStatus(0, ammoniaValue),
+                // [UPDATED] boundingBox ส่งเป็น JSON Object แทน String
+                measurements: { create: [{ parameterId: paramAmmonia.id, value: ammoniaValue, confidence: 0.92, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
+            },
+        });
 
         await prisma.waterSample.create({
             data: {
-                code: sampleCode,
-                collectorId: randomCollectorObj.id,
-                locationId: randomLocation.id,
-                collectionTime: sampleDate,
-                dissolvedOxygen: doValue,
-                airTemperature: tempValue,
-                rainAccumulation: rainVol,
-                weatherCondCode: weatherCode,
-                status: computedStatus,
-                sessionGroup: bulkSessionGroup,
-                rawImageUrl: Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null,
-                analyzedPlotUrl: Math.random() > 0.5 ? `/uploads/mock-plot.jpg` : null,
-
-                // [UPDATED] boundingBox ส่งเป็น JSON Object แทน String
-                measurements: {
-                    create: [
-                        { parameterId: paramAmmonia.id, value: ammoniaValue, confidence: 0.92, boundingBox: { x: 10, y: 20, w: 100, h: 200 } },
-                        { parameterId: paramPhosphate.id, value: phosphateValue, confidence: 0.89, boundingBox: { x: 15, y: 25, w: 110, h: 210 } },
-                    ],
-                },
+                ...sharedFields,
+                code: nextSampleCode(randomLocation.id, sampleDate),
+                status: computeStatus(phosphateValue, 0),
+                measurements: { create: [{ parameterId: paramPhosphate.id, value: phosphateValue, confidence: 0.89, boundingBox: { x: 15, y: 25, w: 110, h: 210 } }] },
             },
         });
     }
@@ -256,13 +294,14 @@ async function main() {
     const collectorB = collectors[1];
 
     // A) PENDING Single
-    const sgPendingSingle = "SEED-PENDING-01";
+    const timePendingSingle = new Date(Date.now() - 1000 * 60 * 60 * 3);
+    const sgPendingSingle = nextSessionGroup(timePendingSingle);
     await prisma.waterSample.create({
         data: {
-            code: `SAMP-${sgPendingSingle}-01`,
+            code: nextSampleCode(reviewLocation.id, timePendingSingle),
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
-            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 3),
+            collectionTime: timePendingSingle,
             dissolvedOxygen: 5.2,
             airTemperature: 29.1,
             status: computeStatus(0, 2.1),
@@ -275,13 +314,14 @@ async function main() {
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingSingle, statusRequest: "pending" } });
 
     // B) PENDING Paired
-    const sgPendingPaired = "SEED-PENDING-02";
+    const timePendingPaired = new Date(Date.now() - 1000 * 60 * 60 * 5);
+    const sgPendingPaired = nextSessionGroup(timePendingPaired);
     await prisma.waterSample.create({
         data: {
-            code: `SAMP-${sgPendingPaired}-01`,
+            code: nextSampleCode(reviewLocation.id, timePendingPaired),
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
-            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
+            collectionTime: timePendingPaired,
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
             status: computeStatus(0, 0.15),
@@ -291,10 +331,10 @@ async function main() {
     });
     await prisma.waterSample.create({
         data: {
-            code: `SAMP-${sgPendingPaired}-02`,
+            code: nextSampleCode(reviewLocation.id, timePendingPaired),
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
-            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
+            collectionTime: timePendingPaired,
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
             status: computeStatus(0.6, 0),
@@ -305,13 +345,14 @@ async function main() {
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingPaired, statusRequest: "pending" } });
 
     // C) PENDING Other
-    const sgPendingOther = "SEED-PENDING-03";
+    const timePendingOther = new Date(Date.now() - 1000 * 60 * 60 * 8);
+    const sgPendingOther = nextSessionGroup(timePendingOther);
     await prisma.waterSample.create({
         data: {
-            code: `SAMP-${sgPendingOther}-01`,
+            code: nextSampleCode(insertedLocations[1].id, timePendingOther),
             collectorId: collectorB.id,
             locationId: insertedLocations[1].id,
-            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 8),
+            collectionTime: timePendingOther,
             status: computeStatus(0, 3.4),
             sessionGroup: sgPendingOther,
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 3.4, confidence: 0.18, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
@@ -320,13 +361,14 @@ async function main() {
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingOther, statusRequest: "pending" } });
 
     // D) APPROVED
-    const sgApproved = "SEED-APPROVED-01";
+    const timeApproved = new Date(Date.now() - 1000 * 60 * 60 * 24);
+    const sgApproved = nextSessionGroup(timeApproved);
     await prisma.waterSample.create({
         data: {
-            code: `SAMP-${sgApproved}-01`,
+            code: nextSampleCode(reviewLocation.id, timeApproved),
             collectorId: collectorB.id,
             locationId: reviewLocation.id,
-            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
+            collectionTime: timeApproved,
             status: computeStatus(0.02, 0),
             sessionGroup: sgApproved,
             measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.02, confidence: 0.55, boundingBox: { x: 15, y: 25, w: 110, h: 210 } }] },
@@ -342,13 +384,14 @@ async function main() {
     });
 
     // E) REJECTED
-    const sgRejected = "SEED-REJECTED-01";
+    const timeRejected = new Date(Date.now() - 1000 * 60 * 60 * 48);
+    const sgRejected = nextSessionGroup(timeRejected);
     await prisma.waterSample.create({
         data: {
-            code: `SAMP-${sgRejected}-01`,
+            code: nextSampleCode(insertedLocations[2].id, timeRejected),
             collectorId: collectorA.id,
             locationId: insertedLocations[2].id,
-            collectionTime: new Date(Date.now() - 1000 * 60 * 60 * 48),
+            collectionTime: timeRejected,
             status: computeStatus(0, 4.5),
             sessionGroup: sgRejected,
             isDeleted: true,
