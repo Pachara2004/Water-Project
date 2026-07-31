@@ -1,24 +1,4 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: water_quality_mysql_dev
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-water_quality}
-      MYSQL_USER: ${MYSQL_USER:-wateruser}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-waterpass}
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   web:
     build:
       context: .
@@ -29,7 +9,7 @@ services:
     env_file:
       - .env
     ports:
-      - "3000:3000"
+      - "8551:3000"
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality}
       NEXT_PUBLIC_LIFF_ID: ${NEXT_PUBLIC_LIFF_ID:-}
@@ -44,20 +24,6 @@ services:
       - web_node_modules:/app/node_modules
       - web_next:/app/.next
     command: sh -c "npx prisma generate && npx prisma db push && npm run dev -- --hostname 0.0.0.0"
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest
-    container_name: water_quality_phpmyadmin_dev
-    restart: unless-stopped
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-    ports:
-      - "8080:80"
-    depends_on:
-      mysql:
-        condition: service_healthy
 
 volumes:
   mysql_data:
