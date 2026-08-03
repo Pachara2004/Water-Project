@@ -44,7 +44,6 @@ export default function CollectorDesktop(props: CollectorProps) {
 
     const datePanelRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
-    const [imageErrors, ] = useState<Record<number, boolean>>({});
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -299,7 +298,6 @@ export default function CollectorDesktop(props: CollectorProps) {
                                     {/* Desktop Grid Layout: 2 Columns */}
                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                         {samples.map((sample) => {
-                                            const hasImageError = imageErrors[sample.id];
 
                                             return (
                                                 <div
