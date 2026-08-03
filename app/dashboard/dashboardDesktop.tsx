@@ -69,7 +69,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                             </h1>
                             <p className="text-xs text-text-secondary mt-1 leading-relaxed">ข้อมูลคุณภาพแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวัง</p>
                         </div>
-                        <ExportButtons className="w-auto shrink-0" />
+                        <ExportButtons className="w-auto shrink-0" filters={{ viewMode, startDate, endDate, agency, locationId }} />
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">

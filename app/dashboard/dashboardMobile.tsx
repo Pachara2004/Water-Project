@@ -67,7 +67,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                             </h1>
                             <p className="text-xs text-text-secondary mt-1 leading-relaxed">ข้อมูลคุณภาพแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวัง</p>
                         </div>
-                        <ExportButtons />
+                        <ExportButtons filters={{ viewMode, startDate, endDate, agency, locationId }} />
                     </div>
 
                     {/* แถบสลับมุมมองข้อมูล */}

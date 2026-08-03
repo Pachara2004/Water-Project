@@ -2,18 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
-
-// ตีความ "YYYY-MM-DD" จาก filter เป็นขอบเขตเวลาไทย (+07:00) ให้ตรงกับ toISODate ฝั่ง frontend
-// ป้องกัน off-by-one จากการ parse เป็น UTC เที่ยงคืน (คลาดกับเวลาไทย 7 ชม.)
-function parseLocalDayStart(dateStr: string): Date {
-    return new Date(`${dateStr}T00:00:00+07:00`);
-}
-function parseLocalDayEnd(dateStr: string): Date {
-    // ครอบคลุมทั้งวัน: ใช้ "น้อยกว่า" เที่ยงคืนของวันถัดไป แทนการเดา .999
-    const d = parseLocalDayStart(dateStr);
-    d.setDate(d.getDate() + 1);
-    return d;
-}
+import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters } from "@/lib/sampleFilters";
 
 export async function GET(request: NextRequest) {
     try {
@@ -23,18 +12,9 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
         }
 
-        const { searchParams } = new URL(request.url);
-        // collector ดูได้เฉพาะข้อมูลของตัวเองเท่านั้น บังคับ MINE ที่ฝั่ง server เสมอ ไม่สนใจค่าที่ client ส่งมา
-        const viewMode = auth.user!.roleName === "collector" ? "MINE" : searchParams.get("viewMode") || "ALL";
-        // ห้ามเชื่อ collectorId จาก query param (ใครก็ปลอมเป็น id ใครก็ได้) — ใช้ id จาก token ที่ยืนยันแล้วเท่านั้น
-        const collectorId = auth.user!.id;
-
-        const startDateParam = searchParams.get("startDate");
-        const endDateParam = searchParams.get("endDate");
-        const agencyParam = searchParams.get("agency");
-        // เลือกกรองเฉพาะสถานีเดียว (จาก search ฝั่ง frontend) — ถ้ามีค่านี้จะกรองแทนที่ agency
-        const locationIdParam = searchParams.get("locationId");
-        const locationId = locationIdParam ? Number(locationIdParam) : null;
+        // filter ทั้งชุดอ่านผ่านตัวกลางเดียวกับที่ /api/samples/export ใช้ (บังคับขอบเขตสิทธิ์ที่ server ให้แล้ว)
+        const filters = readSampleFilters(request, auth.user!);
+        const { startDate: startDateParam, endDate: endDateParam, locationId } = filters;
 
         // 1. ดึงรายชื่อหน่วยงาน + สถานีทั้งหมดที่มีอยู่จริงในตาราง Location ให้ frontend เอาไปใช้ค้นหา
         const allLocations = await prisma.location.findMany({
@@ -47,25 +27,9 @@ export async function GET(request: NextRequest) {
         // สถิติ/dashboard ต้องคิดจากข้อมูลที่ยืนยันแล้วเท่านั้น ซ่อน session ที่ยังรออนุมัติ (ไม่ว่า viewMode ไหน)
         const pendingGroups = await getPendingSessionGroups();
 
-        // คุมสิทธิ์การดึงข้อมูลหลัก (Base Filter Context)
-        const baseWhere: any = { isDeleted: false };
-        // ต้องปล่อยแถว sessionGroup = null ผ่าน (ข้อมูลส่งเดี่ยวส่วนใหญ่ไม่มี sessionGroup)
-        // เพราะ SQL `NOT IN (...)` คัดแถวที่คอลัมน์เป็น NULL ทิ้งหมด → dashboard ว่างเปล่าเมื่อมี pending
-        if (pendingGroups.length > 0) baseWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
-        if (viewMode === "MINE" && collectorId) {
-            baseWhere.collectorId = collectorId;
-        }
-        if (startDateParam || endDateParam) {
-            baseWhere.collectionTime = {};
-            if (startDateParam) baseWhere.collectionTime.gte = parseLocalDayStart(startDateParam);
-            if (endDateParam) baseWhere.collectionTime.lt = parseLocalDayEnd(endDateParam);
-        }
-        // เลือกสถานีเจาะจงมาก่อน agency เสมอ (ละเอียดกว่า) — ถ้าไม่ได้เลือกสถานีค่อย fallback ไปกรองด้วยหน่วยงาน
-        if (locationId) {
-            baseWhere.locationId = locationId;
-        } else if (agencyParam && agencyParam !== "all") {
-            baseWhere.location = { governingAgency: agencyParam };
-        }
+        // คุมสิทธิ์การดึงข้อมูลหลัก (Base Filter Context) — ประกอบจากตัวกลางเดียวกับการส่งออก
+        // ส่ง pendingGroups ที่ query มาแล้วเข้าไปใช้ซ้ำ ไม่ต้องยิงถามซ้ำในแต่ละ where
+        const baseWhere = await buildSampleWhere(filters, { pendingGroups });
 
         // --- ดึงข้อมูลพื้นฐานจาก DB (ให้ฐานข้อมูลคำนวณสรุปให้ ไม่โหลดทุกแถวเข้าหน่วยความจำ) ---
         const totalSamples = await prisma.waterSample.count({ where: baseWhere });
@@ -86,14 +50,7 @@ export async function GET(request: NextRequest) {
 
         // ---  WoW / MoM ตามปฏิทินจริง — ยึด "วันนี้" เสมอ ไม่อิงช่วงวันที่ที่เลือกบน filter ---
         // ขอบเขตสิทธิ์/หน่วยงานยังคงกรองตามเดิม แต่ตัดเงื่อนไขวันที่ของ filter ออก
-        const scopeWhere: any = { isDeleted: false };
-        if (pendingGroups.length > 0) scopeWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
-        if (viewMode === "MINE" && collectorId) scopeWhere.collectorId = collectorId;
-        if (locationId) {
-            scopeWhere.locationId = locationId;
-        } else if (agencyParam && agencyParam !== "all") {
-            scopeWhere.location = { governingAgency: agencyParam };
-        }
+        const scopeWhere = await buildSampleWhere(filters, { withDateRange: false, pendingGroups });
 
         const now = new Date();
 
