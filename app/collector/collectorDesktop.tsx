@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import { Camera, FileText, Calendar, Beaker, ImageOff, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check, ArrowLeft } from "lucide-react";
+import { Camera, FileText, Calendar, Beaker, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check, ArrowLeft, FileScan, MapPin } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
 import { CollectorProps } from "./collectorMobile";
@@ -44,11 +44,7 @@ export default function CollectorDesktop(props: CollectorProps) {
 
     const datePanelRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
-    const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
-
-    const handleImageError = (sampleId: number) => {
-        setImageErrors((prev) => ({ ...prev, [sampleId]: true }));
-    };
+    const [imageErrors, ] = useState<Record<number, boolean>>({});
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -114,23 +110,23 @@ export default function CollectorDesktop(props: CollectorProps) {
                             <h2 className="text-xl font-medium tracking-tight text-text">
                                 ศูนย์ข้อมูล<span className="text-primary font-medium">ตรวจสอบคุณภาพน้ำ</span>
                             </h2>
-                            <p className="text-text font-medium text-xs">ระบบบริหารจัดการภาพถ่าย ประวัติการส่งตรวจ และข้อมูลวิเคราะห์คุณภาพน้ำแบบศูนย์กลาง</p>
+                            <p className="text-text font-medium text-xs">ระบบตรวจสอบและจัดการข้อมูลคุณภาพน้ำ</p>
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
                             {currentUser?.role !== "officer" && <NotificationBell />}
                             <button
                                 onClick={() => router.push("/submit")}
-                                className="p-3 bg-primary hover:bg-primary/95 text-card-general font-medium rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shadow-xs"
+                                className="p-3.5 bg-primary hover:bg-primary/95 text-card-general font-medium rounded-xl flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer text-xs shadow-xs"
                             >
                                 <Camera size={18} strokeWidth={2.5} />
-                                <span>ส่งตรวจคุณภาพน้ำ</span>
+                                <span>ตรวจคุณภาพน้ำ</span>
                             </button>
                         </div>
                     </div>
 
                     {/* Filter & Search Dashboard Workbench */}
-                    <div className="relative w-full bg-card-general rounded-2xl p-5 space-y-4">
+                    <div className="relative w-full bg-card-general border border-border rounded-2xl p-5 space-y-4">
                         {/* Title Bar & Toggle */}
                         <div className="flex items-center justify-between gap-4  border-border mb-4">
                             <div className="inline-flex items-center gap-2">
@@ -309,72 +305,76 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                 <div
                                                     key={sample.id}
                                                     onClick={() => router.push(`/collector/history/${sample.id}`)}
-                                                    className="bg-card-general rounded-2xl p-4 border border-border hover:border-primary/50 transition-all flex items-center gap-4 cursor-pointer group shadow-2xs hover:shadow-xs"
+                                                    className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
                                                 >
-                                                    {/* Sample Image */}
-                                                    <div className="w-16 h-16 rounded-xl bg-surface-subtle border border-border shrink-0 overflow-hidden flex items-center justify-center relative">
-                                                        {sample.imageUrl && !hasImageError ? (
-                                                            <img
-                                                                src={sample.imageUrl}
-                                                                alt="sample data"
-                                                                onError={() => handleImageError(sample.id)}
-                                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                                            />
-                                                        ) : (
-                                                            <ImageOff size={18} className="text-text-muted" />
-                                                        )}
-                                                    </div>
+                                                    {/* ฝั่งเนื้อหาข้อมูล - ถอด h-15 ออกเพื่อให้ขยายแนวตั้งได้ตามจริง */}
+                                                    <div className="flex-1 min-w-0 flex flex-col ">
+                                                        {/* แถวบน: ชื่อสถานที่ และ สถานะ */}
+                                                        <div className="flex items-start justify-between gap-4 w-full">
+                                                            {/* ฝั่งซ้าย: ชื่อสถานที่ + วันที่ */}
+                                                            <div className="flex-1 min-w-0">
+                                                                {/* จัดให้อยู่ตรงกลางแนวตั้งด้วย items-center */}
+                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                    {/* ไอคอน MapPin อยู่ตรงกลางแนวตั้งขนานกับกลุ่มข้อความ */}
+                                                                    <MapPin size={36} className="text-primary shrink-0" />
 
-                                                    {/* Sample Details */}
-                                                    <div className="flex-1 min-w-0 flex flex-col justify-between gap-1.5">
-                                                        <div className="flex items-start justify-between gap-3">
-                                                            <div className="min-w-0 flex-1">
-                                                                <h4 className="font-medium text-sm text-text truncate group-hover:text-primary transition-colors">
-                                                                    {sample.location?.name || "ไม่ทราบสถานที่"}
-                                                                </h4>
-                                                                <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium mt-0.5">
-                                                                    <Calendar size={13} className="shrink-0" />
-                                                                    <span>
-                                                                        {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                                                                            day: "numeric",
-                                                                            month: "short",
-                                                                            year: "numeric",
-                                                                        })}
-                                                                    </span>
+                                                                    {/* กลุ่มข้อความ ชื่อสถานที่, วันที่ และค่าสารเคมี */}
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <h4 className="font-semibold text-sm text-text">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+                                                                        {/* แถวกลาง: เมทาดาต้า วันที่ */}
+                                                                        <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5 gap-2">
+                                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                                <FileScan size={13} className="text-text-muted shrink-0" />
+                                                                                <span className="leading-none">{sample.code}</span>
+                                                                            </div>
+
+                                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                                <Calendar size={13} className="text-text-muted shrink-0" />
+                                                                                <span className="leading-none">
+                                                                                    {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                                                        day: "numeric",
+                                                                                        month: "short",
+                                                                                        year: "2-digit",
+                                                                                    })}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* แถวล่าง: แสดงค่าสารเคมี */}
+                                                                        <div className="flex items-center gap-2 mt-1 w-full">
+                                                                            {[
+                                                                                { key: "phosphateVal", label: "P", color: "text-teal-500" },
+                                                                                { key: "ammoniaVal", label: "N", color: "text-purple-500" },
+                                                                            ].map((indicator) => {
+                                                                                const value = sample[indicator.key];
+                                                                                if (value === undefined || value === null) return null;
+
+                                                                                return (
+                                                                                    <div
+                                                                                        key={indicator.key}
+                                                                                        className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
+                                                                                    >
+                                                                                        <Beaker size={10} className={indicator.color} />
+                                                                                        <span>
+                                                                                            {indicator.label}: {Number(value).toFixed(2)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
-                                                            <div className="flex flex-col items-end gap-1 shrink-0">
+                                                            {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
+                                                            <div className="flex flex-col items-end text-center gap-1 shrink-0">
                                                                 <StatusBadge status={sample.status} size="sm" />
                                                                 {sample.reviewStatus === "PENDING" && (
-                                                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-text-warning bg-bg-warning/20 border border-border-warning px-2 py-0.5 rounded-md whitespace-nowrap">
-                                                                        รออนุมัติ
+                                                                    <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                                                                        รอตรวจสอบ
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                        </div>
-
-                                                        {/* Chemical Indicators */}
-                                                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/40">
-                                                            {[
-                                                                { key: "phosphateVal", label: "P", color: "text-teal-500" },
-                                                                { key: "ammoniaVal", label: "N", color: "text-purple-500" },
-                                                            ].map((indicator) => {
-                                                                const value = sample[indicator.key as keyof typeof sample];
-                                                                if (value === undefined || value === null) return null;
-
-                                                                return (
-                                                                    <div
-                                                                        key={indicator.key}
-                                                                        className="flex items-center gap-1 bg-surface-subtle px-2.5 py-1 rounded-md text-xs font-medium text-text shrink-0"
-                                                                    >
-                                                                        <Beaker size={11} className={indicator.color} />
-                                                                        <span>
-                                                                            {indicator.label}: {Number(value).toFixed(2)}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                            })}
                                                         </div>
                                                     </div>
                                                 </div>
