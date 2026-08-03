@@ -48,11 +48,6 @@ export default function CollectorMobile(props: CollectorProps) {
 
     const datePanelRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
-    const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
-
-    const handleImageError = (sampleId: number) => {
-        setImageErrors((prev) => ({ ...prev, [sampleId]: true }));
-    };
 
     // เคลียร์ป็อปอัปต่าง ๆ เมื่อคลิกด้านนอกกล่องควบคุม
     useEffect(() => {

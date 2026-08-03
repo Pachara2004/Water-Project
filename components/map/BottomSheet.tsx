@@ -621,7 +621,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
             >
                 <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0 border-b border-border">
-                    <span className="text-xs font-black text-text-muted uppercase tracking-widest">ข้อมูลสถานี</span>
+                    <span className="text-xs font-semibold text-text-muted uppercase tracking-widest">ข้อมูลสถานี</span>
                     <button
                         title="Close Panel"
                         onClick={onClose}
