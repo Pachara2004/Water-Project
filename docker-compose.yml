@@ -1,4 +1,27 @@
 services:
+  mysql:
+    image: mariadb:10.11
+    container_name: water_quality_mysql_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-water_quality}
+      MYSQL_USER: ${MYSQL_USER:-wateruser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-waterpass}
+    ports:
+      - "8053:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     build:
       context: .
@@ -9,9 +32,12 @@ services:
     env_file:
       - .env
     ports:
-      - "8551:3000"
+      - "8054:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality}
+      # เพิ่ม ?charset=utf8mb4 ทั้งในตัวแปรและ fallback default
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality?charset=utf8mb4}
       NEXT_PUBLIC_LIFF_ID: ${NEXT_PUBLIC_LIFF_ID:-}
       TMD_API_TOKEN: ${TMD_API_TOKEN:-}
       CRON_SECRET: ${CRON_SECRET:-}
