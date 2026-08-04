@@ -48,7 +48,7 @@ export default function SubmitDesktop(props: any) {
                 <div className="grid grid-cols-12 gap-4 items-start">
                     <aside className="col-span-12 lg:col-span-4 space-y-4">
                         <div className="bg-card-general border border-border rounded-xl p-4">
-                            <SubmitSteps step={step} />
+                            <SubmitSteps step={step} isSaved={saved} />
                         </div>
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">

@@ -142,7 +142,7 @@ export function describeScope(filters: SampleFilters, scope: "filtered" | "all",
 }
 
 /**
- * บริบทที่ทุกไฟล์ส่งออกต้องรู้: where ที่จะใช้ดึงข้อมูล, ชื่อสถานีที่กรอง, ชื่อผู้ส่งออก
+ * บริบทที่ทุกไฟล์ส่งออกต้องรู้: where ที่จะใช้ดึงข้อมูล, ชื่อสถานีที่กรอง (ใช้ตั้งชื่อไฟล์)
  *
  * แยกออกมาเพื่อให้ CSV / XLSX / endpoint นับจำนวน ใช้ตรรกะเดียวกันเป๊ะ
  * ไม่งั้นจำนวนแถวที่โชว์ก่อนกดยืนยันจะไม่ตรงกับจำนวนแถวในไฟล์จริง
@@ -155,41 +155,10 @@ export async function resolveExportContext(request: NextRequest, user: { id: num
     const pendingGroups = await getPendingSessionGroups();
     const where = scope === "all" ? await buildAllScopeWhere(filters, pendingGroups) : await buildSampleWhere(filters, { pendingGroups });
 
-    const [station, exporter] = await Promise.all([
-        scope === "filtered" && filters.locationId ? prisma.location.findUnique({ where: { id: filters.locationId }, select: { stationName: true } }) : Promise.resolve(null),
-        prisma.user.findUnique({ where: { id: user.id }, select: { firstName: true, lastName: true, lineProfileName: true } }),
-    ]);
-
+    const station = scope === "filtered" && filters.locationId ? await prisma.location.findUnique({ where: { id: filters.locationId }, select: { stationName: true } }) : null;
     const stationName = station?.stationName ?? null;
-    const exporterName = exporter ? [exporter.firstName, exporter.lastName].filter(Boolean).join(" ") || exporter.lineProfileName : "ไม่ทราบชื่อ";
 
-    return { scope, filters, where, stationName, exporterName };
-}
-
-/**
- * แถวหัวไฟล์ที่บอกว่าไฟล์นี้คือข้อมูลชุดไหน — ไฟล์ที่หลุดออกไปจากระบบยังต้องอธิบายตัวเองได้
- * คืนเป็นคู่ [ป้าย, ค่า] ให้ผู้เรียกไปจัดรูปแบบตามชนิดไฟล์เอง (แถว CSV หรือเซลล์ Excel)
- */
-export function buildExportMetadata(
-    filters: SampleFilters,
-    scope: "filtered" | "all",
-    stationName: string | null,
-    exporterName: string,
-    rowCount: number | null
-): [string, string][] {
-    const { rangeLabel, targetLabel } = describeScope(filters, scope, stationName);
-    const rows: [string, string][] = [
-        ["รายงาน", "ข้อมูลตัวอย่างน้ำ (ระบบติดตามคุณภาพน้ำ)"],
-        ["ขอบเขต", scope === "all" ? "ทั้งหมดในระบบ" : "ตามฟิลเตอร์ที่เลือกบนแดชบอร์ด"],
-        ["ช่วงวันที่เก็บตัวอย่าง", rangeLabel],
-        ["หน่วยงาน/สถานี", targetLabel],
-        ["มุมมองข้อมูล", filters.viewMode === "MINE" ? "เฉพาะที่ตนเองเก็บ" : "ทุกผู้เก็บ"],
-        ["ส่งออกเมื่อ", `${formatThaiDateTime(new Date())} (เวลาไทย)`],
-        ["ผู้ส่งออก", exporterName],
-    ];
-    if (rowCount !== null) rows.push(["จำนวนแถว", `${rowCount.toLocaleString("th-TH")} แถว`]);
-    rows.push(["หมายเหตุ", "ไม่รวมข้อมูลที่ถูกลบ และไม่รวมรอบเก็บที่ยังรออนุมัติ (นิยามเดียวกับตัวเลขบนแดชบอร์ด)"]);
-    return rows;
+    return { scope, filters, where, stationName };
 }
 
 /**
