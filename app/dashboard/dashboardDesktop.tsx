@@ -58,16 +58,16 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
     }
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
-            <div className="w-full mx-auto px-8 space-y-5 pt-8">
+        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+            <div className="w-full mx-auto p-4">
                 <div className="space-y-4">
                     {/* Header + แถบควบคุมทั้งหมดเรียงแนวนอนแถวเดียว ใช้พื้นที่กว้างของจอเดสก์ท็อป */}
                     <div className="bg-card-general rounded-2xl p-5 border border-border flex items-center justify-between gap-4 shrink-0">
                         <div>
-                            <h1 className="text-xl font-bold text-text-primary">
-                                แดชบอร์ดติดตาม<span className="text-primary">คุณภาพน้ำ</span>
+                            <h1 className="text-xl font-medium tracking-tight text-text">
+                                แดชบอร์ดติดตาม<span className="text-primary font-medium">คุณภาพน้ำ</span>
                             </h1>
-                            <p className="text-xs text-text-secondary mt-1 leading-relaxed">ข้อมูลคุณภาพแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวัง</p>
+                            <p className="text-text font-medium text-xs">ข้อมูลคุณภาพแบบเรียลไทม์ และสถิติความแปรปรวนเชิงลึกเพื่อการเฝ้าระวัง</p>
                         </div>
                         <ExportButtons className="w-auto shrink-0" filters={{ viewMode, startDate, endDate, agency, locationId }} />
                     </div>
@@ -111,9 +111,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                 (() => {
                                     const q = agencySearch.trim().toLowerCase();
                                     const matchedAgencies = (analytics?.agencies || []).filter((a: string) => a.toLowerCase().includes(q));
-                                    const matchedLocations = (analytics?.locations || []).filter(
-                                        (l: any) => l.stationName?.toLowerCase().includes(q) || l.governingAgency?.toLowerCase().includes(q),
-                                    );
+                                    const matchedLocations = (analytics?.locations || []).filter((l: any) => l.stationName?.toLowerCase().includes(q) || l.governingAgency?.toLowerCase().includes(q));
                                     const hasResults = matchedAgencies.length > 0 || matchedLocations.length > 0;
                                     return (
                                         <div className="absolute z-20 top-full left-0 mt-1 w-full bg-surface border border-border rounded-xl shadow-lg py-1 max-h-72 overflow-y-auto">
@@ -364,9 +362,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                                 domain={[
                                                     0,
                                                     (dataMax: number) => {
-                                                        const refMax = analytics?.trendConfig?.references?.length
-                                                            ? Math.max(...analytics.trendConfig.references.map((r: any) => r.value))
-                                                            : 0;
+                                                        const refMax = analytics?.trendConfig?.references?.length ? Math.max(...analytics.trendConfig.references.map((r: any) => r.value)) : 0;
                                                         return Math.max(dataMax, refMax) * 1.05;
                                                     },
                                                 ]}

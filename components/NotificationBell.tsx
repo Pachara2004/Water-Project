@@ -33,9 +33,8 @@ export default function NotificationBell() {
     const [items, setItems] = useState<NotificationItem[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [ackingId, setAckingId] = useState<number | null>(null);
-    const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
-    // ─── Bottom Sheet Dragging States ───
+    // ─── Bottom Sheet Dragging States (Mobile Only) ───
     const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("collapsed");
     const isDraggingRef = useRef(false);
     const dragStartYRef = useRef(0);
@@ -47,17 +46,24 @@ export default function NotificationBell() {
     const animationFrameRef = useRef<number | null>(null);
 
     const [windowHeight, setWindowHeight] = useState(700);
+    const [isDesktop, setIsDesktop] = useState(false);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
             setWindowHeight(window.innerHeight);
+
+            // เช็คขนาดหน้าจอเพื่อแยก Desktop / Mobile
+            const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
+            checkDesktop();
+            window.addEventListener("resize", checkDesktop);
+            return () => window.removeEventListener("resize", checkDesktop);
         }
     }, []);
 
-    // คำนวณความสูง 3 ระดับ: collapsed (พอดีกับ 1 รายการ) / half (50%) / full (80%)
+    // คำนวณความสูง 3 ระดับสำหรับ Mobile Bottom Sheet
     const HEIGHTS = useMemo(
         () => ({
-            collapsed: 210, // ความสูงระดับแรกสำหรับโชว์ 1 การ์ด
+            collapsed: 210,
             half: windowHeight * 0.5,
             full: windowHeight * 0.8,
         }),
@@ -76,7 +82,7 @@ export default function NotificationBell() {
     };
 
     const snapTo = (point: "collapsed" | "half" | "full") => {
-        if (sheetRef.current) {
+        if (sheetRef.current && !isDesktop) {
             sheetRef.current.style.transition = "height 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
             sheetRef.current.style.height = `${getSnapHeight(point)}px`;
         }
@@ -84,6 +90,7 @@ export default function NotificationBell() {
     };
 
     const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
+        if (isDesktop) return; // ปิด Gesture บน Desktop
         const clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
         isDraggingRef.current = true;
         dragStartYRef.current = clientY;
@@ -96,7 +103,7 @@ export default function NotificationBell() {
 
     const handleDragMove = useCallback(
         (clientY: number) => {
-            if (!isDraggingRef.current) return;
+            if (!isDraggingRef.current || isDesktop) return;
 
             const now = Date.now();
             const dt = now - lastTimeRef.current;
@@ -117,11 +124,11 @@ export default function NotificationBell() {
                 }
             });
         },
-        [HEIGHTS],
+        [HEIGHTS, isDesktop],
     );
 
     const handleDragEnd = () => {
-        if (!isDraggingRef.current) return;
+        if (!isDraggingRef.current || isDesktop) return;
         isDraggingRef.current = false;
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
@@ -145,11 +152,11 @@ export default function NotificationBell() {
     };
 
     useEffect(() => {
-        if (open && sheetRef.current) {
+        if (open && sheetRef.current && !isDesktop) {
             sheetRef.current.style.transition = "height 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
             sheetRef.current.style.height = `${getSnapHeight(sheetHeight)}px`;
         }
-    }, [open, getSnapHeight, sheetHeight]);
+    }, [open, getSnapHeight, sheetHeight, isDesktop]);
 
     const fetchNotifications = useCallback(async () => {
         try {
@@ -165,7 +172,6 @@ export default function NotificationBell() {
         }
     }, []);
 
-    // โหลดตอน mount + รีเฟรชเมื่อผู้ใช้กลับมาโฟกัสหน้าจอ (เช่น สลับแท็บกลับมา)
     useEffect(() => {
         fetchNotifications();
         const onFocus = () => fetchNotifications();
@@ -173,11 +179,10 @@ export default function NotificationBell() {
         return () => window.removeEventListener("focus", onFocus);
     }, [fetchNotifications]);
 
-    // ล็อกสกอลล์พื้นหลังตอนเปิดป็อปอัป
     useEffect(() => {
         if (open) {
             document.body.style.overflow = "hidden";
-            setSheetHeight("collapsed"); // รีเซ็ตเป็นระดับแรกเมื่อเปิด
+            setSheetHeight("collapsed");
             return () => {
                 document.body.style.overflow = "";
             };
@@ -188,7 +193,6 @@ export default function NotificationBell() {
         if (item.acknowledgedAt || ackingId === item.id) return;
         setAckingId(item.id);
 
-        // optimistic — ทำให้จางลงและลดตัวเลขทันที
         setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, acknowledgedAt: new Date().toISOString() } : i)));
         setUnreadCount((c) => Math.max(0, c - 1));
 
@@ -198,10 +202,9 @@ export default function NotificationBell() {
                 headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
             });
             if (!res.ok) throw new Error("ack failed");
-            refreshNavDots(); // แจ้ง Navbar ให้ลบจุดแดงทันที ไม่ต้องรอ mount/focus ใหม่
+            refreshNavDots();
         } catch (err) {
             console.error("Failed to acknowledge notification:", err);
-            // rollback หากล้มเหลว
             setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, acknowledgedAt: null } : i)));
             setUnreadCount((c) => c + 1);
         } finally {
@@ -209,15 +212,15 @@ export default function NotificationBell() {
         }
     };
 
-    // แสดงรายการแรกรายการเดียวถ้าอยู่ในโหมด collapsed
-    const displayedItems = sheetHeight === "collapsed" ? items.slice(0, 1) : items;
+    // บน Desktop ให้โชว์รายการทั้งหมดเสมอ ส่วน Mobile ขึ้นอยู่กับระดับการ Drag (collapsed = 1 รายการ)
+    const displayedItems = !isDesktop && sheetHeight === "collapsed" ? items.slice(0, 1) : items;
 
     return (
         <>
             {/* ปุ่มกระดิ่ง */}
             <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={() => setOpen(!open)}
                 aria-label="การแจ้งเตือน"
                 className="relative w-10 h-10 rounded-xl bg-bg border border-border flex items-center justify-center text-primary hover:text-primary hover:border-primary/30 transition-all active:scale-95 cursor-pointer shrink-0"
             >
@@ -229,49 +232,63 @@ export default function NotificationBell() {
                 )}
             </button>
 
-            {/* ป็อปอัปแบบ bottom-sheet เลื่อนได้ 3 ระดับ */}
+            {/* Backdrop และ Container */}
             {open && (
                 <>
+                    {/* Backdrop สำหรับปิดเมื่อคลิกด้านนอก */}
                     <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={() => setOpen(false)} />
+
+                    {/*
+                       - Mobile (default): Bottom Sheet ยืดหดได้ลอยจากขอบล่าง
+                       - Desktop (md:): Modal กลางจอ (Centered Modal)
+                    */}
                     <div
                         ref={sheetRef}
-                        className="fixed bottom-0 left-0 right-0 z-1001 bg-bg rounded-t-3xl shadow-2xl border-t border-border max-w-lg mx-auto flex flex-col will-change-[height]"
-                        style={{
-                            height: `${getSnapHeight(sheetHeight)}px`,
-                            maxHeight: "85vh",
-                            touchAction: "none",
-                        }}
+                        className={`
+                            fixed z-1001 bg-bg shadow-2xl border border-border flex flex-col
+                            /* Mobile Style */
+                            bottom-0 left-0 right-0 rounded-t-3xl max-w-lg mx-auto will-change-[height]
+                            /* Desktop Style (md ขึ้นไป) */
+                            md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto md:right-auto
+                            md:w-full md:max-w-md md:h-[600px] md:max-h-[85vh] md:rounded-3xl
+                        `}
+                        style={
+                            !isDesktop
+                                ? {
+                                      height: `${getSnapHeight(sheetHeight)}px`,
+                                      maxHeight: "85vh",
+                                      touchAction: "none",
+                                  }
+                                : undefined
+                        }
                         onMouseUp={handleDragEnd}
                         onMouseLeave={handleDragEnd}
                         onTouchEnd={handleDragEnd}
                         onMouseMove={(e) => handleDragMove(e.clientY)}
                         onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
                     >
-                        {/* Drag Handle Bar */}
+                        {/* Header Bar */}
                         <div
-                            className="relative w-full flex items-center justify-center pt-3 pb-1 px-4 cursor-grab active:cursor-grabbing select-none"
+                            className="relative w-full flex items-center justify-center pt-3 pb-1 px-4 select-none cursor-grab active:cursor-grabbing md:cursor-default"
                             onMouseDown={handleDragStart}
                             onTouchStart={handleDragStart}
                         >
-                            {/* ขีดดึงตรงกลาง */}
-                            <div className="w-12 h-1 bg-secondary rounded-full pointer-events-none" />
+                            {/* ขีดดึงตรงกลาง (ซ่อนบน Desktop) */}
+                            <div className="w-12 h-1 bg-secondary rounded-full pointer-events-none md:hidden" />
 
-                            {/* ปุ่มปิดชิดขวาสุด */}
+                            {/* ปุ่มปิด */}
                             <button
                                 onClick={() => setOpen(false)}
-                                className="absolute right-4 w-8 h-8 mt-5 flex items-center justify-center hover:bg-surface-muted transition-colors active:scale-[0.92] cursor-pointer"
+                                className="absolute right-4 w-8 h-8 mt-2 md:mt-5 flex items-center justify-center hover:bg-surface-muted transition-colors rounded-full active:scale-[0.92] cursor-pointer"
                             >
-                                <X size={24} className="text-secondary" />
+                                <X size={20} className="text-secondary" />
                             </button>
                         </div>
 
                         {/* หัวข้อ */}
-                        <div className="flex items-center justify-between px-6 mt-3 pb-4 shrink-0">
+                        <div className="flex items-center justify-between px-6 mt-1 md:mt-2 pb-4 shrink-0">
                             <div className="flex items-center gap-2.5 w-full">
-                                {/* ไอคอนกระดิ่ง */}
                                 <Bell size={20} className="text-primary shrink-0" />
-
-                                {/* ข้อความหัวข้อ + คำอธิบาย */}
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <h3 className="text-md font-bold text-primary leading-tight">การแจ้งเตือน</h3>
                                     <p className="text-xs text-text-muted truncate">รายการที่รับทราบแล้วจะไม่แสดงในรายการหลังครบ 7 วัน</p>
@@ -279,8 +296,8 @@ export default function NotificationBell() {
                             </div>
                         </div>
 
-                        {/* รายการการแจ้งเตือน (คง UI เดิมไว้ทั้งหมด) */}
-                        <div className={`flex-1 px-4 pb-2 space-y-3 ${sheetHeight === "collapsed" ? "overflow-hidden" : "overflow-y-auto"}`}>
+                        {/* รายการการแจ้งเตือน */}
+                        <div className={`flex-1 px-4 pb-4 space-y-3 ${!isDesktop && sheetHeight === "collapsed" ? "overflow-hidden" : "overflow-y-auto"}`}>
                             {items.length === 0 ? (
                                 <div className="text-center py-12 flex flex-col items-center justify-center">
                                     <div className="w-12 h-12 bg-bg border border-border rounded-2xl flex items-center justify-center mb-3 text-text-muted">
@@ -295,12 +312,11 @@ export default function NotificationBell() {
                                     return (
                                         <div
                                             key={item.id}
-                                            className={`rounded-2xl  shadow-xs border p-3 transition-all ${isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-red-500/5 border-red-200"}`}
+                                            className={`rounded-2xl shadow-xs border p-3 transition-all ${isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-red-500/5 border-red-200"}`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                     <div className="flex-1 min-w-0">
-                                                        {/* แถวเดียวกัน: สถานะปฏิเสธ (ซ้าย) + Code (ขวา) */}
                                                         <div className="flex items-center justify-between gap-2 mb-1">
                                                             {item.code && (
                                                                 <div className="flex items-center gap-1 shrink-0">
@@ -316,7 +332,6 @@ export default function NotificationBell() {
                                                             </div>
                                                         </div>
 
-                                                        {/* CODE และ วันที่ */}
                                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium mt-0.5">
                                                             {item.code && (
                                                                 <div className="flex items-center gap-1 shrink-0">
@@ -330,7 +345,6 @@ export default function NotificationBell() {
                                                             </div>
                                                         </div>
 
-                                                        {/* เหตุผลการปฏิเสธ */}
                                                         {item.reviewNote && (
                                                             <p className="flex items-start gap-1.5 text-xs font-semibold text-text-danger mt-1.5 leading-relaxed bg-bg-danger p-1.5 rounded-lg border border-border-danger">
                                                                 <AlertCircle size={13} className="shrink-0 mt-0.5" />
@@ -341,7 +355,6 @@ export default function NotificationBell() {
                                                 </div>
                                             </div>
 
-                                            {/* ปุ่มรับทราบ (เฉพาะที่ยังไม่อ่าน) */}
                                             {!isRead && (
                                                 <button
                                                     onClick={() => handleAck(item)}
