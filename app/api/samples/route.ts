@@ -101,7 +101,12 @@ export async function GET(request: NextRequest) {
         }
 
         if (search) {
-            where.OR = [{ location: { stationName: { contains: search } } }, { code: { contains: search } }];
+            where.OR = [
+                { sessionGroup: { contains: search } },
+                { code: { contains: search } },
+                { location: { stationName: { contains: search } } },
+                { location: { governingAgency: { contains: search } } },
+            ];
         }
 
         if (startDate || endDate) {

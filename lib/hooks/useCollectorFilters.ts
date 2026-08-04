@@ -15,6 +15,7 @@ export interface CollectorSample {
     imagePlotUrl?: string | null;
     isDeleted: boolean;
     updatedBy?: number | null;
+    sessionGroup?: string | null;
     // สถานะการตรวจสอบ (คนละมิติกับ status คุณภาพน้ำ) — มีค่าเฉพาะรายการที่ confidence ต่ำกว่าเกณฑ์เท่านั้น
     reviewStatus?: "PENDING" | "APPROVED";
     location?: {
@@ -129,6 +130,7 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
                     imagePlotUrl: s.analyzedPlotUrl,
                     isDeleted: s.isDeleted,
                     updatedBy: s.lastModifiedBy,
+                    sessionGroup: s.sessionGroup,
 
                     ...s,
 
