@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { isLowConfidence } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
-import { MapPin, Check, X, ImageOff, Clock } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Eye } from "lucide-react";
+import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
 export type ReviewStatusFilter = "pending" | "approved" | "rejected";
@@ -23,7 +24,6 @@ export interface ReviewSample {
     measurements: ReviewMeasurement[];
 }
 
-// ภาพที่เปิดใน lightbox — เก็บทั้งภาพถ่ายดิบและภาพ AI ไว้เพื่อสลับดูได้ | active = ภาพที่โชว์อยู่ตอนเปิด
 export interface PreviewImages {
     raw: string | null;
     analyzed: string | null;
@@ -50,11 +50,9 @@ export const TAB_CONFIG: { id: ReviewStatusFilter; label: string; icon: typeof C
     { id: "rejected", label: "ปฏิเสธแล้ว", icon: X },
 ];
 
-// แท็บเลือกสถานะที่ต้องการดู — สไตล์ segmented pill พร้อมไอคอน (แท็บ active = pill ทึบสี primary)
-// สไตล์เดียวกับแท็บกรองในหน้าจัดการผู้ใช้ | ใช้ร่วมกันทั้ง desktop และ mobile
 export function StatusTabs({ tab, setTab }: { tab: ReviewStatusFilter; setTab: (v: ReviewStatusFilter) => void }) {
     return (
-        <div className="mb-5">
+        <div className="mb-2">
             <div className="grid grid-cols-3 gap-1.5 p-1 bg-surface-subtle border border-border rounded-xl">
                 {TAB_CONFIG.map((t) => {
                     const Icon = t.icon;
@@ -79,12 +77,33 @@ export function StatusTabs({ tab, setTab }: { tab: ReviewStatusFilter; setTab: (
 export function formatDateTime(value: string | null) {
     if (!value) return "-";
     return new Date(value).toLocaleDateString("th-TH", {
-        year: "numeric",
+        year: "2-digit",
         month: "short",
         day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
     });
+}
+
+/**
+ * คำนวณประเมินสถานะคุณภาพน้ำ (safe/warning/danger) จากค่าความเข้มข้นใน measurements
+ */
+export function getSampleWaterStatus(item: ReviewRequestItem): "safe" | "warning" | "danger" {
+    const allMeasurements = item.samples.flatMap((s) => s.measurements);
+    let hasWarning = false;
+
+    for (const m of allMeasurements) {
+        const name = (m.parameterName || "").toLowerCase();
+        const val = m.value;
+
+        if (name.includes("ammonia") || name.includes("n")) {
+            if (val >= 2.0) return "danger";
+            if (val >= 0.5) hasWarning = true;
+        } else if (name.includes("phosphate") || name.includes("p")) {
+            if (val >= 1.0) return "danger";
+            if (val >= 0.25) hasWarning = true;
+        }
+    }
+
+    return hasWarning ? "warning" : "safe";
 }
 
 export function RequestCard({
@@ -93,188 +112,181 @@ export function RequestCard({
     onOpenReject,
     onApprove,
     onPreviewImage,
-    mobile = false,
 }: {
     item: ReviewRequestItem;
     actingId: number | null;
     onOpenReject: (item: ReviewRequestItem) => void;
     onApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
     onPreviewImage: (images: PreviewImages) => void;
-    // mobile = ซ่อนค่าที่วัดได้บนหน้าการ์ด แล้วแตะสารเพื่อเปิด popup รายละเอียดแทน (desktop โชว์ค่า inline)
     mobile?: boolean;
 }) {
-    let statusBadgeColor = "text-text-warning bg-bg-warning border-border-warning";
-    if (item.statusRequest === "approved") statusBadgeColor = "text-text-safe bg-bg-safe border-border-safe";
-    if (item.statusRequest === "rejected") statusBadgeColor = "text-text-danger bg-bg-danger border-border-danger";
-
-    // เลือกอนุมัติรายสาร — ใช้เฉพาะการ์ดที่มีหลายสารในแท็บรออนุมัติ (สารเดียวอนุมัติทั้งใบเสมอ)
-    // ค่าเริ่มต้น: ติ๊กเฉพาะสารที่ confidence ผ่านเกณฑ์ปกติ (ไม่มีตัวชี้วัดไหน low confidence) — สาร low confidence
-    // เป็นเหตุผลที่คำร้องนี้ต้องมาให้ admin ตรวจอยู่แล้ว จึงไม่ควรถูกเลือกอนุมัติอัตโนมัติ
-    // สารที่ไม่ติ๊ก = จะถูก soft-delete ตอนกดอนุมัติ
     const isMultiSample = item.samples.length > 1;
     const showSampleSelect = item.statusRequest === "pending" && isMultiSample;
-    const [selectedSampleIds, setSelectedSampleIds] = useState<number[]>(() =>
-        item.samples.filter((s) => !s.measurements.some((m) => isLowConfidence(m.confidence))).map((s) => s.id)
-    );
+    const [selectedSampleIds, setSelectedSampleIds] = useState<number[]>(() => item.samples.filter((s) => !s.measurements.some((m) => isLowConfidence(m.confidence))).map((s) => s.id));
     const toggleSample = (id: number) => setSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-    // ไม่ติ๊กเลย = ปฏิเสธทั้งก้อน → บล็อกปุ่มอนุมัติ ให้ไปใช้ปุ่มปฏิเสธทั้งหมดแทน
     const noneSelected = showSampleSelect && selectedSampleIds.length === 0;
 
+    // คำนวณค่าสาร Phosphate (P) และ Ammonia (N) จาก measurements จริง
+    const allMeasurements = item.samples.flatMap((s) => s.measurements);
+    const phosphateMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("phosphate"));
+    const ammoniaMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("ammonia"));
+
+    const waterStatus = getSampleWaterStatus(item);
+
+    // ดึงรูปภาพภาพแรกที่มีใน samples
+    const firstSampleWithImage = item.samples.find((s) => s.rawImageUrl || s.analyzedPlotUrl);
+    const previewImgObj: PreviewImages | null = firstSampleWithImage
+        ? {
+              raw: firstSampleWithImage.rawImageUrl,
+              analyzed: firstSampleWithImage.analyzedPlotUrl,
+              active: "raw",
+          }
+        : null;
+
     return (
-        <div className="bg-card-general rounded-2xl border border-border overflow-hidden flex flex-col p-5 gap-3">
-            {/* ── ส่วนหัวการ์ด: ยุบรวม Meta ข้อมูลให้อยู่ในแถวเดียวกันเพื่อประหยัดพื้นที่ ── */}
-            <div className="flex items-center  justify-between gap-3 pb-3 border-b border-border/60">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <MapPin size={24} className="text-primary shrink-0" />
-                    <div className="flex items-baseline  min-w-0 text-xs flex-wrap flex-col">
-                        <h3 className="font-bold text-text-primary truncate">{item.location?.name ?? "ไม่ทราบสถานที่"}</h3>
-                        <p className="text-secondary font-medium truncate">{item.location?.organization ?? "-"}</p>
-                        <span className="text-secondary font-medium truncate">{formatDateTime(item.collectionTime)}</span>
+        <div className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex flex-col gap-3 min-w-0">
+            {/* ── แถวบน: สไตล์การจัดวางถอดแบบ CollectorMobile 100% ── */}
+            <div className="flex items-start justify-between gap-4 w-full">
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                        {/* ไอคอน MapPin ขนาด 36px ตรงกลางแนวตั้งขนานกลุ่มข้อความ */}
+                        <MapPin size={36} className="text-primary shrink-0" />
+
+                        <div className="flex-1 min-w-0">
+                            {/* ชื่อสถานที่ */}
+                            <h4 className="font-semibold text-sm text-text truncate">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
+
+                            {/* แถวกลาง: เมทาดาต้า sessionGroup และ วันที่ */}
+                            <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5 gap-x-2">
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <FileScan size={13} className="text-text-muted shrink-0" />
+                                    <span>{item.sessionGroup || "ไม่ระบุรหัส"}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <Calendar size={13} className="text-text-muted shrink-0" />
+                                    <span>{formatDateTime(item.collectionTime || item.createdAt)}</span>
+                                </div>
+                            </div>
+
+                            {/* แถวล่าง: แสดงค่าสารเคมี P และ N ชิปเล็ก */}
+                            <div className="flex items-center gap-2 mt-1 w-full">
+                                {phosphateMeas && (
+                                    <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
+                                        <Beaker size={10} className="text-teal-500" />
+                                        <span>P: {Number(phosphateMeas.value).toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {ammoniaMeas && (
+                                    <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
+                                        <Beaker size={10} className="text-purple-500" />
+                                        <span>N: {Number(ammoniaMeas.value).toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide shrink-0 border ${statusBadgeColor}`}>
-                    {item.statusRequest === "pending" ? "รออนุมัติ" : item.statusRequest === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว"}
-                </span>
-            </div>
 
-            {/* ── ข้อมูลผู้ส่งและเวลา: ปรับเป็นสไตล์แถวเมทาดาต้าเล็กๆ คลีนๆ ด้านบน ── */}
-            <div className="flex items-center gap-4 text-xs text-text-secondary font-medium px-0.5">
-                <div className="flex items-center gap-1 min-w-0">
-                    <span className="truncate">
-                        ผู้ส่ง: <span className="text-text-primary font-bold">{item.collector?.name ?? "-"}</span>
-                    </span>
+                {/* ฝั่งขวา: StatusBadge + ป้ายรออนุมัติ/อนุมัติแล้ว/ปฏิเสธแล้ว */}
+                <div className="flex flex-col items-end text-center gap-1 shrink-0">
+                    <StatusBadge status={waterStatus} size="sm" />
+
+                    {item.statusRequest === "pending" && (
+                        <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                            รอตรวจสอบ
+                        </span>
+                    )}
+                    {item.statusRequest === "approved" && (
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold text-teal-600 bg-teal-50 border border-teal-200 rounded-md whitespace-nowrap">อนุมัติแล้ว</span>
+                    )}
+                    {item.statusRequest === "rejected" && (
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-md whitespace-nowrap">ปฏิเสธแล้ว</span>
+                    )}
                 </div>
             </div>
 
-            {/* ── 🌟 การปรับปรุง Core List (ใช้พื้นที่ 2 คอลัมน์ซ้ายขวา) ── */}
-            <div className="space-y-2">
-                {item.samples.map((s) => (
-                    <div key={s.id} className="w-full border rounded-xl p-3 transition-all flex flex-col gap-2.5 bg-surface-subtle border-border/60">
-                        {/* Layout 2 คอลัมน์เคียงข้างกันอย่างมีประโยชน์ */}
-                        <div className="flex items-center justify-between gap-3 w-full min-w-0">
-                            {/* Checkbox เลือกอนุมัติรายสาร — โชว์เฉพาะการ์ดหลายสารในแท็บรออนุมัติ */}
-                            {showSampleSelect && (
+            {/* ── โซนเลือกสารกรณีมีหลายสารในแท็บรออนุมัติ ── */}
+            {showSampleSelect && (
+                <div className="bg-surface-subtle border border-border/60 rounded-xl p-2.5 space-y-2">
+                    <span className="text-[11px] font-bold text-text-secondary uppercase block">เลือกอนุมัติเฉพาะสาร:</span>
+                    {item.samples.map((s) => (
+                        <label key={s.id} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2 cursor-pointer">
+                            <div className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
                                     checked={selectedSampleIds.includes(s.id)}
                                     onChange={() => toggleSample(s.id)}
                                     disabled={actingId === item.id}
-                                    aria-label="เลือกอนุมัติสารนี้"
-                                    className="w-4 h-4 shrink-0 accent-teal-700 cursor-pointer disabled:cursor-not-allowed"
+                                    className="w-4 h-4 accent-teal-700 cursor-pointer"
                                 />
-                            )}
-                            {/* 📊 คอลัมน์ซ้าย: ยุบรวมกล่องพารามิเตอร์ให้เรียงแถวแนวนอนอย่างกระชับ */}
-                            <div className="flex-1 min-w-0 space-y-1.5">
-                                {s.measurements.map((m) => {
-                                    const lowConf = isLowConfidence(m.confidence);
-                                    const confidenceBadge = (
-                                        <span
-                                            className={`font-mono text-xs px-1.5 py-0.2 rounded font-bold border shrink-0 ${
-                                                lowConf ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
-                                            }`}
-                                        >
-                                            {m.confidence.toFixed(2)}
-                                        </span>
-                                    );
-
-                                    // Mobile: ชื่อสารด้านบน + ค่าความเข้มข้นใต้ชื่อ | confidence อยู่ขวา
-                                    if (mobile) {
-                                        return (
-                                            <div key={m.parameterId} className="flex items-center justify-between gap-2 bg-surface border border-border/40 rounded-lg p-2 shadow-3xs">
-                                                <div className="flex flex-col items-start gap-0.5 min-w-0">
-                                                    <span className="text-xs font-bold text-text-primary uppercase truncate max-w-full">{m.parameterName ?? "ไม่ทราบสาร"}</span>
-                                                    <span className="text-sm font-black text-text-primary">
-                                                        {m.value.toFixed(3)} <span className="text-xs font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
-                                                    </span>
-                                                </div>
-                                                {confidenceBadge}
-                                            </div>
-                                        );
-                                    }
-
-                                    // Desktop: โชว์ค่าที่วัดได้ inline ตามเดิม
-                                    return (
-                                        <div key={m.parameterId} className="flex items-center justify-between gap-2 bg-surface border border-border/40 rounded-lg p-2 shadow-3xs">
-                                            <div className="flex items-center gap-1 min-w-0">
-                                                <span className="text-xs font-bold text-text-primary uppercase truncate">{m.parameterName ?? "ไม่ทราบสาร"}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <span className="text-sm font-black text-text-primary">
-                                                    {m.value.toFixed(3)} <span className="text-xs font-bold text-text-muted">{m.unit ?? "mg/L"}</span>
-                                                </span>
-                                                {confidenceBadge}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                <span className="font-bold text-text">{s.measurements.map((m) => m.parameterName).join(", ")}</span>
                             </div>
-
-                            {/* 🖼Header 2. คอลัมน์ขวา: จัดรูปถ่ายและรูปกราฟสีให้อยู่ในแนวนอนแพ็คคู่เคียงข้างฝั่งขวา */}
-                            <div className="flex gap-1.5 shrink-0 items-center">
-                                {/* รูปถ่ายดิบ */}
-                                <div
-                                    onClick={() => s.rawImageUrl && onPreviewImage({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
-                                    className="relative w-12 h-12 rounded-lg border border-border bg-surface overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
-                                >
-                                    {s.rawImageUrl ? (
-                                        <img src={s.rawImageUrl} alt="Raw sample" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
-                                    )}
-                                    <span className="absolute bottom-0 inset-x-0 text-xs bg-black/60 text-white font-bold text-center py-0.2 select-none">ภาพถ่าย</span>
-                                </div>
-
-                                {/* รูปกราฟสี */}
-                                <div
-                                    onClick={() => s.analyzedPlotUrl && onPreviewImage({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
-                                    className="relative w-12 h-12 rounded-lg border border-border bg-surface overflow-hidden shrink-0 cursor-zoom-in group hover:border-primary/60 transition-colors"
-                                >
-                                    {s.analyzedPlotUrl ? (
-                                        <img src={s.analyzedPlotUrl} alt="Analyzed plot" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <ImageOff size={12} className="text-text-muted absolute inset-0 m-auto" />
-                                    )}
-                                    <span className="absolute bottom-0 inset-x-0 text-xs bg-primary/80 text-white font-bold text-center py-0.2 select-none">กราฟสี</span>
-                                </div>
+                            <div className="flex items-center gap-1">
+                                {s.measurements.map((m) => (
+                                    <span
+                                        key={m.parameterId}
+                                        className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                            isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
+                                        }`}
+                                    >
+                                        {m.confidence.toFixed(2)}
+                                    </span>
+                                ))}
                             </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                        </label>
+                    ))}
+                </div>
+            )}
 
-            {/* สรุปผลการตัดสินใจ (แท็บที่เคยตรวจผ่านแล้ว) */}
+            {/* สรุปผลการตรวจเดิมกรณีอนุมัติ/ปฏิเสธแล้ว */}
             {item.statusRequest !== "pending" && (
                 <div className="text-xs text-text-muted bg-surface-subtle border border-border/60 rounded-xl p-2.5 font-medium">
                     <p>
                         ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
                     </p>
-                    {/* break-words + overflow-wrap: ตัดกลางคำได้ กันข้อความยาวติดกันไม่มีเว้นวรรคทะลุกรอบ */}
-                    {item.reviewNote && <p className="text-text-danger font-semibold bg-red-500/5 p-1.5 rounded-md border border-red-500/10 mt-1 break-words [overflow-wrap:anywhere]">เหตุผล: {item.reviewNote}</p>}
+                    {item.reviewNote && (
+                        <p className="text-text-danger font-semibold bg-red-500/5 p-1.5 rounded-md border border-red-500/10 mt-1 break-words [overflow-wrap:anywhere]">เหตุผล: {item.reviewNote}</p>
+                    )}
                 </div>
             )}
 
-            {/* ปุ่มกลุ่ม Actions การจัดการระบบในแท็บรออนุมัติ */}
-            {item.statusRequest === "pending" && (
-                <div className="flex gap-2 pt-0.5">
+            {/* ── แถบปุ่ม Actions จัดการ ── */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                {previewImgObj && (
                     <button
-                        onClick={() => onOpenReject(item)}
-                        disabled={actingId === item.id}
-                        className="flex-1 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-surface-subtle hover:bg-bg-danger border border-border hover:border-border-danger text-text-secondary hover:text-text-danger transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
+                        onClick={() => onPreviewImage(previewImgObj)}
+                        className="px-3 py-1.5 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center gap-1 transition-all cursor-pointer"
                     >
-                        <X size={13} /> ปฏิเสธทั้งหมด
+                        <Eye size={13} />
+                        <span>ดูรูปภาพ</span>
                     </button>
-                    <button
-                        onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                        disabled={actingId === item.id || noneSelected}
-                        title={noneSelected ? "ไม่ได้เลือกสารใดเลย — กรุณาใช้ปุ่มปฏิเสธทั้งหมดแทน" : undefined}
-                        className="flex-1 py-2 min-h-9.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-800 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {actingId === item.id ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={13} />}
-                        อนุมัติผล
-                    </button>
-                </div>
-            )}
+                )}
+
+                {item.statusRequest === "pending" && (
+                    <>
+                        <button
+                            type="button"
+                            disabled={actingId === item.id}
+                            onClick={() => onOpenReject(item)}
+                            className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            <XCircle size={13} />
+                            <span>ปฏิเสธ</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={actingId === item.id || noneSelected}
+                            onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
+                            className="px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            {actingId === item.id ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={13} />}
+                            <span>อนุมัติ</span>
+                        </button>
+                    </>
+                )}
+            </div>
         </div>
     );
 }
@@ -294,8 +306,6 @@ export function RejectDrawer({
     onClose: () => void;
     onSubmit: () => void;
 }) {
-    // เปลือก (backdrop/หัวข้อ/ปุ่มปิด/Esc/แอนิเมชัน + mobile=sheet, desktop=popup) จัดการโดย Popup กลาง
-    // ระหว่างกำลังบันทึกจะไม่ให้ปิดผ่าน backdrop/Esc กันปฏิเสธค้างครึ่งทาง
     return (
         <Popup title="ปฏิเสธคำร้อง" onClose={() => !rejectSaving && onClose()}>
             <div className="space-y-6">
@@ -313,7 +323,6 @@ export function RejectDrawer({
                         maxLength={REVIEW_NOTE_MAX_LENGTH}
                         className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-red-400 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
                     />
-                    {/* counter เตือนผู้กรอกว่าเหลือพื้นที่เท่าไหร่ — เปลี่ยนเป็นสีแดงเมื่อชนเพดาน */}
                     <div className={`text-right text-xs font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
                         {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
                     </div>
@@ -333,7 +342,6 @@ export function RejectDrawer({
 }
 
 export function ImageLightbox({ images, onClose }: { images: PreviewImages; onClose: () => void }) {
-    // สลับได้ระหว่างภาพถ่ายดิบกับภาพ AI — เริ่มที่ภาพที่ผู้ใช้กดเปิด
     const [active, setActive] = useState<"raw" | "analyzed">(images.active);
     const currentUrl = active === "raw" ? images.raw : images.analyzed;
 
@@ -344,15 +352,13 @@ export function ImageLightbox({ images, onClose }: { images: PreviewImages; onCl
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xs z-2000 flex flex-col items-center justify-center p-2 animate-in fade-in duration-200" onClick={onClose}>
-            {/* ปุ่มปิดมุมขวาบน */}
             <button
                 onClick={onClose}
-                className="absolute top-35 right-5 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
+                className="absolute top-5 right-5 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
             >
                 <X size={20} />
             </button>
 
-            {/* ปุ่มสลับภาพถ่ายดิบ / ภาพ AI — ปิดปุ่มไว้ถ้าไม่มีภาพนั้น | stopPropagation กันกดโดนแล้วปิด lightbox */}
             <div onClick={(e) => e.stopPropagation()} className="flex gap-1 mb-4 bg-white/10 border border-white/20 rounded-full p-1">
                 {tabs.map((t) => (
                     <button
@@ -368,13 +374,12 @@ export function ImageLightbox({ images, onClose }: { images: PreviewImages; onCl
                 ))}
             </div>
 
-            {/* รูปภาพขยายเต็มตา */}
             <div className="relative max-w-full max-h-[70vh] rounded-2xl overflow-hidden shadow-2xl">
                 <img
                     src={currentUrl ?? undefined}
                     alt={active === "raw" ? "ภาพถ่ายดิบ" : "ภาพวิเคราะห์จาก AI"}
                     className="max-w-full max-h-[70vh] object-contain"
-                    onClick={(e) => e.stopPropagation()} // กันกดโดนรูปแล้วปิด
+                    onClick={(e) => e.stopPropagation()}
                 />
             </div>
             <p className="text-white text-xs font-semibold mt-4 tracking-wide select-none">แตะพื้นที่ว่างเพื่อปิดหน้าต่างขยาย</p>
