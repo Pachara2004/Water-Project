@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
@@ -25,6 +26,10 @@ export default function Popup({
 }) {
     const isMobile = useMediaQuery("(max-width: 767px)");
     const isSheet = (variant ?? (isMobile ? "sheet" : "popup")) === "sheet";
+
+    // ปลายทางของ portal — เป็น null ตอน SSR เพราะไม่มี document
+    // (ทุกจุดที่เรียก Popup เปิดจาก state หลังผู้ใช้กด จึงไม่มีทางถูก render ตั้งแต่ HTML ชุดแรก)
+    const portalTarget = typeof document === "undefined" ? null : document.body;
 
     // กด Esc เพื่อปิด
     useEffect(() => {
@@ -70,22 +75,29 @@ export default function Popup({
         </div>
     );
 
-    return (
+    if (!portalTarget) return null;
+
+    // Portal ไป body เสมอ — ไม่งั้นถ้าผู้เรียกอยู่ในกล่องที่มี transform (เช่นการ์ดที่ใส่ active:scale)
+    // ตัว fixed จะยึดกล่องนั้นเป็นกรอบอ้างอิงแทน viewport ทำให้ modal ไปโผล่ผิดที่/ถูกย่อตามการ์ด
+    return createPortal(
         <>
             {/* Backdrop — blur-md (แทน blur-xs เดิม) กันรายละเอียดพื้นหลัง (เช่นเงาหมุดแผนที่) ลอดผ่านมาเห็นจางๆ */}
             <div className="fixed inset-0 bg-black/40 z-800 backdrop-blur-md transition-opacity" onClick={onClose} />
 
+            {/* ทั้งสองโหมดจัดเป็น flex column: แถบจับ/หัวข้อ/ปุ่มปิด ตรึงอยู่กับที่ ให้เลื่อนเฉพาะ children
+                (ตัวเลื่อนต้องมี min-h-0 ด้วย ไม่งั้น flex item จะไม่ยอมหดต่ำกว่าความสูงเนื้อหา แล้วล้นออกนอกกล่อง) */}
             {isSheet ? (
                 // Mobile: bottom-sheet ยึดขอบล่างเต็มความกว้าง พร้อมแถบจับและเว้น safe-area
+                // จำกัดความสูงไว้ที่ 85dvh ไม่งั้นเนื้อหายาวจะทะลุขอบบนจอจนกดไม่ถึง
                 <div
                     role="dialog"
                     aria-modal="true"
-                    className="fixed bottom-0 left-0 right-0 z-801 bg-surface rounded-t-4xl border-t border-border max-w-lg mx-auto px-6 pt-6 animate-slide-up transition-colors duration-300"
+                    className="fixed bottom-0 left-0 right-0 z-801 bg-surface rounded-t-4xl border-t border-border max-w-lg mx-auto px-6 pt-6 max-h-[85dvh] flex flex-col animate-slide-up transition-colors duration-300"
                     style={{ paddingBottom: "calc(88px + env(safe-area-inset-bottom))" }}
                 >
-                    <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
-                    {header}
-                    {children}
+                    <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5 shrink-0" />
+                    <div className="shrink-0">{header}</div>
+                    <div className="min-h-0 overflow-y-auto no-scrollbar">{children}</div>
                 </div>
             ) : (
                 // Desktop: การ์ดลอยกลางจอ; pointer-events-none ที่ตัวครอบเพื่อให้คลิกนอกการ์ดทะลุไปโดน backdrop ได้
@@ -93,13 +105,14 @@ export default function Popup({
                     <div
                         role="dialog"
                         aria-modal="true"
-                        className={`pointer-events-auto w-full ${maxWidth} max-h-[90dvh] overflow-y-auto bg-surface rounded-3xl border border-border px-6 py-6 shadow-2xl animate-scale-in transition-colors duration-300`}
+                        className={`pointer-events-auto w-full ${maxWidth} max-h-[90dvh] flex flex-col bg-surface rounded-3xl border border-border px-6 py-6 shadow-2xl animate-scale-in transition-colors duration-300`}
                     >
-                        {header}
-                        {children}
+                        <div className="shrink-0">{header}</div>
+                        <div className="min-h-0 overflow-y-auto no-scrollbar">{children}</div>
                     </div>
                 </div>
             )}
-        </>
+        </>,
+        portalTarget,
     );
 }
