@@ -76,30 +76,6 @@ export default function CollectorDesktop(props: CollectorProps) {
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
-            {/* ── Top Header Bar ── */}
-            <header className="bg-card-general border-b border-border sticky top-0 z-20">
-                <div className="w-full px-4 h-13 flex items-center justify-between relative">
-                    {/* ฝั่งซ้าย: ปุ่มย้อนกลับ */}
-                    <div className="flex items-center gap-3 z-10">
-                        <button
-                            onClick={() => router.back()}
-                            className="flex items-center gap-2 text-xs font-medium text-tex hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle transition-all cursor-pointer"
-                        >
-                            <ArrowLeft size={16} />
-                            <span>ย้อนกลับ</span>
-                        </button>
-                    </div>
-
-                    {/* ตรงกลาง: หัวข้อ (อยู่ตรงกลางของ Header เสมอ) */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <h1 className="text-sm font-medium text-text pointer-events-auto">ระบบส่งตรวจคุณภาพน้ำ</h1>
-                    </div>
-
-                    {/* ฝั่งขวา: Spacer เพื่อความสมดุล */}
-                    <div className="w-20" />
-                </div>
-            </header>
-
             {/* ── Main Content Container ── */}
             <main className="w-full mx-auto p-4">
                 <div className="w-full mx-auto space-y-4">

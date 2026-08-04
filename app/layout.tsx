@@ -5,7 +5,7 @@ import LiffProvider from "@/components/LiffProvider";
 import DevRoleSwitcher from "@/components/DevRoleSwitcher"; 
 
 export const metadata: Metadata = {
-    title: "ระบบตรวจสอบคุณภาพน้ำ | Water Quality Monitoring",
+    title: "ระบบตรวจสอบคุณภาพน้ำ | Water Quality TestKit",
     description: "ระบบตรวจสอบและบันทึกข้อมูลคุณภาพน้ำทะเลชายฝั่ง ผ่าน LINE LIFF",
     keywords: "คุณภาพน้ำ, water quality, ตรวจสอบน้ำ, LINE LIFF, ประมง",
 };

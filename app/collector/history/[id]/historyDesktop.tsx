@@ -195,7 +195,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
 
                     {/* ตรงกลาง: หัวข้อ (อยู่ตรงกลางของ Header เสมอ) */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <h1 className="text-sm font-medium text-text pointer-events-auto">{sample?.sessionGroup ? sample.sessionGroup : "รายละเอียดประวัติการตรวจสอบ"}</h1>
+                        <h1 className="text-sm font-medium text-text pointer-events-auto">{sample?.code ? sample.code : "รายละเอียดประวัติการตรวจสอบ"}</h1>
                     </div>
 
                     {/* ฝั่งขวา: Spacer เพื่อความสมดุล */}
@@ -213,7 +213,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                             <div className="flex items-center justify-between border-b border-border pb-2">
                                 <div className="flex flex-col">
                                     <span className="text-xs text-text-muted uppercase">Sample CODE</span>
-                                    <span className="text-xs font-medium text-text">{sample?.sessionGroup ? sample.sessionGroup : "รายละเอียดประวัติการตรวจสอบ"}</span>
+                                    <span className="text-xs font-medium text-text">{sample?.code ? sample.code : "รายละเอียดประวัติการตรวจสอบ"}</span>
                                 </div>
                                 <div className="flex flex-col items-end">
                                     <span className="text-xs text-text-muted uppercase mb-0.5">ผลประเมิน</span>

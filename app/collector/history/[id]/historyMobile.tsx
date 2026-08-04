@@ -187,7 +187,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                 <div className="text-center">
                     {sample?.sessionGroup ? (
                         <div className="flex flex-col items-center">
-                            <h1 className="text-sm font-semibold text-secondary">{sample.sessionGroup}</h1>
+                            <h1 className="text-sm font-semibold text-secondary">{sample.code}</h1>
                         </div>
                     ) : (
                         <h1 className="text-sm font-semibold text-primary">รายละเอียดประวัติการตรวจสอบ</h1>

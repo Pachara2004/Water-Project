@@ -11,9 +11,9 @@ import type { ManagePageProps } from "./manageMobile";
 // ไม่เปลี่ยน logic/handler — ใช้ props ชุดเดียวกับ manageMobile ที่มาจาก page.tsx
 export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, showEdit, setShowEdit, handleLogout, router, showToast, toastElement }: ManagePageProps) {
     return (
-        <div className="min-h-dvh w-full bg-bg transition-colors duration-75">
-            <div className="w-full max-w-[1600px] mx-auto px-8">
-                <div className="pt-8 pb-1 mb-1 p-1">
+        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+            <div className="w-full mx-auto p-4">
+                <div className="pt-2 pb-2  p-1">
                     <h1 className="font-display text-2xl font-semibold text-text ">
                         บัญชี <span className="text-primary">ของฉัน</span>
                     </h1>
