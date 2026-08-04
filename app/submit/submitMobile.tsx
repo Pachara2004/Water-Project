@@ -45,7 +45,7 @@ export default function SubmitMobile(props: any) {
 
             {/* MOBILE VIEW COMPONENT */}
             <div className="px-4 pb-24 space-y-4 mt-3">
-                <SubmitSteps step={step} />
+                <SubmitSteps step={step} isSaved={saved} />
                 {step === "upload"
                     ? systemParameters.map((param: any) => (
                           <ImageZone
