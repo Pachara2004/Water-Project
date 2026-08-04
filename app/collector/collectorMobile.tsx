@@ -314,7 +314,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                                                     <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5">
                                                                         <div className="flex items-center gap-1.5 shrink-0">
                                                                             <FileScan size={13} className="text-text-muted shrink-0" />
-                                                                            <span>{sample.code}</span>
+                                                                            <span>{sample.sessionGroup}</span>
                                                                         </div>
                                                                         <div className="flex items-center gap-1.5 shrink-0">
                                                                             <Calendar size={13} className="text-text-muted shrink-0" />

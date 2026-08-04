@@ -299,7 +299,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                                         <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5 gap-2">
                                                                             <div className="flex items-center gap-1.5 shrink-0">
                                                                                 <FileScan size={13} className="text-text-muted shrink-0" />
-                                                                                <span className="leading-none">{sample.code}</span>
+                                                                                <span className="leading-none">{sample.sessionGroup}</span>
                                                                             </div>
 
                                                                             <div className="flex items-center gap-1.5 shrink-0">
