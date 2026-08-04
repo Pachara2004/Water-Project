@@ -209,6 +209,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         onNearestLocationsUpdate={() => {}}
                         allLocations={[]}
                         setIsRecommending={() => {}}
+                        isHistoryView={true}
                     />
                 ))}
                 <ResultsPanel {...mockSubmitHook} />

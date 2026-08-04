@@ -247,14 +247,15 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                             <div key={key} className="bg-card-general border border-border rounded-xl p-4">
                                 <ImageZone
                                     param={param}
-                                    step={mockSubmitHook.step}
-                                    preview={mockSubmitHook.imagePreviews[key]}
+                                    step="results"
+                                    preview={mockSubmitHook.imagePreviews[key] || measurement?.imageUrl || measurement?.imagePath || measurement?.plotUrl}
                                     plotFile={mockSubmitHook.imagePlotFiles[key]}
                                     measurement={measurement}
                                     onImageFilesChange={() => {}}
                                     onNearestLocationsUpdate={() => {}}
                                     allLocations={[]}
                                     setIsRecommending={() => {}}
+                                    isHistoryView={true}
                                 />
                             </div>
                         ))}
