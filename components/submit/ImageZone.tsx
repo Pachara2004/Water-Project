@@ -55,6 +55,7 @@ interface ImageZoneProps {
     setIsRecommending: (b: boolean) => void;
     enabled?: boolean;
     onToggle?: () => void;
+    isHistoryView?: boolean;
 }
 
 export function ImageZone({
@@ -70,6 +71,7 @@ export function ImageZone({
     setIsRecommending,
     enabled = true,
     onToggle,
+    isHistoryView = false,
 }: ImageZoneProps) {
     const galleryInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -118,11 +120,24 @@ export function ImageZone({
 
     const hasPlotImg = !!plotFile;
 
+    // components/submit/ImageZone.tsx
+
     const getDisplayedImage = () => {
+        // 1. ผลวิเคราะห์สด (มี plotFile)
         if (step === "results" && viewMode === "analyzed" && hasPlotImg) {
             return plotFile instanceof Blob ? URL.createObjectURL(plotFile) : plotFile;
         }
-        return preview;
+        // 2. ดึงทุก Field ที่เป็นไปได้จาก DB/State
+        return (
+            preview ||
+            measurement?.imageUrl ||
+            measurement?.originalImageUrl ||
+            measurement?.imagePath ||
+            measurement?.plotUrl ||
+            measurement?.image ||
+            measurement?.photoUrl ||
+            (measurement as any)?.url
+        );
     };
 
     const displayImgSrc = getDisplayedImage();
@@ -217,13 +232,13 @@ export function ImageZone({
                         </div>
                     )}
 
-                    {hasConf && (
+                    {!isHistoryView && hasConf && (
                         <div
                             className={`mb-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${
                                 isLowConf ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200" : "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
                             }`}
                         >
-                            {isLowConf ? <span>ถ่ายใหม่ Confidence ต่ำ: {confDisplay}</span> : <span>ผ่าน Confidence: {confDisplay}</span>}
+                            {isLowConf ? <span>Confidence ต่ำ: {confDisplay}</span> : <span>Confidence ผ่าน: {confDisplay}</span>}
                         </div>
                     )}
 
@@ -238,7 +253,7 @@ export function ImageZone({
                                   ? "aspect-square sm:aspect-4/3 md:aspect-video border-teal-500/30 bg-surface-subtle cursor-pointer"
                                   : "aspect-square sm:aspect-4/3 border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"
                         }
-                        ${isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
+${!isHistoryView && isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                     >
                         {step === "analyzing" ? (
                             <>
@@ -262,6 +277,11 @@ export function ImageZone({
                                     </button>
                                 )}
                             </>
+                        ) : isHistoryView ? (
+                            <div className="flex flex-col items-center justify-center gap-2 px-4 text-center py-10 text-text-muted">
+                                <Camera size={28} className="opacity-40" />
+                                <p className="text-xs font-semibold">ไม่พบข้อมูลภาพถ่ายสำหรับรายการนี้</p>
+                            </div>
                         ) : (
                             <div className="flex flex-col items-center gap-3 px-4 text-center py-6 sm:py-8">
                                 <p className="text-xs font-semibold text-text">เพิ่มภาพถ่ายผลการตรวจ</p>
