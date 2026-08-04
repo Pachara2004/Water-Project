@@ -127,7 +127,7 @@ export default function Navbar() {
             <nav className="hidden lg:flex fixed left-0 top-0 h-full w-50 z-95 flex-col justify-between p-3 inset-shadow-sm shadow-sm bg-card-general">
                 <div className="flex flex-col gap-6 w-full">
                     <div className="flex items-center justify-center gap-3 px-1.5 py-1 min-h-10 w-full">
-                        <span className="leading-none font-bold text-md text-primary whitespace-nowrap">Water Quality</span>
+                        <span className="leading-none font-bold text-md text-primary whitespace-nowrap">Water Quality TestKit</span>
                     </div>
 
                     {/* Navigation Items */}
