@@ -238,7 +238,7 @@ export function ImageZone({
                                 isLowConf ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200" : "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
                             }`}
                         >
-                            {isLowConf ? <span>ถ่ายใหม่ Confidence ต่ำ: {confDisplay}</span> : <span>ผ่าน Confidence: {confDisplay}</span>}
+                            {isLowConf ? <span>Confidence ต่ำ: {confDisplay}</span> : <span>Confidence ผ่าน: {confDisplay}</span>}
                         </div>
                     )}
 
