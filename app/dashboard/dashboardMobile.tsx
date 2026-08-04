@@ -254,17 +254,17 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                 {analytics?.kpis?.map((kpi: any, index: number) => (
                                     <div
                                         key={index}
-                                        className={`bg-card-summary rounded-xl border border-border p-2.5  flex flex-col border-l-10 ${kpiSpanClass(kpi.w)}`}
+                                        className={`bg-card-general rounded-xl border border-border p-2.5  flex flex-col border-l-10 ${kpiSpanClass(kpi.w)}`}
                                         style={{ borderLeftColor: kpi.color || "#6366f1" }}
                                     >
-                                        <div className="text-xs font-semibold text-white uppercase tracking-wide flex items-center gap-1">
+                                        <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide flex items-center gap-1">
                                             <span>{kpi.title}</span>
                                         </div>
-                                        <div className="mt-1 truncate flex items-baseline gap-1">
-                                            <span className="text-3xl font-bold text-white items-end flex content-end tracking-tight">
+                                        <div className="mt-1 truncate flex items-baseline gap-1" style={{ color: kpi.color || "#6366f1" }}>
+                                            <span className="text-3xl font-bold items-end flex content-end tracking-tight">
                                                 {typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}
                                             </span>
-                                            {kpi.unit && <span className="text-md text-white font-semibold ml-0.5">{kpi.unit}</span>}
+                                            {kpi.unit && <span className="text-md font-semibold ml-0.5">{kpi.unit}</span>}
                                         </div>
                                         {kpi.trend && getTrendPolarity(kpi.title) !== "neutral" && (
                                             <div className="mt-1">{renderTrend(kpi.trend[trendMode], trendMode === "wow" ? "WoW" : "MoM", getTrendPolarity(kpi.title))}</div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
-import { buildContentDisposition, buildExportMetadata, formatThaiDateTime, resolveExportContext } from "@/lib/sampleFilters";
+import { buildContentDisposition, formatThaiDateTime, resolveExportContext } from "@/lib/sampleFilters";
 import { CSV_BOM, csvRow } from "@/lib/csv";
 
 // ต้องประเมินทุก request (ผลลัพธ์ขึ้นกับ token + filter) ห้ามให้ Next แคชคำตอบ
@@ -19,19 +19,15 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const { scope, filters, where, stationName, exporterName } = await resolveExportContext(request, auth.user!);
+        const { scope, filters, where, stationName } = await resolveExportContext(request, auth.user!);
 
         // Master Parameters ทั้งหมดในระบบ — คอลัมน์สารเคมีงอกตามตารางนี้ ไม่ฟิกซ์ชื่อ
         const activeParameters = await prisma.parameter.findMany({ orderBy: { id: "asc" }, select: { id: true, name: true, unit: true } });
 
         const totalRows = await prisma.waterSample.count({ where });
 
-        // --- ส่วนหัวไฟล์: เมทาดาทาบอกที่มา + บรรทัดว่าง + หัวคอลัมน์ ---
+        // --- ส่วนหัวไฟล์: BOM + หัวคอลัมน์ ---
         let preamble = CSV_BOM;
-        for (const [label, value] of buildExportMetadata(filters, scope, stationName, exporterName, totalRows)) {
-            preamble += csvRow([label, value]);
-        }
-        preamble += "\r\n";
         preamble += csvRow([
             "No.",
             "Sample Code",
