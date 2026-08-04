@@ -577,6 +577,17 @@ body.popup-shown {
     background: var(--color-text-muted);
 }
 
+/* ซ่อนแถบ scrollbar แต่ยังเลื่อนได้ตามปกติ (ล้อ/ลากนิ้ว/คีย์บอร์ด)
+   ใช้กับกล่องที่แถบเลื่อนไปตัดกับขอบมน เช่น modal — แลกมาด้วยการไม่มีสัญญาณบอกว่าเนื้อหายังเลื่อนได้ */
+.no-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Edge เก่า */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome / Safari */
+}
+
 /* Inputs & focus state standards */
 input,
 select,
@@ -591,3 +602,4 @@ button:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
+

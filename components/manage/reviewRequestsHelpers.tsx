@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { isLowConfidence } from "@/lib/standards";
+import { isLowConfidence, CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
-import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
@@ -106,6 +106,192 @@ export function getSampleWaterStatus(item: ReviewRequestItem): "safe" | "warning
     return hasWarning ? "warning" : "safe";
 }
 
+/** วันที่พร้อมเวลาแบบเต็ม สำหรับหน้ารายละเอียด — ต่างจาก formatDateTime ที่ย่อเหลือเฉพาะวัน */
+export function formatDateTimeFull(value: string | null) {
+    if (!value) return "-";
+    return new Date(value).toLocaleString("th-TH", {
+        year: "2-digit",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+/** แถวข้อมูล ไอคอน + ป้ายกำกับ + ค่า ใช้ซ้ำในกล่องรายละเอียด */
+function InfoRow({ icon: Icon, label, value }: { icon: typeof MapPin; label: string; value: string }) {
+    return (
+        <div className="flex items-start gap-2.5 min-w-0">
+            <Icon size={14} className="text-text-muted shrink-0 mt-0.5" />
+            <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</div>
+                <div className="text-xs font-semibold text-text break-words [overflow-wrap:anywhere]">{value}</div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * รูปย่อ 1 ใบในกล่องรายละเอียด กดเพื่อเปิดดูขนาดเต็ม
+ * ไฟล์ที่ถูกลบไปแล้ว (หรือ path ค้างใน DB) จะ 404 — จับด้วย onError แล้วสลับเป็นกล่องแจ้งแทนรูปแตก
+ */
+function DetailThumb({ url, label, onOpen }: { url: string; label: string; onOpen: () => void }) {
+    const [isBroken, setIsBroken] = useState(false);
+
+    if (isBroken) {
+        return (
+            <div className="flex-1 aspect-4/3 rounded-xl border border-dashed border-border bg-surface-subtle flex flex-col items-center justify-center gap-1 text-text-muted">
+                <ImageOff size={16} />
+                <span className="text-[10px] font-semibold text-center px-1">{label} — โหลดไม่ได้</span>
+            </div>
+        );
+    }
+
+    return (
+        <button type="button" onClick={onOpen} className="flex-1 group relative aspect-4/3 rounded-xl overflow-hidden border border-border cursor-pointer">
+            <img src={url} alt={label} onError={() => setIsBroken(true)} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" />
+            <span className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[10px] font-semibold py-1 text-center">{label}</span>
+        </button>
+    );
+}
+
+/**
+ * กล่องรายละเอียดคำร้องแบบเต็ม — ข้อมูลจุดตรวจ ค่าที่วัดได้ทุกสาร ภาพประกอบ และผลการตัดสิน
+ * รูปในนี้เป็นแค่ตัวย่อ กดแล้วส่งต่อให้ ImageLightbox ที่หน้าแม่เปิดขนาดเต็มอีกที
+ */
+export function RequestDetailPopup({ item, onClose, onPreviewImage }: { item: ReviewRequestItem; onClose: () => void; onPreviewImage: (images: PreviewImages) => void }) {
+    const waterStatus = getSampleWaterStatus(item);
+    const samplesWithImage = item.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
+
+    const requestStatusLabel = item.statusRequest === "pending" ? "รอตรวจสอบ" : item.statusRequest === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว";
+    const requestStatusStyle =
+        item.statusRequest === "pending"
+            ? "text-text-warning bg-bg-warning border-border-warning"
+            : item.statusRequest === "approved"
+              ? "text-teal-600 bg-teal-50 border-teal-200"
+              : "text-red-600 bg-red-50 border-red-200";
+
+    return (
+        <Popup title="รายละเอียดคำร้อง" onClose={onClose} maxWidth="max-w-xl">
+            {/* ไม่ต้องครอบ overflow เอง — Popup จำกัดความสูงและเลื่อนให้แล้วทั้งโหมด sheet และ popup */}
+            <div className="space-y-5">
+                {/* หัวเรื่อง: สถานที่ + สถานะน้ำ + สถานะคำร้อง */}
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-text break-words">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
+                        <p className="text-xs text-text-muted font-medium mt-0.5">{item.location?.organization || "ไม่ระบุหน่วยงาน"}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                        <StatusBadge status={waterStatus} size="sm" />
+                        <span className={`inline-flex items-center w-20 text-xs font-semibold border p-1 justify-center rounded-md whitespace-nowrap ${requestStatusStyle}`}>{requestStatusLabel}</span>
+                    </div>
+                </div>
+
+                {/* ข้อมูลกำกับการเก็บตัวอย่าง */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-3.5 bg-surface-subtle border border-border rounded-xl p-3.5">
+                    <InfoRow icon={FileScan} label="รหัสกลุ่ม" value={item.sessionGroup || "ไม่ระบุรหัส"} />
+                    <InfoRow icon={Calendar} label="เวลาเก็บตัวอย่าง" value={formatDateTimeFull(item.collectionTime)} />
+                    <InfoRow icon={UserRound} label="ผู้เก็บตัวอย่าง" value={item.collector?.name || "-"} />
+                    <InfoRow icon={Clock} label="ส่งคำร้องเมื่อ" value={formatDateTimeFull(item.createdAt)} />
+                </div>
+
+                {/* ค่าที่วัดได้ทุกสาร พร้อมค่าความมั่นใจของ AI */}
+                <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-text">
+                        <Beaker size={14} className="text-primary" />
+                        <span>ผลการวิเคราะห์</span>
+                    </div>
+
+                    {item.samples.flatMap((s) => s.measurements).length === 0 ? (
+                        <p className="text-xs text-text-muted bg-surface-subtle border border-border rounded-xl p-3">ไม่พบข้อมูลผลวิเคราะห์ในคำร้องนี้</p>
+                    ) : (
+                        <div className="space-y-1.5">
+                            {item.samples.flatMap((s) =>
+                                s.measurements.map((m) => (
+                                    <div key={`${s.id}-${m.parameterId}`} className="flex items-center justify-between gap-3 bg-surface-subtle border border-border rounded-xl px-3 py-2.5">
+                                        <span className="text-xs font-semibold text-text truncate">{m.parameterName || "ไม่ระบุสาร"}</span>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <span className="text-xs font-bold text-text tabular-nums">
+                                                {Number(m.value).toFixed(2)}
+                                                {m.unit ? <span className="text-text-muted font-medium"> {m.unit}</span> : null}
+                                            </span>
+                                            <span
+                                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                                    isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
+                                                }`}
+                                                title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
+                                            >
+                                                {m.confidence.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* ภาพประกอบ แยกตามสารที่มีภาพแนบ */}
+                <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-text">
+                        <Images size={14} className="text-primary" />
+                        <span>ภาพประกอบ</span>
+                    </div>
+
+                    {samplesWithImage.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-1.5 bg-surface-subtle border border-dashed border-border rounded-xl p-6 text-text-muted">
+                            <ImageOff size={18} />
+                            <p className="text-xs font-semibold">ไม่มีภาพถ่ายหรือภาพวิเคราะห์แนบมา</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {samplesWithImage.map((s) => {
+                                const sampleLabel = s.measurements.map((m) => m.parameterName).filter(Boolean).join(", ") || "ไม่ระบุสาร";
+                                return (
+                                    <div key={s.id} className="space-y-1.5">
+                                        <span className="text-[11px] font-bold text-text-secondary">{sampleLabel}</span>
+                                        <div className="flex gap-2">
+                                            {s.rawImageUrl && (
+                                                <DetailThumb url={s.rawImageUrl} label="ภาพถ่าย" onOpen={() => onPreviewImage({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })} />
+                                            )}
+                                            {s.analyzedPlotUrl && (
+                                                <DetailThumb
+                                                    url={s.analyzedPlotUrl}
+                                                    label="ภาพ AI"
+                                                    onOpen={() => onPreviewImage({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* ผลการตัดสิน แสดงเฉพาะคำร้องที่ผ่านการอนุมัติ/ปฏิเสธแล้ว */}
+                {item.statusRequest !== "pending" && (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-text">
+                            {item.statusRequest === "approved" ? <CheckCircle2 size={14} className="text-teal-600" /> : <XCircle size={14} className="text-red-600" />}
+                            <span>ผลการตัดสิน</span>
+                        </div>
+                        <div className="bg-surface-subtle border border-border rounded-xl p-3.5 space-y-2.5">
+                            <InfoRow icon={UserRound} label="ผู้ตัดสิน" value={item.reviewedBy?.name ?? "-"} />
+                            <InfoRow icon={Clock} label="ตัดสินเมื่อ" value={formatDateTimeFull(item.reviewedAt)} />
+                            {item.reviewNote && (
+                                <p className="text-xs text-text-danger font-semibold bg-red-500/5 p-2 rounded-lg border border-red-500/10 break-words [overflow-wrap:anywhere]">
+                                    เหตุผล: {item.reviewNote}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </Popup>
+    );
+}
+
 export function RequestCard({
     item,
     actingId,
@@ -127,22 +313,14 @@ export function RequestCard({
 
     const noneSelected = showSampleSelect && selectedSampleIds.length === 0;
 
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
     // คำนวณค่าสาร Phosphate (P) และ Ammonia (N) จาก measurements จริง
     const allMeasurements = item.samples.flatMap((s) => s.measurements);
     const phosphateMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("phosphate"));
     const ammoniaMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("ammonia"));
 
     const waterStatus = getSampleWaterStatus(item);
-
-    // ดึงรูปภาพภาพแรกที่มีใน samples
-    const firstSampleWithImage = item.samples.find((s) => s.rawImageUrl || s.analyzedPlotUrl);
-    const previewImgObj: PreviewImages | null = firstSampleWithImage
-        ? {
-              raw: firstSampleWithImage.rawImageUrl,
-              analyzed: firstSampleWithImage.analyzedPlotUrl,
-              active: "raw",
-          }
-        : null;
 
     return (
         <div className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex flex-col gap-3 min-w-0">
@@ -198,10 +376,14 @@ export function RequestCard({
                         </span>
                     )}
                     {item.statusRequest === "approved" && (
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold text-teal-600 bg-teal-50 border border-teal-200 rounded-md whitespace-nowrap">อนุมัติแล้ว</span>
+                        <span className="inline-flex items-center w-20 text-xs font-semibold text-teal-600 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
+                            อนุมัติแล้ว
+                        </span>
                     )}
                     {item.statusRequest === "rejected" && (
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-md whitespace-nowrap">ปฏิเสธแล้ว</span>
+                        <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                            ปฏิเสธแล้ว
+                        </span>
                     )}
                 </div>
             </div>
@@ -252,17 +434,16 @@ export function RequestCard({
             )}
 
             {/* ── แถบปุ่ม Actions จัดการ ── */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-                {previewImgObj && (
-                    <button
-                        type="button"
-                        onClick={() => onPreviewImage(previewImgObj)}
-                        className="px-3 py-1.5 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center gap-1 transition-all cursor-pointer"
-                    >
-                        <Eye size={13} />
-                        <span>ดูรูปภาพ</span>
-                    </button>
-                )}
+            {/* ปุ่มแบ่งความกว้างเท่ากันด้วย flex-1 เพื่อให้แถวเต็มการ์ดเสมอ ไม่ว่าจะมี 1 หรือ 3 ปุ่ม */}
+            <div className="flex items-stretch gap-2 pt-3 border-t border-border">
+                <button
+                    type="button"
+                    onClick={() => setIsDetailOpen(true)}
+                    className="flex-1 min-h-9 px-3 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                    <Info size={14} />
+                    <span>ดูรายละเอียด</span>
+                </button>
 
                 {item.statusRequest === "pending" && (
                     <>
@@ -270,23 +451,25 @@ export function RequestCard({
                             type="button"
                             disabled={actingId === item.id}
                             onClick={() => onOpenReject(item)}
-                            className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
-                            <XCircle size={13} />
+                            <XCircle size={14} />
                             <span>ปฏิเสธ</span>
                         </button>
                         <button
                             type="button"
                             disabled={actingId === item.id || noneSelected}
                             onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-3 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
-                            {actingId === item.id ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={13} />}
+                            {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
                             <span>อนุมัติ</span>
                         </button>
                     </>
                 )}
             </div>
+
+            {isDetailOpen && <RequestDetailPopup item={item} onClose={() => setIsDetailOpen(false)} onPreviewImage={onPreviewImage} />}
         </div>
     );
 }
