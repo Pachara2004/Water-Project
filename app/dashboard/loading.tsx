@@ -6,8 +6,9 @@ import { LucideSearch } from "lucide-react";
 // วางบาร์ placeholder ด้วย &nbsp; ในกล่อง text-* ให้ความสูงบรรทัดเท่าตัวจริงโดยไม่ต้องกำหนด h เอง
 // มี animate-pulse ในตัวเพื่อให้ทำงานได้เองเมื่อถูกเรียกนอก route loading
 // บาร์ placeholder — &nbsp; ในกล่อง text-* ของ parent ทำให้ความสูงบรรทัดเท่าตัวจริงโดยไม่ต้องกำหนด h
-function Bar({ w, tone = "bg-surface-subtle" }: { w: string; tone?: string }) {
-    return <span className={`inline-block max-w-full rounded ${w} ${tone}`}>&nbsp;</span>;
+// ใช้ bg-surface-subtle โทนเดียวทุกจุด: ทุกการ์ดในหน้านี้พื้นสว่างเหมือนกันหมด การไล่ opacity รายจุดทำให้ดูไม่เป็นชุดเดียวกัน
+function Bar({ w }: { w: string }) {
+    return <span className={`inline-block max-w-full rounded bg-surface-subtle ${w}`}>&nbsp;</span>;
 }
 
 export function DashboardContentSkeleton() {
@@ -24,15 +25,15 @@ export function DashboardContentSkeleton() {
             {/* KPI cards — โครง + typography เดียวกับการ์ดจริง (สูงตามเนื้อหา ไม่ fix) */}
             <div className="grid grid-cols-2 md:grid-cols-12 gap-2.5">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="bg-card-summary rounded-xl border border-border p-3 flex flex-col border-l-10 border-l-border col-span-1 md:col-span-3">
+                    <div key={i} className="bg-card-general rounded-xl border border-border p-3 flex flex-col border-l-10 border-l-border col-span-1 md:col-span-3">
                         <div className="text-xs font-semibold">
-                            <Bar w="w-3/4" tone="bg-white/25" />
+                            <Bar w="w-3/4" />
                         </div>
                         <div className="mt-1 text-3xl font-bold leading-tight">
-                            <Bar w="w-1/2" tone="bg-white/25" />
+                            <Bar w="w-1/2" />
                         </div>
                         <div className="mt-1 text-xs">
-                            <Bar w="w-2/5" tone="bg-white/25" />
+                            <Bar w="w-2/5" />
                         </div>
                     </div>
                 ))}
@@ -47,10 +48,10 @@ export function DashboardContentSkeleton() {
                     {Array.from({ length: 5 }).map((_, i) => (
                         <div key={i} className="flex flex-col gap-1">
                             <div className="text-xs">
-                                <Bar w="w-3/5" tone="bg-surface-subtle/70" />
+                                <Bar w="w-3/5" />
                             </div>
                             <div className="text-xs">
-                                <Bar w="w-2/5" tone="bg-surface-subtle/50" />
+                                <Bar w="w-2/5" />
                             </div>
                         </div>
                     ))}
@@ -73,7 +74,7 @@ export function DashboardContentSkeleton() {
                 <div className="text-sm font-semibold">
                     <Bar w="w-1/3" />
                 </div>
-                <div className="h-64 w-full mt-1 rounded bg-surface-subtle/40" />
+                <div className="h-64 w-full mt-1 rounded-lg border border-border bg-bg" />
             </div>
         </div>
     );
