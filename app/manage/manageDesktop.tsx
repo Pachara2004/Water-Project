@@ -110,10 +110,10 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
 
                     {currentUser && (
                         <div className="pt-4 mt-2 border-t border-border flex justify-end">
-                            {/* Desktop: ปุ่มออกจากระบบเป็น ghost/outline ขนาดพอดี ไม่ให้เด่นข่มเมนูหลักเหมือนแท่งแดงเต็มความกว้างแบบ mobile */}
+                            {/* Desktop: ปุ่มออกจากระบบสีแดงเด่นชัด สไตล์ Danger */}
                             <button
                                 onClick={handleLogout}
-                                className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-text-secondary hover:text-white hover:bg-danger hover:border-danger transition-all duration-150 cursor-pointer"
+                                className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-danger text-white border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 cursor-pointer"
                             >
                                 <LogOut size={16} />
                                 <span className="text-sm font-semibold">ออกจากระบบ</span>
