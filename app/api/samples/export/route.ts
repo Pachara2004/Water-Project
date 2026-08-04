@@ -3,15 +3,21 @@ import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
 import path from "path";
 import { promises as fs } from "fs";
+import sharp from "sharp";
 import { verifyAuth } from "@/lib/auth-guard";
-import { buildContentDisposition, buildExportMetadata, formatThaiDateTime, resolveExportContext } from "@/lib/sampleFilters";
+import { buildContentDisposition, formatThaiDateTime, resolveExportContext } from "@/lib/sampleFilters";
 
 export const dynamic = "force-dynamic";
 
-// เพดานถาวรของ XLSX — ต่างจาก CSV ที่ stream ได้ไม่จำกัด
-// ExcelJS ต้องประกอบทั้ง workbook (รวมรูปภาพฝังทุกแถว) ในหน่วยความจำก่อนส่ง จึงสเกลตามข้อมูลไม่ได้โดยธรรมชาติ
-// ไฟล์นี้คือ "รายงานของข้อมูลชุดเล็ก" ถ้าต้องการข้อมูลทั้งก้อนให้ใช้ CSV
+// เพดานถาวรของ XLSX — ExcelJS ต้องประกอบทั้ง workbook (รวมรูปภาพฝังทุกแถว) ในหน่วยความจำก่อนส่ง จึงสเกลตามข้อมูลไม่ได้โดยธรรมชาติ
+// ไฟล์นี้คือ "รายงานของข้อมูลชุดเล็ก" ถ้าต้องการข้อมูลทั้งก้อนให้ใช้ CSV (ไม่มีเพดาน)
 const MAX_XLSX_ROWS = 2000;
+
+// ย่อรูปก่อนฝัง — ต้นฉบับจากมือถือหนัก 2-8MB ต่อไฟล์ ฝังดิบ ๆ 500 แถว x 2 รูป จะได้ไฟล์หลาย GB
+// ย่อเหลือกว้าง 400px คุณภาพ 70 เหลือราว 20-40KB/รูป (เล็กลง ~50 เท่า) ยังคมกว่าขนาดที่แสดงจริงในเซลล์ (150px)
+async function resizeForEmbed(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer).resize({ width: 400, withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer();
+}
 
 export async function GET(request: NextRequest) {
     // 🔒 SECURITY GUARD: ล็อกกลอนขั้นสูง อนุญาตเฉพาะสิทธิ์ "officer" และ "admin" เท่านั้นที่ส่งออกรายงานได้
@@ -21,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const { scope, filters, where, stationName, exporterName } = await resolveExportContext(request, auth.user!);
+        const { scope, filters, where, stationName } = await resolveExportContext(request, auth.user!);
 
         const totalRows = await prisma.waterSample.count({ where });
         if (totalRows > MAX_XLSX_ROWS) {
@@ -50,18 +56,6 @@ export async function GET(request: NextRequest) {
         });
 
         const workbook = new ExcelJS.Workbook();
-
-        // Sheet แรก = เมทาดาทาบอกที่มาของไฟล์ แยกออกจากตารางข้อมูลเพื่อไม่ให้พิกัดแถวของรูปภาพเลื่อน
-        const infoSheet = workbook.addWorksheet("ข้อมูลการส่งออก");
-        infoSheet.columns = [
-            { header: "รายการ", key: "label", width: 28 },
-            { header: "รายละเอียด", key: "value", width: 70 },
-        ];
-        infoSheet.getRow(1).font = { bold: true };
-        for (const [label, value] of buildExportMetadata(filters, scope, stationName, exporterName, totalRows)) {
-            infoSheet.addRow({ label, value });
-        }
-
         const worksheet = workbook.addWorksheet("Water Quality Report");
 
         // 3. ประกอบโครงสร้างคอลัมน์รายงาน (Columns) แบบ Dynamic
@@ -135,7 +129,7 @@ export async function GET(request: NextRequest) {
             const row = worksheet.addRow(rowData);
             row.height = 75; // ตั้งความสูงแถวให้สอดรับความสูงภาพ
 
-            // ฟังก์ชันวาดไฟล์ภาพฝังลงในช่องเซลล์ของตัว Excel แบบสเกลตำแหน่งตามดัชนีที่คำนวณไว้
+            // ฟังก์ชันย่อรูปแล้ววาดฝังลงในช่องเซลล์ของตัว Excel แบบสเกลตำแหน่งตามดัชนีที่คำนวณไว้
             const embedImageToCell = async (imagePath: string | null, colIndex: number) => {
                 if (!imagePath || imagePath === "N/A") return;
 
@@ -145,7 +139,8 @@ export async function GET(request: NextRequest) {
                         const fullPath = path.join(process.cwd(), "public", "uploads", cleanPath);
 
                         await fs.access(fullPath);
-                        const imageBuffer = await fs.readFile(fullPath);
+                        const rawBuffer = await fs.readFile(fullPath);
+                        const imageBuffer = await resizeForEmbed(rawBuffer);
 
                         const imageId = workbook.addImage({
                             buffer: imageBuffer as any,
