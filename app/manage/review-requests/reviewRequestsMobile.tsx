@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { useRouter } from "next/navigation";
-import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
+import { CONFIDENCE_THRESHOLD, type StandardRow } from "@/lib/standards";
 import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText } from "lucide-react";
 import {
     StatusTabs,
@@ -32,6 +32,9 @@ export interface ReviewRequestsPageProps {
     isLoadingRequests: boolean;
 
     actingId: number | null;
+
+    /** เกณฑ์จริงจากตาราง standards (ทุกสาร × ทุกประเภท) — ใช้คำนวณ badge สถานะน้ำให้ตรงกับ server */
+    standards: StandardRow[];
 
     previewImages: PreviewImages | null;
     setPreviewImages: (v: PreviewImages | null) => void;
@@ -65,6 +68,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
         setPage,
         isLoadingRequests,
         actingId,
+        standards,
         previewImages,
         setPreviewImages,
         rejectTarget,
@@ -147,7 +151,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
 
                 // 3. กรองตามสถานะความปลอดภัยน้ำ (safe / warning / danger)
                 if (selectedStatuses.length > 0) {
-                    const itemWaterStatus = getSampleWaterStatus(item);
+                    const itemWaterStatus = getSampleWaterStatus(item, standards);
                     if (!selectedStatuses.includes(itemWaterStatus)) return false;
                 }
 
@@ -158,7 +162,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                 const dateB = new Date(b.collectionTime || b.createdAt || 0).getTime();
                 return sortDesc ? dateB - dateA : dateA - dateB;
             });
-    }, [requests, globalFilter, startDate, endDate, selectedStatuses, sortDesc]);
+    }, [requests, globalFilter, startDate, endDate, selectedStatuses, sortDesc, standards]);
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
@@ -351,7 +355,16 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                             <div className="space-y-4">
                                 <div className="flex flex-col gap-3">
                                     {filteredRequests.map((item) => (
-                                        <RequestCard key={item.id} item={item} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} mobile />
+                                        <RequestCard
+                                            key={item.id}
+                                            item={item}
+                                            standards={standards}
+                                            actingId={actingId}
+                                            onOpenReject={openReject}
+                                            onApprove={handleApprove}
+                                            onPreviewImage={setPreviewImages}
+                                            mobile
+                                        />
                                     ))}
                                 </div>
 

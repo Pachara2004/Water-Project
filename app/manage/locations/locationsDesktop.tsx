@@ -37,7 +37,6 @@ export default function LocationsDesktop(props: LocationsPageProps) {
         handleManualCoordsChange,
         getOrgValue,
         handleSubmit,
-        locations,
         stationSearch,
         setStationSearch,
         filteredLocations,
@@ -264,7 +263,8 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             <FileText size={18} className="text-primary" />
                             <h2 className="text-sm text-primary font-bold tracking-wider uppercase">สถานีตรวจวัดในระบบ</h2>
                         </div>
-                        <span className="text-xs font-bold text-primary  px-2.5 py-1">{locations.length} สถานี</span>
+                        {/* นับตามผลค้นหาที่กำลังแสดงจริง ไม่ใช่จำนวนทั้งหมด — ไม่งั้นตัวเลขเพี้ยนเมื่อพิมพ์ค้นหา */}
+                        <span className="text-xs font-bold text-primary  px-2.5 py-1">{filteredLocations.length} สถานี</span>
                     </div>
 
                     {/* ช่องค้นหาสถานีสไตล์เดียวกับหน้ารายการน้ำ */}
