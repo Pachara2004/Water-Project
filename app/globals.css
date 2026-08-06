@@ -1,18 +1,23 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
-@theme {
-    /* Premium Typography pairings */
+/* 1. เปิดใช้งาน .dark variant บน html selector สำหรับ Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 2. แมปชื่อ Utility Classes เข้ากับ CSS Variables โดยใช้ @theme inline เพื่อป้องกัน Class หลุดใน Tailwind v4 */
+@theme inline {
     --font-display: "Noto Sans Thai", "Inter", system-ui, -apple-system, sans-serif;
     --font-sans: "Noto Sans Thai", "Inter", system-ui, -apple-system, sans-serif;
     --font-mono: "JetBrains Mono", monospace;
 
-    /* Legacy & Standard mappings */
+    /* Theme Colors Registration */
     --color-navy: var(--color-navy);
     --color-navy-dark: var(--color-navy-dark);
     --color-navy-light: var(--color-navy-light);
+
     --color-bg-gray: var(--color-bg-gray);
     --color-bg: var(--color-bg);
+
     --color-card-white: var(--color-card-white);
     --color-card-general: var(--color-card-general);
     --color-card-summary: var(--color-card-summary);
@@ -20,6 +25,7 @@
     --color-primary: var(--color-primary);
     --color-primary-light: var(--color-primary-light);
     --color-secondary: var(--color-secondary);
+
     --color-safe: var(--color-safe);
     --color-warning: var(--color-warning);
     --color-danger: var(--color-danger);
@@ -27,15 +33,15 @@
 
     --color-bg-danger: var(--color-bg-danger);
     --color-border-danger: var(--color-border-danger);
-    --color-text-danger: var(--color--text-danger);
+    --color-text-danger: var(--color-text-danger);
+
     --color-bg-safe: var(--color-bg-safe);
     --color-border-safe: var(--color-border-safe);
-    --color-text-safe: var(--color--text-safe);
-    --color-bg-warning: var(--color-bg-danger);
-    --color-border-warning: var(--color-border-danger);
-    --color-text-warning: var(--color--text-warning);
-    --color-text: var(--color-text);
+    --color-text-safe: var(--color-text-safe);
 
+    --color-bg-warning: var(--color-bg-warning);
+    --color-border-warning: var(--color-border-warning);
+    --color-text-warning: var(--color-text-warning);
 
     --color-surface: var(--color-surface);
     --color-surface-muted: var(--color-surface-muted);
@@ -47,7 +53,7 @@
 
     --color-border: var(--color-border);
 
-    /* Modern shadows & custom elevations */
+    /* Shadows & Elevations */
     --shadow-accent: 0 4px 14px rgba(0, 82, 255, 0.15);
     --shadow-accent-lg: 0 8px 24px rgba(0, 82, 255, 0.28);
     --shadow-md: 0 6px 16px rgba(15, 23, 42, 0.04);
@@ -61,7 +67,7 @@
     --spacing-space-xl: 32px;
     --spacing-space-2xl: 48px;
 
-    /* Layers (Leaflet & maps integration) */
+    /* Layers */
     --z-map: 0;
     --z-marker: 400;
     --z-control: 500;
@@ -72,12 +78,12 @@
     --z-navbar: 950;
 }
 
+/* 3. ค่าสีจริงใน Light Mode */
 :root {
     color-scheme: light;
 
     /* Professional Corporate Palette (Light Mode) */
     --color-navy: #0f4c81;
-    /* Classic Corporate Navy */
     --color-navy-dark: #0a3156;
     --color-navy-light: #1e60a8;
     --color-bg-gray: #f8fafc;
@@ -90,8 +96,6 @@
     --color-primary: #06647f;
     --color-primary-light: #f1f5f9;
     --color-secondary: #2e7a91;
-    /* เดิม #5FA7BB ให้ contrast แค่ 2.72:1 บนพื้นขาว ไม่ผ่าน WCAG AA (4.5:1)
-     ตอนใช้เป็นสีตัวอักษร/ไอคอนเล็กตรง ๆ (เช่น text-secondary ใน ResultsPanel, StatusFilterBar) */
 
     /* Semantic Standards */
     --color-safe: #10b981;
@@ -103,9 +107,11 @@
     --color-bg-danger: #fef2f2;
     --color-border-danger: #fecaca;
     --color-text-danger: #b91c1c;
+
     --color-bg-safe: #f0fdf4;
     --color-border-safe: #86efac;
     --color-text-safe: #15803d;
+
     --color-bg-warning: #fffbeb;
     --color-border-warning: #fcd34d;
     --color-text-warning: #b45309;
@@ -124,10 +130,11 @@
     --color-border: #e2e8f0;
 }
 
+/* 4. ค่าสีจริงใน Dark Mode */
 .dark {
     color-scheme: dark;
 
-    /* Base Backgrounds & Surfaces (ตามหลัก Material Design: ใช้ Dark Slate Tone) */
+    /* Base Backgrounds & Surfaces (Material Dark Slate) */
     --color-bg-gray: #0b0f17;
     --color-bg: #0b0f17;
     --color-surface: #131c2e;         /* Surface หลักสำหรับ Cards/Panels */
@@ -136,42 +143,42 @@
 
     --color-card-white: #131c2e;
     --color-card-general: #131c2e;
-    --color-card-summary: #0f4c81;     /* ปรับ Deep Teal-Navy ให้อ่านง่าย */
+    --color-card-summary: #0f4c81;     /* Deep Teal-Navy */
 
-    /* Navy Brand Colors (Desaturated เพื่อความสบายตาในโหมดมืด) */
+    /* Navy Brand Colors */
     --color-navy: #3b82f6;
     --color-navy-dark: #2563eb;
     --color-navy-light: #60a5fa;
 
     /* Primary & Secondary Accent Colors */
-    --color-primary: #38bdf8;          /* Bright Sky Blue (Contrast > 7:1 บนพื้นหลังเข้ม) */
+    --color-primary: #38bdf8;          /* Sky Blue (Contrast > 7:1) */
     --color-primary-light: #1e293b;
     --color-secondary: #0284c7;
 
-    /* Semantic Feedback Colors (Desaturated Tone เพื่อความสบายตา) */
-    --color-safe: #34d399;             /* Emerald Green */
-    --color-warning: #fbbf24;          /* Amber */
-    --color-danger: #f87171;           /* Soft Red */
+    /* Semantic Feedback Colors */
+    --color-safe: #34d399;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
     --color-danger-hover: #ef4444;
 
-    /* Semantic Cards & Badges (Dark Mode Contrast Presets) */
-    --color-bg-danger: rgba(239, 68, 68, 0.15);
-    --color-border-danger: rgba(239, 68, 68, 0.35);
+    /* Semantic Cards & Badges (Hex ทึบ เพื่อป้องกันปัญหาสีกลืนเพี้ยน) */
+    --color-bg-danger: #2c1517;
+    --color-border-danger: #7f1d1d;
     --color-text-danger: #fca5a5;
 
-    --color-bg-safe: rgba(16, 185, 129, 0.15);
-    --color-border-safe: rgba(16, 185, 129, 0.35);
-    --color-text-safe: #6ee7b7;
+    --color-bg-safe: #062319;
+    --color-border-safe: #065f46;
+    --color-text-safe: #86efac;
 
-    --color-bg-warning: rgba(245, 158, 11, 0.15);
-    --color-border-warning: rgba(245, 158, 11, 0.35);
+    --color-bg-warning: #2b1d0c;
+    --color-border-warning: #78350f;
     --color-text-warning: #fde047;
 
-    /* Typography Contrast Levels (WCAG AA Compliant) */
+    /* Typography Contrast Levels */
     --color-text: #f8fafc;
-    --color-text-primary: #f8fafc;     /* Highest contrast (Off-White) */
-    --color-text-secondary: #cbd5e1;   /* Medium contrast (Slate 300) */
-    --color-text-muted: #94a3b8;       /* Muted text (Slate 400 - Contrast > 4.5:1) */
+    --color-text-primary: #f8fafc;     /* Highest contrast */
+    --color-text-secondary: #cbd5e1;   /* Medium contrast */
+    --color-text-muted: #94a3b8;       /* Muted text */
 
     /* Borders & Dividers */
     --color-border: #1e293b;
@@ -187,8 +194,8 @@ html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
-    /* ปิดกรอบไฮไลต์สีส้มที่ browser มือถือ (LINE webview) แปะให้อัตโนมัติตอนแตะจอ */
     -webkit-tap-highlight-color: transparent;
+    color-scheme: light dark;
 }
 
 /* กัน browser วาดกรอบ focus สีดำรอบ element ของกราฟ Recharts ตอนแตะ/โฟกัสบนมือถือ */
@@ -216,7 +223,6 @@ body {
     }
 }
 
-/* Professional Tone: Removed gradients and patterns */
 .gradient-text {
     color: var(--color-primary);
 }
@@ -225,7 +231,6 @@ body {
     color: var(--color-primary);
 }
 
-/* Fallback for components still using gradient border */
 .gradient-border-wrapper {
     position: relative;
     background: var(--color-border);
@@ -237,7 +242,6 @@ body {
     background: var(--color-border);
 }
 
-/* Removed Dot Pattern for a cleaner look */
 .bg-dot-pattern {
     background: transparent;
 }
@@ -248,7 +252,7 @@ body {
 
 /* Glassmorphism Accents */
 .glass-panel {
-    background: "#EFF7F9";
+    background: rgba(239, 247, 249, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.4);
@@ -269,7 +273,6 @@ body {
         transform: translateY(20px);
         opacity: 0;
     }
-
     to {
         transform: translateY(0);
         opacity: 1;
@@ -280,18 +283,15 @@ body {
     from {
         opacity: 0;
     }
-
     to {
         opacity: 1;
     }
 }
 
 @keyframes bob {
-    0%,
-    100% {
+    0%, 100% {
         transform: translateY(0);
     }
-
     50% {
         transform: translateY(-8px);
     }
@@ -301,19 +301,16 @@ body {
     0% {
         transform: rotate(0deg);
     }
-
     100% {
         transform: rotate(360deg);
     }
 }
 
 @keyframes pulse-dot {
-    0%,
-    100% {
+    0%, 100% {
         transform: scale(1);
         opacity: 1;
     }
-
     50% {
         transform: scale(1.3);
         opacity: 0.7;
@@ -324,11 +321,9 @@ body {
     0% {
         top: 0%;
     }
-
     50% {
         top: 100%;
     }
-
     100% {
         top: 0%;
     }
@@ -339,13 +334,11 @@ body {
     animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Toast ขาออก: เลื่อนลงแล้วจางหาย แทนการหายวับทันที */
 @keyframes toast-exit {
     from {
         transform: translateY(0);
         opacity: 1;
     }
-
     to {
         transform: translateY(20px);
         opacity: 0;
@@ -360,13 +353,11 @@ body {
     animation: fade-in 0.4s ease-out forwards;
 }
 
-/* Popup ลอยกลางจอ: ผุดขึ้นพร้อมขยายจากเล็กไปเต็มขนาด */
 @keyframes scale-in {
     from {
         transform: scale(0.95);
         opacity: 0;
     }
-
     to {
         transform: scale(1);
         opacity: 1;
@@ -382,7 +373,6 @@ body {
         transform: translateX(100%);
         opacity: 0;
     }
-
     to {
         transform: translateX(0);
         opacity: 1;
@@ -394,7 +384,6 @@ body {
         transform: translateY(-8px);
         opacity: 0;
     }
-
     to {
         transform: translateY(0);
         opacity: 1;
@@ -446,10 +435,6 @@ body {
     background: var(--color-surface-subtle);
 }
 
-/* Leaflet's own CSS hardcodes z-index:1000 on the corner control containers (zoom buttons,
-   attribution). That's higher than --z-modal (800), --z-toast (900), even --z-navbar (950) —
-   so those controls punch through any modal/dialog backdrop wherever a map is visible behind it.
-   Pin them to the app's --z-control layer instead so they stay under modals/toasts. */
 .leaflet-top,
 .leaflet-bottom {
     z-index: var(--z-control, 500);
@@ -467,30 +452,20 @@ body {
     border-radius: 4px;
 }
 
-/* Reserves scrollbar space so SweetAlert2's body.swal2-shown{overflow:hidden} scroll-lock
-   doesn't shift the layout. Needed on both html and body: body's overflow-x:hidden makes the
-   viewport scrollbar belong to html on desktop. Toggled per-page (see reserve-scrollbar-gutter
-   class usage in code) so pages without confirm dialogs are unaffected. */
 html.reserve-scrollbar-gutter,
 html.reserve-scrollbar-gutter body {
     scrollbar-gutter: stable;
 }
 
-/* The reserved gutter is native browser chrome, not a paintable element — blur can't reach it.
-   Tint body's background to match the popup backdrop so the sliver blends in instead of
-   showing the page's own background color. */
 body.swal2-shown:not(.swal2-no-backdrop, .swal2-toast-shown) {
     background-color: var(--swal2-backdrop, rgba(0, 0, 0, 0.4));
 }
 
-/* เคสเดียวกันสำหรับ custom Popup (components/Popup.tsx) — ย้อม body ให้กลืน backdrop (bg-black/40)
-   กันแถบ scrollbar gutter สว่างโผล่ตัดกับ backdrop เข้ม */
 body.popup-shown {
     background-color: rgba(0, 0, 0, 0.4);
 }
 
-/* ── SweetAlert dialog theme (ใช้คู่กับ lib/swal.ts) ──
-   สีทั้ง icon/ปุ่ม วิ่งตาม --swal-tone ที่ helper กำหนดต่อ dialog */
+/* SweetAlert dialog theme */
 .app-swal {
     border-radius: 16px;
     padding: 1.75rem 1.5rem 1.5rem;
@@ -554,7 +529,6 @@ body.popup-shown {
     border: 1.5px solid var(--color-border);
 }
 
-/* dialog สำเร็จ: ปุ่มเดียวเต็มกว้าง */
 .app-swal--single .app-swal-confirm {
     flex: 1 1 100%;
 }
@@ -577,15 +551,13 @@ body.popup-shown {
     background: var(--color-text-muted);
 }
 
-/* ซ่อนแถบ scrollbar แต่ยังเลื่อนได้ตามปกติ (ล้อ/ลากนิ้ว/คีย์บอร์ด)
-   ใช้กับกล่องที่แถบเลื่อนไปตัดกับขอบมน เช่น modal — แลกมาด้วยการไม่มีสัญญาณบอกว่าเนื้อหายังเลื่อนได้ */
 .no-scrollbar {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* Edge เก่า */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .no-scrollbar::-webkit-scrollbar {
-    display: none; /* Chrome / Safari */
+    display: none;
 }
 
 /* Inputs & focus state standards */
@@ -602,4 +574,3 @@ button:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
-
