@@ -235,7 +235,13 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
             opacity: HEAT_MIN_ALPHA + (1 - HEAT_MIN_ALPHA) * density(b),
         }));
         const xTicks = [xMin, (xMin + xMax) / 2, xMax].map((v) => ({ x: sx(v), label: v.toFixed(v >= 20 ? 0 : 1) }));
-        const yTicks = [yMin, (yMin + yMax) / 2, yMax].map((v) => ({ y: sy(v), label: v.toFixed(2) }));
+
+        // แกน Y คือค่าสารเคมี (ammonia หรือ phosphate แล้วแต่ chem) — phosphate ค่าปกติเล็กมาก (~0.001-0.02)
+        // .toFixed(2) ตายตัวจะปัด tick ทั้ง 3 จุดกลายเป็น "0.00" ซ้ำกันหมด ดูเหมือนไม่มีข้อมูล
+        // เลือกจำนวนทศนิยมตามสเกลจริงของแกนแทน เหมือนที่ xTicks ทำอยู่แล้ว
+        const yScale = Math.abs(yMax);
+        const yDecimals = yScale === 0 ? 2 : yScale < 0.01 ? 4 : yScale < 1 ? 3 : yScale >= 20 ? 0 : 1;
+        const yTicks = [yMin, (yMin + yMax) / 2, yMax].map((v) => ({ y: sy(v), label: v.toFixed(yDecimals) }));
 
         // เส้น trend: วาดเสมอ ตัดขอบให้อยู่ในกรอบ heatmap แล้วแปลงเป็นพิกัดพิกเซล
         let trendLine: any = null;

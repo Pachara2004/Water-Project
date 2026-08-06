@@ -26,6 +26,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
         setPage,
         isLoadingRequests,
         actingId,
+        standards,
         previewImages,
         setPreviewImages,
         rejectTarget,
@@ -108,7 +109,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
 
                 // 3. กรองตามสถานะความปลอดภัยน้ำ (safe / warning / danger)
                 if (selectedStatuses.length > 0) {
-                    const itemWaterStatus = getSampleWaterStatus(item);
+                    const itemWaterStatus = getSampleWaterStatus(item, standards);
                     if (!selectedStatuses.includes(itemWaterStatus)) return false;
                 }
 
@@ -119,7 +120,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 const dateB = new Date(b.collectionTime || b.createdAt || 0).getTime();
                 return sortDesc ? dateB - dateA : dateA - dateB;
             });
-    }, [requests, globalFilter, startDate, endDate, selectedStatuses, sortDesc]);
+    }, [requests, globalFilter, startDate, endDate, selectedStatuses, sortDesc, standards]);
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
@@ -299,7 +300,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {filteredRequests.map((item) => (
-                            <RequestCard key={item.id} item={item} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} />
+                            <RequestCard key={item.id} item={item} standards={standards} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} />
                         ))}
                     </div>
                 )}
