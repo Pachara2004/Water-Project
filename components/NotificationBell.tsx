@@ -182,11 +182,14 @@ export default function NotificationBell() {
     useEffect(() => {
         if (open) {
             document.body.style.overflow = "hidden";
-            setSheetHeight("collapsed");
+            // เปิดด้วยความสูงที่พอเห็นเนื้อหาได้โดยไม่ต้องเลื่อน — "collapsed" (210px) แคบเกินไปเวลามีมากกว่า 1 รายการ
+            // ผู้ใช้ยังลากปรับเป็น full/collapsed เองได้ตามปกติ นี่แค่ตั้งจุดเริ่มต้นให้เหมาะกับเนื้อหา
+            setSheetHeight(items.length > 1 ? "full" : "collapsed");
             return () => {
                 document.body.style.overflow = "";
             };
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
     const handleAck = async (item: NotificationItem) => {
@@ -245,12 +248,12 @@ export default function NotificationBell() {
                     <div
                         ref={sheetRef}
                         className={`
-                            fixed z-1001 bg-bg shadow-2xl border border-border flex flex-col
+                            fixed z-1001 bg-bg shadow-2xl border border-border flex flex-col overflow-hidden
                             /* Mobile Style */
                             bottom-0 left-0 right-0 rounded-t-3xl max-w-lg mx-auto will-change-[height]
                             /* Desktop Style (md ขึ้นไป) */
                             md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto md:right-auto
-                            md:w-full md:max-w-md md:h-[600px] md:max-h-[85vh] md:rounded-3xl
+                            md:w-full md:max-w-md md:max-h-[85vh] md:rounded-3xl
                         `}
                         style={
                             !isDesktop
@@ -297,7 +300,7 @@ export default function NotificationBell() {
                         </div>
 
                         {/* รายการการแจ้งเตือน */}
-                        <div className={`flex-1 px-4 pb-4 space-y-3 ${!isDesktop && sheetHeight === "collapsed" ? "overflow-hidden" : "overflow-y-auto"}`}>
+                        <div className={`flex-1 px-4 pb-4 space-y-3 overflow-x-hidden ${!isDesktop && sheetHeight === "collapsed" ? "overflow-y-hidden" : "overflow-y-auto"}`}>
                             {items.length === 0 ? (
                                 <div className="text-center py-12 flex flex-col items-center justify-center">
                                     <div className="w-12 h-12 bg-bg border border-border rounded-2xl flex items-center justify-center mb-3 text-text-muted">
@@ -346,9 +349,9 @@ export default function NotificationBell() {
                                                         </div>
 
                                                         {item.reviewNote && (
-                                                            <p className="flex items-start gap-1.5 text-xs font-semibold text-text-danger mt-1.5 leading-relaxed bg-bg-danger p-1.5 rounded-lg border border-border-danger">
+                                                            <p className="flex items-start gap-1.5 text-xs font-semibold text-text-danger mt-1.5 leading-relaxed bg-bg-danger p-1.5 rounded-lg border border-border-danger min-w-0">
                                                                 <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                                                                <span>{item.reviewNote}</span>
+                                                                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{item.reviewNote}</span>
                                                             </p>
                                                         )}
                                                     </div>
