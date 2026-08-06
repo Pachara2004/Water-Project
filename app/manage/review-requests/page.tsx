@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
@@ -8,7 +8,9 @@ import { confirmDialog, alertError } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
 import { refreshNavDots } from "@/lib/navEvents";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { ShieldAlert } from "lucide-react";
+import type { StandardRow } from "@/lib/standards";
 import { type ReviewStatusFilter, type ReviewRequestItem, type PreviewImages } from "@/components/manage/reviewRequestsHelpers";
 import ReviewRequestsMobile from "./reviewRequestsMobile";
 import ReviewRequestsDesktop from "./reviewRequestsDesktop";
@@ -20,6 +22,10 @@ export default function AdminReviewRequestsPage() {
     const isMobile = useMediaQuery("(max-width: 767px)");
 
     const [previewImages, setPreviewImages] = useState<PreviewImages | null>(null);
+
+    // เกณฑ์จริงจากตาราง standards — ใช้คำนวณ badge สถานะน้ำในหน้านี้ (ต้องตรงกับที่ server ใช้ตัดสิน)
+    const { locationTypes } = useLocationTypes();
+    const standards: StandardRow[] = useMemo(() => locationTypes.flatMap((t) => t.standards), [locationTypes]);
 
     const [tab, setTab] = useState<ReviewStatusFilter>("pending");
     const [requests, setRequests] = useState<ReviewRequestItem[]>([]);
@@ -175,6 +181,7 @@ export default function AdminReviewRequestsPage() {
         setPage,
         isLoadingRequests,
         actingId,
+        standards,
         previewImages,
         setPreviewImages,
         rejectTarget,

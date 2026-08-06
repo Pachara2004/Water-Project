@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { isLowConfidence, CONFIDENCE_THRESHOLD } from "@/lib/standards";
+import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
 import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
@@ -84,26 +84,11 @@ export function formatDateTime(value: string | null) {
 }
 
 /**
- * คำนวณประเมินสถานะคุณภาพน้ำ (safe/warning/danger) จากค่าความเข้มข้นใน measurements
+ * คำนวณประเมินสถานะคุณภาพน้ำ (safe/warning/danger) ของคำร้อง
  */
-export function getSampleWaterStatus(item: ReviewRequestItem): "safe" | "warning" | "danger" {
-    const allMeasurements = item.samples.flatMap((s) => s.measurements);
-    let hasWarning = false;
-
-    for (const m of allMeasurements) {
-        const name = (m.parameterName || "").toLowerCase();
-        const val = m.value;
-
-        if (name.includes("ammonia") || name.includes("n")) {
-            if (val >= 2.0) return "danger";
-            if (val >= 0.5) hasWarning = true;
-        } else if (name.includes("phosphate") || name.includes("p")) {
-            if (val >= 1.0) return "danger";
-            if (val >= 0.25) hasWarning = true;
-        }
-    }
-
-    return hasWarning ? "warning" : "safe";
+export function getSampleWaterStatus(item: ReviewRequestItem, standards: StandardRow[]): "safe" | "warning" | "danger" {
+    const values: MeasuredValue[] = item.samples.flatMap((s) => s.measurements).map((m) => ({ parameterId: m.parameterId, value: m.value }));
+    return evaluateSample(values, standards);
 }
 
 /** วันที่พร้อมเวลาแบบเต็ม สำหรับหน้ารายละเอียด — ต่างจาก formatDateTime ที่ย่อเหลือเฉพาะวัน */
@@ -159,8 +144,18 @@ function DetailThumb({ url, label, onOpen }: { url: string; label: string; onOpe
  * กล่องรายละเอียดคำร้องแบบเต็ม — ข้อมูลจุดตรวจ ค่าที่วัดได้ทุกสาร ภาพประกอบ และผลการตัดสิน
  * รูปในนี้เป็นแค่ตัวย่อ กดแล้วส่งต่อให้ ImageLightbox ที่หน้าแม่เปิดขนาดเต็มอีกที
  */
-export function RequestDetailPopup({ item, onClose, onPreviewImage }: { item: ReviewRequestItem; onClose: () => void; onPreviewImage: (images: PreviewImages) => void }) {
-    const waterStatus = getSampleWaterStatus(item);
+export function RequestDetailPopup({
+    item,
+    standards,
+    onClose,
+    onPreviewImage,
+}: {
+    item: ReviewRequestItem;
+    standards: StandardRow[];
+    onClose: () => void;
+    onPreviewImage: (images: PreviewImages) => void;
+}) {
+    const waterStatus = getSampleWaterStatus(item, standards);
     const samplesWithImage = item.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
 
     const requestStatusLabel = item.statusRequest === "pending" ? "รอตรวจสอบ" : item.statusRequest === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว";
@@ -294,12 +289,14 @@ export function RequestDetailPopup({ item, onClose, onPreviewImage }: { item: Re
 
 export function RequestCard({
     item,
+    standards,
     actingId,
     onOpenReject,
     onApprove,
     onPreviewImage,
 }: {
     item: ReviewRequestItem;
+    standards: StandardRow[];
     actingId: number | null;
     onOpenReject: (item: ReviewRequestItem) => void;
     onApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
@@ -320,7 +317,7 @@ export function RequestCard({
     const phosphateMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("phosphate"));
     const ammoniaMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("ammonia"));
 
-    const waterStatus = getSampleWaterStatus(item);
+    const waterStatus = getSampleWaterStatus(item, standards);
 
     return (
         <div className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex flex-col gap-3 min-w-0">
@@ -469,7 +466,7 @@ export function RequestCard({
                 )}
             </div>
 
-            {isDetailOpen && <RequestDetailPopup item={item} onClose={() => setIsDetailOpen(false)} onPreviewImage={onPreviewImage} />}
+            {isDetailOpen && <RequestDetailPopup item={item} standards={standards} onClose={() => setIsDetailOpen(false)} onPreviewImage={onPreviewImage} />}
         </div>
     );
 }

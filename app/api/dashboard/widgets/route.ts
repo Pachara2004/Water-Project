@@ -214,7 +214,9 @@ export async function GET(request: NextRequest) {
                         }
                     });
 
-                    finalValue = count > 0 ? Number((sum / count).toFixed(2)) : 0;
+                    // ปัด 4 ตำแหน่งเหมือนกราฟ temporal/trend ด้านล่าง — phosphate ค่าปกติ ~0.001-0.02 มก./ล.
+                    // ปัดแค่ 2 ตำแหน่งจะกลายเป็น 0.00 เกือบทุกครั้ง (ดูคอมเมนต์ที่ temporalData/trendsData)
+                    finalValue = count > 0 ? Number((sum / count).toFixed(4)) : 0;
                     // สีเดียวกับที่ trendConfig.lines/Correlation ใช้แทนสารนี้ทั้งหน้า (Ammonia=amber, Phosphate=indigo) กันสีไม่ตรงกันข้ามกราฟ
                     if (w.title.includes("NH3") || w.title.includes("แอมโมเนีย")) color = "#f59e0b";
                     if (w.title.includes("PO4") || w.title.includes("ฟอสเฟต")) color = "#6366f1";
@@ -435,12 +437,15 @@ export async function GET(request: NextRequest) {
             const a = bucketAcc.get(b.key)!;
             const divM = a.countM > 0 ? a.countM : 1;
             const divE = a.countE > 0 ? a.countE : 1;
+            // ปัดทศนิยม 2 ตำแหน่งพอสำหรับ ammonia (ค่าปกติ ~0.01-0.09) แต่ทำให้ phosphate (ค่าปกติ ~0.001-0.02
+            // ตามเกณฑ์จริงในระบบที่ max อยู่แค่ 0.015-0.045) ปัดลงเป็น 0.00 เกือบทุกครั้ง กราฟจึงว่างเปล่าทั้งที่มีข้อมูลจริง
+            // ปัด 4 ตำแหน่งให้ทั้งคู่แทน กันปัญหานี้เกิดซ้ำถ้าสารตัวอื่นในอนาคตมีสเกลค่าเล็กแบบ phosphate
             return {
                 name: b.label,
-                ammoniaMorning: Number((a.ammM / divM).toFixed(2)),
-                ammoniaEvening: Number((a.ammE / divE).toFixed(2)),
-                phosphateMorning: Number((a.phosM / divM).toFixed(2)),
-                phosphateEvening: Number((a.phosE / divE).toFixed(2)),
+                ammoniaMorning: Number((a.ammM / divM).toFixed(4)),
+                ammoniaEvening: Number((a.ammE / divE).toFixed(4)),
+                phosphateMorning: Number((a.phosM / divM).toFixed(4)),
+                phosphateEvening: Number((a.phosE / divE).toFixed(4)),
             };
         });
 
@@ -448,10 +453,11 @@ export async function GET(request: NextRequest) {
         const trendsData = buckets.map((b) => {
             const a = bucketAcc.get(b.key)!;
             const div = a.countAll > 0 ? a.countAll : 1;
+            // ปัด 4 ตำแหน่งเหมือน temporalData ด้านบน — เหตุผลเดียวกัน: ปัดแค่ 2 ตำแหน่งทำให้ phosphate กลายเป็น 0.00 เกือบทุกช่วง
             return {
                 date: b.label,
-                ammonia: Number((a.ammAll / div).toFixed(2)),
-                phosphate: Number((a.phosAll / div).toFixed(2)),
+                ammonia: Number((a.ammAll / div).toFixed(4)),
+                phosphate: Number((a.phosAll / div).toFixed(4)),
             };
         });
 
