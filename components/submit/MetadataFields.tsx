@@ -13,7 +13,8 @@ export function MetadataFields({ collectionTime, setCollectionTime, oxygen, setO
     // คำนวณเวลาปัจจุบันให้อยู่ในฟอร์แมต YYYY-MM-THH:mm สำหรับใส่ค่า max
     const getNowMaxString = () => {
         const now = new Date();
-        return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
     };
 
     const maxNow = getNowMaxString();
@@ -21,7 +22,7 @@ export function MetadataFields({ collectionTime, setCollectionTime, oxygen, setO
     const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedValue = e.target.value;
 
-        // ดักจับถ้าผู้ใช้พิมพ์เวลาอนาคตด้วยตัวเอง ให้บังคับใช้เวลาปัจจุบันสูงสุด
+        // ดักจับถ้าผู้ใช้เลือก/พิมพ์เวลาอนาคต
         if (selectedValue > maxNow) {
             setCollectionTime(maxNow);
         } else {

@@ -85,7 +85,10 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const search = searchParams.get("search")?.trim() ?? "";
-        const statusParam = searchParams.getAll("status").flatMap((s) => s.split(",")).filter(Boolean);
+        const statusParam = searchParams
+            .getAll("status")
+            .flatMap((s) => s.split(","))
+            .filter(Boolean);
         const selectedStatuses = new Set(statusParam.map((s) => s.toLowerCase()));
         const startDate = searchParams.get("startDate");
         const endDate = searchParams.get("endDate");
@@ -357,8 +360,20 @@ export async function POST(request: NextRequest) {
             await Promise.all(fileTasks);
         }
 
-        const parsedCollectionTime = new Date(collectionTime);
+        const parseLocalDateTime = (timeStr: string): Date => {
+            // ตัดตัวอักษร +07:00 หรือ Z ออกให้เหลือเฉพาะ YYYY-MM-DDTHH:mm:ss
+            const cleanStr = timeStr.replace(/(Z|\+\d{2}:\d{2})$/, "");
 
+            // แยกองค์ประกอบ วัน เดือน ปี ชั่วโฒง นาที
+            const [datePart, timePart] = cleanStr.split("T");
+            const [year, month, day] = datePart.split("-").map(Number);
+            const [hours, minutes] = timePart.split(":").map(Number);
+
+            // สร้าง Date object โดยใช้ Date.UTC เพื่อล็อกค่าตัวเลข 15:21 ให้ตรงกับ DB 100%
+            return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+        };
+
+        const parsedCollectionTime = parseLocalDateTime(collectionTime);
         let finalWeather = {
             airTemperature: null as number | null,
             rainAccumulation: null as number | null,

@@ -17,6 +17,12 @@ interface AnalyzedItem {
     isMismatch: boolean; // targetParam ตรงกับช่องเดิมหรือไม่
 }
 
+const getNowLocalDateTimeString = () => {
+    const date = new Date();
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 export function useSubmitSample() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -50,10 +56,7 @@ export function useSubmitSample() {
     const [allLocations, setAllLocations] = useState<LocationItem[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [oxygen, setOxygen] = useState("");
-    const [collectionTime, setCollectionTime] = useState<string>(() => {
-        const now = new Date();
-        return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    });
+    const [collectionTime, setCollectionTime] = useState<string>(() => getNowLocalDateTimeString());
 
     const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
     // sessionGroup ต้อง unique จริง เพราะ ReviewRequest ผูกกับมันโดยตรง (sessionGroup @unique)
@@ -474,6 +477,8 @@ export function useSubmitSample() {
         }
     };
 
+    const localDateObj = new Date(collectionTime);
+
     const handleSave = async () => {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
 
@@ -496,7 +501,7 @@ export function useSubmitSample() {
                 const fd = new FormData();
                 fd.append("locationId", currentLocationId);
                 // ไม่ส่ง status แล้ว — server คำนวณเองจากค่าที่วัดได้จริง และไม่เคยเชื่อค่าจาก client อยู่แล้ว
-                fd.append("collectionTime", new Date(collectionTime).toISOString());
+                fd.append("collectionTime", `${collectionTime}:00+07:00`);
                 if (oxygen) fd.append("oxygen", oxygen);
 
                 const singleMeasurementPayload = [
