@@ -156,9 +156,9 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
         return Object.values(map)
             .map((w) => ({
                 name: w.name,
-                Phosphate: w.po4Count ? parseFloat((w.po4Sum / w.po4Count).toFixed(3)) : 0,
-                Ammonia: w.nh3Count ? parseFloat((w.nh3Sum / w.nh3Count).toFixed(3)) : 0,
-                Rainfall: w.rainCount ? parseFloat((w.rainSum / w.rainCount).toFixed(1)) : 0,
+                Phosphate: w.po4Count ? parseFloat((w.po4Sum / w.po4Count).toFixed(2)) : 0,
+                Ammonia: w.nh3Count ? parseFloat((w.nh3Sum / w.nh3Count).toFixed(2)) : 0,
+                Rainfall: w.rainCount ? parseFloat((w.rainSum / w.rainCount).toFixed(2)) : 0,
             }))
             .slice(-10);
     }, [filteredSamples]);
@@ -274,8 +274,8 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                 const nh3Min = d.nh3Vals.length ? Math.min(...d.nh3Vals) : 0;
                 return {
                     name: d.name,
-                    "PO4 แกว่ง": parseFloat((po4Max - po4Min).toFixed(3)),
-                    "NH3 แกว่ง": parseFloat((nh3Max - nh3Min).toFixed(3)),
+                    "PO4 แกว่ง": parseFloat((po4Max - po4Min).toFixed(2)),
+                    "NH3 แกว่ง": parseFloat((nh3Max - nh3Min).toFixed(2)),
                 };
             })
             .reverse();

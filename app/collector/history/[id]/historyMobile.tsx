@@ -165,7 +165,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                             <div key={m.parameterId} className="flex items-center justify-between text-xs bg-surface-subtle border border-border rounded-xl px-4 py-2.5">
                                 <span className="font-bold text-text uppercase">{m.parameterName || "-"}</span>
                                 <div className="flex items-center gap-3">
-                                    <span className="font-bold text-text">{m.value.toFixed(3)} mg/L</span>
+                                    <span className="font-bold text-text">{m.value.toFixed(2)} mg/L</span>
                                     <span className="text-xs text-text-muted">{formatDateTime(m.collectedAt)}</span>
                                 </div>
                             </div>
