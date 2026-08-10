@@ -57,12 +57,12 @@ export default function SubmitDesktop(props: any) {
                         </div>
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
-                            <h2 className="text-xs font-medium text-text uppercase tracking-wider">ข้อมูลประกอบการตรวจ</h2>
-                            <MetadataFields {...hook} />
+                            <h2 className="text-xs font-medium text-text">ข้อมูลประกอบการตรวจ</h2>
+                            <MetadataFields {...hook} weatherData={hook.weatherData} />
                         </div>
 
-                        <div className="bg-card-general border border-border rounded-xl p-4 space-y-4">
-                            <h2 className="text-xs font-medium text-text-muted uppercase tracking-wider">การดำเนินการ</h2>
+                        <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
+                            <h2 className="text-xs font-semibold text-text">การดำเนินการ</h2>
 
                             {step === "results" && (
                                 <div className="pb-3 border-b border-border">
@@ -96,7 +96,7 @@ export default function SubmitDesktop(props: any) {
                                         <button
                                             onClick={() => onConfirmSave(needsAdminReview)}
                                             className={`w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white shadow-sm transition-all cursor-pointer ${
-                                                needsAdminReview ? "bg-text-warning hover:bg-bg-warning" : "bg-secondary hover:bg-bg-safe"
+                                                needsAdminReview ? "bg-text-warning hover:bg-bg-warning" : "bg-secondary hover:bg-primary"
                                             }`}
                                         >
                                             {needsAdminReview ? <Clock size={15} /> : <Database size={15} />}
