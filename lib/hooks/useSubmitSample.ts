@@ -179,6 +179,39 @@ export function useSubmitSample() {
         );
     }, [allLocations, updateNearestByCoords]);
 
+    const [weatherData, setWeatherData] = useState<{
+        airTemperature: number | null;
+        rainAccumulation: number | null;
+        weatherCondCode: number | null;
+    } | null>(null);
+
+    // 🟢 Effect ดึงสภาพอากาศอิงตามสถานที่และเวลาที่เลือก
+    useEffect(() => {
+        if (!currentLocationId || !collectionTime) {
+            setWeatherData(null);
+            return;
+        }
+
+        const controller = new AbortController();
+
+        fetch(`/api/weather/preview?locationId=${currentLocationId}&collectionTime=${encodeURIComponent(collectionTime)}`, {
+            signal: controller.signal,
+        })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data) {
+                    setWeatherData(data);
+                }
+            })
+            .catch((err) => {
+                if (err.name !== "AbortError") {
+                    console.error("Fetch weather preview error:", err);
+                }
+            });
+
+        return () => controller.abort();
+    }, [currentLocationId, collectionTime]);
+
     useEffect(() => {
         if (!currentLocationId || !allLocations.length) return;
         const loc = allLocations.find((l) => l.id.toString() === currentLocationId);
@@ -477,7 +510,6 @@ export function useSubmitSample() {
         }
     };
 
-    const localDateObj = new Date(collectionTime);
 
     const handleSave = async () => {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
@@ -603,6 +635,7 @@ export function useSubmitSample() {
         setNearestLocations,
         allLocations,
         searchQuery,
+        weatherData,
         setSearchQuery,
         collectionTime,
         setCollectionTime,

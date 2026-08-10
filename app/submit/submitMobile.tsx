@@ -97,7 +97,7 @@ export default function SubmitMobile(props: any) {
                 {step === "upload" && (
                     <>
                         <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
-                        <MetadataFields {...hook} />
+                        <MetadataFields {...hook} weatherData={hook.weatherData} />
                         <AnalyzeButton {...hook} />
                     </>
                 )}
@@ -123,7 +123,7 @@ export default function SubmitMobile(props: any) {
                                 <button
                                     onClick={() => onConfirmSave(needsAdminReview)}
                                     className={`w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
-                                        needsAdminReview ? "bg-text-warning hover:bg-bg-warning" : "bg-secondary hover:bg-bg-safe"
+                                        needsAdminReview ? "bg-text-warning hover:bg-bg-warning" : "bg-secondary hover:bg-primary"
                                     }`}
                                 >
                                     {needsAdminReview ? <Clock size={15} /> : <Database size={15} />}

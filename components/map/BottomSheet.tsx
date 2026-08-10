@@ -19,7 +19,6 @@ export interface BottomSheetLocation {
     type?: string;
     lat: number;
     lng: number;
-    // ค่าล่าสุดของแต่ละสาร (อาจมาจากคนละรอบเก็บ ถ้ารอบล่าสุดของสารนั้นถูกปฏิเสธ)
     latestByParameter?: Array<{ parameterId: number; parameterName: string; value: number; collectedAt: string }>;
     latestSample: {
         id: string;
@@ -61,7 +60,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const sheetRef = useRef<HTMLDivElement>(null);
     const animationFrameRef = useRef<number | null>(null);
 
-    // ⚡ Performance: บันทึกขนาดความสูงหน้าจอคงที่ ป้องกัน Layout Shift
     const [windowHeight, setWindowHeight] = useState(700);
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -73,7 +71,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         () => ({
             collapsed: 125,
             half: windowHeight * 0.5,
-            full: windowHeight * 0.90,
+            full: windowHeight * 0.9,
         }),
         [windowHeight],
     );
@@ -171,38 +169,54 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         }
     }, [getSnapHeight, sheetHeight]);
 
-    // ⚡ React Compiler Optimization: แปลงเป็นฟังก์ชันปกติ ให้ Compiler จัดการ Auto-Memoize ตาม Dependency จริง
     const chartData = (() => {
-        if (!location?.recentSamples) return [];
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const samplesArr = location?.recentSamples || [];
+        if (samplesArr.length === 0) return [];
 
-        return location.recentSamples
-            .filter((s) => new Date(s.collectedAt) >= oneWeekAgo)
-            .map((sample: any) => ({
+        // เรียงลำดับจาก "เก่าสุดไปหาล่าสุด" เพื่อให้แกน X ของกราฟวิ่งตามลำดับเวลาถูกต้อง
+        const sortedSamples = [...samplesArr].sort((a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime());
+
+        return sortedSamples.map((sample: any) => {
+            let pVal = 0;
+            let aVal = 0;
+
+            // 🟢 STEP 1: ดึงค่าวัดจาก measurements array หากมีข้อมูล
+            if (Array.isArray(sample.measurements) && sample.measurements.length > 0) {
+                sample.measurements.forEach((m: any) => {
+                    const paramName = (m.parameter?.name || "").toLowerCase();
+                    if (paramName.includes("phosphate") || paramName.includes("p")) {
+                        pVal = Number(m.value || 0);
+                    }
+                    if (paramName.includes("ammonia") || paramName.includes("n")) {
+                        aVal = Number(m.value || 0);
+                    }
+                });
+            } else {
+                // Fallback ดึงจาก Property ก้อนใหญ่
+                pVal = Number(sample.phosphateVal ?? sample.phosphateValue ?? 0);
+                aVal = Number(sample.ammoniaVal ?? sample.ammoniaValue ?? 0);
+            }
+
+            return {
                 date: new Date(sample.collectedAt).toLocaleDateString("th-TH", {
                     day: "numeric",
                     month: "short",
                 }),
-                phosphate: sample.phosphateVal ?? sample.phosphateValue ?? 0,
-                ammonia: sample.ammoniaVal ?? sample.ammoniaValue ?? 0,
-                nitrate: sample.nitrateVal ?? sample.nitrateValue ?? 0,
-            }));
+                // STEP 2: บังคับแปลงเป็นทศนิยม 2 ตำแหน่ง
+                phosphate: Number(pVal.toFixed(2)),
+                ammonia: Number(aVal.toFixed(2)),
+            };
+        });
     })();
 
-    
     const chemicalItems = (() => {
         const samplesArr = location?.recentSamples || [];
         if (samplesArr.length === 0) return [];
 
-        // STEP 1: เรียงลำดับประวัติจาก "ล่าสุดไปหาเก่าสุด" (Newest -> Oldest) ให้ชัวร์ก่อนทำจิ๊กซอว์
         const sortedSamples = [...samplesArr].sort((a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime());
-
         const jigsawMap = new Map<string, { currentVal: number; prevVal: number | null; collectedAt: string }>();
 
-        // STEP 2: ดึงค่าวัดแยกรายสารอิงตามตาราง measurements จริง (ถ้ามี) หรืออิง Property ก้อนใหญ่
         sortedSamples.forEach((sample) => {
-            // ถ้ารายการนี้มี measurements array ตรงๆ ให้ดึงจากตรงนั้นเพื่อความแม่นยำสูงสุด
             if (Array.isArray(sample.measurements) && sample.measurements.length > 0) {
                 sample.measurements.forEach((m: any) => {
                     const paramName = m.parameter?.name?.toLowerCase();
@@ -211,14 +225,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     const val = Number(m.value);
 
                     if (!jigsawMap.has(key)) {
-                        // ดึงได้ชิ้นส่วนล่าสุดแล้ว! บันทึกวันเวลาของ sample รอบนี้ไว้เลย
                         jigsawMap.set(key, {
                             currentVal: val,
                             prevVal: null,
                             collectedAt: sample.collectionTime || sample.collectedAt,
                         });
                     } else {
-                        // เจอค่าเดิมในรอบย้อนหลัง เอาไว้ทำ diff
                         const existing = jigsawMap.get(key)!;
                         if (existing.prevVal === null && Math.abs(existing.currentVal - val) > 0.0001) {
                             existing.prevVal = val;
@@ -226,7 +238,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     }
                 });
             } else {
-                // Fallback: กรณีอ่านจาก Property แบนราบ (phosphateVal, ammoniaVal)
                 Object.keys(sample)
                     .filter((key) => (key.endsWith("Val") || key.endsWith("Value")) && sample[key] !== undefined && sample[key] !== null)
                     .forEach((key) => {
@@ -248,7 +259,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             }
         });
 
-        // STEP 3: แปลงผลลัพธ์ออกเป็น UI
         return Array.from(jigsawMap.entries()).map(([key, data]) => {
             const currentVal = data.currentVal;
             const prevVal = data.prevVal;
@@ -283,22 +293,24 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         const role = currentUser?.role;
 
         if (!currentUser || role === "guest") return null;
-
-        // ของ Officer: ตัดผู้บันทึกออก
         if (role === "officer") return null;
 
-        // ของ admin: เห็นเหมือนเดิมทุกอย่าง
         if (role === "admin") {
             return (
                 <div className="bg-card-general border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
                     <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
-                    <p className="text-md font-semibold text-text">{colName}</p>
-                    <p className="text-sm font-semibold text-text-muted mt-0.5">{colPhone || "ไม่มีเบอร์โทรศัพท์"}</p>
+                    <p className="text-md font-semibold text-text">
+                        <span className="text-primary">ชื่อ: </span>
+                        {colName}
+                    </p>
+                    <p className="text-sm font-semibold text-text">
+                        <span className="text-primary">เบอร์: </span>
+                        {colPhone || "ไม่มีเบอร์โทรศัพท์"}
+                    </p>
                 </div>
             );
         }
 
-        // ของ collector: เปลี่ยนเป็นผู้บันทึกล่าสุด แสดงแค่ชื่อและเซนเซอร์ชื่อตัวหลัง
         if (role === "collector") {
             const anonymizedName = colName && colName.length > 0 ? `${colName.slice(0, 5)}***` : "***";
             return (
@@ -331,17 +343,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     );
     const modeStatus = Object.keys(statusCounts).length > 0 ? Object.keys(statusCounts).reduce((a, b) => (statusCounts[a] > statusCounts[b] ? a : b), "SAFE") : null;
 
-    // แถวตารางเปรียบเทียบ: ผลตรวจล่าสุดของสถานีนี้ผ่านเกณฑ์ของแต่ละประเภทการใช้ประโยชน์หรือไม่
-    // เกณฑ์มาจาก DB ผ่าน API — ไม่มีตัวเลขหรือป้ายชื่อฮาร์ดโค้ดในไฟล์นี้แล้ว
-    //
-    // ไม่ใช้ useMemo เพราะจุดนี้อยู่หลัง `if (!location) return null` ด้านบน — เป็น hook แบบมีเงื่อนไข
-    // ซึ่งผิด Rules of Hooks และทำ React พังจริง ไม่ใช่แค่ lint บ่น (วนแค่ 6 ประเภท ไม่ต้อง memo อยู่แล้ว)
-    // 🧩 นำจิ๊กซอว์สารที่เติมเต็มแล้วไปประเมินกับเกณฑ์มาตรฐานประเภทแหล่งน้ำ
     const latestValues =
         location.latestByParameter && location.latestByParameter.length > 0
             ? location.latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value }))
             : chemicalItems.map((item) => {
-                  // Map ชื่อสารกลับไปหา parameterId จาก master parameter ถ้ามี
                   const paramMeta = (location.recentSamples || []).flatMap((s) => s.measurements || []).find((m) => m.parameter?.name?.toLowerCase() === item.displayLabel.toLowerCase());
 
                   return {
@@ -377,7 +382,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         </div>
                     </div>
 
-                    {/* แสดง Status Badge ตรงขวามือเฉพาะตอนย่อลงมาต่ำสุด (Collapsed Mode) */}
                     {isCollapsed && latest && (
                         <div className="shrink-0 sm:hidden">
                             <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
@@ -385,7 +389,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                     )}
                 </div>
 
-                {/* เนื้อหาทั้งหมดจะแสดงก็ต่อเมื่อ NOT collapsed (หรืออยู่บนหน้าจอใหญ่/Desktop) */}
                 {(!isCollapsed || (typeof window !== "undefined" && window.innerWidth >= 640)) && (
                     <>
                         {latest ? (
@@ -407,12 +410,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                     <div className="grid grid-cols-2 gap-2">
                                         {chemicalItems.map((item) => {
                                             const formattedTime = item.collectedAt
-                                                ? new Date(item.collectedAt).toLocaleDateString("th-TH", {
-                                                      day: "numeric",
-                                                      month: "short",
-                                                      hour: "2-digit",
-                                                      minute: "2-digit",
-                                                  })
+                                                ? new Date(item.collectedAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
                                                 : "";
 
                                             return (
@@ -428,41 +426,28 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                     </div>
 
                                                     <div className="flex items-center justify-center gap-1.5 my-1">
-                                                        <span className="text-3xl font-black text-text">{item.currentVal.toFixed(3)}</span>
+                                                        <span className="text-3xl font-black text-text">{item.currentVal.toFixed(2)}</span>
                                                         <span className="text-[10px] text-text font-bold">mg/L</span>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between pt-1 mt-1 border-t border-border text-xs">
-                                                        {item.hasPrev && item.diff !== 0 ? (
-                                                            <div className={`flex items-center gap-0.5 font-black ${item.diff > 0 ? "text-text-danger" : "text-text-safe"}`}>
-                                                                {item.diff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                                    <div className="flex items-center justify-center pt-1 mt-1 border-t border-border text-xs">
+                                                        {/* {item.hasPrev && item.diff !== 0 ? (
+                                                            <div className={`flex items-center gap-1 font-black ${item.diff > 0 ? "text-text-danger" : "text-text-safe"}`}>
+                                                                {item.diff > 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
                                                                 {item.diff > 0 ? "+" : ""}
                                                                 {item.diff.toFixed(2)}
                                                             </div>
                                                         ) : (
                                                             <span className="text-text">-</span>
-                                                        )}
+                                                        )} */}
 
-                                                        <span className="text-text text-xs font-medium truncate max-w-22.5" title={formattedTime}>
+                                                        <span className="text-text text-xs font-medium truncate" title={formattedTime}>
                                                             {formattedTime}
                                                         </span>
                                                     </div>
                                                 </div>
                                             );
                                         })}
-                                    </div>
-                                )}
-
-                                {currentUser?.role !== "guest" && latest.oxygen !== null && latest.oxygen !== undefined && (
-                                    <div className="bg-card-general rounded-2xl p-4 flex items-center justify-between border border-border">
-                                        <div className="flex items-center gap-1.5">
-                                            <FlaskConical size={16} className="text-blue-500" />
-                                            <span className="text-sm font-bold text-primary uppercase">ค่าออกซิเจนละลายน้ำ</span>
-                                        </div>
-                                        <div className="flex items-baseline gap-1 text-right">
-                                            <span className="text-3xl font-black text-text">{latest.oxygen.toFixed(2)}</span>
-                                            <span className="text-xs text-text font-bold">mg/L</span>
-                                        </div>
                                     </div>
                                 )}
 
@@ -504,14 +489,16 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                                 {samplesArr.length > 0 && (
                                     <div className="bg-card-general border border-border rounded-2xl p-4">
-                                        <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text-secondary">
+                                        <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text">
                                             <Minus size={12} className="text-border" />
                                             <span className="text-sm font-semibold text-text">สถานะที่พบสูงสุด:</span>
                                             <StatusBadge status={(modeStatus ?? "").toLowerCase() as any} size="md" />
                                             <Minus size={12} className="text-border" />
                                         </div>
-                                        <h4 className="text-xs font-semibold text-primary mb-1">ประวัติผลการตรวจวิเคราะห์</h4>
-                                        <div className="space-y-3">
+
+                                        {/* ส่วนประวัติผลการตรวจวิเคราะห์แบบ Responsive */}
+                                        <h4 className="text-xs font-semibold text-primary mb-2">ประวัติผลการตรวจวิเคราะห์</h4>
+                                        <div className="space-y-2.5">
                                             {[...samplesArr]
                                                 .reverse()
                                                 .slice(0, 5)
@@ -519,11 +506,16 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                     // ค่าสารเคมีของตัวอย่างนี้ — dynamic ตามสารที่มีอยู่จริง ไม่ผูกชื่อ/ตัวย่อไว้ตายตัว
                                                     const chemReadings = readChemValues(s);
                                                     return (
-                                                        <div key={idx} className="flex justify-between items-center text-xs bg-bg border border-border px-4 py-3 rounded-xl">
-                                                            <span className="text-text font-bold">
+                                                        <div
+                                                            key={idx}
+                                                            className="flex justify-between items-center text-xs bg-bg border border-border px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-xl gap-2 sm:gap-3"
+                                                        >
+                                                            {/* ฝั่งซ้าย: วันที่ */}
+                                                            <span className="text-text font-semibold shrink-0 text-xs">
                                                                 {new Date(s.collectedAt).toLocaleDateString("th-TH", {
                                                                     day: "numeric",
                                                                     month: "short",
+                                                                    year: "numeric",
                                                                 })}
                                                             </span>
                                                             <div className="flex items-center gap-2.5">
@@ -535,6 +527,27 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                                     </span>
                                                                 )}
 
+                                                            {/* ฝั่งกลาง: ชิปสารแบบ Responsive กว้างยืดหดตามสัดส่วน */}
+                                                            {(currentUser?.role !== "guest" || !currentUser?.role) && (
+                                                                <div className="flex flex-col gap-1 flex-1 items-center min-w-0">
+                                                                    {paramValues.length > 0 ? (
+                                                                        paramValues.map((p, pIdx) => (
+                                                                            <div
+                                                                                key={pIdx}
+                                                                                className="bg-card-general border border-border px-2 py-1 rounded-md text-[11px] sm:text-xs font-semibold text-text flex items-center justify-between w-full max-w-[150px] sm:max-w-[180px] shadow-2xs gap-1"
+                                                                            >
+                                                                                <span className="text-text font-semibold truncate min-w-0">{p.name}:</span>
+                                                                                <span className="font-semibold shrink-0">{p.val.toFixed(2)}</span>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <span className="text-text-muted text-xs italic">-</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            {/* ฝั่งขวา: StatusBadge */}
+                                                            <div className="shrink-0">
                                                                 <StatusBadge status={s.status.toLowerCase() as any} size="md" />
                                                             </div>
                                                         </div>
@@ -560,7 +573,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         )}
 
                         {currentUser && (currentUser.role === "admin" || currentUser.role === "collector") && (
-                            <div className="mt-8">
+                            <div className="mt-4 mb-4">
                                 <button
                                     onClick={() => router.push(`/submit?locationId=${location.id}`)}
                                     className="w-full py-4 h-full bg-primary hover:bg-navy-dark active:scale-[0.97] text-white font-bold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
@@ -623,8 +636,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 className="hidden sm:flex fixed top-0 right-0 h-full z-1000 w-100 lg:w-110 bg-surface border-l border-border shadow-3xl flex-col animate-slide-in-right will-change-transform"
                 style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
             >
-                <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0 border-b border-border">
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-widest">ข้อมูลสถานี</span>
+                <div className="flex items-center justify-between px-6 pt-4 pb-4 shrink-0 border-b border-border">
+                    <span className="text-sm font-semibold text-text">ข้อมูลสถานี</span>
                     <button
                         title="Close Panel"
                         onClick={onClose}

@@ -60,52 +60,49 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         }
 
         // ─── ท่อนเชื่อมต่อ LINE LIFF PRODUCTION ───
-        // ─── ท่อนเชื่อมต่อ LINE LIFF PRODUCTION ───
-liff.init({ liffId })
-    .then(async () => {
-        // 🟢 ถ้า User มี Session ล็อกอินอยู่แล้ว ทำงานตามปกติ
-        if (liff.isLoggedIn()) {
-            const profile = await liff.getProfile();
-            const response = await fetch("/api/auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    accessToken: liff.getAccessToken(),
-                    name: profile.displayName,
-                }),
+        liff.init({ liffId })
+            .then(async () => {
+                if (liff.isLoggedIn()) {
+                    const profile = await liff.getProfile();
+                    const response = await fetch("/api/auth", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            accessToken: liff.getAccessToken(),
+                            name: profile.displayName,
+                        }),
+                    });
+
+                    if (!response.ok) throw new Error("Failed to authenticate with backend");
+
+                    const resData = await response.json();
+                    setUser(resData);
+                    setLiffLoaded(true);
+                    return;
+                }
+
+                try {
+                    liff.login();
+                } catch (loginErr) {
+                    // เวย์นี้เกิดขึ่นเมื่อ User กดย้อนกลับ / ปฏิเสธการล็อกอิน / ปิดหน้าต่างล็อกอิน
+                    // ระบบจะไม่ค้าง และไม่เด้งซ้ำ แต่จะปล่อยให้เป็น Guest เข้าไปใช้งานหน้าแอปต่อได้เลย
+                    console.warn("User cancelled or login failed, proceeding as guest", loginErr);
+                    setUser(null);
+                    setLiffLoaded(true);
+                }
+            })
+            .catch((err) => {
+                console.error("LIFF init error", err);
+                // เผื่อกรณี liff init พัง ก็ปล่อยให้ใช้งานแบบ Guest ได้เช่นกันครับ
+                setUser(null);
+                setLiffLoaded(true);
+            })
+            .finally(() => {
+                // ทับ color-scheme ที่เราตั้งไว้ก่อนหน้าไปด้วยเสมอ ไม่ว่า init จะสำเร็จหรือพัง จึงต้องตั้งค่าซ้ำทุกครั้งที่นี่
+                // อ่านจาก localStorage ตรงๆ (ไม่ใช่ store.theme) เพราะตอนนี้ children ของ LiffProvider (รวม ThemeToggle
+                const isDark = typeof window !== "undefined" && localStorage.getItem("theme") === "dark";
+                useAppStore.getState().setTheme(isDark ? "dark" : "light");
             });
-
-            if (!response.ok) throw new Error("Failed to authenticate with backend");
-
-            const resData = await response.json();
-            setUser(resData);
-            setLiffLoaded(true);
-            return;
-        }
-
-        // 🟡 ถ้ายังไม่ได้ล็อกอิน -> ทริกเกอร์บังคับเด้งหน้า Login LINE ทันที!
-        try {
-            liff.login();
-        } catch (loginErr) {
-            // 💡 เวย์นี้เกิดขึ่นเมื่อ User กดย้อนกลับ / ปฏิเสธการล็อกอิน / ปิดหน้าต่างล็อกอิน
-            // ระบบจะไม่ค้าง และไม่เด้งซ้ำ แต่จะปล่อยให้เป็น Guest เข้าไปใช้งานหน้าแอปต่อได้เลย
-            console.warn("User cancelled or login failed, proceeding as guest", loginErr);
-            setUser(null);
-            setLiffLoaded(true);
-        }
-    })
-    .catch((err) => {
-        console.error("LIFF init error", err);
-        // เผื่อกรณี liff init พัง ก็ปล่อยให้ใช้งานแบบ Guest ได้เช่นกันครับ
-        setUser(null);
-        setLiffLoaded(true);
-    })
-    .finally(() => {       
-        // ทับ color-scheme ที่เราตั้งไว้ก่อนหน้าไปด้วยเสมอ ไม่ว่า init จะสำเร็จหรือพัง จึงต้องตั้งค่าซ้ำทุกครั้งที่นี่
-        // อ่านจาก localStorage ตรงๆ (ไม่ใช่ store.theme) เพราะตอนนี้ children ของ LiffProvider (รวม ThemeToggle       
-        const isDark = typeof window !== "undefined" && localStorage.getItem("theme") === "dark";
-        useAppStore.getState().setTheme(isDark ? "dark" : "light");
-    });
     }, [setUser]);
 
     // ─── Realtime Validation Logic (Enterprise Standard) ───
@@ -189,52 +186,52 @@ liff.init({ liffId })
 
     // จัดการเมื่อส่งคำร้องขั้นสุดท้าย
     const handleFinalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) return;
-    if (!selectedRole) {
-        setGlobalError("กรุณาเลือกตำแหน่งระบบที่ท่านต้องการส่งคำร้องขอสิทธิ์");
-        return;
-    }
-
-    setSubmitting(true);
-    setGlobalError(null);
-
-    try {
-        const res = await fetch("/api/auth/onboarding", {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${liff.getAccessToken()}`,
-            },
-            body: JSON.stringify({
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                phoneNumber: phoneNumber.trim(),
-                requestedRoleName: selectedRole,
-            }),
-        });
-
-        if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        e.preventDefault();
+        if (!currentUser) return;
+        if (!selectedRole) {
+            setGlobalError("กรุณาเลือกตำแหน่งระบบที่ท่านต้องการส่งคำร้องขอสิทธิ์");
+            return;
         }
 
-        const resData = await res.json();
-        if (resData.success) {
-            // แจ้งเตือนความสำเร็จเมื่อส่งคำร้องสำเร็จเรียบร้อย
-            showToast("ส่งคำร้องขอเข้าระบบเรียบร้อยแล้ว รอการอนุมัติ", "success");
-            setUser(resData.user);
+        setSubmitting(true);
+        setGlobalError(null);
+
+        try {
+            const res = await fetch("/api/auth/onboarding", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${liff.getAccessToken()}`,
+                },
+                body: JSON.stringify({
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                    phoneNumber: phoneNumber.trim(),
+                    requestedRoleName: selectedRole,
+                }),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+            }
+
+            const resData = await res.json();
+            if (resData.success) {
+                // แจ้งเตือนความสำเร็จเมื่อส่งคำร้องสำเร็จเรียบร้อย
+                showToast("ส่งคำร้องขอเข้าระบบเรียบร้อยแล้ว รอการอนุมัติ", "success");
+                setUser(resData.user);
+            }
+        } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
+            setGlobalError(errMsg);
+
+            // แจ้งเตือนฝั่ง Error แดงในกรณีที่ระบบหลังบ้านหรือเน็ตเวิร์กมีปัญหา
+            showToast(errMsg, "danger");
+        } finally {
+            setSubmitting(false);
         }
-    } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
-        setGlobalError(errMsg);
-        
-        // แจ้งเตือนฝั่ง Error แดงในกรณีที่ระบบหลังบ้านหรือเน็ตเวิร์กมีปัญหา
-        showToast(errMsg, "danger");
-    } finally {
-        setSubmitting(false);
-    }
-};
+    };
 
     // ช่วยคำนวณปุ่มเปิดปิด
     const isFormInvalid = !firstName.trim() || !lastName.trim() || phoneNumber.length < 10 || !!errors.firstName || !!errors.lastName || !!errors.phoneNumber;
