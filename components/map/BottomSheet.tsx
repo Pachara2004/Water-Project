@@ -1,6 +1,6 @@
 "use client";
 
-import { X, MapPin, Calendar, FlaskConical, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { X, MapPin, Calendar, FlaskConical, TrendingUp, TrendingDown, Minus, Waves, CloudRain, Thermometer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import StatusBadge from "./StatusBadge";
@@ -10,6 +10,7 @@ import { StandardsComparison, type ComparisonRow } from "../StandardsComparison"
 import TimeSeriesChart from "../TimeSeriesChart";
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
+import { readChemValues } from "@/lib/chemLabels";
 
 export interface BottomSheetLocation {
     id: string;
@@ -459,25 +460,40 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                         latest.weatherCondition !== null) && (
                                         <div className="bg-card-general border border-border rounded-2xl p-6">
                                             <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">ข้อมูลสภาพอากาศขณะเก็บตัวอย่าง</h4>
-                                            <div className="grid grid-cols gap-3 text-center">
+                                            <div className="grid grid-cols-1 gap-3">
                                                 {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
-                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                                        <span className="text-xs font-bold text-secondary block uppercase">อุณหภูมิ</span>
-                                                        <span className="text-xl font-bold text-text mt-1 block">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border flex items-center gap-3">
+                                                        <div className="p-2.5 shrink-0 text-secondary">
+                                                            <Thermometer size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col text-left min-w-0 flex-1">
+                                                            <span className="text-xs font-semibold text-secondary uppercase">อุณหภูมิ</span>
+                                                            <span className="text-lg font-semibold text-text">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                                        </div>
                                                     </div>
                                                 )}
+
                                                 {((latest.rainAccumulation !== null && latest.rainAccumulation !== undefined) || latest.rainVolume !== null) && (
-                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                                        <span className="text-xs font-bold text-secondary block uppercase">ปริมาณฝน</span>
-                                                        <span className="text-xl font-bold text-text mt-1 block">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border flex items-center gap-3">
+                                                        <div className="p-2.5 shrink-0 text-secondary">
+                                                            <CloudRain size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col text-left min-w-0 flex-1">
+                                                            <span className="text-xs font-semibold text-secondary uppercase">ปริมาณฝน</span>
+                                                            <span className="text-lg font-semibold text-text">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                                        </div>
                                                     </div>
                                                 )}
+
                                                 {((latest.weatherCondCode !== null && latest.weatherCondCode !== undefined) || latest.weatherCondition !== null) && (
-                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                                        <span className="text-xs font-bold text-secondary block uppercase">สภาพอากาศ</span>
-                                                        <span className="text-xl font-bold text-text mt-1 block truncate">
-                                                            {getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}
-                                                        </span>
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border flex items-center gap-3">
+                                                        <div className="p-2.5 shrink-0 text-secondary">
+                                                            <Waves size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col text-left min-w-0 flex-1">
+                                                            <span className="text-xs font-semibold text-secondary uppercase">สภาพอากาศ</span>
+                                                            <span className="text-lg font-semibold text-text truncate">{getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}</span>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -502,22 +518,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                 .reverse()
                                                 .slice(0, 5)
                                                 .map((s, idx) => {
-                                                    let paramValues: Array<{ name: string; val: number }> = [];
-
-                                                    if (Array.isArray(s.measurements) && s.measurements.length > 0) {
-                                                        paramValues = s.measurements
-                                                            .filter((m: any) => m.parameter?.name && m.value !== null && m.value !== undefined)
-                                                            .map((m: any) => ({
-                                                                name: m.parameter.name.toUpperCase(),
-                                                                val: Number(m.value),
-                                                            }));
-                                                    } else {
-                                                        const pVal = s.phosphateVal ?? s.phosphateValue ?? null;
-                                                        const aVal = s.ammoniaVal ?? s.ammoniaValue ?? null;
-                                                        if (pVal !== null) paramValues.push({ name: "PHOSPHATE", val: Number(pVal) });
-                                                        if (aVal !== null) paramValues.push({ name: "AMMONIA", val: Number(aVal) });
-                                                    }
-
+                                                    // ค่าสารเคมีของตัวอย่างนี้ — dynamic ตามสารที่มีอยู่จริง ไม่ผูกชื่อ/ตัวย่อไว้ตายตัว
+                                                    const chemReadings = readChemValues(s);
                                                     return (
                                                         <div
                                                             key={idx}
@@ -531,6 +533,14 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                                     year: "numeric",
                                                                 })}
                                                             </span>
+                                                            <div className="flex items-center gap-2.5">
+                                                                {(currentUser?.role !== "guest" || !currentUser?.role) && (
+                                                                    <span className="text-xs text-text bg-card-general p-1 min-w-30 border border-border rounded">
+                                                                        {chemReadings.length > 0
+                                                                            ? chemReadings.map((c) => `${c.abbrev}: ${c.value.toFixed(2)}`).join(" | ")
+                                                                            : "-"}
+                                                                    </span>
+                                                                )}
 
                                                             {/* ฝั่งกลาง: ชิปสารแบบ Responsive กว้างยืดหดตามสัดส่วน */}
                                                             {(currentUser?.role !== "guest" || !currentUser?.role) && (

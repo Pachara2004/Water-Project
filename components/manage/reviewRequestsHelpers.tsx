@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
+import { readChemMeasurements } from "@/lib/chemLabels";
 import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
@@ -312,10 +313,8 @@ export function RequestCard({
 
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-    // คำนวณค่าสาร Phosphate (P) และ Ammonia (N) จาก measurements จริง
-    const allMeasurements = item.samples.flatMap((s) => s.measurements);
-    const phosphateMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("phosphate"));
-    const ammoniaMeas = allMeasurements.find((m) => (m.parameterName || "").toLowerCase().includes("ammonia"));
+    // ค่าสารเคมีของคำร้องนี้ — dynamic ตามสารที่มีอยู่จริง ไม่ผูกชื่อสารไว้ตายตัว
+    const chemReadings = readChemMeasurements(item.samples.flatMap((s) => s.measurements));
 
     const waterStatus = getSampleWaterStatus(item, standards);
 
@@ -344,20 +343,16 @@ export function RequestCard({
                                 </div>
                             </div>
 
-                            {/* แถวล่าง: แสดงค่าสารเคมี P และ N ชิปเล็ก */}
+                            {/* แถวล่าง: แสดงค่าสารเคมีชิปเล็ก — dynamic ตามสารที่มีอยู่จริง */}
                             <div className="flex items-center gap-2 mt-1 w-full">
-                                {phosphateMeas && (
-                                    <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
-                                        <Beaker size={10} className="text-teal-500" />
-                                        <span>P: {Number(phosphateMeas.value).toFixed(2)}</span>
+                                {chemReadings.map((c) => (
+                                    <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
+                                        <Beaker size={10} className={c.color} />
+                                        <span>
+                                            {c.abbrev}: {c.value.toFixed(2)}
+                                        </span>
                                     </div>
-                                )}
-                                {ammoniaMeas && (
-                                    <div className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
-                                        <Beaker size={10} className="text-purple-500" />
-                                        <span>N: {Number(ammoniaMeas.value).toFixed(2)}</span>
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </div>
                     </div>

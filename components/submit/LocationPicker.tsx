@@ -161,7 +161,7 @@ export function LocationPicker({
                                         <span
                                             className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-teal-200/50 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200" : "bg-surface-subtle text-text-muted"}`}
                                         >
-                                            {loc.distanceKm < 1 ? `${(loc.distanceKm * 1000).toFixed(0)}m` : `${loc.distanceKm.toFixed(1)}km`}
+                                            {loc.distanceKm < 1 ? `${(loc.distanceKm * 1000).toFixed(0)}m` : `${loc.distanceKm.toFixed(1)} กม.`}
                                         </span>
                                     </button>
                                 );
