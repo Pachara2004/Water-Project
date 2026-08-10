@@ -98,6 +98,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         <span className="font-bold truncate">{collectorFullName}</span>
                     </div>
                 </div>
+                {/* ปริมาณออกซิเจนละลายน้ำ — คอมเมนต์ซ่อนการแสดงผลไว้ชั่วคราว
                 <div className="bg-surface-subtle border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between gap-2 w-full">
                         <div className="flex items-center gap-2">
@@ -119,6 +120,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         <span className="text-xs font-bold shrink-0">mg/L</span>
                     </div>
                 </div>
+                */}
 
                 <div className="grid grid-cols-1 gap-2">
                     <div className="bg-surface-subtle border border-border rounded-xl p-4 text-center">

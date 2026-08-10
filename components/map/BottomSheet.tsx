@@ -10,6 +10,7 @@ import { StandardsComparison, type ComparisonRow } from "../StandardsComparison"
 import TimeSeriesChart from "../TimeSeriesChart";
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
+import { readChemValues } from "@/lib/chemLabels";
 
 export interface BottomSheetLocation {
     id: string;
@@ -515,8 +516,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                 .reverse()
                                                 .slice(0, 5)
                                                 .map((s, idx) => {
-                                                    const pVal = s.phosphateVal ?? s.phosphateValue ?? null;
-                                                    const aVal = s.ammoniaVal ?? s.ammoniaValue ?? null;
+                                                    // ค่าสารเคมีของตัวอย่างนี้ — dynamic ตามสารที่มีอยู่จริง ไม่ผูกชื่อ/ตัวย่อไว้ตายตัว
+                                                    const chemReadings = readChemValues(s);
                                                     return (
                                                         <div key={idx} className="flex justify-between items-center text-xs bg-bg border border-border px-4 py-3 rounded-xl">
                                                             <span className="text-text font-bold">
@@ -527,8 +528,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                             </span>
                                                             <div className="flex items-center gap-2.5">
                                                                 {(currentUser?.role !== "guest" || !currentUser?.role) && (
-                                                                    <span className="text-xs text-text bg-card-general p-1 w-30 border border-border rounded">
-                                                                        P: {pVal ? Number(pVal).toFixed(2) : "-"} | A: {aVal ? Number(aVal).toFixed(2) : "-"}
+                                                                    <span className="text-xs text-text bg-card-general p-1 min-w-30 border border-border rounded">
+                                                                        {chemReadings.length > 0
+                                                                            ? chemReadings.map((c) => `${c.abbrev}: ${c.value.toFixed(2)}`).join(" | ")
+                                                                            : "-"}
                                                                     </span>
                                                                 )}
 
