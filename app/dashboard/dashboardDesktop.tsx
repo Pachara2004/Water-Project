@@ -1,10 +1,10 @@
 "use client";
 
 import ExportButtons from "@/components/dashboard/ExportButtons";
-import { LucideShieldAlert, LucideSearch, LucideX } from "lucide-react";
+import { LucideShieldAlert, LucideSearch, LucideX, LucideRepeat2 } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import type { DashboardAnalyticsState } from "@/lib/hooks/useDashboardAnalytics";
-import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection } from "@/components/dashboard/dashboardHelpers";
+import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection, formatDisplayNumber } from "@/components/dashboard/dashboardHelpers";
 import { DashboardContentSkeleton } from "./loading";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, แถบควบคุมเรียงแนวนอน)
@@ -230,20 +230,20 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                             )}
                             <div className="flex items-center justify-between shrink-0">
                                 <div className="text-md font-bold text-primary px-1">ตัวชี้วัดหลัก</div>
-                                <div className="h-9 grid grid-cols-2 rounded-xl p-1 bg-card-general border border-border text-xs font-semibold">
+                                {/* ปุ่มเดียวคุมทั้งแถว KPI — วางที่หัวข้อเพราะ trendMode เป็น state ร่วมของทุกการ์ด ไม่ใช่ของการ์ดใดการ์ดหนึ่ง */}
+                                {analytics?.kpis?.some((k: any) => k.trend && getTrendPolarity(k.title) !== "neutral") && (
                                     <button
-                                        onClick={() => setTrendMode("wow")}
-                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "wow" ? "bg-secondary text-white shadow-xs" : "text-text-secondary bg-surface-subtle"}`}
+                                        type="button"
+                                        onClick={() => setTrendMode(trendMode === "wow" ? "mom" : "wow")}
+                                        className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-card-general border border-border text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-text-muted transition-colors cursor-pointer shrink-0"
+                                        title="สลับช่วงเวลาที่ใช้เปรียบเทียบแนวโน้มของทุกการ์ด"
+                                        aria-label={`ช่วงเปรียบเทียบปัจจุบัน: ${trendMode === "wow" ? "รายสัปดาห์" : "รายเดือน"} กดเพื่อสลับ`}
                                     >
-                                        รายสัปดาห์
+                                        <span className="font-normal text-text-muted">เทียบ:</span>
+                                        {trendMode === "wow" ? "รายสัปดาห์" : "รายเดือน"}
+                                        <LucideRepeat2 size={12} />
                                     </button>
-                                    <button
-                                        onClick={() => setTrendMode("mom")}
-                                        className={`h-full px-3 rounded-lg transition-all cursor-pointer whitespace-nowrap ${trendMode === "mom" ? "bg-secondary text-white shadow-xs" : "text-text-secondary bg-surface-subtle"}`}
-                                    >
-                                        รายเดือน
-                                    </button>
-                                </div>
+                                )}
                             </div>
                             {/* Desktop: ใช้ grid 12 คอลัมน์เต็มความกว้างจอ (kpiSpanClass เดิมออกแบบมาให้ md: อ้างอิงคอลัมน์นี้อยู่แล้ว) */}
                             <div className="grid grid-cols-12 gap-2.5 shrink-0">
@@ -258,12 +258,12 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                         </div>
                                         <div className="mt-1 truncate flex items-baseline gap-1" style={{ color: kpi.color || "#6366f1" }}>
                                             <span className="text-3xl font-bold items-end flex content-end tracking-tight">
-                                                {typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}
+                                                {typeof kpi.value === "number" ? formatDisplayNumber(kpi.value) : kpi.value}
                                             </span>
                                             {kpi.unit && <span className="text-md font-semibold ml-0.5">{kpi.unit}</span>}
                                         </div>
                                         {kpi.trend && getTrendPolarity(kpi.title) !== "neutral" && (
-                                            <div className="mt-1">{renderTrend(kpi.trend[trendMode], trendMode === "wow" ? "WoW" : "MoM", getTrendPolarity(kpi.title))}</div>
+                                            <div className="mt-1">{renderTrend(kpi.trend[trendMode], trendMode === "wow" ? "รายสัปดาห์" : "รายเดือน", getTrendPolarity(kpi.title))}</div>
                                         )}
                                     </div>
                                 ))}
@@ -306,7 +306,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                 <div className={`bg-card-general rounded-xl border border-border p-3 flex flex-col gap-3 overflow-hidden ${analytics?.stationDetail ? "col-span-12" : "col-span-7"}`}>
                                     <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
                                         <div className="text-sm font-semibold text-text-primary">
-                                            <p>ความผันผวนของสารเคมี</p>(เปรียบเทียบช่วงเวลา เช้า vs เย็น แยกประเภท)
+                                            <p>ความผันผวนของสารเคมี</p>(เปรียบเทียบช่วงเวลา ก่อนเที่ยง vs หลังเที่ยง แยกประเภท)
                                         </div>
                                         {analytics?.granularityInfo && (
                                             <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
@@ -318,7 +318,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                         {getGroupedBars(analytics).map((group: any, gIdx: number) => (
                                             <div key={gIdx} className="bg-bg rounded-lg p-2 border border-border flex flex-col justify-between h-64">
                                                 <div className="text-xs font-semibold mb-1" style={{ color: group.title === "Ammonia" ? CHEM_COLOR.nh3 : CHEM_COLOR.po4 }}>
-                                                    สถิติความเข้มข้นสะสม: {group.title}
+                                                    ค่าเฉลี่ยความเข้มข้นสะสม: {group.title}
                                                 </div>
                                                 <div className="w-full flex-1 min-h-0">
                                                     <ResponsiveContainer width="100%" height="100%">
@@ -326,7 +326,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                                             <CartesianGrid strokeDasharray="2 2" stroke={chartTone.grid} />
                                                             <XAxis dataKey="name" stroke={chartTone.axis} fontSize={12} tickLine={false} />
                                                             <YAxis stroke={chartTone.axis} fontSize={12} tickLine={false} />
-                                                            <Tooltip wrapperStyle={{ fontSize: "12px" }} contentStyle={chartTone.tooltip} cursor={false} />
+                                                            <Tooltip wrapperStyle={{ fontSize: "12px" }} contentStyle={chartTone.tooltip} cursor={false} formatter={(v: any) => formatDisplayNumber(Number(v))} />
                                                             <Legend iconSize={8} wrapperStyle={{ fontSize: "12px", bottom: -5 }} />
                                                             {group.items.map((bar: any, bIdx: number) => (
                                                                 <Bar key={bIdx} dataKey={bar.key} name={bar.name.replace(group.title, "").trim() || bar.name} fill={bar.color} radius={[2, 2, 0, 0]} />
@@ -351,7 +351,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                 </div>
                                 <div className="h-64 w-full mt-1">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={analytics?.trends} margin={{ top: 15, right: 5, left: -25, bottom: -5 }}>
+                                        <LineChart data={analytics?.trends} margin={{ top: 15, right: 5, left: -5, bottom: -5 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke={chartTone.grid} />
                                             <XAxis dataKey="date" stroke={chartTone.axis} fontSize={12} tickLine={false} />
                                             {/* domain รวม max ของเส้นเกณฑ์ควบคุม PCD ด้วย — ไม่งั้น Recharts auto-scale ตามข้อมูลจริงอย่างเดียว เส้นเกณฑ์ที่สูงกว่าข้อมูลจะหลุดกรอบจนมองไม่เห็น */}
@@ -359,15 +359,18 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                                 stroke={chartTone.axis}
                                                 fontSize={12}
                                                 tickLine={false}
+                                                width={48}
+                                                tickFormatter={(v: number) => formatDisplayNumber(v)}
                                                 domain={[
                                                     0,
                                                     (dataMax: number) => {
                                                         const refMax = analytics?.trendConfig?.references?.length ? Math.max(...analytics.trendConfig.references.map((r: any) => r.value)) : 0;
-                                                        return Math.max(dataMax, refMax) * 1.05;
+                                                        // ปัดเศษขอบบน — ไม่งั้น *1.05 ได้ทศนิยมยาว (เช่น 0.110001) แล้ว tick บนสุดถูกตัดเหลือแต่หาง
+                                                        return Number((Math.max(dataMax, refMax) * 1.05).toPrecision(3));
                                                     },
                                                 ]}
                                             />
-                                            <Tooltip contentStyle={chartTone.tooltip} />
+                                            <Tooltip contentStyle={chartTone.tooltip} formatter={(v: any) => formatDisplayNumber(Number(v))} />
                                             <Legend iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
 
                                             {analytics?.trendConfig?.references?.map((ref: any, rIdx: number) => (
@@ -383,7 +386,6 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                                     stroke={line.color}
                                                     strokeWidth={2}
                                                     dot={{ r: 2.5, fill: line.color }}
-                                                    label={{ position: "top", fill: line.color, fontSize: 12 }}
                                                 />
                                             ))}
                                         </LineChart>

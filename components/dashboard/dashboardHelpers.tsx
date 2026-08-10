@@ -12,6 +12,11 @@ export function toISODate(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
+// จัดรูปแบบตัวเลขสำหรับแสดงผลในหน้า dashboard — จำกัดทศนิยมไม่เกิน 3 ตำแหน่ง (ตัดศูนย์ท้ายทิ้ง) โดยไม่แตะค่าจริงที่ใช้คำนวณ
+export function formatDisplayNumber(value: number): string {
+    return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
+}
+
 // แปลงค่า w (1-12 ช่อง ตามที่ตั้งไว้ใน dashboard_widgets) เป็น Tailwind class แบบ static lookup
 // (ต้องเขียนเป็น literal string ครบทุก class เพราะ Tailwind ไม่รู้จัก class ที่ประกอบด้วย template string แบบ dynamic)
 export function kpiSpanClass(w: number | undefined): string {
@@ -109,7 +114,7 @@ export function renderTrend(trend: any, modeLabel: string, polarity: "up-good" |
         <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1 py-0.5 rounded ${color}`}>
             <Arrow size={8} />
             {up ? "+" : ""}
-            {trend.value}
+            {formatDisplayNumber(trend.value)}
             {suffix} {modeLabel}
         </span>
     );
@@ -174,6 +179,9 @@ export function DateField({ label, value, onChange }: { label: string; value: st
     );
 }
 
+// จำนวนจุดขั้นต่ำที่ยอมให้วาด heatmap/เส้น trend — น้อยกว่านี้ความหนาแน่นและค่า r ไม่มีความหมายทางสถิติ
+const MIN_CORRELATION_POINTS = 5;
+
 // 🌦️ Correlation — density heatmap แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
 export function CorrelationSection({ correlation }: { correlation: any }) {
     const { theme } = useAppStore();
@@ -188,7 +196,8 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
 
     const VB_W = 440,
         VB_H = 240,
-        mL = 40,
+        // mL ต้องกว้างพอให้ตัวเลขแกน Y (เช่น "0.800" ตอน phosphate ที่ปัด 4 ตำแหน่ง) กับหัวข้อแกนแนวตั้งไม่ทับกัน
+        mL = 56,
         mR = 10,
         // mT = 0 ให้เส้นขอบบนของกราฟชิดขอบบนกล่องพอดี ตรงกับขอบบนการ์ดค่า Pearson r ฝั่งขวาที่อยู่แถวกริดเดียวกัน
         // (ตัวเลขแกน Y บนสุดล้นขึ้นไปเล็กน้อย ต้องเปิด overflow="visible" ที่ <svg> ไม่งั้นโดนตัด)
@@ -208,10 +217,18 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
 
     // แปลงค่าข้อมูล → พิกัดพิกเซล (memoize ให้วาดใหม่เฉพาะตอนเปลี่ยนชุดข้อมูล)
     const view = useMemo(() => {
-        if (!hm || !hm.domain || hm.bins.length === 0) return { rects: [] as any[], xTicks: [] as any[], yTicks: [] as any[], trendLine: null as any, hasData: false };
+        const empty = (reason: string) => ({ rects: [] as any[], xTicks: [] as any[], yTicks: [] as any[], trendLine: null as any, hasData: false, reason });
+        if (!hm || !hm.domain || hm.bins.length === 0) return empty("ยังไม่มีข้อมูลสำหรับชุดนี้");
         const { xMin, xMax, yMin, yMax } = hm.domain;
-        const dx = xMax - xMin || 1;
-        const dy = yMax - yMin || 1;
+        // ต่ำกว่าเกณฑ์นี้ heatmap อ่านความหนาแน่นไม่ได้ และ Pearson r ไวต่อจุดเดียวจนไม่มีความหมาย
+        if (typeof activeMetric?.n === "number" && activeMetric.n < MIN_CORRELATION_POINTS) {
+            return empty(`ข้อมูลไม่พอสำหรับชุดนี้ (มี ${activeMetric.n} จุด ต้องมีอย่างน้อย ${MIN_CORRELATION_POINTS} จุด)`);
+        }
+        // จุดทั้งหมดทับกันในแกนใดแกนหนึ่ง (ช่วงข้อมูล = 0) จึงแบ่ง bin ตามสัดส่วนไม่ได้
+        // ถ้าฝืนวาด binW/binH ที่ server fallback เป็น 1 หน่วยจะถูกยืดเต็มกราฟกลายเป็นบล็อกสีทึบ และ tick ทั้ง 3 จุดจะซ้ำค่าเดียวกัน
+        if (xMax - xMin <= 0 || yMax - yMin <= 0) return empty("ข้อมูลไม่พอสำหรับชุดนี้ (ค่าที่วัดได้ไม่มีความแปรปรวน จุดทุกจุดทับกัน)");
+        const dx = xMax - xMin;
+        const dy = yMax - yMin;
         const sx = (v: number) => mL + ((v - xMin) / dx) * pw;
         const sy = (v: number) => mT + (1 - (v - yMin) / dy) * ph;
         const cw = (hm.binW / dx) * pw;
@@ -259,7 +276,7 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
             }
         }
 
-        return { rects, xTicks, yTicks, trendLine, hasData: true };
+        return { rects, xTicks, yTicks, trendLine, hasData: true, reason: "" };
     }, [hm, dAxis, dChem, activeMetric]);
     const xLabel = dAxis === "rain" ? "ฝนสะสม (mm)" : "อุณหภูมิอากาศ (°C)";
     const pill = (on: boolean) => `px-2 py-0.5 rounded-md transition-all cursor-pointer ${on ? "bg-surface text-primary shadow-xs" : "text-text-muted"}`;
@@ -319,19 +336,21 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                                 </text>
                             ))}
                             {view.yTicks.map((t: any, i: number) => (
-                                <text key={`y${i}`} x={mL - 5} y={t.y + 3} fontSize={12} fill={chartTone.axis} textAnchor="end">
+                                <text key={`y${i}`} x={mL - 8} y={t.y + 3} fontSize={12} fill={chartTone.axis} textAnchor="end">
                                     {t.label}
                                 </text>
                             ))}
                             <text x={mL + pw / 2} y={VB_H - 2} fontSize={12} fill={chartTone.label} textAnchor="middle">
                                 {xLabel}
                             </text>
-                            <text x={11} y={mT + ph / 2} fontSize={12} fill={chartTone.label} textAnchor="middle" transform={`rotate(-90 11 ${mT + ph / 2})`}>
+                            <text x={10} y={mT + ph / 2} fontSize={12} fill={chartTone.label} textAnchor="middle" transform={`rotate(-90 10 ${mT + ph / 2})`}>
                                 ความเข้มข้น (mg/L)
                             </text>
                         </svg>
                     ) : (
-                        <div className="h-48 flex items-center justify-center text-text-muted text-xs">ไม่มีข้อมูลเพียงพอสำหรับชุดนี้</div>
+                        <div className="h-48 flex items-center justify-center rounded-lg border border-dashed border-border text-text-muted text-xs text-center px-4">
+                            {view.reason}
+                        </div>
                     )}
                     {/* legend */}
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted flex-wrap">
@@ -365,12 +384,14 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                                 }}
                                 className={`rounded-lg border p-2 text-center transition-all cursor-pointer ${active ? "border-primary/40 bg-primary/10" : "border-border bg-surface-subtle/40 opacity-50 hover:opacity-80"}`}
                             >
-                                <div className={`text-base font-bold ${rColor}`}>{m.r === null ? "—" : (m.r > 0 ? "+" : "") + m.r}</div>
+                                <div className={`text-base font-bold ${rColor}`}>{m.r === null ? "—" : (m.r > 0 ? "+" : "") + formatDisplayNumber(m.r)}</div>
                                 <div className="text-xs text-text-muted font-semibold mt-0.5 truncate">{m.label}</div>
                                 <div className="text-xs text-text-muted">n={m.n}</div>
                             </button>
                         );
                     })}
+                    {/* คำอธิบาย n แบบตัวหนังสือถาวร (ไม่ใช่แค่ title tooltip) เพราะจอสัมผัสไม่มี hover ให้เจอคำอธิบายใน title ได้ */}
+                    <div className="col-span-2 text-xs text-text-muted">n = จำนวนข้อมูลที่ใช้คำนวณ</div>
                 </div>
             </div>
         </div>
