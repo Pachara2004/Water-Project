@@ -10,7 +10,6 @@ import { StandardsComparison, type ComparisonRow } from "../StandardsComparison"
 import TimeSeriesChart from "../TimeSeriesChart";
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
-import { readChemValues } from "@/lib/chemLabels";
 
 export interface BottomSheetLocation {
     id: string;
@@ -518,8 +517,22 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                 .reverse()
                                                 .slice(0, 5)
                                                 .map((s, idx) => {
-                                                    // ค่าสารเคมีของตัวอย่างนี้ — dynamic ตามสารที่มีอยู่จริง ไม่ผูกชื่อ/ตัวย่อไว้ตายตัว
-                                                    const chemReadings = readChemValues(s);
+                                                    let paramValues: Array<{ name: string; val: number }> = [];
+
+                                                    if (Array.isArray(s.measurements) && s.measurements.length > 0) {
+                                                        paramValues = s.measurements
+                                                            .filter((m: any) => m.parameter?.name && m.value !== null && m.value !== undefined)
+                                                            .map((m: any) => ({
+                                                                name: m.parameter.name.toUpperCase(),
+                                                                val: Number(m.value),
+                                                            }));
+                                                    } else {
+                                                        const pVal = s.phosphateVal ?? s.phosphateValue ?? null;
+                                                        const aVal = s.ammoniaVal ?? s.ammoniaValue ?? null;
+                                                        if (pVal !== null) paramValues.push({ name: "PHOSPHATE", val: Number(pVal) });
+                                                        if (aVal !== null) paramValues.push({ name: "AMMONIA", val: Number(aVal) });
+                                                    }
+
                                                     return (
                                                         <div
                                                             key={idx}
@@ -533,14 +546,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                                     year: "numeric",
                                                                 })}
                                                             </span>
-                                                            <div className="flex items-center gap-2.5">
-                                                                {(currentUser?.role !== "guest" || !currentUser?.role) && (
-                                                                    <span className="text-xs text-text bg-card-general p-1 min-w-30 border border-border rounded">
-                                                                        {chemReadings.length > 0
-                                                                            ? chemReadings.map((c) => `${c.abbrev}: ${c.value.toFixed(2)}`).join(" | ")
-                                                                            : "-"}
-                                                                    </span>
-                                                                )}
 
                                                             {/* ฝั่งกลาง: ชิปสารแบบ Responsive กว้างยืดหดตามสัดส่วน */}
                                                             {(currentUser?.role !== "guest" || !currentUser?.role) && (
