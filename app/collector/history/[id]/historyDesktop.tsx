@@ -164,7 +164,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                             <div key={m.parameterId} className="flex items-center justify-between text-xs bg-surface-subtle border border-border rounded-md p-3">
                                 <span className="font-medium text-text uppercase">{m.parameterName || "-"}</span>
                                 <div className="flex items-center gap-3">
-                                    <span className="font-medium text-text">{m.value.toFixed(3)} mg/L</span>
+                                    <span className="font-medium text-text">{m.value.toFixed(2)} mg/L</span>
                                     <span className="text-xs text-text-muted">{formatDateTime(m.collectedAt)}</span>
                                 </div>
                             </div>
@@ -230,7 +230,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                             {measurement.isDuplicateSubstance && <span className="ml-1 text-amber-600">•ซ้ำ</span>}
                                         </span>
                                         <span className="font-medium text-text">
-                                            {measurement.concentrated.toFixed(3)} <span className="text-xs text-text-muted font-mediuml">mg/L</span>
+                                            {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted font-mediuml">mg/L</span>
                                         </span>
                                     </div>
                                 ))}

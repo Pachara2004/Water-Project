@@ -99,7 +99,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                         )}
                                     </div>
                                     <div className="text-xl font-semibold text-text text-right">
-                                        {measurement.concentrated.toFixed(3)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
+                                        {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
                                     </div>
                                 </div>
                                 {/* สารที่ไม่มีเกณฑ์กำหนด: ไม่มีสเกลให้วาดแถบ — ซ่อนดีกว่าวาดด้วยเกณฑ์ที่กุขึ้นมา */}
