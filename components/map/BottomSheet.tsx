@@ -1,6 +1,6 @@
 "use client";
 
-import { X, MapPin, Calendar, FlaskConical, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { X, MapPin, Calendar, FlaskConical, TrendingUp, TrendingDown, Minus, Waves, CloudRain, Thermometer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import StatusBadge from "./StatusBadge";
@@ -460,25 +460,40 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                         latest.weatherCondition !== null) && (
                                         <div className="bg-card-general border border-border rounded-2xl p-6">
                                             <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">ข้อมูลสภาพอากาศขณะเก็บตัวอย่าง</h4>
-                                            <div className="grid grid-cols gap-3 text-center">
+                                            <div className="grid grid-cols-1 gap-3">
                                                 {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
-                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                                        <span className="text-xs font-bold text-secondary block uppercase">อุณหภูมิ</span>
-                                                        <span className="text-xl font-bold text-text mt-1 block">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border flex items-center gap-3">
+                                                        <div className="p-2.5 shrink-0 text-secondary">
+                                                            <Thermometer size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col text-left min-w-0 flex-1">
+                                                            <span className="text-xs font-semibold text-secondary uppercase">อุณหภูมิ</span>
+                                                            <span className="text-lg font-semibold text-text">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                                        </div>
                                                     </div>
                                                 )}
+
                                                 {((latest.rainAccumulation !== null && latest.rainAccumulation !== undefined) || latest.rainVolume !== null) && (
-                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                                        <span className="text-xs font-bold text-secondary block uppercase">ปริมาณฝน</span>
-                                                        <span className="text-xl font-bold text-text mt-1 block">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border flex items-center gap-3">
+                                                        <div className="p-2.5 shrink-0 text-secondary">
+                                                            <CloudRain size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col text-left min-w-0 flex-1">
+                                                            <span className="text-xs font-semibold text-secondary uppercase">ปริมาณฝน</span>
+                                                            <span className="text-lg font-semibold text-text">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                                        </div>
                                                     </div>
                                                 )}
+
                                                 {((latest.weatherCondCode !== null && latest.weatherCondCode !== undefined) || latest.weatherCondition !== null) && (
-                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border">
-                                                        <span className="text-xs font-bold text-secondary block uppercase">สภาพอากาศ</span>
-                                                        <span className="text-xl font-bold text-text mt-1 block truncate">
-                                                            {getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}
-                                                        </span>
+                                                    <div className="bg-surface-subtle p-3 rounded-xl border border-border flex items-center gap-3">
+                                                        <div className="p-2.5 shrink-0 text-secondary">
+                                                            <Waves size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col text-left min-w-0 flex-1">
+                                                            <span className="text-xs font-semibold text-secondary uppercase">สภาพอากาศ</span>
+                                                            <span className="text-lg font-semibold text-text truncate">{getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}</span>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
