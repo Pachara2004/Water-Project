@@ -3,9 +3,9 @@ import { CheckCircle2 } from "lucide-react";
 
 export function SectionHead({ icon, label }: { icon: React.ReactNode; label: string }) {
     return (
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-            <span className="text-text-muted">{icon}</span>
-            <span className="font-mono text-xs uppercase tracking-wider text-text-secondary">{label}</span>
+        <div className="flex items-center gap-3 p-3 border-b border-border">
+            <span className="text-text">{icon}</span>
+            <span className="text-xs uppercase text-text">{label}</span>
         </div>
     );
 }

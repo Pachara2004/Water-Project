@@ -72,8 +72,7 @@ export function StandardsComparison({ title, rows, compact = false }: { title: s
                                     : `flex items-center gap-3.5 text-xs font-semibold p-3 rounded-xl border ${style?.chip ?? NO_STANDARD_STYLE.chip}`
                             }
                         >
-
-                            <div className="flex flex-col items-center min-w-0 flex-1">
+                            <div className="flex flex-col items-start text-left min-w-0 flex-1">
                                 <span className={`truncate w-full ${compact ? "font-medium text-text-primary" : ""}`}>{row.label}</span>
                                 {row.detail && <span className="text-xs text-text-secondary">{row.detail}</span>}
                             </div>

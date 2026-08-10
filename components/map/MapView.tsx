@@ -203,7 +203,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
             {mode === "explorer" && (
                 <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-2">
                     {/* ช่อง Search ค้นหา */}
-                    <div className="w-full sm:w-auto flex-1 min-w-[240px]">
+                    <div className="w-full sm:w-auto flex-1 min-w-60">
                         <MapSearchBar
                             locations={locations}
                             onSelectLocation={(loc) => {
@@ -213,7 +213,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                     </div>
 
                     {/* กลุ่มปุ่ม Filter ทั้งสองตัว: จะอยู่บรรทัดเดียวกัน หรือขยายเต็มเมื่อตกบรรทัด */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto flex-1 min-w-[280px]">
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-1 min-w-70">
                         <div className="flex-1 min-w-0">
                             <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
                         </div>
@@ -232,12 +232,18 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 zoomControl={false}
                 attributionControl={false}
                 minZoom={mode === "picker" ? 1 : 1} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
-                maxZoom={25}
+                maxZoom={15}
                 maxBounds={THAILAND_BOUNDS}
                 maxBoundsViscosity={0.1}
                 bounceAtZoomLimits={true}
             >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+                <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    maxZoom={15}
+                    maxNativeZoom={15}
+                    noWrap={true}
+                />{" "}
                 {renderedMarkers}
                 {mode === "picker" && <MapEvents onMapClick={onLocationPick} />}
                 {mode === "picker" && pickedPosition && <Marker position={[pickedPosition.lat, pickedPosition.lng]} icon={createLocationIcon(null)} />}
