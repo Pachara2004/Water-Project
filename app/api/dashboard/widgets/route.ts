@@ -66,16 +66,17 @@ export async function GET(request: NextRequest) {
         };
 
         type StatusCounts = { total: number; safe: number; warning: number; danger: number };
-        type TrendPair = { value: number | null; kind: "pct" | "pp" };
+        // cur = ค่าปัจจุบันดิบ (ไม่ใช่ % เปลี่ยนแปลง) ไว้ใช้โชว์ตอนฐานก่อนหน้า = 0 ซึ่งคำนวณ % ไม่ได้ (หารด้วยศูนย์)
+        type TrendPair = { value: number | null; kind: "pct" | "pp"; cur: number };
         const buildTrendMetrics = (curr: StatusCounts, prev: StatusCounts): Record<"total" | "safe" | "danger" | "warning", TrendPair> => {
             const relDelta = (cur: number, pv: number): number | null => (pv > 0 ? Number((((cur - pv) / pv) * 100).toFixed(1)) : null);
             const currSafeRate = curr.total > 0 ? (curr.safe / curr.total) * 100 : 0;
             const prevSafeRate = prev.total > 0 ? (prev.safe / prev.total) * 100 : 0;
             return {
-                total: { value: relDelta(curr.total, prev.total), kind: "pct" },
-                safe: { value: prev.total > 0 ? Number((currSafeRate - prevSafeRate).toFixed(1)) : null, kind: "pp" },
-                danger: { value: relDelta(curr.danger, prev.danger), kind: "pct" },
-                warning: { value: relDelta(curr.warning, prev.warning), kind: "pct" },
+                total: { value: relDelta(curr.total, prev.total), kind: "pct", cur: curr.total },
+                safe: { value: prev.total > 0 ? Number((currSafeRate - prevSafeRate).toFixed(1)) : null, kind: "pp", cur: Number(currSafeRate.toFixed(1)) },
+                danger: { value: relDelta(curr.danger, prev.danger), kind: "pct", cur: curr.danger },
+                warning: { value: relDelta(curr.warning, prev.warning), kind: "pct", cur: curr.warning },
             };
         };
 
@@ -388,7 +389,10 @@ export async function GET(request: NextRequest) {
             return "year";
         };
 
-        type BucketAcc = { ammM: number; ammE: number; phosM: number; phosE: number; countM: number; countE: number; ammAll: number; phosAll: number; countAll: number };
+        // แต่ละ sample ในระบบถือ "พารามิเตอร์เดียว" (ammonia หรือ phosphate ไม่ใช่ทั้งคู่ในแถวเดียว)
+        // จึงต้องนับตัวหารของ ammonia กับ phosphate แยกกัน — ถ้าใช้ countAll ตัวเดียวหารทั้งคู่ (บั๊กเดิม)
+        // แถวที่เป็น phosphate จะถูกนับเป็น "ammonia = 0" เข้าไปเจือจางค่าเฉลี่ย ammonia ลงเกือบครึ่ง (และกลับกัน)
+        type BucketAcc = { ammM: number; ammE: number; phosM: number; phosE: number; countAmmM: number; countAmmE: number; countPhosM: number; countPhosE: number; ammAll: number; phosAll: number; countAmmAll: number; countPhosAll: number };
         const buckets: { key: string; label: string }[] = [];
         const bucketAcc = new Map<string, BucketAcc>();
         let granularity: Granularity = "month";
@@ -402,7 +406,7 @@ export async function GET(request: NextRequest) {
             while (cursor.getTime() < stopAt.getTime() && guard < MAX_BUCKETS + 2) {
                 const key = bucketKeyOf(cursor, granularity);
                 buckets.push({ key, label: bucketLabelOf(cursor, granularity, crossesYear) });
-                bucketAcc.set(key, { ammM: 0, ammE: 0, phosM: 0, phosE: 0, countM: 0, countE: 0, ammAll: 0, phosAll: 0, countAll: 0 });
+                bucketAcc.set(key, { ammM: 0, ammE: 0, phosM: 0, phosE: 0, countAmmM: 0, countAmmE: 0, countPhosM: 0, countPhosE: 0, ammAll: 0, phosAll: 0, countAmmAll: 0, countPhosAll: 0 });
                 cursor = advanceGranularity(cursor, granularity);
                 guard++;
             }
@@ -415,49 +419,58 @@ export async function GET(request: NextRequest) {
             const bucket = bucketAcc.get(key);
             if (!bucket) return; // ตัวอย่างนอกช่วง bucket (ไม่ควรเกิดเพราะ baseWhere กรองไว้แล้ว) — ข้ามอย่างปลอดภัย
 
-            const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value || 0;
-            const phos = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value || 0;
-            bucket.ammAll += amm;
-            bucket.phosAll += phos;
-            bucket.countAll++;
-
+            const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value ?? null;
+            const phos = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value ?? null;
             const hour = dateObj.getHours();
-            if (hour >= 6 && hour < 12) {
-                bucket.ammM += amm;
-                bucket.phosM += phos;
-                bucket.countM++;
-            } else if (hour >= 15 && hour < 21) {
-                bucket.ammE += amm;
-                bucket.phosE += phos;
-                bucket.countE++;
+            const isMorning = hour >= 6 && hour < 12;
+            const isEvening = hour >= 15 && hour < 21;
+
+            if (amm !== null) {
+                bucket.ammAll += amm;
+                bucket.countAmmAll++;
+                if (isMorning) {
+                    bucket.ammM += amm;
+                    bucket.countAmmM++;
+                } else if (isEvening) {
+                    bucket.ammE += amm;
+                    bucket.countAmmE++;
+                }
+            }
+            if (phos !== null) {
+                bucket.phosAll += phos;
+                bucket.countPhosAll++;
+                if (isMorning) {
+                    bucket.phosM += phos;
+                    bucket.countPhosM++;
+                } else if (isEvening) {
+                    bucket.phosE += phos;
+                    bucket.countPhosE++;
+                }
             }
         });
 
         const temporalData = buckets.map((b) => {
             const a = bucketAcc.get(b.key)!;
-            const divM = a.countM > 0 ? a.countM : 1;
-            const divE = a.countE > 0 ? a.countE : 1;
             // ปัดทศนิยม 2 ตำแหน่งพอสำหรับ ammonia (ค่าปกติ ~0.01-0.09) แต่ทำให้ phosphate (ค่าปกติ ~0.001-0.02
             // ตามเกณฑ์จริงในระบบที่ max อยู่แค่ 0.015-0.045) ปัดลงเป็น 0.00 เกือบทุกครั้ง กราฟจึงว่างเปล่าทั้งที่มีข้อมูลจริง
             // ปัด 4 ตำแหน่งให้ทั้งคู่แทน กันปัญหานี้เกิดซ้ำถ้าสารตัวอื่นในอนาคตมีสเกลค่าเล็กแบบ phosphate
             return {
                 name: b.label,
-                ammoniaMorning: Number((a.ammM / divM).toFixed(4)),
-                ammoniaEvening: Number((a.ammE / divE).toFixed(4)),
-                phosphateMorning: Number((a.phosM / divM).toFixed(4)),
-                phosphateEvening: Number((a.phosE / divE).toFixed(4)),
+                ammoniaMorning: Number((a.ammM / (a.countAmmM || 1)).toFixed(4)),
+                ammoniaEvening: Number((a.ammE / (a.countAmmE || 1)).toFixed(4)),
+                phosphateMorning: Number((a.phosM / (a.countPhosM || 1)).toFixed(4)),
+                phosphateEvening: Number((a.phosE / (a.countPhosE || 1)).toFixed(4)),
             };
         });
 
         // --- [มิติที่ 4: WaterTrendChart] ---
         const trendsData = buckets.map((b) => {
             const a = bucketAcc.get(b.key)!;
-            const div = a.countAll > 0 ? a.countAll : 1;
             // ปัด 4 ตำแหน่งเหมือน temporalData ด้านบน — เหตุผลเดียวกัน: ปัดแค่ 2 ตำแหน่งทำให้ phosphate กลายเป็น 0.00 เกือบทุกช่วง
             return {
                 date: b.label,
-                ammonia: Number((a.ammAll / div).toFixed(4)),
-                phosphate: Number((a.phosAll / div).toFixed(4)),
+                ammonia: Number((a.ammAll / (a.countAmmAll || 1)).toFixed(4)),
+                phosphate: Number((a.phosAll / (a.countPhosAll || 1)).toFixed(4)),
             };
         });
 

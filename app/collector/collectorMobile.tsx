@@ -7,6 +7,7 @@ import { Camera, FileText, Calendar, Beaker, MapPin, FileScan, Search, SlidersHo
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
 import type { CollectorFiltersState } from "@/lib/hooks/useCollectorFilters";
+import { readChemValues } from "@/lib/chemLabels";
 
 export type CollectorProps = CollectorFiltersState;
 
@@ -328,27 +329,19 @@ export default function CollectorMobile(props: CollectorProps) {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* แถวล่าง: แสดงค่าสารเคมี */}
+                                                                    {/* แถวล่าง: แสดงค่าสารเคมี — dynamic ตามสารที่มีอยู่จริงบนตัวอย่างนี้ ไม่ผูกชื่อ/ตัวย่อไว้ตายตัว */}
                                                                     <div className="flex items-center gap-2 mt-1 w-full">
-                                                                        {[
-                                                                            { key: "phosphateVal", label: "P", color: "text-teal-500" },
-                                                                            { key: "ammoniaVal", label: "N", color: "text-purple-500" },
-                                                                        ].map((indicator) => {
-                                                                            const value = sample[indicator.key];
-                                                                            if (value === undefined || value === null) return null;
-
-                                                                            return (
-                                                                                <div
-                                                                                    key={indicator.key}
-                                                                                    className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
-                                                                                >
-                                                                                    <Beaker size={10} className={indicator.color} />
-                                                                                    <span>
-                                                                                        {indicator.label}: {Number(value).toFixed(2)}
-                                                                                    </span>
-                                                                                </div>
-                                                                            );
-                                                                        })}
+                                                                        {readChemValues(sample).map((c) => (
+                                                                            <div
+                                                                                key={c.key}
+                                                                                className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
+                                                                            >
+                                                                                <Beaker size={10} className={c.color} />
+                                                                                <span>
+                                                                                    {c.abbrev}: {c.value.toFixed(2)}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
                                                                 </div>
                                                             </div>
