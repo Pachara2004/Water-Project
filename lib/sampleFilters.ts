@@ -105,6 +105,28 @@ export async function buildAllScopeWhere(filters: SampleFilters, pendingGroups?:
 // --- การจัดรูปแบบเวลาไทยสำหรับไฟล์ที่ส่งออก ---
 // ข้อมูลใน DB เป็น UTC — ถ้าเขียนลงไฟล์ด้วย toISOString() ตรง ๆ ทุกแถวจะคลาดจากเวลาที่ผู้ใช้เก็บจริง 7 ชม.
 
+const THAI_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/**
+ * instant จริง → Date ที่ getUTC*() อ่านออกมาตรงกับปฏิทิน/นาฬิกาเวลาไทย
+ * ใช้ได้เพราะไทยเป็น UTC+7 คงที่ ไม่มี DST — ห้ามลอกไปใช้กับโซนที่มี DST
+ * ค่าที่คืนไม่ใช่ instant จริงอีกต่อไป ใช้ได้เฉพาะอ่านปฏิทิน/จัดกลุ่ม/แสดงผลเท่านั้น
+ * ถ้าจะเอาไปใช้เป็นขอบเขต query ต้องแปลงกลับด้วย fromThaiWallClock ก่อนเสมอ
+ */
+export function toThaiWallClock(d: Date): Date {
+    return new Date(d.getTime() + THAI_OFFSET_MS);
+}
+
+/** Date เวลาไทย (wall-clock จาก toThaiWallClock) → instant จริง สำหรับใช้เป็นขอบเขต query */
+export function fromThaiWallClock(d: Date): Date {
+    return new Date(d.getTime() - THAI_OFFSET_MS);
+}
+
+/** ชั่วโมง 0–23 ตามเวลาไทย — ห้ามใช้ Date.getHours() แทน (ค่านั้นขึ้นกับ TZ ของ process ที่รัน ไม่ใช่เวลาที่เก็บจริง) */
+export function getThaiHour(d: Date): number {
+    return toThaiWallClock(d).getUTCHours();
+}
+
 const bangkokDateTime = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Bangkok",
     year: "numeric",
