@@ -312,7 +312,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                 >
                                     <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
                                         <div className="text-sm font-semibold text-text-primary">
-                                            <p>ความผันผวนของสารเคมี</p>(เปรียบเทียบช่วงเวลา ก่อนเที่ยง vs หลังเที่ยง แยกประเภท)
+                                            <p>กราฟเปรียบเทียบแนวโน้มความต่างของคุณภาพน้ำในช่วงเก็บตัวอย่าง</p>(ก่อนเที่ยง vs หลังเที่ยง)
                                         </div>
                                         {analytics?.granularityInfo && (
                                             <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
@@ -324,7 +324,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                         {getGroupedBars(analytics).map((group: any, gIdx: number) => (
                                             <div key={gIdx} className="bg-bg rounded-lg p-2 border border-border flex flex-col justify-between h-60">
                                                 <div className="text-xs font-semibold mb-1" style={{ color: group.title === "Ammonia" ? CHEM_COLOR.nh3 : CHEM_COLOR.po4 }}>
-                                                    ค่าเฉลี่ยความเข้มข้นสะสม: {group.title}
+                                                    ค่าเฉลี่ยของ {group.title}
                                                 </div>
                                                 <div className="w-full flex-1 min-h-0">
                                                     <ResponsiveContainer width="100%" height="100%">
@@ -348,7 +348,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                             {/* มิติที่ 4: WATERTRENDCHART แนวโน้มสารเคมีพร้อมเส้นควบคุมควบคุม PCD */}
                             <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <div className="text-sm font-semibold text-text-primary mb-0.5">{analytics?.trendConfig?.title || " WaterTrendChart"}</div>
+                                    <div className="text-sm font-semibold text-text-primary mb-0.5">{analytics?.trendConfig?.title || "กราฟวิเคราะห์แนวโน้มสะสมตามเกณฑ์มาตรฐานของ PCD"}</div>
                                     {analytics?.granularityInfo && (
                                         <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
                                             {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}

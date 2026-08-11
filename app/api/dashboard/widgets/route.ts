@@ -572,7 +572,7 @@ export async function GET(request: NextRequest) {
             temporalData: temporalData,
             granularityInfo: granularityInfo, // ความละเอียด (วัน/สัปดาห์/เดือน/ไตรมาส/ปี) + ช่วงวันที่ที่ temporalData/trends กำลังแสดงจริง
             trendConfig: {
-                title: "WaterTrendChart: สหสัมพันธ์แนวโน้มความเข้มข้นสารเคมีสะสมพร้อมเกณฑ์ควบคุม PCD",
+                title: "กราฟวิเคราะห์แนวโน้มสะสมตามเกณฑ์มาตรฐานของ PCD",
                 references: [
                     ...(ammoniaMax !== null ? [{ value: ammoniaMax, color: "#ef4444", label: `Max Ammonia (${ammoniaMax})` }] : []),
                     ...(phosphateMax !== null ? [{ value: phosphateMax, color: "#a855f7", label: `Max Phosphate (${phosphateMax})` }] : []),
@@ -584,7 +584,7 @@ export async function GET(request: NextRequest) {
             },
             trends: trendsData,
             correlation: {
-                title: "Correlation: สหสัมพันธ์สภาพอากาศกับความเข้มข้นสารเคมี (Pearson r)",
+                title: "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ",
                 note: "อุณหภูมิ = อุณหภูมิอากาศ (ไม่มีอุณหภูมิน้ำใน schema)",
                 metrics: correlationMetrics,
                 heatmaps: correlationHeatmaps,
