@@ -234,7 +234,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                     )}
                                 </div>
                             )}
-                            <div className="flex items-center pt-2 justify-between shrink-0">
+                            <div className="relative flex items-center pt-2 justify-between shrink-0">
                                 <div className="flex items-center gap-1 px-1">
                                     <div className="text-md font-bold text-primary">ตัวชี้วัดหลัก</div>
                                     <ChartInfoButton guide="kpi" />
@@ -280,7 +280,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                 {/* ตาราง Hotspots เสี่ยงอันตรายสะสมสูงสุด — ซ่อนตอนเลือกสถานีเดียว เพราะข้อมูลซ้ำกับการ์ด KPI ด้านบนที่ scope ตามสถานีเดียวกันอยู่แล้ว */}
                                 {!analytics?.stationDetail && (
                                     <div className="col-span-1 bg-surface rounded-xl border border-border p-4 flex flex-col overflow-visible justify-between">
-                                        <div className="flex items-center gap-1 mb-2 shrink-0">
+                                        <div className="relative flex items-center gap-1 mb-2 shrink-0">
                                             <div className="text-sm font-semibold text-text-primary">{analytics?.hotspotConfig?.title}</div>
                                             <ChartInfoButton guide="hotspots" />
                                         </div>
@@ -318,7 +318,9 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                     className={`col-span-1 bg-card-general rounded-xl border border-border p-3 flex flex-col gap-3 overflow-visible ${analytics?.stationDetail ? "md:col-span-12" : "md:col-span-7"}`}
                                 >
                                     <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
-                                        <div className="flex items-center gap-1 text-sm font-semibold text-text-primary">
+                                        {/* relative อยู่ที่บรรทัดหัวข้อ ไม่ใช่ทั้งแถว — กล่องคำอธิบายจะได้โผล่ชิดใต้ปุ่ม ไม่ใช่ใต้ป้าย granularity ที่ตกบรรทัดบนจอแคบ
+                                            w-full บนจอแคบเพื่อให้กล่อง (left-0 right-0) กางเต็มความกว้างการ์ด ส่วน sm:w-auto คืนการจัดวางเดิมบนจอกว้าง */}
+                                        <div className="relative w-full sm:w-auto flex items-center gap-1 text-sm font-semibold text-text-primary">
                                             กราฟเปรียบเทียบความต่างของคุณภาพน้ำในช่วงเก็บตัวอย่าง
                                             <ChartInfoButton guide="temporal" />
                                         </div>
@@ -356,7 +358,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                             {/* มิติที่ 4: WATERTRENDCHART แนวโน้มสารเคมีพร้อมเส้นควบคุมควบคุม PCD */}
                             <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <div className="flex items-center gap-1 mb-0.5">
+                                    <div className="relative w-full sm:w-auto flex items-center gap-1 mb-0.5">
                                         <div className="text-sm font-semibold text-text-primary">{analytics?.trendConfig?.title || "กราฟวิเคราะห์แนวโน้มสะสมตามเกณฑ์มาตรฐานของ PCD"}</div>
                                         <ChartInfoButton guide="trend" />
                                     </div>
