@@ -306,7 +306,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                 <div className={`bg-card-general rounded-xl border border-border p-3 flex flex-col gap-3 overflow-hidden ${analytics?.stationDetail ? "col-span-12" : "col-span-7"}`}>
                                     <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
                                         <div className="text-sm font-semibold text-text-primary">
-                                            <p>กราฟเปรียบเทียบแนวโน้มความต่างของคุณภาพน้ำในช่วงเก็บตัวอย่าง</p>(ก่อนเที่ยง vs หลังเที่ยง)
+                                            <p>กราฟเปรียบเทียบความต่างของคุณภาพน้ำในช่วงเก็บตัวอย่าง</p>
                                         </div>
                                         {analytics?.granularityInfo && (
                                             <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">

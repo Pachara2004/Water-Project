@@ -285,8 +285,9 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
         <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
             <div className="grid grid-cols-1 md:grid-cols-12 md:items-center gap-2 md:gap-2.5 mb-2">
                 <div className="md:col-span-8 text-sm font-semibold text-text-primary">{correlation.title || "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ"}</div>
-                <div className="flex items-center gap-1.5 w-full md:col-span-4">
-                    <div className="grid grid-cols-2 flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
+                {/* จอแคบกว่า sm (มือถือจอเล็ก) เรียงสองกลุ่มปุ่มซ้อนกันแทนเคียงข้าง — เรียงแนวนอนแบบตายตัวเดิมทำให้ปุ่มล้นขอบการ์ดเมื่อจอแคบกว่า ~350px */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full md:col-span-4">
+                    <div className="grid grid-cols-2 w-full sm:flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
                         <button onClick={() => setAxis("rain")} className={pill(axis === "rain")}>
                             ฝน
                         </button>
@@ -294,7 +295,7 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                             อุณหภูมิ
                         </button>
                     </div>
-                    <div className="grid grid-cols-2 flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
+                    <div className="grid grid-cols-2 w-full sm:flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
                         <button onClick={() => setChem("nh3")} className={pill(chem === "nh3")} style={chem === "nh3" ? { color: CHEM_COLOR.nh3 } : undefined}>
                             Ammonia
                         </button>
