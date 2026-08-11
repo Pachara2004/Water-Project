@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
-import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters } from "@/lib/sampleFilters";
+import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters, toThaiWallClock, fromThaiWallClock, getThaiHour } from "@/lib/sampleFilters";
 
 export async function GET(request: NextRequest) {
     try {
@@ -81,16 +81,25 @@ export async function GET(request: NextRequest) {
         };
 
         // สัปดาห์ปฏิทินแบบ ISO (จันทร์–อาทิตย์) เทียบ "สัปดาห์นี้จนถึงตอนนี้" กับ "ช่วงเดียวกันของสัปดาห์ก่อน"
-        const wowCurrentStart = startOfISOWeek(now);
-        const wowPreviousStart = new Date(wowCurrentStart);
-        wowPreviousStart.setDate(wowPreviousStart.getDate() - 7);
-        const wowPreviousEnd = new Date(now);
-        wowPreviousEnd.setDate(wowPreviousEnd.getDate() - 7);
+        // คำนวณขอบเขตบนเวลาไทย (wall-clock) เสมอ แล้วแปลงกลับเป็น instant จริงก่อนใช้เป็นขอบเขต query
+        // ไม่งั้นขอบสัปดาห์/เดือนจะไปตกเช้ามืดเวลาไทยตาม TZ ของ server (ดูคอมเมนต์ที่ toThaiWallClock ใน sampleFilters.ts)
+        const nowThai = toThaiWallClock(now);
+        const wowCurrentStartThai = startOfISOWeek(nowThai);
+        const wowPreviousStartThai = new Date(wowCurrentStartThai);
+        wowPreviousStartThai.setUTCDate(wowPreviousStartThai.getUTCDate() - 7);
+        const wowPreviousEndThai = new Date(nowThai);
+        wowPreviousEndThai.setUTCDate(wowPreviousEndThai.getUTCDate() - 7);
+        const wowCurrentStart = fromThaiWallClock(wowCurrentStartThai);
+        const wowPreviousStart = fromThaiWallClock(wowPreviousStartThai);
+        const wowPreviousEnd = fromThaiWallClock(wowPreviousEndThai);
 
         // เดือนปฏิทิน เทียบ "เดือนนี้จนถึงตอนนี้ (month-to-date)" กับ "ช่วงเดียวกันของเดือนก่อน"
-        const momCurrentStart = startOfCalendarMonth(now);
-        const momPreviousStart = subtractMonthClamped(momCurrentStart, 1);
-        const momPreviousEnd = subtractMonthClamped(now, 1);
+        const momCurrentStartThai = startOfCalendarMonth(nowThai);
+        const momPreviousStartThai = subtractMonthClamped(momCurrentStartThai, 1);
+        const momPreviousEndThai = subtractMonthClamped(nowThai, 1);
+        const momCurrentStart = fromThaiWallClock(momCurrentStartThai);
+        const momPreviousStart = fromThaiWallClock(momPreviousStartThai);
+        const momPreviousEnd = fromThaiWallClock(momPreviousEndThai);
 
         const [wowCurrent, wowPrevious, momCurrent, momPrevious] = await Promise.all([
             countByStatus({ ...scopeWhere, collectionTime: { gte: wowCurrentStart, lte: now } }),
@@ -298,7 +307,7 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // ---  3. โครงสร้างระบบประมวลผลช่วงเวลา เช้า vs เย็น (Temporal Data Engine) ---
+        // ---  3. โครงสร้างระบบประมวลผลช่วงเวลา ก่อนเที่ยง vs หลังเที่ยง (Temporal Data Engine) ---
         // ดึงเฉพาะฟิลด์ที่กราฟรายเดือนต้องใช้จริง (เวลาเก็บ + ค่าสารแอมโมเนีย/ฟอสเฟตเท่านั้น) แทนการโหลดทุกคอลัมน์
         const timeSeriesSamples = await prisma.waterSample.findMany({
             where: baseWhere,
@@ -328,47 +337,54 @@ export async function GET(request: NextRequest) {
         // -1ms ให้เป็นจุดสุดท้ายของวันสิ้นสุดแบบ inclusive (ตรงกับ baseWhere.collectionTime.lt)
         const bucketRangeEnd: Date = endDateParam ? new Date(parseLocalDayEnd(endDateParam).getTime() - 1) : now;
 
+        // เวอร์ชันเวลาไทย (wall-clock) ของขอบเขต — floor/advance/bucketKey/label ทั้งชุดด้านล่างอ่านด้วย getUTC*
+        // จึงต้องป้อนด้วยค่าที่แปลงแล้วเท่านั้น ไม่งั้นจะจัด bucket ผิดวันสำหรับตัวอย่างที่เก็บช่วงเช้ามืดเวลาไทย (00:00–06:59)
+        const bucketRangeStartThai = toThaiWallClock(bucketRangeStart);
+        const bucketRangeEndThai = toThaiWallClock(bucketRangeEnd);
+
         const thaiMonthAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
         type Granularity = "day" | "week" | "month" | "quarter" | "year";
 
+        // ฟังก์ชันจัด bucket ทั้งชุดนี้อ่าน/เขียนด้วย getUTC*/setUTC* เสมอ — ตัว d ที่รับเข้ามาต้องเป็นเวลาไทย (wall-clock
+        // จาก toThaiWallClock) แล้วเท่านั้น ไม่ใช่ instant จริง มิฉะนั้นจะจัดกลุ่มผิดวันตาม TZ ของ server
         const floorToGranularity = (d: Date, gran: Granularity): Date => {
             const date = new Date(d);
             if (gran === "day") {
-                date.setHours(0, 0, 0, 0);
+                date.setUTCHours(0, 0, 0, 0);
                 return date;
             }
             if (gran === "week") return startOfISOWeek(date);
-            if (gran === "month") return new Date(date.getFullYear(), date.getMonth(), 1);
-            if (gran === "quarter") return new Date(date.getFullYear(), Math.floor(date.getMonth() / 3) * 3, 1);
-            return new Date(date.getFullYear(), 0, 1);
+            if (gran === "month") return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+            if (gran === "quarter") return new Date(Date.UTC(date.getUTCFullYear(), Math.floor(date.getUTCMonth() / 3) * 3, 1));
+            return new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
         };
         const advanceGranularity = (d: Date, gran: Granularity): Date => {
             const date = new Date(d);
-            if (gran === "day") date.setDate(date.getDate() + 1);
-            else if (gran === "week") date.setDate(date.getDate() + 7);
-            else if (gran === "month") date.setMonth(date.getMonth() + 1);
-            else if (gran === "quarter") date.setMonth(date.getMonth() + 3);
-            else date.setFullYear(date.getFullYear() + 1);
+            if (gran === "day") date.setUTCDate(date.getUTCDate() + 1);
+            else if (gran === "week") date.setUTCDate(date.getUTCDate() + 7);
+            else if (gran === "month") date.setUTCMonth(date.getUTCMonth() + 1);
+            else if (gran === "quarter") date.setUTCMonth(date.getUTCMonth() + 3);
+            else date.setUTCFullYear(date.getUTCFullYear() + 1);
             return date;
         };
         const bucketKeyOf = (d: Date, gran: Granularity): string => {
-            const y = d.getFullYear();
-            if (gran === "day" || gran === "week") return `${y}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-            if (gran === "month") return `${y}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-            if (gran === "quarter") return `${y}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+            const y = d.getUTCFullYear();
+            if (gran === "day" || gran === "week") return `${y}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+            if (gran === "month") return `${y}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+            if (gran === "quarter") return `${y}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
             return `${y}`;
         };
         const bucketLabelOf = (d: Date, gran: Granularity, crossesYear: boolean): string => {
             if (gran === "day" || gran === "week") {
-                const base = `${d.getDate()}/${d.getMonth() + 1}`;
-                return crossesYear ? `${base}/${d.getFullYear()}` : base;
+                const base = `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+                return crossesYear ? `${base}/${d.getUTCFullYear()}` : base;
             }
             if (gran === "month") {
-                const base = thaiMonthAbbr[d.getMonth()];
-                return crossesYear ? `${base} ${d.getFullYear()}` : base;
+                const base = thaiMonthAbbr[d.getUTCMonth()];
+                return crossesYear ? `${base} ${d.getUTCFullYear()}` : base;
             }
-            if (gran === "quarter") return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`;
-            return `${d.getFullYear()}`;
+            if (gran === "quarter") return `Q${Math.floor(d.getUTCMonth() / 3) + 1} ${d.getUTCFullYear()}`;
+            return `${d.getUTCFullYear()}`;
         };
         // นับจำนวน bucket จริงด้วย floor/advance ชุดเดียวกับที่ใช้สร้างจริง (แม่นยำกว่าประมาณจากจำนวนวัน เพราะเดือน/ปีมีความยาวไม่เท่ากัน)
         const countBuckets = (start: Date, end: Date, gran: Granularity): number => {
@@ -392,16 +408,17 @@ export async function GET(request: NextRequest) {
         // แต่ละ sample ในระบบถือ "พารามิเตอร์เดียว" (ammonia หรือ phosphate ไม่ใช่ทั้งคู่ในแถวเดียว)
         // จึงต้องนับตัวหารของ ammonia กับ phosphate แยกกัน — ถ้าใช้ countAll ตัวเดียวหารทั้งคู่ (บั๊กเดิม)
         // แถวที่เป็น phosphate จะถูกนับเป็น "ammonia = 0" เข้าไปเจือจางค่าเฉลี่ย ammonia ลงเกือบครึ่ง (และกลับกัน)
+        // M/E เดิมมาจาก "Morning/Evening" — ตอนนี้หมายถึงก่อนเที่ยง/หลังเที่ยงแล้ว (คงชื่อ field ไว้กันกระทบ temporalData/temporalConfig ที่ frontend ผูกอยู่)
         type BucketAcc = { ammM: number; ammE: number; phosM: number; phosE: number; countAmmM: number; countAmmE: number; countPhosM: number; countPhosE: number; ammAll: number; phosAll: number; countAmmAll: number; countPhosAll: number };
         const buckets: { key: string; label: string }[] = [];
         const bucketAcc = new Map<string, BucketAcc>();
         let granularity: Granularity = "month";
 
         if (bucketRangeEnd.getTime() >= bucketRangeStart.getTime()) {
-            granularity = pickGranularity(bucketRangeStart, bucketRangeEnd);
-            const crossesYear = bucketRangeStart.getFullYear() !== bucketRangeEnd.getFullYear();
-            const stopAt = advanceGranularity(floorToGranularity(bucketRangeEnd, granularity), granularity);
-            let cursor = floorToGranularity(bucketRangeStart, granularity);
+            granularity = pickGranularity(bucketRangeStartThai, bucketRangeEndThai);
+            const crossesYear = bucketRangeStartThai.getUTCFullYear() !== bucketRangeEndThai.getUTCFullYear();
+            const stopAt = advanceGranularity(floorToGranularity(bucketRangeEndThai, granularity), granularity);
+            let cursor = floorToGranularity(bucketRangeStartThai, granularity);
             let guard = 0;
             while (cursor.getTime() < stopAt.getTime() && guard < MAX_BUCKETS + 2) {
                 const key = bucketKeyOf(cursor, granularity);
@@ -412,26 +429,29 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // วนข้อมูลรอบเดียว จัดเข้า bucket ทั้ง temporal (เช้า/เย็น) และ trend (ทุกช่วงเวลารวมกัน) พร้อมกัน
+        // วนข้อมูลรอบเดียว จัดเข้า bucket ทั้ง temporal (ก่อนเที่ยง/หลังเที่ยง) และ trend (ทุกช่วงเวลารวมกัน) พร้อมกัน
         timeSeriesSamples.forEach((s) => {
-            const dateObj = new Date(s.collectionTime);
-            const key = bucketKeyOf(floorToGranularity(dateObj, granularity), granularity);
+            const rawDate = new Date(s.collectionTime);
+            // bucketing ต้องป้อนด้วยเวลาไทย (wall-clock) เพราะ floorToGranularity อ่านด้วย getUTC* (ดูคอมเมนต์เหนือฟังก์ชันนั้น)
+            const dateObjThai = toThaiWallClock(rawDate);
+            const key = bucketKeyOf(floorToGranularity(dateObjThai, granularity), granularity);
             const bucket = bucketAcc.get(key);
             if (!bucket) return; // ตัวอย่างนอกช่วง bucket (ไม่ควรเกิดเพราะ baseWhere กรองไว้แล้ว) — ข้ามอย่างปลอดภัย
 
             const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value ?? null;
             const phos = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value ?? null;
-            const hour = dateObj.getHours();
-            const isMorning = hour >= 6 && hour < 12;
-            const isEvening = hour >= 15 && hour < 21;
+            // ใช้ชั่วโมงตามเวลาไทยเสมอ — Date.getHours() อ่านตาม TZ ของ process ที่รัน (container prod เป็น UTC) ไม่ใช่เวลาที่เก็บจริง
+            const hour = getThaiHour(rawDate);
+            // แบ่งครึ่งวันที่เที่ยงตรง ครอบคลุม 24 ชม. เต็ม — ทุกตัวอย่างตกอยู่ฝั่งใดฝั่งหนึ่งเสมอ ไม่มีช่วงตกหล่นแบบเดิม (06-12 / 15-21)
+            const isBeforeNoon = hour < 12;
 
             if (amm !== null) {
                 bucket.ammAll += amm;
                 bucket.countAmmAll++;
-                if (isMorning) {
+                if (isBeforeNoon) {
                     bucket.ammM += amm;
                     bucket.countAmmM++;
-                } else if (isEvening) {
+                } else {
                     bucket.ammE += amm;
                     bucket.countAmmE++;
                 }
@@ -439,10 +459,10 @@ export async function GET(request: NextRequest) {
             if (phos !== null) {
                 bucket.phosAll += phos;
                 bucket.countPhosAll++;
-                if (isMorning) {
+                if (isBeforeNoon) {
                     bucket.phosM += phos;
                     bucket.countPhosM++;
-                } else if (isEvening) {
+                } else {
                     bucket.phosE += phos;
                     bucket.countPhosE++;
                 }
@@ -482,13 +502,14 @@ export async function GET(request: NextRequest) {
             quarter: "รายไตรมาส",
             year: "รายปี",
         };
-        const formatThaiDate = (d: Date) => `${d.getDate()} ${thaiMonthAbbr[d.getMonth()]} ${d.getFullYear()}`;
+        // ใช้ getUTC* เพราะรับ bucketRangeStartThai/EndThai ที่เป็น wall-clock เวลาไทยแล้ว (ไม่ใช่ instant จริง)
+        const formatThaiDate = (d: Date) => `${d.getUTCDate()} ${thaiMonthAbbr[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
         const granularityInfo = {
             granularity,
             label: granularityThaiLabel[granularity],
             rangeStart: bucketRangeStart.toISOString(),
             rangeEnd: bucketRangeEnd.toISOString(),
-            rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStart)} – ${formatThaiDate(bucketRangeEnd)}` : "",
+            rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStartThai)} – ${formatThaiDate(bucketRangeEndThai)}` : "",
         };
 
         // ---  [มิติที่ 5: Correlation] สหสัมพันธ์สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
@@ -536,15 +557,16 @@ export async function GET(request: NextRequest) {
             hotspotConfig: {
                 title: hotspotsData.length > 0 ? `Danger Hotspots — ${hotspotsData.length} อันดับสถานีจุดเสี่ยงอันตรายสะสมสูงสุด` : "Danger Hotspots — ไม่พบสถานีที่มีความเสี่ยงในช่วงที่เลือก",
             },
-            stationDetail, // ไม่ null เฉพาะตอนกรองสถานีเดียว — frontend ใช้เป็น flag ซ่อนตาราง Hotspots + ขยายกราฟเช้า-เย็นเต็มแถว
+            stationDetail, // ไม่ null เฉพาะตอนกรองสถานีเดียว — frontend ใช้เป็น flag ซ่อนตาราง Hotspots + ขยายกราฟก่อนเที่ยง-หลังเที่ยงเต็มแถว
             hotspots: hotspotsData,
             temporalConfig: {
-                title: "Morning vs Evening Fluctuations (เปรียบเทียบระดับสารเคมีคู่ขนาน)",
+                // ค่า key คงเดิม (ammoniaMorning ฯลฯ) — เปลี่ยนแค่ name ที่แสดงผล ไม่แตะ key เพราะ frontend (getGroupedBars) ผูกกับชื่อ key นี้อยู่
+                title: "Before/After Noon Fluctuations (เปรียบเทียบระดับสารเคมีคู่ขนาน)",
                 bars: [
-                    { key: "ammoniaMorning", name: "Ammonia เช้า", color: "#60a5fa" },
-                    { key: "ammoniaEvening", name: "Ammonia เย็น", color: "#fbbf24" },
-                    { key: "phosphateMorning", name: "Phosphate เช้า", color: "#60a5fa" },
-                    { key: "phosphateEvening", name: "Phosphate เย็น", color: "#fbbf24" },
+                    { key: "ammoniaMorning", name: "Ammonia ก่อนเที่ยง", color: "#60a5fa" },
+                    { key: "ammoniaEvening", name: "Ammonia หลังเที่ยง", color: "#fbbf24" },
+                    { key: "phosphateMorning", name: "Phosphate ก่อนเที่ยง", color: "#60a5fa" },
+                    { key: "phosphateEvening", name: "Phosphate หลังเที่ยง", color: "#fbbf24" },
                 ],
             },
             temporalData: temporalData,
@@ -580,26 +602,28 @@ function toCamelCase(str: string) {
 }
 
 // จุดเริ่มต้นสัปดาห์แบบ ISO (จันทร์ 00:00) ของวันที่ที่กำหนด — ใช้คำนวณ WoW ตามปฏิทินสากล
+// รับ/คืนค่าเป็นเวลาไทย (wall-clock จาก toThaiWallClock) เสมอ — อ่าน/เขียนด้วย getUTC*/setUTC* จึงตรงกับปฏิทินไทยตรง ๆ
+// (ผู้เรียกทั้งสองที่ในไฟล์นี้ป้อนด้วยค่าที่แปลงแล้ว — ห้ามป้อน instant จริงตรง ๆ)
 function startOfISOWeek(d: Date): Date {
     const date = new Date(d);
-    const day = date.getDay(); // 0=อาทิตย์ ... 6=เสาร์
+    const day = date.getUTCDay(); // 0=อาทิตย์ ... 6=เสาร์
     const diffToMonday = day === 0 ? -6 : 1 - day;
-    date.setDate(date.getDate() + diffToMonday);
-    date.setHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() + diffToMonday);
+    date.setUTCHours(0, 0, 0, 0);
     return date;
 }
 
-// วันที่ 1 ของเดือนปฏิทิน เวลา 00:00 — ใช้เป็นจุดเริ่มต้นของ MoM
+// วันที่ 1 ของเดือนปฏิทิน เวลา 00:00 — ใช้เป็นจุดเริ่มต้นของ MoM (รับ/คืนค่าเป็นเวลาไทย wall-clock เช่นกัน)
 function startOfCalendarMonth(d: Date): Date {
-    return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
 }
 
 // ถอยหลัง N เดือนแบบปฏิทิน พร้อม clamp วันที่ที่เกินจำนวนวันของเดือนเป้าหมาย (เช่น 31 มี.ค. ถอย 1 เดือน -> 28/29 ก.พ.)
 function subtractMonthClamped(d: Date, months: number): Date {
-    const targetMonthDate = new Date(d.getFullYear(), d.getMonth() - months, 1);
-    const lastDayOfTargetMonth = new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth() + 1, 0).getDate();
-    const clampedDay = Math.min(d.getDate(), lastDayOfTargetMonth);
-    return new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth(), clampedDay, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+    const targetMonthDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - months, 1));
+    const lastDayOfTargetMonth = new Date(Date.UTC(targetMonthDate.getUTCFullYear(), targetMonthDate.getUTCMonth() + 1, 0)).getUTCDate();
+    const clampedDay = Math.min(d.getUTCDate(), lastDayOfTargetMonth);
+    return new Date(Date.UTC(targetMonthDate.getUTCFullYear(), targetMonthDate.getUTCMonth(), clampedDay, d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds()));
 }
 
 // ค่าสหสัมพันธ์ Pearson (r) จากคู่ข้อมูล [x, y] — คืน null หากจุดน้อยกว่า 2 หรือไม่มีความแปรปรวน

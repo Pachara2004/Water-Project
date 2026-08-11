@@ -322,10 +322,10 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                                                 </div>
                                                 <div className="w-full flex-1 min-h-0">
                                                     <ResponsiveContainer width="100%" height="100%">
-                                                        <BarChart data={analytics?.temporalData} margin={{ top: 10, right: 5, left: -25, bottom: -5 }}>
+                                                        <BarChart data={analytics?.temporalData} margin={{ top: 10, right: 5, left: -5, bottom: -5 }}>
                                                             <CartesianGrid strokeDasharray="2 2" stroke={chartTone.grid} />
                                                             <XAxis dataKey="name" stroke={chartTone.axis} fontSize={12} tickLine={false} />
-                                                            <YAxis stroke={chartTone.axis} fontSize={12} tickLine={false} />
+                                                            <YAxis stroke={chartTone.axis} fontSize={12} tickLine={false} width={44} tickFormatter={(v: number) => formatDisplayNumber(v)} />
                                                             <Tooltip wrapperStyle={{ fontSize: "12px" }} contentStyle={chartTone.tooltip} cursor={false} formatter={(v: any) => formatDisplayNumber(Number(v))} />
                                                             <Legend iconSize={8} wrapperStyle={{ fontSize: "12px", bottom: -5 }} />
                                                             {group.items.map((bar: any, bIdx: number) => (
