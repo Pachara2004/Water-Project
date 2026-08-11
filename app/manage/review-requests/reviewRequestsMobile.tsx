@@ -172,7 +172,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                 {/* Header Welcome Card */}
                 <div className="relative w-full rounded-2xl bg-card-general p-5 border border-border flex flex-col gap-2">
                     <h1 className="text-lg font-bold tracking-tight text-text">
-                        ตรวจสอบผลที่มี <span className="text-primary font-extrabold">Confidence ต่ำ</span>
+                        ตรวจสอบผลที่มี <span className="text-primary font-extrabold">ค่าความมั่นใจ ต่ำ</span>
                     </h1>
                     <p className="text-text font-medium text-xs mt-0.5 leading-relaxed">
                         ผลตรวจที่ AI วิเคราะห์ได้ค่าความมั่นใจต่ำกว่า {CONFIDENCE_THRESHOLD.toFixed(2)} จะถูกซ่อนจากแผนที่และแดชบอร์ดจนกว่าจะได้รับการยืนยันจากผู้ดูแลระบบ
