@@ -285,7 +285,8 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
     return (
         <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
             <div className="grid grid-cols-1 md:grid-cols-12 md:items-center gap-2 md:gap-2.5 mb-2">
-                <div className="md:col-span-8 flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                {/* relative อยู่ที่บรรทัดหัวข้อ ไม่ใช่ทั้งแถว — กล่องคำอธิบายจะได้โผล่ชิดใต้ปุ่ม ไม่ใช่ใต้ปุ่มสลับฝน/อุณหภูมิที่ตกบรรทัดบนจอแคบ */}
+                <div className="relative md:col-span-8 flex items-center gap-1.5 text-sm font-semibold text-text-primary">
                     {correlation.title || "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ"}
                     <ChartInfoButton guide="correlation" />
                 </div>
