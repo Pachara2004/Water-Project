@@ -89,7 +89,7 @@ export default function SubmitDesktop(props: any) {
                                         {hasLowConfidence && (
                                             <div className="flex items-start gap-2 p-2.5 rounded-lg bg-bg-warning/20 border border-border-warning/60 text-xs text-text-warning">
                                                 <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                                                <span>ค่า confidence ต่ำ ข้อมูลจะรออนุมัติ</span>
+                                                <span>ค่าความมั่นใจ ต่ำ ข้อมูลจะรออนุมัติ</span>
                                             </div>
                                         )}
 

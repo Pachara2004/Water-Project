@@ -1,6 +1,5 @@
-"use client";
-
-import { SquareChevronUp, CheckCircle2, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, XCircle } from "lucide-react";
+// components/manage/usersHelpers.tsx
+import { SquareChevronUp, CheckCircle2, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, XCircle, User } from "lucide-react";
 
 export type Role = "guest" | "collector" | "officer" | "admin";
 
@@ -71,52 +70,56 @@ export function UserListRow({
 }) {
     const displayName = user.fullName !== "ยังไม่ลงทะเบียนข้อมูล" ? user.fullName : user.lineProfileName;
     const isQueueRow = tab === "queue" && user.pendingRequestId && user.requestedRole;
+    const roleCfg = ROLE_CONFIG[user.role];
 
     return (
-        <div className="bg-surface rounded-xl p-3 border border-border transition-all flex flex-col">
-            {/* ── ส่วนบน: ชื่อผู้ใช้งาน ── */}
-            <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="px-2 pb-2 text-sm font-semibold text-text-primary truncate max-w-35 sm:max-w-none">{displayName}</h3>
+        <div className="bg-surface rounded-2xl p-3.5 border border-border transition-all flex flex-col gap-3">
+            {/* ── ส่วนบน: อวาตาร์ไอคอน + ชื่อผู้ใช้งาน + Badge สิทธิ์ปัจจุบัน ── */}
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-9 h-9 bg-primary-light text-primary rounded-xl flex items-center justify-center shrink-0 border border-primary/10">
+                        <User size={18} />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                        <h3 className="text-sm font-bold text-text-primary truncate">{displayName}</h3>
+                        <span className="text-[11px] font-medium text-text-muted">ID: #{user.id}</span>
+                    </div>
+                </div>
             </div>
 
-            {/* ── ส่วนกลาง: ข้อมูลประวัติ จัดเป็น Grid 2 คอลัมน์ เว้นระยะเท่ากัน Gap-3 ── */}
-            <div className="grid grid-cols-2 gap-1 w-full text-xs text-text-muted mb-2">
-                {/* แสดงเฉพาะสิทธิ์ปัจจุบันในส่วนข้อมูล (ถ้าเป็น Queue ก็โชว์แค่สิทธิ์ปัจจุบันก่อนเปลี่ยน) */}
-                <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                    -
-                    <SquareChevronUp size={11} className="text-text-muted shrink-0" />
-                    <span className="text-text-secondary font-normal">สิทธิ์ปัจจุบัน: {ROLE_CONFIG[user.role].label}</span>
+            {/* ── ส่วนกลาง: ข้อมูลประวัติ จัดเป็น Grid 2 คอลัมน์ ── */}
+            <div className="grid grid-cols-2 gap-2 text-xs text-text-muted bg-surface-subtle p-2.5 rounded-xl border border-border/60">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
+                    <SquareChevronUp size={13} className="text-primary shrink-0" />
+                    <span>สิทธิ์: {roleCfg.label}</span>
                 </div>
 
-                {/* คอลัมน์ที่ 2: เบอร์โทรศัพท์ (ถ้ามี) */}
-                {user.phoneNumber && (
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                        -
-                        <Phone size={11} className="text-text-muted shrink-0" />
-                        <span className="">{user.phoneNumber}</span>
+                {user.phoneNumber ? (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
+                        <Phone size={13} className="text-primary shrink-0" />
+                        <span>{user.phoneNumber}</span>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-text-muted/60 italic">
+                        <Phone size={13} className="shrink-0" />
+                        <span>ไม่ระบุเบอร์</span>
                     </div>
                 )}
 
-                {/* คอลัมน์ที่ 3: วันที่ลงทะเบียน */}
-                <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                    -
-                    <CalendarDays size={11} className="text-text-muted shrink-0" />
-                    <span className="">{formatDate(user.registeredAt)}</span>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
+                    <CalendarDays size={13} className="text-primary shrink-0" />
+                    <span>{formatDate(user.registeredAt)}</span>
                 </div>
 
-                {/* คอลัมน์ที่ 4: จำนวนตัวอย่างน้ำ */}
-                {user.samplesCount > 0 && (
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                        -
-                        <Layers size={11} className="text-text-muted shrink-0" />
-                        <span className="">{user.samplesCount} ตัวอย่าง</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
+                    <Layers size={13} className="text-primary shrink-0" />
+                    <span>{user.samplesCount > 0 ? `${user.samplesCount} ตัวอย่าง` : "ไม่มีประวัติส่งน้ำ"}</span>
+                </div>
             </div>
 
-            {/* เคสที่ 1: รายการทั่วไป (ไม่ใช่ Queue อนุมัติ) -> โชว์ปุ่ม "จัดการสิทธิ์" เต็มความกว้างด้านล่าง */}
+            {/* เคสที่ 1: รายการทั่วไป -> ปุ่ม "จัดการสิทธิ์" เต็มความกว้างด้านล่าง */}
             {!isQueueRow && (
-                <div className="w-full pt-1 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                <div className="w-full pt-1" onClick={(e) => e.stopPropagation()}>
                     {isUpdating ? (
                         <div className="w-full flex items-center justify-center py-2">
                             <RefreshCw size={14} className="animate-spin text-primary" />
@@ -125,14 +128,14 @@ export function UserListRow({
                         <div className="flex flex-col gap-1.5 w-full">
                             <button
                                 onClick={onToggleDropdown}
-                                className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-surface-subtle hover:bg-surface-muted border border-border rounded-xl text-xs font-bold text-text-secondary transition-all cursor-pointer min-h-9.5"
+                                className="flex items-center justify-center gap-1.5 w-full py-2 bg-surface-subtle hover:bg-surface-hover border border-border rounded-xl text-xs font-bold text-text-primary transition-all cursor-pointer min-h-9.5 active:scale-[0.99]"
                             >
                                 <span>จัดการสิทธิ์การใช้งาน</span>
                                 <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                             </button>
 
                             {isOpen && (
-                                <div className="w-full bg-surface border border-border rounded-xl p-1 shadow-sm flex flex-col gap-1">
+                                <div className="w-full bg-surface border border-border rounded-xl p-1 shadow-md flex flex-col gap-1">
                                     {ROLE_OPTIONS.map((r) => {
                                         const rc = ROLE_CONFIG[r];
                                         const isCurrent = user.role === r;
@@ -157,15 +160,15 @@ export function UserListRow({
                 </div>
             )}
 
-            {/* เคสที่ 2: รายการในคิวรออนุมัติ -> ย้าย "สิทธิ์ที่ต้องการ" มาพาดไว้เหนือกลุ่มปุ่มกดอนุมัติโดยตรง */}
+            {/* เคสที่ 2: รายการในคิวรออนุมัติ -> ปุ่ม อนุมัติ / ปฏิเสธ */}
             {isQueueRow && (
-                <div className="w-full flex flex-col gap-2.5 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
-                    {/* ชิปแสดงสิทธิ์ที่ต้องการ ย้ายมาดักสายตาแอดมินตรงนี้เพื่อให้ดูง่ายขึ้นมาก */}
-                    <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-md text-xs font-semibold text-primary border border-primary/20 w-full">
-                        <span className="text-white font-normal">สิทธิ์ที่ร้องขอเปลี่ยนเป็น: {ROLE_CONFIG[user.requestedRole!].label}</span>
+                <div className="w-full flex flex-col gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2 bg-primary-light px-3 py-2 rounded-xl text-xs font-semibold text-primary border border-primary/10 w-full">
+                        <span>
+                            สิทธิ์ที่ร้องขอเปลี่ยนเป็น: <strong>{ROLE_CONFIG[user.requestedRole!].label}</strong>
+                        </span>
                     </div>
 
-                    {/* แถวกลุ่มปุ่มกด อนุมัติ / ปฏิเสธ */}
                     {isUpdating ? (
                         <div className="w-full flex items-center justify-center py-2">
                             <RefreshCw size={14} className="animate-spin text-primary" />
@@ -174,7 +177,7 @@ export function UserListRow({
                         <div className="flex gap-2 w-full">
                             <button
                                 onClick={() => onApprove(user, displayName)}
-                                className="flex-1 flex items-center rounded-md justify-center gap-1.5 py-2.5 min-h-9.5 bg-primary  text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                className="flex-1 flex items-center rounded-xl justify-center gap-1.5 py-2.5 min-h-9.5 bg-primary hover:bg-navy-dark text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
                             >
                                 <CheckCircle2 size={13} />
                                 อนุมัติสิทธิ์
@@ -182,7 +185,7 @@ export function UserListRow({
 
                             <button
                                 onClick={() => onReject(user, displayName)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-9.5 bg-bg-danger border border-border-danger text-text-danger text-xs font-bold rounded-md transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-9.5 bg-bg-danger border border-border-danger text-text-danger text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap hover:bg-red-500/10"
                             >
                                 <XCircle size={13} />
                                 ปฏิเสธ

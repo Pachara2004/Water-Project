@@ -297,7 +297,7 @@ export function useSubmitSample() {
                     const confPct = aiData.confidence;
                     const labelSource = aiData.verifiedParameterName || aiData.parameterName;
                     const paramLabel = labelSource ? labelSource.charAt(0).toUpperCase() + labelSource.slice(1).toLowerCase() : "Vial";
-                    const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L confidence ${confPct}`;
+                    const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L ค่าความมั่นใจ ${confPct}`;
                     const fs = Math.max(16, Math.floor(canvas.width * 0.018));
                     ctx.font = `bold ${fs}px Arial`;
                     const tw = ctx.measureText(label).width,

@@ -65,7 +65,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                             <div
                                 key={entryKey}
                                 className={`px-5 py-4 flex flex-col gap-2.5 border-l-[3px] transition-all ${
-                                    isDuplicate ? (isChosen ? "border-l-teal-500 bg-teal-500/[0.05]" : "border-l-transparent opacity-55 hover:opacity-100") : "border-l-transparent hover:bg-muted/5"
+                                    isDuplicate ? (isChosen ? "border-l-teal-500 bg-teal-500/5" : "border-l-transparent opacity-55 hover:opacity-100") : "border-l-transparent hover:bg-muted/5"
                                 }`}
                             >
                                 {/* สารซ้ำ: ตัวเลือก radio เต็มแถว เลือกเก็บได้ภาพเดียวต่อสาร */}
@@ -95,7 +95,9 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                     <div className="flex flex-col gap-0.5">
                                         <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
                                         {measurement.confidence !== undefined && (
-                                            <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">Confidence: {measurement.confidence}</span>
+                                            <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">
+                                                ค่าความมั่นใจ: {measurement.confidence !== null && measurement.confidence !== undefined ? `${(measurement.confidence * 100).toFixed(0)}%` : "-"}
+                                            </span>
                                         )}
                                     </div>
                                     <div className="text-xl font-semibold text-text text-right">

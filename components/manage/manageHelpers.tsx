@@ -90,33 +90,55 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
     const [firstName, setFirstName] = useState(currentUser?.firstName ?? "");
     const [lastName, setLastName] = useState(currentUser?.lastName ?? "");
     const [phone, setPhone] = useState(currentUser?.phoneNumber ?? "");
+
+    // 🟢 บันทึกสถานะการแตะ/โฟกัสช่อง เพื่อไม่ให้โชว์สีแดงเตือนก่อนที่ผู้ใช้จะเริ่มกรอก
+    const [touched, setTouched] = useState<{ firstName?: boolean; lastName?: boolean; phone?: boolean }>({});
     const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; phone?: string }>({});
+    const [globalError, setGlobalError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    const [serverError, setServerError] = useState("");
 
-    const validate = () => {
-        const e: typeof errors = {};
-        const fe = validateNameField(firstName, "ชื่อจริง");
-        const le = validateNameField(lastName, "นามสกุล");
-        const pe = validatePhoneField(phone);
-        if (fe) e.firstName = fe;
-        if (le) e.lastName = le;
-        if (pe) e.phone = pe;
+    const validateField = (name: keyof typeof errors, value: string) => {
+        let errorMsg = "";
+        const cleanVal = value.trim();
 
-        // ชื่อและนามสกุลต้องเป็นภาษาเดียวกัน (เช็คเฉพาะเมื่อสองช่องผ่านกฎรายช่องแล้ว)
-        if (!fe && !le && isThaiName(firstName) !== isThaiName(lastName)) {
-            e.lastName = "กรุณาใช้ภาษาเดียวกันทั้งชื่อและนามสกุล";
+        if (name === "firstName") {
+            errorMsg = validateNameField(cleanVal, "ชื่อจริง");
+        } else if (name === "lastName") {
+            errorMsg = validateNameField(cleanVal, "นามสกุล");
+        } else if (name === "phone") {
+            errorMsg = validatePhoneField(cleanVal);
         }
 
-        setErrors(e);
-        return Object.keys(e).length === 0;
+        setErrors((prev) => ({ ...prev, [name]: errorMsg }));
+        return !errorMsg;
     };
 
-    const handleSave = async () => {
-        if (!validate() || !currentUser) return;
+    const handleBlur = (field: keyof typeof touched, value: string) => {
+        setTouched((prev) => ({ ...prev, [field]: true }));
+        validateField(field, value);
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!currentUser) return;
+
+        // สั่งเปิด touched ทุกช่องเมื่อกดบันทึก
+        setTouched({ firstName: true, lastName: true, phone: true });
+
+        const isFirstValid = validateField("firstName", firstName);
+        const isLastValid = validateField("lastName", lastName);
+        const isPhoneValid = validateField("phone", phone);
+
+        if (!isFirstValid || !isLastValid || !isPhoneValid) return;
+
+        if (firstName.trim() && lastName.trim() && isThaiName(firstName) !== isThaiName(lastName)) {
+            setGlobalError("กรุณาใช้ภาษาเดียวกันทั้งชื่อและนามสกุล");
+            return;
+        }
 
         setSaving(true);
-        setServerError("");
+        setGlobalError(null);
+
         try {
             const res = await fetch("/api/profile", {
                 method: "PATCH",
@@ -134,7 +156,7 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
             const data = await res.json();
 
             if (!res.ok) {
-                setServerError(data.error ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
+                setGlobalError(data.error ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
                 return;
             }
 
@@ -144,117 +166,178 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
             showToast("บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว", "success");
             onClose();
         } catch {
-            setServerError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่");
+            setGlobalError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่");
         } finally {
             setSaving(false);
         }
     };
 
     const isDirty =
-        firstName.trim() !== (currentUser?.firstName ?? "") ||
-        lastName.trim() !== (currentUser?.lastName ?? "") ||
-        (phone.trim().replace(/[-\s]/g, "") || null) !== (currentUser?.phoneNumber ?? null);
+        firstName.trim() !== (currentUser?.firstName ?? "") || lastName.trim() !== (currentUser?.lastName ?? "") || (phone.trim().replace(/[-\s]/g, "") || null) !== (currentUser?.phoneNumber ?? null);
 
-    // เปลือก modal (popup/sheet + หัวข้อ + ปุ่มปิด) จัดการโดย Popup กลาง เหลือแค่ช่องกรอก + ปุ่มบันทึก
+    const isFormInvalid = !firstName.trim() || !lastName.trim() || phone.length < 10 || !!errors.firstName || !!errors.lastName || !!errors.phone || !isDirty;
+
     return (
-        <Popup title="แก้ไขข้อมูลส่วนตัว" onClose={onClose}>
-                <div className="space-y-5">
-                    {/* First name field */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                            <User size={10} /> ชื่อจริง <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={firstName}
-                            onChange={(e) => {
-                                setFirstName(e.target.value);
-                                if (errors.firstName) setErrors((p) => ({ ...p, firstName: "" }));
-                            }}
-                            placeholder="กรอกชื่อ"
-                            maxLength={50}
-                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-semibold
-                ${errors.firstName ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
-                        />
-                        {errors.firstName && (
-                            <p className="flex items-center gap-1.5 text-xs text-danger font-semibold animate-fade-in">
-                                <AlertCircle size={11} />
-                                {errors.firstName}
-                            </p>
-                        )}
+        <Popup title="" onClose={onClose}>
+            <div className="animate-fade-in space-y-1">
+                <div className="text-center space-y-1 pb-1">
+                    <div className="w-10 h-10 text-primary flex items-center justify-center mx-auto">
+                        <User size={38} strokeWidth={2} />
                     </div>
-
-                    {/* Last name field */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                            <User size={10} /> นามสกุล <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={lastName}
-                            onChange={(e) => {
-                                setLastName(e.target.value);
-                                if (errors.lastName) setErrors((p) => ({ ...p, lastName: "" }));
-                            }}
-                            placeholder="กรอกนามสกุล"
-                            maxLength={50}
-                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-semibold
-                ${errors.lastName ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
-                        />
-                        {errors.lastName && (
-                            <p className="flex items-center gap-1.5 text-xs text-danger font-semibold animate-fade-in">
-                                <AlertCircle size={11} />
-                                {errors.lastName}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Phone field */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                            <Phone size={10} /> เบอร์โทรศัพท์มือถือ <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => {
-                                setPhone(e.target.value.replace(/[^0-9]/g, ""));
-                                if (errors.phone) setErrors((p) => ({ ...p, phone: "" }));
-                            }}
-                            placeholder="0XXXXXXXXX"
-                            maxLength={10}
-                            className={`w-full px-4 py-3.5 bg-surface-subtle border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 outline-none transition-all min-h-[48px] font-mono font-semibold
-                ${errors.phone ? "border-danger focus:border-danger focus:ring-danger/20" : "border-border focus:border-primary focus:ring-primary/20"}`}
-                        />
-                        {errors.phone && (
-                            <p className="flex items-center gap-1.5 text-xs text-danger font-semibold animate-fade-in">
-                                <AlertCircle size={11} />
-                                {errors.phone}
-                            </p>
-                        )}
-                    </div>
-
-                    {serverError && (
-                        <div className="flex items-center gap-2 px-4 py-3 bg-danger/10 border border-danger/20 rounded-2xl animate-fade-in">
-                            <AlertCircle size={14} className="text-danger shrink-0" />
-                            <p className="text-xs text-danger font-semibold">{serverError}</p>
-                        </div>
-                    )}
-
-                    <button
-                        onClick={handleSave}
-                        disabled={saving || !isDirty}
-                        className="w-full mt-2 py-4 min-h-13 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98]"
-                    >
-                        {saving ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                <Check size={14} /> บันทึกข้อมูลส่วนตัว
-                            </>
-                        )}
-                    </button>
+                    <h1 className="text-base sm:text-lg font-black text-primary tracking-tight">แก้ไขข้อมูลส่วนตัว</h1>
                 </div>
+
+                <form onSubmit={handleSave} className="mt-2 space-y-1 px-1">
+                    {/* 1. ช่องกรอกชื่อจริง */}
+                    <div className="space-y-1 pb-1">
+                        <div className="flex items-center justify-between">
+                            <label htmlFor="firstName" className="text-xs font-semibold text-primary block">
+                                ชื่อจริง{" "}
+                                <span className="text-text-danger" aria-hidden="true">
+                                    *
+                                </span>
+                            </label>
+                            <span className={`text-xs font-semibold transition-colors ${firstName.length >= 50 ? "text-text-danger" : "text-text-muted"}`}>{firstName.length}/50</span>
+                        </div>
+                        <div className="relative py-0.5">
+                            <input
+                                id="firstName"
+                                type="text"
+                                maxLength={50}
+                                value={firstName}
+                                onChange={(e) => {
+                                    setFirstName(e.target.value);
+                                    if (touched.firstName) validateField("firstName", e.target.value);
+                                }}
+                                onBlur={(e) => handleBlur("firstName", e.target.value)}
+                                placeholder="กรอกชื่อ"
+                                required
+                                aria-invalid={!!(touched.firstName && errors.firstName)}
+                                className={`w-full h-9 pl-3.5 pr-4 border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold outline-hidden transition-all ${
+                                    touched.firstName && errors.firstName ? "border-text-danger focus:border-text-danger" : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                }`}
+                            />
+                        </div>
+                        <div className="min-h-4 flex items-center">
+                            {touched.firstName && errors.firstName && (
+                                <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
+                                    <AlertCircle size={11} /> {errors.firstName}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 2. ช่องกรอกนามสกุล */}
+                    <div className="space-y-1 pb-1">
+                        <div className="flex items-center justify-between">
+                            <label htmlFor="lastName" className="text-xs font-semibold text-primary block">
+                                นามสกุล{" "}
+                                <span className="text-text-danger" aria-hidden="true">
+                                    *
+                                </span>
+                            </label>
+                            <span className={`text-xs font-semibold transition-colors ${lastName.length >= 50 ? "text-text-danger" : "text-text-muted"}`}>{lastName.length}/50</span>
+                        </div>
+                        <div className="relative py-0.5">
+                            <input
+                                id="lastName"
+                                type="text"
+                                maxLength={50}
+                                value={lastName}
+                                onChange={(e) => {
+                                    setLastName(e.target.value);
+                                    if (touched.lastName) validateField("lastName", e.target.value);
+                                }}
+                                onBlur={(e) => handleBlur("lastName", e.target.value)}
+                                placeholder="กรอกนามสกุล"
+                                required
+                                aria-invalid={!!(touched.lastName && errors.lastName)}
+                                className={`w-full h-9 pl-3.5 pr-4 border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold outline-hidden transition-all ${
+                                    touched.lastName && errors.lastName ? "border-text-danger focus:border-text-danger" : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                }`}
+                            />
+                        </div>
+                        <div className="min-h-4 flex items-center">
+                            {touched.lastName && errors.lastName && (
+                                <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
+                                    <AlertCircle size={11} /> {errors.lastName}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 3. ช่องกรอกเบอร์โทรศัพท์ */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <label htmlFor="phoneNumber" className="text-xs font-semibold text-primary block">
+                                เบอร์โทรศัพท์มือถือ{" "}
+                                <span className="text-text-danger" aria-hidden="true">
+                                    *
+                                </span>
+                            </label>
+                            <span className={`text-xs font-semibold transition-colors ${phone.length >= 10 ? "text-text-danger" : "text-text-muted"}`}>{phone.length}/10</span>
+                        </div>
+                        <div className="relative py-0.5">
+                            <input
+                                id="phoneNumber"
+                                type="tel"
+                                maxLength={10}
+                                value={phone}
+                                onChange={(e) => {
+                                    const numericVal = e.target.value.replace(/[^0-9]/g, "");
+                                    setPhone(numericVal);
+                                    if (touched.phone) validateField("phone", numericVal);
+                                }}
+                                onBlur={(e) => handleBlur("phone", e.target.value)}
+                                placeholder="0XXXXXXXXX"
+                                required
+                                aria-invalid={!!(touched.phone && errors.phone)}
+                                className={`w-full h-9 pl-3.5 pr-4 border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold outline-hidden transition-all ${
+                                    touched.phone && errors.phone ? "border-text-danger focus:border-text-danger" : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                }`}
+                            />
+                        </div>
+                        <div className="min-h-4 flex items-center">
+                            {touched.phone && errors.phone && (
+                                <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
+                                    <AlertCircle size={11} /> {errors.phone}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* แสดง Global Error */}
+                    <div className="h-5 flex items-center justify-center">
+                        {globalError && (
+                            <div role="alert" className="text-xs text-text-danger flex items-center gap-1">
+                                <AlertCircle size={12} />
+                                <span>{globalError}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ปุ่มกดบันทึกข้อมูล */}
+                    <div className="pt-2 justify-center flex">
+                        <button
+                            type="submit"
+                            disabled={saving || isFormInvalid}
+                            className="w-full h-11 bg-primary hover:bg-[#054E62] text-white font-black rounded-xl text-xs transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                        >
+                            {saving ? (
+                                <>
+                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>กำลังบันทึก...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Check size={14} />
+                                    <span>บันทึกข้อมูลส่วนตัว</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </Popup>
     );
 }

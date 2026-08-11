@@ -82,6 +82,24 @@ export default function AdminLocationsPage() {
         }
     };
 
+    // 🌟 4. ดักจับการคลิกนอกพื้นที่ Dropdown เพื่อปิด Dropdown อัตโนมัติ
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // หากจุดที่คลิกไม่ได้อยู่ใน Element ที่มีคลาส .place-dropdown-container ให้ปิด Dropdown สถานที่
+            if (!target.closest(".place-dropdown-container")) {
+                setShowPlaceDropdown(false);
+            }
+            // หากจุดที่คลิกไม่ได้อยู่ใน Element ที่มีคลาส .org-dropdown-container ให้ปิด Dropdown หน่วยงาน
+            if (!target.closest(".org-dropdown-container")) {
+                setOrgDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     // 🌟 เมื่อคลิกเลือกสถานที่จากรายการค้นหา
     const handleSelectPlace = (place: any) => {
         const lat = parseFloat(place.lat);
