@@ -5,6 +5,7 @@ import { LucideShieldAlert, LucideSearch, LucideX, LucideRepeat2 } from "lucide-
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import type { DashboardAnalyticsState } from "@/lib/hooks/useDashboardAnalytics";
 import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection, formatDisplayNumber } from "@/components/dashboard/dashboardHelpers";
+import { ChartInfoButton } from "@/components/dashboard/chartGuides";
 import { DashboardContentSkeleton } from "./loading";
 
 export default function DashboardMobile(props: DashboardAnalyticsState) {
@@ -234,7 +235,10 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                 </div>
                             )}
                             <div className="flex items-center pt-2 justify-between shrink-0">
-                                <div className="text-md font-bold text-primary px-1">ตัวชี้วัดหลัก</div>
+                                <div className="flex items-center gap-1 px-1">
+                                    <div className="text-md font-bold text-primary">ตัวชี้วัดหลัก</div>
+                                    <ChartInfoButton guide="kpi" />
+                                </div>
                                 {/* ปุ่มเดียวคุมทั้งแถว KPI — วางที่หัวข้อเพราะ trendMode เป็น state ร่วมของทุกการ์ด ไม่ใช่ของการ์ดใดการ์ดหนึ่ง */}
                                 {analytics?.kpis?.some((k: any) => k.trend && getTrendPolarity(k.title) !== "neutral") && (
                                     <button
@@ -275,8 +279,11 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                             <div className="grid grid-cols-1 gap-2.5">
                                 {/* ตาราง Hotspots เสี่ยงอันตรายสะสมสูงสุด — ซ่อนตอนเลือกสถานีเดียว เพราะข้อมูลซ้ำกับการ์ด KPI ด้านบนที่ scope ตามสถานีเดียวกันอยู่แล้ว */}
                                 {!analytics?.stationDetail && (
-                                    <div className="col-span-1 bg-surface rounded-xl border border-border p-4 flex flex-col overflow-hidden justify-between">
-                                        <div className="text-sm font-semibold text-text-primary mb-2 shrink-0">{analytics?.hotspotConfig?.title}</div>
+                                    <div className="col-span-1 bg-surface rounded-xl border border-border p-4 flex flex-col overflow-visible justify-between">
+                                        <div className="flex items-center gap-1 mb-2 shrink-0">
+                                            <div className="text-sm font-semibold text-text-primary">{analytics?.hotspotConfig?.title}</div>
+                                            <ChartInfoButton guide="hotspots" />
+                                        </div>
                                         <div className="w-full overflow-hidden flex-1">
                                             <table className="w-full text-left text-xs text-text-secondary table-fixed">
                                                 <thead>
@@ -308,11 +315,12 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                 )}
 
                                 <div
-                                    className={`col-span-1 bg-card-general rounded-xl border border-border p-3 flex flex-col gap-3 overflow-hidden ${analytics?.stationDetail ? "md:col-span-12" : "md:col-span-7"}`}
+                                    className={`col-span-1 bg-card-general rounded-xl border border-border p-3 flex flex-col gap-3 overflow-visible ${analytics?.stationDetail ? "md:col-span-12" : "md:col-span-7"}`}
                                 >
                                     <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
-                                        <div className="text-sm font-semibold text-text-primary">
-                                            <p>กราฟเปรียบเทียบความต่างของคุณภาพน้ำในช่วงเก็บตัวอย่าง</p>
+                                        <div className="flex items-center gap-1 text-sm font-semibold text-text-primary">
+                                            กราฟเปรียบเทียบความต่างของคุณภาพน้ำในช่วงเก็บตัวอย่าง
+                                            <ChartInfoButton guide="temporal" />
                                         </div>
                                         {analytics?.granularityInfo && (
                                             <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
@@ -348,7 +356,10 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                             {/* มิติที่ 4: WATERTRENDCHART แนวโน้มสารเคมีพร้อมเส้นควบคุมควบคุม PCD */}
                             <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <div className="text-sm font-semibold text-text-primary mb-0.5">{analytics?.trendConfig?.title || "กราฟวิเคราะห์แนวโน้มสะสมตามเกณฑ์มาตรฐานของ PCD"}</div>
+                                    <div className="flex items-center gap-1 mb-0.5">
+                                        <div className="text-sm font-semibold text-text-primary">{analytics?.trendConfig?.title || "กราฟวิเคราะห์แนวโน้มสะสมตามเกณฑ์มาตรฐานของ PCD"}</div>
+                                        <ChartInfoButton guide="trend" />
+                                    </div>
                                     {analytics?.granularityInfo && (
                                         <span className="shrink-0 px-2 inline-flex items-center text-xs font-semibold text-primary bg-bg border border-primary/20 py-0.5 rounded-md">
                                             {analytics.granularityInfo.label} · {analytics.granularityInfo.rangeLabel}

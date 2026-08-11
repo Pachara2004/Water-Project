@@ -3,6 +3,7 @@
 import { useRef, useState, useMemo, useDeferredValue } from "react";
 import { useAppStore } from "@/lib/store";
 import { LucideCalendarDays, LucideTrendingUp, LucideTrendingDown, LucideArrowRight } from "lucide-react";
+import { ChartInfoButton } from "@/components/dashboard/chartGuides";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
 export function toISODate(d: Date): string {
@@ -284,7 +285,10 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
     return (
         <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
             <div className="grid grid-cols-1 md:grid-cols-12 md:items-center gap-2 md:gap-2.5 mb-2">
-                <div className="md:col-span-8 text-sm font-semibold text-text-primary">{correlation.title || "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ"}</div>
+                <div className="md:col-span-8 flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                    {correlation.title || "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ"}
+                    <ChartInfoButton guide="correlation" />
+                </div>
                 {/* จอแคบกว่า sm (มือถือจอเล็ก) เรียงสองกลุ่มปุ่มซ้อนกันแทนเคียงข้าง — เรียงแนวนอนแบบตายตัวเดิมทำให้ปุ่มล้นขอบการ์ดเมื่อจอแคบกว่า ~350px */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full md:col-span-4">
                     <div className="grid grid-cols-2 w-full sm:flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
@@ -391,8 +395,6 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                             </button>
                         );
                     })}
-                    {/* คำอธิบาย n แบบตัวหนังสือถาวร (ไม่ใช่แค่ title tooltip) เพราะจอสัมผัสไม่มี hover ให้เจอคำอธิบายใน title ได้ */}
-                    <div className="col-span-2 text-xs text-text-muted">n = จำนวนข้อมูลที่ใช้คำนวณ</div>
                 </div>
             </div>
         </div>

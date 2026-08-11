@@ -136,7 +136,7 @@ async function main() {
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");
 
     await prisma.dashboardWidget.create({
-        data: { title: "จำนวนตัวอย่างน้ำทะเลทั้งหมด", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 3 },
+        data: { title: "จำนวนตัวอย่างน้ำ", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 3 },
     });
     await prisma.dashboardWidget.create({
         data: {

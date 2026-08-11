@@ -555,7 +555,7 @@ export async function GET(request: NextRequest) {
             // หัวข้อปรับตามจำนวนสถานีที่หาเจอจริง (take: 5 เป็นแค่เพดานสูงสุด) กันคำว่า "5 อันดับ" ค้างตอนกรองแล้วเจอน้อยกว่า
             // หมายเหตุ: ไม่แสดงตอน stationDetail มีค่า เพราะกล่อง Hotspots ถูกซ่อนทั้งกล่องแล้วในกรณีนั้น (ไม่ต้องคำนวณ title พิเศษแยก)
             hotspotConfig: {
-                title: hotspotsData.length > 0 ? `Danger Hotspots — ${hotspotsData.length} อันดับสถานีจุดเสี่ยงอันตรายสะสมสูงสุด` : "Danger Hotspots — ไม่พบสถานีที่มีความเสี่ยงในช่วงที่เลือก",
+                title: hotspotsData.length > 0 ? `Danger Hotspots — ${hotspotsData.length} จุดเสี่ยงอันตรายสะสมสูงสุด` : "Danger Hotspots — ไม่พบสถานีที่มีความเสี่ยงในช่วงที่เลือก",
             },
             stationDetail, // ไม่ null เฉพาะตอนกรองสถานีเดียว — frontend ใช้เป็น flag ซ่อนตาราง Hotspots + ขยายกราฟก่อนเที่ยง-หลังเที่ยงเต็มแถว
             hotspots: hotspotsData,
