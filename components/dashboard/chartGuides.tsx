@@ -125,7 +125,9 @@ export function ChartInfoButton({ guide }: { guide: GuideKey }) {
                         ผู้เรียกต้องใส่ relative ที่แถวหัวข้อ (ซึ่งกว้างเท่าการ์ด) กล่องจะได้กางเต็มความกว้างการ์ดพอดี
                         เหตุผล: ปุ่มทั้ง 5 จุดอยู่คนละตำแหน่งแนวนอน (ต่อท้ายหัวข้อที่ยาวไม่เท่ากัน) ถ้ายึดกับปุ่มจะล้นขอบจอ
                         ยึดซ้ายก็ล้นขวา ยึดขวาก็ล้นซ้าย ส่วนจอกว้าง (sm ขึ้นไป) หดเป็นการ์ด w-80 ชิดขวาเพราะมีที่ว่างพอ */}
-                    <div className="absolute left-0 right-0 top-full mt-1 z-50 sm:left-auto sm:w-80 bg-surface border border-border rounded-2xl shadow-2xl p-3.5 animate-fade-in space-y-3">
+                    {/* text-xs font-normal ที่กล่อง = ตัดการสืบทอดจากแถวหัวข้อที่ไปวางอยู่
+                        (บางแถวเป็น font-semibold ทำให้ตัวหนังสือในกล่องหนากว่าจุดอื่น) กล่องทั้ง 5 จุดจะได้หน้าตาเหมือนกันเสมอ */}
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 sm:left-auto sm:w-80 bg-surface border border-border rounded-2xl shadow-2xl p-3.5 animate-fade-in space-y-3 text-xs font-normal">
                         <div className="flex items-center justify-between pb-1 border-b border-border">
                             <span className="text-xs font-semibold text-text">{g.title}</span>
                             <button
