@@ -238,7 +238,11 @@ export function ImageZone({
                                 isLowConf ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200" : "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
                             }`}
                         >
-                            {isLowConf ? <span>Confidence: {confDisplay} ต่ำ</span> : <span>Confidence: {confDisplay} ผ่าน</span>}
+                            {(() => {
+                                const confValue = typeof measurement.confidence === "number" ? `${(measurement.confidence * 100).toFixed(0)}%` : "-";
+
+                                return isLowConf ? <span>ค่าความมั่นใจ: {confValue} (ต่ำ)</span> : <span>ค่าความมั่นใจ: {confValue} (ผ่าน)</span>;
+                            })()}{" "}
                         </div>
                     )}
 

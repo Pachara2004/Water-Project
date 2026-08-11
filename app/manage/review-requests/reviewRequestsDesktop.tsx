@@ -130,7 +130,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 {/* Header Welcome Card */}
                 <div className="bg-card-general rounded-2xl border border-border p-6 transition-colors duration-300">
                     <h1 className="font-display text-lg font-bold text-text-primary">
-                        ตรวจสอบผลที่มี <span className="font-display text-primary">Confidence ต่ำ</span>
+                        ตรวจสอบผลที่มี <span className="font-display text-primary">ค่าความมั่นใจ ต่ำ</span>
                     </h1>
                     <p className="text-text-secondary text-xs mt-1 leading-relaxed">
                         ผลตรวจที่ AI วิเคราะห์ได้ค่าความมั่นใจต่ำกว่า {CONFIDENCE_THRESHOLD.toFixed(2)} จะถูกซ่อนจากแผนที่และแดชบอร์ดจนกว่าจะได้รับการยืนยันจากผู้ดูแลระบบ
