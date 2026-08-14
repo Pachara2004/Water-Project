@@ -49,7 +49,7 @@ export default function MapSearchBar({ locations, onSelectLocation }: MapSearchB
                         setIsOpen(true);
                     }}
                     placeholder="ค้นหาจุดเก็บตัวอย่างหรือหน่วยงาน"
-                    className="w-full h-7 bg-transparent text-xs font-semibold text-text  placeholder:text-text-muted "
+                    className="no-focus-ring w-full h-7 bg-transparent text-xs font-semibold text-text  placeholder:text-text-muted "
                 />
                 {keyword && (
                     <button

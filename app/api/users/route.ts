@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         const where: any = { ...TAB_FILTERS[tab] };
 
         if (search) {
-            where.OR = [{ firstName: { contains: search } }, { lastName: { contains: search } }, { lineProfileName: { contains: search } }];
+            where.OR = [{ firstName: { contains: search } }, { lastName: { contains: search } }, { phoneNumber: { contains: search } }];
         }
 
         if (role && role !== "ALL") {

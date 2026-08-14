@@ -151,7 +151,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                                 placeholder="ค้นหาตามสถานที่ หรือ รหัส..."
                                 value={globalFilter}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
-                                className="w-full py-2.5 bg-surface-subtle text-xs text-text outline-none placeholder:text-secondary"
+                                className="no-focus-ring w-full py-2.5 bg-surface-subtle text-xs text-text outline-none placeholder:text-secondary"
                             />
                             <Search size={18} className="text-secondary ml-2 shrink-0" />
                         </div>
