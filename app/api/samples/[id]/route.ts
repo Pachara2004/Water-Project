@@ -7,6 +7,31 @@ import { getPendingSessionGroups } from "@/lib/review";
 
 type WaterStatus = "safe" | "warning" | "danger";
 
+// ฟังก์ชันสร้าง Date เวลาปัจจุบันแบบล็อกตัวเลขเวลาไทย (+07:00)
+function getNowAsLocalDateTime(): Date {
+    const now = new Date();
+    return new Date(
+        Date.UTC(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            now.getHours(),
+            now.getMinutes(),
+            now.getSeconds(),
+            now.getMilliseconds()
+        )
+    );
+}
+
+// ฟังก์ชันช่วยตัด Z หรือ Timezone Offset ออกเพื่อป้องกัน Frontend บวก 7 ชั่วโมงซ้ำ
+function cleanDateString(dateVal: any): string | null {
+    if (!dateVal) return null;
+    if (dateVal instanceof Date) {
+        return dateVal.toISOString().replace("Z", "");
+    }
+    return String(dateVal).replace(/(Z|\+\d{2}:\d{2})$/, "");
+}
+
 // ========================================================
 // 📝 PUT /api/samples/[id] — ปรับปรุงประวัติน้ำแบบผูกสืบทอดกลุ่มรหัสเซสชัน
 // ========================================================
@@ -36,11 +61,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         let parsedCollectionTime = oldSample.collectionTime;
         if (collectionTime !== undefined && collectionTime !== null && collectionTime !== "") {
-            const candidate = new Date(collectionTime);
-            if (Number.isNaN(candidate.getTime())) {
-                return NextResponse.json({ error: "รูปแบบวันที่และเวลาที่เก็บตัวอย่างไม่ถูกต้อง" }, { status: 400 });
-            }
-            parsedCollectionTime = candidate;
+            const cleanStr = String(collectionTime).replace(/(Z|\+\d{2}:\d{2})$/, "");
+            const [datePart, timePart] = cleanStr.split("T");
+            const [year, month, day] = datePart.split("-").map(Number);
+            const [hours, minutes] = timePart.split(":").map(Number);
+            parsedCollectionTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
         }
 
         let parsedLocationId = oldSample.locationId;
@@ -89,22 +114,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }));
         }
 
+        const nowLocal = getNowAsLocalDateTime();
+
         const createdSample = await prisma.$transaction(async (tx) => {
             await tx.waterSample.update({
                 where: { id: sampleId },
                 data: {
                     isDeleted: true,
                     lastModifiedBy: secureAdmin.id,
+                    updatedActiveAt: nowLocal,
                 },
             });
 
             return tx.waterSample.create({
                 data: {
-                    // 🌟 สืบทอด code เดิมไว้ (หรือจะปล่อยให้สร้างใหม่ขึ้นอยู่กับเคส)
                     code: oldSample.code,
                     collectorId: oldSample.collectorId,
                     locationId: parsedLocationId,
                     collectionTime: parsedCollectionTime,
+                    uploadedActiveAt: oldSample.uploadedActiveAt,
+                    updatedActiveAt: nowLocal,
                     dissolvedOxygen: parsedOxygen,
                     airTemperature: oldSample.airTemperature,
                     rainAccumulation: oldSample.rainAccumulation,
@@ -139,11 +168,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         const responsePutData = {
             id: createdSample.id,
-            code: createdSample.code, // [NEW] แนบ code ส่งออกไปใน PUT Response
+            code: createdSample.code,
             collectorId: createdSample.collectorId,
             locationId: createdSample.locationId,
-            collectionTime: createdSample.collectionTime,
-            uploadedActiveAt: createdSample.uploadedActiveAt,
+            collectionTime: cleanDateString(createdSample.collectionTime),
+            uploadedActiveAt: cleanDateString(createdSample.uploadedActiveAt),
+            updatedActiveAt: cleanDateString(createdSample.updatedActiveAt),
             dissolvedOxygen: createdSample.dissolvedOxygen,
             airTemperature: createdSample.airTemperature,
             rainAccumulation: createdSample.rainAccumulation,
@@ -154,7 +184,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             imageExpiresAt: createdSample.imageExpiresAt,
             isDeleted: createdSample.isDeleted,
             lastModifiedBy: createdSample.lastModifiedBy,
-            updatedActiveAt: createdSample.updatedActiveAt,
             sessionGroup: createdSample.sessionGroup,
             measurements: createdSample.measurements,
 
@@ -175,7 +204,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 // 🔍 GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำพร้อมควบรวมรูปภาพแยกตาม Parameter ID
 // ========================================================
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // เส้นนี้ป้อนหน้า /collector/history/[id] เท่านั้น — officer (ผู้บริหาร) ไม่มีสิทธิ์
     const auth = await verifyAuth(request, ["collector", "admin"]);
     if (!auth.isValid) {
         return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -249,9 +277,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             }
         });
 
-        // ── ผลประเมินระดับ "สถานที่" ณ วันที่ของ record นี้ (context-aware — ไม่ใช่ล่าสุดจริงตอนนี้) ──
-        // เช่น ดูแอมโมเนียเมื่อ 10 วันก่อน ฟอสเฟตต้องเทียบด้วยค่าฟอสเฟตที่ใกล้เคียงวันนั้น ไม่ใช่ฟอสเฟตของวันนี้
-        // กติกา (ดู computeValueByParameterAsOf ใน lib/standards.ts): ย้อนหลังล่าสุดก่อนเสมอ ถ้าไม่มีค่อยขยายไปฝั่งอนาคตเอาตัวใกล้สุด
         const pendingGroups = await getPendingSessionGroups();
         const baseLocationSampleWhere: any = { locationId: mainSample.locationId, isDeleted: false };
         if (pendingGroups.length > 0) {
@@ -287,11 +312,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const responseGetData = {
             id: mainSample.id,
-            code: mainSample.code, // [NEW] แนบ code ส่งออกไปใน GET Response ให้หน้าบ้านนำไปโชว์ที่ Header
+            code: mainSample.code,
             collectorId: mainSample.collectorId,
             locationId: mainSample.locationId,
-            collectionTime: mainSample.collectionTime,
-            uploadedActiveAt: mainSample.uploadedActiveAt,
+            // 🟢 ตัด Z ออกทั้ง collectionTime, uploadedActiveAt, updatedActiveAt
+            collectionTime: cleanDateString(mainSample.collectionTime),
+            uploadedActiveAt: cleanDateString(mainSample.uploadedActiveAt),
+            updatedActiveAt: cleanDateString(mainSample.updatedActiveAt),
             dissolvedOxygen: mainSample.dissolvedOxygen,
             airTemperature: mainSample.airTemperature,
             rainAccumulation: mainSample.rainAccumulation,
@@ -313,9 +340,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             measurements: allMeasurements,
             sampleImagesMap: sampleImagesMap,
 
-            // ผลประเมินของสถานที่ (คนละมิติกับ status ของ record นี้) — null = สถานที่นี้ยังไม่เคยมีผลตรวจ
             locationStatus,
-            latestByParameter,
+            // 🟢 ตัด Z ออกจากประวัติ latestByParameter ทุกตัว
+            latestByParameter: latestByParameter.map((item: any) => ({
+                ...item,
+                collectedAt: cleanDateString(item.collectedAt || item.collectionTime),
+                collectionTime: cleanDateString(item.collectionTime || item.collectedAt),
+            })),
 
             ...dynamicMeasurements,
 

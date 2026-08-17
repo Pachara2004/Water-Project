@@ -8,11 +8,12 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-water_quality}
       MYSQL_USER: ${MYSQL_USER:-wateruser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-waterpass}
+      TZ: Asia/Bangkok
     ports:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password
+    command: --default-authentication-plugin=mysql_native_password --default-time-zone='+07:00'
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
@@ -36,6 +37,7 @@ services:
       TMD_API_TOKEN: ${TMD_API_TOKEN:-}
       CRON_SECRET: ${CRON_SECRET:-}
       WATCHPACK_POLLING: "true"
+      TZ: Asia/Bangkok
     depends_on:
       mysql:
         condition: service_healthy
@@ -53,6 +55,7 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      TZ: Asia/Bangkok
     ports:
       - "8080:80"
     depends_on:
