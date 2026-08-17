@@ -204,7 +204,7 @@ export default function LocationsMobile(props: LocationsPageProps) {
                         {/* Dropdown หน่วยงาน */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">หน่วยงานที่รับผิดชอบ</label>
-                            <div className="relative" onClick={(e) => e.stopPropagation()}>
+                            <div className="relative org-dropdown-container" onClick={(e) => e.stopPropagation()}>
                                 <input
                                     type="text"
                                     value={orgSearch}
