@@ -122,10 +122,10 @@ export default function SubmitDesktop(props: any) {
                                         <button
                                             onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                             className={`w-full py-2.5 text-white rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                                                needsAdminReview ? "bg-primary hover:bg-secondary" : "bg-secondary hover:bg-bg-safe"
+                                                needsAdminReview ? "bg-primary hover:bg-secondary" : "bg-secondary hover:bg-primary"
                                             }`}
                                         >
-                                            {savedSampleId ? "ดูผลการตรวจของชุดนี้" : "กลับสู่หน้าประวัติ"}
+                                            {savedSampleId ? "ดูผลการตรวจสอบ" : "กลับสู่หน้าประวัติ"}
                                         </button>
                                     </div>
                                 )}
