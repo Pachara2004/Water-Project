@@ -217,7 +217,7 @@ export function RequestDetailPopup({
                                                 }`}
                                                 title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
                                             >
-                                                {m.confidence.toFixed(2)}
+                                                conf. {m.confidence.toFixed(2)}
                                             </span>
                                         </div>
                                     </div>
@@ -403,12 +403,32 @@ export function RequestCard({
                                         className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
                                             isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
                                         }`}
+                                        title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
                                     >
-                                        {m.confidence.toFixed(2)}
+                                        conf. {m.confidence.toFixed(2)}
                                     </span>
                                 ))}
                             </div>
                         </label>
+                    ))}
+                </div>
+            )}
+
+            {/* ── สารตัวเดียว: ไม่มีอะไรให้เลือกซับเซ็ต แต่ยังต้องเห็น conf. เหมือนกรณีหลายสาร ── */}
+            {item.statusRequest === "pending" && !isMultiSample && (
+                <div className="bg-surface-subtle border border-border/60 rounded-xl p-2.5 space-y-1.5">
+                    {item.samples.flatMap((s) => s.measurements).map((m) => (
+                        <div key={m.parameterId} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2">
+                            <span className="font-bold text-text">{m.parameterName || "ไม่ระบุสาร"}</span>
+                            <span
+                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                    isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
+                                }`}
+                                title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
+                            >
+                                conf. {m.confidence.toFixed(2)}
+                            </span>
+                        </div>
                     ))}
                 </div>
             )}
