@@ -208,7 +208,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
             {/* ── Main Layout (2 Columns Page Flow) ── */}
             <main className="w-full mx-auto p-4">
                 <div className="grid grid-cols-12 gap-4 items-start">
-                    {/* 📌 LEFT COLUMN: Summary & Metadata (4 Columns) */}
+                    {/* LEFT COLUMN: Summary & Metadata (4 Columns) */}
                     <aside className="col-span-12 lg:col-span-4 space-y-4">
                         {/* Sample ID & Chemical Summary Card */}
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
@@ -218,9 +218,17 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                     <span className="text-xs font-medium text-text">{sample?.sessionGroup ? sample.sessionGroup : "รายละเอียดประวัติการตรวจสอบ"}</span>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-xs text-text-muted uppercase mb-0.5">ผลประเมิน</span>
+                                    <span className="text-xs text-text-muted uppercase mb-0.5 ">ผลประเมิน</span>
                                     <StatusBadge status={sample.status} size="sm" />
+                                    <div className="flex flex-col items-end text-center mt-0.5 shrink-0">
+                                        {sample.reviewStatus === "PENDING" && (
+                                            <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                                                รอตรวจสอบ
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
+                                {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
                             </div>
 
                             <div className="pt-1 space-y-2">
