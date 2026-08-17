@@ -94,8 +94,8 @@ export default function UsersDesktop(props: UsersPageProps) {
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="ค้นหาชื่อผู้ใช้งาน..."
-                                className="w-full py-2.5 px-2 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
+                                placeholder="ค้นหาชื่อหรือเบอร์โทร..."
+                                className="no-focus-ring w-full py-2.5 px-2 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
                             />
                         </div>
 

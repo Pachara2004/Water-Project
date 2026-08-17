@@ -102,8 +102,8 @@ export default function UsersMobile(props: UsersPageProps) {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="ค้นหาชื่อ..."
-                            className="w-full py-3 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
+                            placeholder="ค้นหาชื่อหรือเบอร์โทร..."
+                            className="no-focus-ring w-full py-3 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
                         />
                         <Search size={16} className="text-text-muted ml-2" />
                     </div>
