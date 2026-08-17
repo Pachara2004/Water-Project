@@ -130,7 +130,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                     placeholder="ค้นหาชื่อสถานที่ หรือข้อมูล..."
                                     value={globalFilter ?? ""}
                                     onChange={(e) => setGlobalFilter(e.target.value)}
-                                    className="w-full py-2.5 bg-transparent text-xs text-text outline-hidden placeholder:text-secondary"
+                                    className="no-focus-ring w-full py-2.5 bg-transparent text-xs text-text outline-hidden placeholder:text-secondary"
                                 />
                                 <Search size={16} className="text-secondary ml-2 shrink-0" />
                             </div>

@@ -322,7 +322,7 @@ export default function LocationsMobile(props: LocationsPageProps) {
                             value={stationSearch}
                             onChange={(e) => setStationSearch(e.target.value)}
                             placeholder="ค้นหาสถานีหรือหน่วยงาน..."
-                            className="w-full py-3 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted font-semibold"
+                            className="no-focus-ring w-full py-3 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted font-semibold"
                         />
                         <Search size={16} className="text-text-muted ml-2" />
                     </div>

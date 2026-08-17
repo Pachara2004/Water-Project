@@ -1,3 +1,5 @@
+// app/api/samples/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getWeatherData, backfillWeatherData } from "@/lib/tmd";
@@ -36,10 +38,6 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
 
 /**
  * GENERATOR: Sample Code Format -> SP[YYMMDD][LocationID 3 หลัก][Sequence 0001-9999]
- *
- * ความยาวคงที่ 15 ตัวอักษร — locationId pad เป็น 3 หลักเพื่อไม่ให้ขอบเขตระหว่างฟิลด์กำกวม
- * (ถ้าไม่ pad: location 1 ลำดับ 20001 กับ location 12 ลำดับ 0001 จะได้สตริงเดียวกัน)
- * ข้อจำกัด: รองรับ locationId ได้ถึง 999 เท่านั้น เกินกว่านั้นความยาวจะเลื่อน
  */
 async function generateSampleCode(tx: any, locationId: number, collectionTime: Date): Promise<string> {
     const yy = String(collectionTime.getFullYear()).slice(-2);
@@ -68,16 +66,10 @@ async function generateSampleCode(tx: any, locationId: number, collectionTime: D
 const antiSpam = new Map<string, number>();
 
 // ==========================================
-// GET /api/samples?search=&status=&startDate=&endDate=&sort=&mine=&page=&pageSize=
-// ประวัติผลตรวจ แบ่งหน้าระดับ "กลุ่ม" (sessionGroup) ไม่ใช่ระดับแถว เพราะ 1 กลุ่ม = หลายแถว (1 แถวต่อสาร)
-// แบ่งเป็น query 2 รอบ:
-//   รอบ 1 (เบา) — select แคบ ไม่ join หนัก ใช้ group/กรอง status/นับ/ตัดหน้า
-//   รอบ 2 (หนัก) — join เต็ม (location/collector/measurements) เฉพาะกลุ่มของหน้าที่ขอ
-// ข้อจำกัด: รอบ 1 ยังอ่านทุกแถวที่ตรง filter อยู่ดี (ต้องรู้ทุกแถวถึงจะนับ/group ถูก)
+// GET /api/samples
 // ==========================================
 export async function GET(request: NextRequest) {
     try {
-        // เส้นนี้ป้อนหน้า /collector เท่านั้น — officer (ผู้บริหาร) ไม่มีสิทธิ์ ใช้ /api/dashboard/widgets แทน
         const auth = await verifyAuth(request, ["collector", "admin"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -128,8 +120,6 @@ export async function GET(request: NextRequest) {
             orderBy: { collectionTime: sort },
         });
 
-        // group ตาม sessionGroup — แถวที่เจอก่อน (ตามลำดับที่ query มาแล้ว) กำหนด collectionTime ของกลุ่ม
-        // เพราะ orderBy มาจาก DB แล้ว แถวแรกของกลุ่มจึงเป็นค่าปลายสุด (ล่าสุด/เก่าสุดตาม sort) เสมอ
         const groupOrder: string[] = [];
         const groupStatus = new Map<string, WaterStatus>();
         for (const s of lightRows) {
@@ -143,7 +133,6 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // status filter เป็น group-level (แย่สุดของกลุ่ม) ต้องกรองหลัง group เสร็จเท่านั้น
         const filteredGroupKeys = selectedStatuses.size > 0 ? groupOrder.filter((key) => selectedStatuses.has(groupStatus.get(key)!)) : groupOrder;
 
         const total = filteredGroupKeys.length;
@@ -161,7 +150,10 @@ export async function GET(request: NextRequest) {
         const samples = await prisma.waterSample.findMany({
             where: {
                 ...where,
-                OR: [...(sessionGroupsInPage.length > 0 ? [{ sessionGroup: { in: sessionGroupsInPage } }] : []), ...(singleIdsInPage.length > 0 ? [{ id: { in: singleIdsInPage } }] : [])],
+                OR: [
+                    ...(sessionGroupsInPage.length > 0 ? [{ sessionGroup: { in: sessionGroupsInPage } }] : []),
+                    ...(singleIdsInPage.length > 0 ? [{ id: { in: singleIdsInPage } }] : []),
+                ],
             },
             include: {
                 location: true,
@@ -187,7 +179,7 @@ export async function GET(request: NextRequest) {
 
         samples.forEach((s: any) => {
             const groupKey = s.sessionGroup || `single-${s.id}`;
-            if (!pageGroupKeySet.has(groupKey)) return; // เผื่อ search/date filter ของ where ดัก group อื่นติดมาด้วยจาก OR
+            if (!pageGroupKeySet.has(groupKey)) return;
 
             const currentMeasurements: Record<string, number> = {};
             s.measurements.forEach((m: any) => {
@@ -200,11 +192,12 @@ export async function GET(request: NextRequest) {
             if (!groupedSamples.has(groupKey)) {
                 groupedSamples.set(groupKey, {
                     id: s.id,
-                    code: s.code, // แนบ code ส่งให้ Frontend
+                    code: s.code,
                     collectorId: s.collectorId,
                     locationId: s.locationId,
-                    collectionTime: s.collectionTime,
-                    uploadedActiveAt: s.uploadedActiveAt,
+                    // 🟢 ตัด Z ออกเพื่อไม่ให้ Frontend บวก 7 ชั่วโมงซ้ำ
+                    collectionTime: s.collectionTime ? s.collectionTime.toISOString().replace("Z", "") : null,
+                    uploadedActiveAt: s.uploadedActiveAt ? s.uploadedActiveAt.toISOString().replace("Z", "") : null,
                     dissolvedOxygen: s.dissolvedOxygen,
                     airTemperature: s.airTemperature,
                     rainAccumulation: s.rainAccumulation,
@@ -247,7 +240,6 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        // เรียงผลลัพธ์ตามลำดับ groupKeys จากรอบ 1 — รอบ 2 ใช้ OR หลายเงื่อนไข ลำดับที่ DB คืนมาไม่รับประกันตรงกับที่ตัดหน้าไว้
         const formattedSamples = pageGroupKeys.map((key) => groupedSamples.get(key)).filter(Boolean);
 
         return NextResponse.json(pageResult(formattedSamples, total, pageParams));
@@ -258,7 +250,7 @@ export async function GET(request: NextRequest) {
 }
 
 // ==========================================
-// POST /api/samples — บันทึกผลตรวจแยกรายสารอิงตาม Database 100%
+// POST /api/samples
 // ==========================================
 export async function POST(request: NextRequest) {
     try {
@@ -360,17 +352,28 @@ export async function POST(request: NextRequest) {
             await Promise.all(fileTasks);
         }
 
+        // 🟢 ฟังก์ชันแปลงเวลาล็อกตัวเลขเวลาไทย (+07:00)
         const parseLocalDateTime = (timeStr: string): Date => {
-            // ตัดตัวอักษร +07:00 หรือ Z ออกให้เหลือเฉพาะ YYYY-MM-DDTHH:mm:ss
             const cleanStr = timeStr.replace(/(Z|\+\d{2}:\d{2})$/, "");
-
-            // แยกองค์ประกอบ วัน เดือน ปี ชั่วโฒง นาที
             const [datePart, timePart] = cleanStr.split("T");
             const [year, month, day] = datePart.split("-").map(Number);
             const [hours, minutes] = timePart.split(":").map(Number);
-
-            // สร้าง Date object โดยใช้ Date.UTC เพื่อล็อกค่าตัวเลข 15:21 ให้ตรงกับ DB 100%
             return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+        };
+
+        const getNowAsLocalDateTime = (): Date => {
+            const now = new Date();
+            return new Date(
+                Date.UTC(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                    now.getHours(),
+                    now.getMinutes(),
+                    now.getSeconds(),
+                    now.getMilliseconds()
+                )
+            );
         };
 
         const parsedCollectionTime = parseLocalDateTime(collectionTime);
@@ -465,8 +468,10 @@ export async function POST(request: NextRequest) {
         const sample = await prisma.$transaction(async (tx) => {
             let sessionGroupToUse: string;
 
-            // 🎯 ค้นหาสารเคมีใน Batch เดียวกันที่บันทึกลง DB ไปก่อนหน้านี้ (ยิงติดๆ กันไม่เกิน 1 นาที)
-            const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+            const nowLocal = getNowAsLocalDateTime();
+            const oneMinuteAgo = new Date(nowLocal.getTime() - 60 * 1000);
+
+            // ค้นหาสารเคมีใน Batch เดียวกันที่บันทึกลง DB ไปก่อนหน้านี้ (ยิงติดๆ กันไม่เกิน 1 นาที)
             const existingBatchSample = await tx.waterSample.findFirst({
                 where: {
                     collectorId: secureCollectorId,
@@ -480,16 +485,12 @@ export async function POST(request: NextRequest) {
             });
 
             if (existingBatchSample && existingBatchSample.sessionGroup) {
-                // 🤝 เจอสารตัวแรกใน Batch เดียวกันแล้ว! ดึง SES... ของตัวแรกมาใช้ต่อทันที
                 sessionGroupToUse = existingBatchSample.sessionGroup;
             } else {
-                // 🆕 นี่คือสารตัวแรกสุดของ Batch ให้สั่งเจน SES260720... ใหม่
                 sessionGroupToUse = await generateSessionGroup(tx, parsedCollectionTime);
             }
 
-            // เจน Sample Code รายขวด (SP26072030001, SP26072030002) แยกรายขวด
             const generatedCode = await generateSampleCode(tx, Number(locationId), parsedCollectionTime);
-
             const needsReview = forceReview || createMeasurementsData.some((m) => isLowConfidence(m.confidence));
 
             const created = await tx.waterSample.create({
@@ -498,6 +499,7 @@ export async function POST(request: NextRequest) {
                     locationId: Number(locationId),
                     collectorId: secureCollectorId,
                     collectionTime: parsedCollectionTime,
+                    uploadedActiveAt: nowLocal,
                     dissolvedOxygen: oxygen ? parseFloat(oxygen) : null,
                     airTemperature: finalWeather.airTemperature,
                     rainAccumulation: finalWeather.rainAccumulation,
@@ -506,7 +508,7 @@ export async function POST(request: NextRequest) {
                     rawImageUrl: mainRawImageUrl,
                     analyzedPlotUrl: mainAnalyzedPlotUrl,
                     isDeleted: false,
-                    sessionGroup: sessionGroupToUse, // 👈 ใช้ SES... ร่วมกันแน่นอน!
+                    sessionGroup: sessionGroupToUse,
                     measurements: {
                         create: createMeasurementsData,
                     },
@@ -524,7 +526,14 @@ export async function POST(request: NextRequest) {
             return created;
         });
 
-        return NextResponse.json(sample, { status: 201 });
+        // 🟢 ก่อนส่ง sample กลับไป ให้ตัด Z ออกเช่นเดียวกัน
+        const safeResponse = {
+            ...sample,
+            collectionTime: sample.collectionTime ? sample.collectionTime.toISOString().replace("Z", "") : null,
+            uploadedActiveAt: sample.uploadedActiveAt ? sample.uploadedActiveAt.toISOString().replace("Z", "") : null,
+        };
+
+        return NextResponse.json(safeResponse, { status: 201 });
     } catch (error: any) {
         console.error("POST /api/samples error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการบันทึกข้อมูลตัวอย่างน้ำลงฐานข้อมูล", details: error?.message }, { status: 500 });

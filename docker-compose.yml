@@ -8,12 +8,13 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-water_quality}
       MYSQL_USER: ${MYSQL_USER:-wateruser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-waterpass}
+      TZ: Asia/Bangkok
     ports:
       - "8053:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: >
-      --default-authentication-plugin=mysql_native_password
+      --default-authentication-plugin=mysql_native_password --default-time-zone='+07:00'
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
     healthcheck:
@@ -42,6 +43,7 @@ services:
       TMD_API_TOKEN: ${TMD_API_TOKEN:-}
       CRON_SECRET: ${CRON_SECRET:-}
       WATCHPACK_POLLING: "true"
+      TZ: Asia/Bangkok
     depends_on:
       mysql:
         condition: service_healthy

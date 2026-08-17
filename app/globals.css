@@ -567,10 +567,20 @@ textarea {
     font-family: var(--font-sans);
 }
 
-input:focus,
+/* กฎนี้อยู่นอก @layer ทำให้ชนะ utility class ของ Tailwind v4 ทุกตัวไม่ว่า specificity เท่าไหร่
+   ช่องที่ไม่ต้องการกรอบโฟกัสจึงต้องใส่ class .no-focus-ring แทนการเขียน focus:outline-* ทับ */
+input:focus:not(.no-focus-ring),
 select:focus,
 textarea:focus,
 button:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+}
+
+/* ปิดกรอบโฟกัสทั้งของกฎด้านบนและของ UA stylesheet ให้ช่องที่ออกแบบมาให้ไร้กรอบ
+   ต้องอยู่นอก @layer เช่นกัน เพราะ utility ของ Tailwind ไม่มีทางชนะ CSS ที่ไม่อยู่ใน layer */
+.no-focus-ring:focus,
+.no-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: none;
 }

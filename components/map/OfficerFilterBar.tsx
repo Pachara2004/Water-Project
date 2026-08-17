@@ -95,7 +95,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="พิมพ์ชื่อหน่วยงาน..."
-                            className="w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
+                            className="no-focus-ring w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
                             onClick={(e) => e.stopPropagation()}
                         />
                         {searchQuery && (
