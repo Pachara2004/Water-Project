@@ -195,13 +195,15 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         <h1 className="text-sm font-semibold text-primary">รายละเอียดประวัติการตรวจสอบ</h1>
                     )}
                 </div>
-                <div className="flex flex-col items-end text-center gap-1 shrink-0">
-                    {sample.reviewStatus === "PENDING" && (
+                {sample?.reviewStatus === "PENDING" ? (
+                    <div className="flex flex-col items-end text-center shrink-0">
                         <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
                             รอตรวจสอบ
                         </span>
-                    )}
-                </div>
+                    </div>
+                ) : (
+                    <div className="w-15" />
+                )}
             </div>
 
             <div className="px-4 space-y-4 mt-4">
