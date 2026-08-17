@@ -5,8 +5,6 @@ import { evaluateSample, computeValueByParameterAsOf } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 
-type WaterStatus = "safe" | "warning" | "danger";
-
 // ฟังก์ชันสร้าง Date เวลาปัจจุบันแบบล็อกตัวเลขเวลาไทย (+07:00)
 function getNowAsLocalDateTime(): Date {
     const now = new Date();
@@ -33,7 +31,7 @@ function cleanDateString(dateVal: any): string | null {
 }
 
 // ========================================================
-// 📝 PUT /api/samples/[id] — ปรับปรุงประวัติน้ำแบบผูกสืบทอดกลุ่มรหัสเซสชัน
+// PUT /api/samples/[id] — ปรับปรุงประวัติน้ำแบบผูกสืบทอดกลุ่มรหัสเซสชัน
 // ========================================================
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const auth = await verifyAuth(request, ["admin"]);
@@ -166,6 +164,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }
         });
 
+        // ตรวจสอบสถานะ Review Request ของ sessionGroup
+        const pendingGroups = await getPendingSessionGroups();
+        const isPending = createdSample.sessionGroup ? pendingGroups.includes(createdSample.sessionGroup) : false;
+
         const responsePutData = {
             id: createdSample.id,
             code: createdSample.code,
@@ -187,6 +189,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             sessionGroup: createdSample.sessionGroup,
             measurements: createdSample.measurements,
 
+            // แนบ reviewStatus ส่งออกไป
+            reviewStatus: isPending ? "PENDING" : "APPROVED",
+
             ...dynamicMeasurements,
 
             ammoniaValue: dynamicMeasurements["ammoniaValue"] ?? null,
@@ -201,7 +206,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // ========================================================
-// 🔍 GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำพร้อมควบรวมรูปภาพแยกตาม Parameter ID
+// GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำพร้อมควบรวมรูปภาพแยกตาม Parameter ID
 // ========================================================
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const auth = await verifyAuth(request, ["collector", "admin"]);
@@ -310,12 +315,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                   )
                 : null;
 
+        // ตรวจสอบสถานะ Review Request ของ sessionGroup
+        const isPending = mainSample.sessionGroup ? pendingGroups.includes(mainSample.sessionGroup) : false;
+
         const responseGetData = {
             id: mainSample.id,
             code: mainSample.code,
             collectorId: mainSample.collectorId,
             locationId: mainSample.locationId,
-            // 🟢 ตัด Z ออกทั้ง collectionTime, uploadedActiveAt, updatedActiveAt
             collectionTime: cleanDateString(mainSample.collectionTime),
             uploadedActiveAt: cleanDateString(mainSample.uploadedActiveAt),
             updatedActiveAt: cleanDateString(mainSample.updatedActiveAt),
@@ -327,6 +334,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             rawImageUrl: mainSample.rawImageUrl,
             analyzedPlotUrl: mainSample.analyzedPlotUrl,
             sessionGroup: mainSample.sessionGroup,
+
+            // 🟢 แนบ reviewStatus ให้หน้าประวัติใช้งาน
+            reviewStatus: isPending ? "PENDING" : "APPROVED",
+
             location: mainSample.location
                 ? {
                       id: mainSample.location.id,
@@ -341,7 +352,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             sampleImagesMap: sampleImagesMap,
 
             locationStatus,
-            // 🟢 ตัด Z ออกจากประวัติ latestByParameter ทุกตัว
             latestByParameter: latestByParameter.map((item: any) => ({
                 ...item,
                 collectedAt: cleanDateString(item.collectedAt || item.collectionTime),
