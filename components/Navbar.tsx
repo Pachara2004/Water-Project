@@ -23,54 +23,105 @@ export default function Navbar() {
 
     // จุดแดงแจ้งเตือน: "ตรวจคุณภาพน้ำ" = มีรายการถูกปฏิเสธที่ยังไม่รับทราบของตัวเอง
     //                    "จัดการข้อมูล" = admin มีคำร้องค้าง (ตรวจสอบ confidence ต่ำ + ขอสิทธิ์ผู้ใช้)
-    const [hasUnreadRejection, setHasUnreadRejection] = useState(false);
-    const [hasPendingManageQueue, setHasPendingManageQueue] = useState(false);
+    const [navDots, setNavDots] = useState({
+        hasUnreadRejection: false,
+        hasPendingManageQueue: false,
+    });
 
     const fetchDots = useCallback(async () => {
         if (!currentUser) return;
         const token = liff.getAccessToken();
         if (!token) return;
 
-        if (userRole === "collector" || userRole === "admin") {
-            fetch("/api/notifications", { headers: { Authorization: `Bearer ${token}` } })
-                .then((res) => (res.ok ? res.json() : null))
-                .then((data) => setHasUnreadRejection(!!data && data.unreadCount > 0))
-                .catch(() => {});
-        }
+        const headers = { Authorization: `Bearer ${token}` };
 
-        if (userRole === "admin") {
-            fetch("/api/manage/pending-count", { headers: { Authorization: `Bearer ${token}` } })
-                .then((res) => (res.ok ? res.json() : null))
-                .then((data) => setHasPendingManageQueue(!!data && data.pendingCount > 0))
-                .catch(() => {});
-        }
+        // ยิงขนานพร้อมกันด้วย Promise.all
+        const fetchNotifications =
+            userRole === "collector" || userRole === "admin"
+                ? fetch("/api/notifications", { headers })
+                      .then((res) => (res.ok ? res.json() : null))
+                      .then((data) => !!data && data.unreadCount > 0)
+                      .catch(() => false)
+                : Promise.resolve(false);
+
+        const fetchPending =
+            userRole === "admin"
+                ? fetch("/api/manage/pending-count", { headers })
+                      .then((res) => (res.ok ? res.json() : null))
+                      .then((data) => !!data && data.pendingCount > 0)
+                      .catch(() => false)
+                : Promise.resolve(false);
+
+        const [unread, pending] = await Promise.all([fetchNotifications, fetchPending]);
+
+        setNavDots({
+            hasUnreadRejection: unread,
+            hasPendingManageQueue: pending,
+        });
     }, [currentUser, userRole]);
 
     // โหลดตอน mount/เปลี่ยน user + รีเฟรชเมื่อกลับมาโฟกัสหน้าจอ (เช่น สลับแท็บกลับมา)
     // + รีเฟรชทันทีเมื่อหน้าอื่นสั่ง refreshNavDots() หลังอนุมัติ/ปฏิเสธ/รับทราบสำเร็จ
     // (Navbar อยู่ใน layout ไม่ remount ตอนเปลี่ยนหน้า เลยต้องพึ่ง event นี้แทนการ mount ใหม่)
     useEffect(() => {
-        fetchDots();
+        let isMounted = true;
+
+        const loadInitialDots = async () => {
+            if (!currentUser) return;
+            const token = liff.getAccessToken();
+            if (!token) return;
+
+            const headers = { Authorization: `Bearer ${token}` };
+
+            const fetchNotifications =
+                userRole === "collector" || userRole === "admin"
+                    ? fetch("/api/notifications", { headers })
+                          .then((res) => (res.ok ? res.json() : null))
+                          .then((data) => !!data && data.unreadCount > 0)
+                          .catch(() => false)
+                    : Promise.resolve(false);
+
+            const fetchPending =
+                userRole === "admin"
+                    ? fetch("/api/manage/pending-count", { headers })
+                          .then((res) => (res.ok ? res.json() : null))
+                          .then((data) => !!data && data.pendingCount > 0)
+                          .catch(() => false)
+                    : Promise.resolve(false);
+
+            const [unread, pending] = await Promise.all([fetchNotifications, fetchPending]);
+
+            // อัปเดตเฉพาะเมื่อ component ยัง mount อยู่
+            if (isMounted) {
+                setNavDots({
+                    hasUnreadRejection: unread,
+                    hasPendingManageQueue: pending,
+                });
+            }
+        };
+
+        loadInitialDots();
+
+        // Event listener สำหรับ focus และ custom event ยังคงใช้ fetchDots ปกติ
         window.addEventListener("focus", fetchDots);
         const offNavDotsRefresh = onNavDotsRefresh(fetchDots);
+
         return () => {
+            isMounted = false;
             window.removeEventListener("focus", fetchDots);
             offNavDotsRefresh();
         };
-    }, [fetchDots]);
+    }, [currentUser, userRole, fetchDots]);
 
     const navItems = useMemo(() => {
-        // 1. เริ่มต้นด้วย แผนที่ เป็นรายการแรกเสมอ
         const items: { href: string; label: string; icon: typeof Map; showDot?: boolean }[] = [{ href: "/map", label: "แผนที่พิกัดสถานี", icon: Map }];
 
-        // 2. ถ้ามี Role ระดับต่างๆ ให้สอดแทรกเมนูการทำงานเข้าไปตรงกลางก่อน
-        // officer เข้าดูได้เหมือน admin แต่เป็นสิทธิ์อ่านอย่างเดียว (ไม่มีปุ่มส่งตรวจ/แจ้งเตือนของตัวเอง จึงไม่มีจุดแดง)
         if (userRole === "collector" || userRole === "admin") {
             items.push({
                 href: "/collector",
                 label: "ตรวจคุณภาพน้ำ",
                 icon: FileScan,
-                showDot: hasUnreadRejection,
+                showDot: navDots.hasUnreadRejection,
             });
         }
 
@@ -82,22 +133,21 @@ export default function Navbar() {
             });
         }
 
-        // 3. การันตี Push "จัดการข้อมูล" (ตั้งค่า) ปิดท้ายแถวเสมอ ไม่ว่าจะมีสิทธิ์ใดๆ หรือไม่มีสิทธิ์ก็ตาม
         items.push({
             href: "/manage",
             label: "จัดการข้อมูล",
             icon: Settings,
-            showDot: hasPendingManageQueue,
+            showDot: navDots.hasPendingManageQueue,
         });
 
         return items;
-    }, [userRole, hasUnreadRejection, hasPendingManageQueue]);
+    }, [userRole, navDots.hasUnreadRejection, navDots.hasPendingManageQueue]);
 
     return (
         <>
             {/* ── Mobile / Tablet: docked bottom bar */}
             <nav className="lg:hidden fixed bottom-0 left-0 w-full z-950 bg-card-general" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-                <div className="flex items-center justify-around h-20 px-4 w-full mx-auto">
+                <div className="flex items-center justify-around h-22 px-4 w-full">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
                         const Icon = item.icon;
@@ -107,11 +157,12 @@ export default function Navbar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                prefetch={true}
                                 className={`flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-all duration-75 relative active:scale-[0.95] will-change-transform ${
                                     isActive ? "text-primary font-semibold" : "text-text hover:text-primary"
                                 }`}
                             >
-                                {isActive && <div className="absolute inset-x-0 inset-y-1 bg-primary/20 rounded-2xl shadow-sm" />}
+                                {isActive && <div className="absolute inset-x-0 inset-y-2 bg-primary/20 rounded-2xl" />}
                                 <div className="relative">
                                     <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-75 ${isActive ? "-translate-y-0.5 text-primary" : ""}`} />
                                     {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-text-danger rounded-full border-2 border-border-danger" />}
@@ -139,6 +190,7 @@ export default function Navbar() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    prefetch={true}
                                     className={`group flex items-center h-11 rounded-xl font-semibold text-xs transition-all duration-150 active:scale-[0.98] will-change-transform overflow-hidden w-full px-4 gap-3.5 relative ${
                                         isActive ? "bg-primary text-white" : "hover:bg-secondary hover:text-text-primary"
                                     }`}

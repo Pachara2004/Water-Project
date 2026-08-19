@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Calendar, MapPin, User, FlaskConical, Thermometer, CloudRain, Waves } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, User, Thermometer, CloudRain, Waves } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import { ImageZone } from "@/components/submit/ImageZone";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
