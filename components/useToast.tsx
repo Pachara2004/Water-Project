@@ -5,9 +5,6 @@ import { CheckCircle2, XCircle } from "lucide-react";
 
 export type ToastVariant = "success" | "danger";
 
-/** Toast กลางล่างจอ ใช้ร่วมกันหลายหน้า (เดิมอยู่ inline ในหน้า /manage/users)
- *  โชว์ 5 วิ แล้วเล่น animation เลื่อนลง (animate-toast-exit ใน globals.css) ก่อนลบออกจาก DOM
- *  คืน showToast() ไว้เรียกจาก handler และ toastElement ไว้ render ท้ายหน้า */
 export function useToast() {
     const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
     const [leaving, setLeaving] = useState(false);
