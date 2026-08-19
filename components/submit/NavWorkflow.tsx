@@ -81,7 +81,7 @@ export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentL
             ) : (
                 <>
                     <Sparkles size={15} />
-                    <span>วิเคราะห์ด้วย AI ทั้งหมด</span>
+                    <span>วิเคราะห์ด้วยข้อมูล</span>
                 </>
             )}
         </button>

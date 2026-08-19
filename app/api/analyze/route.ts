@@ -4,6 +4,7 @@ import { loadStandardsForParameters } from "@/lib/standards-db";
 import { verifyAuth } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 
+// Map สำหรับ Anti-spam พร้อมกลไก Cleanup ไม่ให้กิน Memory
 const antiSpam = new Map<string, number>();
 
 const apiAi = process.env.API_AI_URL;
@@ -11,27 +12,14 @@ const apiAi = process.env.API_AI_URL;
 export async function POST(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
 
-    const cloneRequest = request.clone();
-    let parameterNameStr = "default";
-    try {
-        const testData = await cloneRequest.formData();
-        parameterNameStr = testData.get("parameterName")?.toString()?.toLowerCase() || "default";
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e) {}
-
-    const spamKey = `${ip}_${parameterNameStr}`;
-    if (antiSpam.has(spamKey) && Date.now() - antiSpam.get(spamKey)! < 3000) {
-        return NextResponse.json({ error: "อย่ากดซ้ำ ระบบกำลังประมวลผลสารนี้อยู่" }, { status: 429 });
-    }
-    antiSpam.set(spamKey, Date.now());
-
-    // เส้นนี้ป้อนหน้า /submit เท่านั้น — officer (ผู้บริหาร) ไม่มีสิทธิ์ส่งตรวจจึงไม่ต้องวิเคราะห์ภาพ
+    // 1. ตรวจสอบ Auth ก่อนทำงานหนัก (Fail-fast ป้องกัน Parse ไฟล์รูปถ้า Token ผิด)
     const auth = await verifyAuth(request, ["collector", "admin"]);
     if (!auth.isValid) {
         return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
     }
 
     try {
+        // 2. Parse FormData เพียงครั้งเดียว ไม่ใช้ clone()
         const formData = await request.formData();
         const imageFile = formData.get("image") as File | null;
         const parameterName = formData.get("parameterName") as string | null;
@@ -40,11 +28,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "ข้อมูลไม่ครบถ้วน (ขาดรูปภาพหรือชื่อพารามิเตอร์)" }, { status: 400 });
         }
 
-        // ค้นหาพารามิเตอร์จากฐานข้อมูล
+        // 3. Anti-Spam Check แบบ Zero-overhead
+        const now = Date.now();
+        const parameterNameStr = parameterName.trim().toLowerCase();
+        const spamKey = `${ip}_${parameterNameStr}`;
+
+        const lastRequestTime = antiSpam.get(spamKey);
+        if (lastRequestTime && now - lastRequestTime < 3000) {
+            return NextResponse.json({ error: "อย่ากดซ้ำ ระบบกำลังประมวลผลสารนี้อยู่" }, { status: 429 });
+        }
+        antiSpam.set(spamKey, now);
+
+        // Memory Cleanup: ล้างคีย์ที่หมดอายุเมื่อ Map เริ่มมีขนาดโต
+        if (antiSpam.size > 500) {
+            for (const [key, timestamp] of antiSpam.entries()) {
+                if (now - timestamp >= 3000) {
+                    antiSpam.delete(key);
+                }
+            }
+        }
+
+        // 4. ค้นหาพารามิเตอร์จากฐานข้อมูล
         const dbParam = await prisma.parameter.findFirst({
             where: {
                 name: {
-                    equals: parameterName.trim().toLowerCase(),
+                    equals: parameterNameStr,
                 },
             },
         });
@@ -55,14 +63,17 @@ export async function POST(request: NextRequest) {
 
         console.log(`Connecting to AI Pipeline for ${dbParam.name}...`);
 
-        // 1. จัดแจง FormData ส่งเข้าหา AI Pipeline
+        // 5. ส่ง File เข้า AI Pipeline โดยตรง ไม่ต้อง decode/encode arrayBuffer ใหม่
         const apiFormData = new FormData();
-        const blob = new Blob([await imageFile.arrayBuffer()], { type: imageFile.type });
-        apiFormData.append("image", blob, imageFile.name);
+        apiFormData.append("image", imageFile, imageFile.name);
 
-        // ฟอร์แมตชื่อส่งไปหาโมเดล AI (ปรับตัวแรกเป็นพิมพ์ใหญ่ตามสเปก)
         const formattedParamName = dbParam.name.charAt(0).toUpperCase() + dbParam.name.slice(1).toLowerCase();
         apiFormData.append("parameterName", formattedParamName);
+
+        if (!apiAi) {
+            console.error("API_AI_URL is not defined");
+            return NextResponse.json({ error: "การตั้งค่าระบบ AI ไม่สมบูรณ์" }, { status: 500 });
+        }
 
         const aiResponse = await fetch(apiAi, {
             method: "POST",
@@ -75,24 +86,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "AI Pipeline เกิดข้อผิดพลาดในการประมวลผล" }, { status: 502 });
         }
 
-        // แกะผลลัพธ์จากสเปกใหม่ของทีม AI
+        // แกะผลลัพธ์จาก AI
         const aiResult = await aiResponse.json();
-
-        // ชื่อสารที่ AI ตรวจสอบยืนยันแล้ว (Stage 2 safeguard อาจสลับชนิดสารให้อัตโนมัติ)
-        // ใช้ค่านี้เป็นฐานคำนวณ status เพื่อกันเหนียว กรณี AI แก้ชนิดสารต่างจากที่ผู้ใช้ขอ
         const verifiedParameterName: string = aiResult.parameterName || dbParam.name;
 
-        // 2. คำนวณสถานะความปลอดภัยจากเกณฑ์จริงในตาราง standards
+        // 6. คำนวณสถานะความปลอดภัยจากเกณฑ์จริงในตาราง standards
         const currentParamName = dbParam.name.toLowerCase();
 
-        // ถ้า AI ยืนยันว่าเป็นสารคนละตัวกับที่ผู้ใช้เลือก ให้ยึดสารที่ AI ตรวจได้เป็นฐานคำนวณ
-        // (เดิมเดาจากชื่อ verifiedNameLower.includes("phosphate") ซึ่งรองรับแค่ 2 สาร
-        //  และถ้า AI ตอบสารตัวที่สาม จะได้ค่า 0 ทั้งคู่ → ตอบ "ปลอดภัย" ทั้งที่ไม่เคยวัดอะไรเลย)
-        //
-        // ⚠️ ตรงนี้ยังต้องแปลง "ชื่อ" เป็น id เพราะ AI คืนมาเป็นข้อความ ไม่ใช่ parameterId
-        //    จึงเป็นจุดเดียวในระบบที่ยังผูกด้วยชื่อ — ถ้า AI ตอบชื่อที่ไม่มีในตาราง Parameter
-        //    (เช่น "PO4" แทน "phosphate") จะหาไม่เจอ ห้าม fallback ไปใช้สารที่ผู้ใช้เลือกเด็ดขาด
-        //    เพราะจะกลายเป็นเอาค่าของสาร A ไปเทียบเกณฑ์ของสาร B แล้วตอบผลผิดอย่างมั่นใจ
         const verifiedParam =
             verifiedParameterName.toLowerCase() === currentParamName
                 ? dbParam
@@ -102,26 +102,24 @@ export async function POST(request: NextRequest) {
                   });
 
         const standards = verifiedParam ? await loadStandardsForParameters([verifiedParam.id]) : [];
+        const evaluatedStatus = verifiedParam
+            ? evaluateValueAgainstStandards(
+                  aiResult.concentrated,
+                  standards.map((s) => s.maxValue),
+              )
+            : null;
 
-        // null = ตัดสินไม่ได้ เกิดได้ 2 กรณี: สารที่ AI ตอบไม่มีในระบบ | สารมีอยู่แต่ยังไม่มีเกณฑ์กำหนด
-        // ทั้งสองกรณีต้องบอกหน้าบ้านตรง ๆ ว่าตัดสินไม่ได้ ห้ามเดาว่า "ปลอดภัย"
-        const evaluatedStatus = verifiedParam ? evaluateValueAgainstStandards(aiResult.concentrated, standards.map((s) => s.maxValue)) : null;
-
-        // ดึงข้อความแนะนำสเปกใหม่ ดักจับกรณีคีย์ผันแปร
         const aiMessage = aiResult.message || aiResult.text || "";
-
-        // ดักจับ Bounding Box แบบครอบคลุมความผันผวนของคีย์ JSON ทั้งแบบเคสเว้นวรรคและอันเดอร์สกอร์
         const boundingBox = aiResult["bounding box"] || aiResult["bounding_box"] || [];
 
-        // 3. คืนค่าผลลัพธ์ผ่าน JSON กลับไปให้หน้าบ้าน (Frontend)
+        // 7. คืนค่าผลลัพธ์ผ่าน JSON
         return NextResponse.json({
             parameterId: dbParam.id,
-            parameterName: currentParamName, // ชื่อสารที่ผู้ใช้ระบุ (คงไว้เพื่อ label ภาพพล็อต)
-            verifiedParameterName, // ชื่อสารที่ AI ตรวจยืนยัน ใช้เทียบว่าตรงกับที่ผู้ใช้ระบุไหม
-            isTestTube: aiResult.is_test_tube ?? true, // ตรวจเจอหลอดทดลองในภาพหรือไม่
+            parameterName: currentParamName,
+            verifiedParameterName,
+            isTestTube: aiResult.is_test_tube ?? true,
             concentrated: aiResult.concentrated,
-            status: evaluatedStatus, // null = สารนี้ยังไม่มีเกณฑ์กำหนด ตัดสินไม่ได้
-
+            status: evaluatedStatus,
             confidence: aiResult.confidence,
             "bounding box": boundingBox,
             message: aiMessage,
