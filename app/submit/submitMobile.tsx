@@ -6,7 +6,7 @@ import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { AnalyzeButton } from "@/components/submit/NavWorkflow";
 import { SubmitSteps } from "@/components/submit/SubmitSteps";
-import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy } from "lucide-react";
+import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy, Send } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 
 export default function SubmitMobile(props: any) {
@@ -123,11 +123,11 @@ export default function SubmitMobile(props: any) {
                                 <button
                                     onClick={() => onConfirmSave(needsAdminReview)}
                                     className={`w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
-                                        needsAdminReview ? "bg-text-warning hover:bg-bg-warning" : "bg-secondary hover:bg-primary"
+                                        needsAdminReview ? "bg-[#FE9A00] hover:bg-bg-warning" : "bg-secondary hover:bg-primary"
                                     }`}
                                 >
-                                    {needsAdminReview ? <Clock size={15} /> : <Database size={15} />}
-                                    {needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกผลตรวจ"}
+                                    {needsAdminReview ? <Send size={15} /> : <Database size={15} />}
+                                    {needsAdminReview ? "ส่งให้ผู้เชี่ยวชาญตรวจสอบ" : "บันทึกผลตรวจ"}
                                 </button>
 
                                 <button
@@ -160,6 +160,17 @@ export default function SubmitMobile(props: any) {
                                 </button>
                             </div>
                         )}
+                        {/* {step === "results" && !saved && !needsAdminReview && (
+                            <div className="fixed right-4 z-40" style={{ bottom: "calc(100px + env(safe-area-inset-bottom))" }}>
+                                <button
+                                    onClick={() => onConfirmSave(true)}
+                                    className="inline-flex items-center gap-2 px-3.5 py-3 !bg-[#FE9A00] hover:!bg-[#e08900] active:scale-95 !text-white text-xs font-semibold rounded-xl shadow-lg transition-all duration-200 cursor-pointer select-none"
+                                >
+                                    <Send size={14} className="shrink-0 text-white" />
+                                    <span className="text-white">ส่งให้ผู้เชี่ยวชาญตรวจสอบ</span>
+                                </button>
+                            </div>
+                        )} */}
                     </>
                 )}
             </div>

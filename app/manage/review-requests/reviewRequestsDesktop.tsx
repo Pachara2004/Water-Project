@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
-import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText, ArrowLeft, ArrowRight } from "lucide-react";
 import { StatusTabs, RequestCard, RejectDrawer, ImageLightbox, getSampleWaterStatus } from "@/components/manage/reviewRequestsHelpers";
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
 import { ReviewRequestCardSkeleton } from "./loading";
@@ -315,16 +315,18 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                             <button
                                 disabled={page <= 1}
                                 onClick={() => setPage(page - 1)}
-                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
                             >
+                                <ArrowLeft size={15} strokeWidth={2.5} className="text-text shrink-0" />
                                 ก่อนหน้า
                             </button>
                             <button
                                 disabled={page >= totalPages}
                                 onClick={() => setPage(page + 1)}
-                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
                             >
                                 ถัดไป
+                                <ArrowRight size={15} strokeWidth={2.5} className="text-text shrink-0" />
                             </button>
                         </div>
                     </div>

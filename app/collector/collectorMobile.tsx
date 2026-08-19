@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import { Camera, FileText, Calendar, Beaker, MapPin, FileScan, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react";
+import { Camera, FileText, Calendar, Beaker, MapPin, FileScan, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check, ArrowLeft, ArrowRight } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
 import type { CollectorFiltersState } from "@/lib/hooks/useCollectorFilters";
@@ -374,16 +374,18 @@ export default function CollectorMobile(props: CollectorProps) {
                                             <button
                                                 disabled={page <= 1}
                                                 onClick={() => setPage(page - 1)}
-                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+                                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
                                             >
+                                                <ArrowLeft size={15} strokeWidth={2.5} className="text-text shrink-0" />
                                                 ก่อนหน้า
                                             </button>
                                             <button
                                                 disabled={page >= totalPages}
                                                 onClick={() => setPage(page + 1)}
-                                                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer "
+                                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer "
                                             >
                                                 ถัดไป
+                                                <ArrowRight size={15} strokeWidth={2.5} className="text-text shrink-0" />
                                             </button>
                                         </div>
                                     </div>

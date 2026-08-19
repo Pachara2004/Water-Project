@@ -231,10 +231,10 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 className="w-full h-full"
                 zoomControl={false}
                 attributionControl={false}
-                minZoom={mode === "picker" ? 1 : 1} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
+                minZoom={mode === "picker" ? 6 : 6} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
                 maxZoom={15}
                 maxBounds={THAILAND_BOUNDS}
-                maxBoundsViscosity={0.1}
+                maxBoundsViscosity={1}
                 bounceAtZoomLimits={true}
             >
                 <TileLayer
