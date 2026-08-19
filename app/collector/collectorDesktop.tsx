@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import { Camera, FileText, Calendar, Beaker, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check, ArrowLeft, FileScan, MapPin } from "lucide-react";
+import { Camera, FileText, Calendar, Beaker, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check, ArrowLeft, FileScan, MapPin, ArrowRight } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
 import { CollectorProps } from "./collectorMobile";
@@ -275,7 +275,6 @@ export default function CollectorDesktop(props: CollectorProps) {
                                     {/* Desktop Grid Layout: 2 Columns */}
                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                         {samples.map((sample) => {
-
                                             return (
                                                 <div
                                                     key={sample.id}
@@ -359,16 +358,18 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                 <button
                                                     disabled={page <= 1}
                                                     onClick={() => setPage(page - 1)}
-                                                    className="px-4 py-2 text-xs font-medium rounded-xl border border-border bg-card-general text-text hover:bg-surface-subtle disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                                    className="inline-flex items-center gap-1.5 p-2 text-xs font-medium rounded-xl border border-border bg-card-general text-text hover:bg-surface-subtle disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                                                 >
+                                                    <ArrowLeft size={15} strokeWidth={2.5} className="text-text shrink-0" />
                                                     ก่อนหน้า
                                                 </button>
                                                 <button
                                                     disabled={page >= totalPages}
                                                     onClick={() => setPage(page + 1)}
-                                                    className="px-4 py-2 text-xs font-medium rounded-xl border border-border bg-card-general text-text hover:bg-surface-subtle disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                                    className="inline-flex items-center gap-1.5 p-2 text-xs font-medium rounded-xl border border-border bg-card-general text-text hover:bg-surface-subtle disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                                                 >
                                                     ถัดไป
+                                                    <ArrowRight size={15} strokeWidth={2.5} className="text-text shrink-0" />
                                                 </button>
                                             </div>
                                         </div>
