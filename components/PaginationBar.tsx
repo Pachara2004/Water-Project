@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 /**
  * แถบแบ่งหน้ากลาง ใช้ร่วมกันทุกหน้าที่ดึงข้อมูลแบบแบ่งหน้าจาก API
