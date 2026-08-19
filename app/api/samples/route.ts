@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getWeatherData, backfillWeatherData } from "@/lib/tmd";
+import { backfillWeatherData } from "@/lib/tmd";
 import { WaterStatus } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";

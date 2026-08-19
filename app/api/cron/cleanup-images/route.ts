@@ -4,10 +4,8 @@ import fs from "fs/promises";
 import path from "path";
 
 // GET /api/cron/cleanup-images
-// Can be called periodically by a cron job or external service (like Vercel Cron)
 export async function GET(request: NextRequest) {
     try {
-        // Optional: Add a simple security key check to prevent unauthorized calls
         const authHeader = request.headers.get("authorization");
         if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -15,15 +13,15 @@ export async function GET(request: NextRequest) {
 
         const now = new Date();
 
-        // Find samples with expired images
-        const expiredSamples = await prisma.sample.findMany({
+        // 1. ค้นหาผ่าน prisma.waterSample และใช้ rawImageUrl ตาม Schema
+        const expiredSamples = await prisma.waterSample.findMany({
             where: {
-                imageUrl: { not: null },
+                rawImageUrl: { not: null },
                 imageExpiresAt: { lte: now },
             },
             select: {
                 id: true,
-                imageUrl: true,
+                rawImageUrl: true,
             },
         });
 
@@ -31,29 +29,36 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: "No expired images found", count: 0 });
         }
 
-        let deletedCount = 0;
         const publicDir = path.join(process.cwd(), "public");
+        const validSamples = expiredSamples.filter((sample) => sample.rawImageUrl);
 
-        for (const sample of expiredSamples) {
-            if (sample.imageUrl) {
-                // e.g. imageUrl = "/uploads/sample_123.jpg"
-                const filePath = path.join(publicDir, sample.imageUrl);
-
+        // 2. ลบไฟล์พร้อมกันแบบ Parallel (Non-blocking I/O)
+        const deleteResults = await Promise.allSettled(
+            validSamples.map(async (sample) => {
+                const filePath = path.join(publicDir, sample.rawImageUrl!);
                 try {
-                    // Attempt to delete the file from filesystem
                     await fs.unlink(filePath);
-                    deletedCount++;
+                    return true;
                 } catch (err) {
                     console.warn(`Failed to delete file: ${filePath}`, err);
-                    // If the file doesn't exist anymore, we still want to update the DB
+                    return false;
                 }
+            }),
+        );
 
-                // Remove imageUrl from database
-                await prisma.sample.update({
-                    where: { id: sample.id },
-                    data: { imageUrl: null },
-                });
-            }
+        const deletedCount = deleteResults.filter((res) => res.status === "fulfilled" && res.value === true).length;
+
+        // 3. Batch Update ผ่าน prisma.waterSample ใน 1 Query
+        const targetIds = validSamples.map((sample) => sample.id);
+        if (targetIds.length > 0) {
+            await prisma.waterSample.updateMany({
+                where: {
+                    id: { in: targetIds },
+                },
+                data: {
+                    rawImageUrl: null,
+                },
+            });
         }
 
         return NextResponse.json({
