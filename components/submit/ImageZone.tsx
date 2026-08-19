@@ -211,7 +211,7 @@ export function ImageZone({
             {enabled && (
                 <div className="p-4">
                     {measurement?.autoSwitchedFrom && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
+                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-border text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
                             <FlaskConical size={15} className="shrink-0 mt-0.5" />
                             <div className="text-xs leading-relaxed font-medium">
                                 <p className="font-semibold mb-0.5">เปลี่ยนชนิดสารให้อัตโนมัติ</p>
@@ -234,8 +234,10 @@ export function ImageZone({
 
                     {!isHistoryView && hasConf && (
                         <div
-                            className={`mb-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${
-                                isLowConf ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200" : "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
+                            className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${
+                                isLowConf
+                                    ? "border border-border bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200"
+                                    : "border border-border bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
                             }`}
                         >
                             {(() => {
