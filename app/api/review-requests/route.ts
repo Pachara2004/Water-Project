@@ -4,7 +4,7 @@ import { verifyAuth } from "@/lib/auth-guard";
 import { ReviewStatus } from "@prisma/client";
 import { parsePageParams, pageResult } from "@/lib/pagination";
 
-const VALID_STATUSES: ReviewStatus[] = ["pending", "approved", "rejected"];
+const VALID_STATUSES: string[] = ["pending", "approved", "rejected", "edited_approved"];
 
 // ==========================================
 // GET /api/review-requests?status=pending&page=&pageSize= — กล่องคำร้องสำหรับ admin ตัดสิน
@@ -21,10 +21,13 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const statusParam = searchParams.get("status");
-        const status: ReviewStatus = VALID_STATUSES.includes(statusParam as ReviewStatus) ? (statusParam as ReviewStatus) : "pending";
+        const status: string = VALID_STATUSES.includes(statusParam as string) ? (statusParam as string) : "pending";
         const pageParams = parsePageParams(searchParams, 10);
 
-        const where = { statusRequest: status };
+        let where: any = { statusRequest: status };
+        if (status === "approved") {
+            where = { statusRequest: { in: ["approved", "edited_approved"] } };
+        }
 
         // นับพร้อมกันใน transaction เดียว เพื่อให้ total กับ items มาจาก snapshot เดียวกัน
         const [reviewRequests, total] = await prisma.$transaction([

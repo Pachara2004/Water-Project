@@ -109,7 +109,9 @@ function SubmitContent() {
 
     const hasLowConfidence = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && isLowConfidence(r.confidence));
     const hasDuplicateSubstance = Object.values(results).some((r) => r.isDuplicateSubstance);
-    const needsAdminReview = hasLowConfidence;
+    const hasUserInsistedOriginal = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.userInsistedOriginal);
+    const hasSystemUnknown = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.isSystemUnknown);
+    const needsAdminReview = hasLowConfidence || hasUserInsistedOriginal || hasSystemUnknown;
 
     const onResetClick = async () => {
         const confirmed = await confirmDialog({
@@ -145,6 +147,7 @@ function SubmitContent() {
         saved,
         savedSampleId,
         router,
+        revertAutoSwitch: hook.revertAutoSwitch,
     };
 
     if (!isAllowed) return null;

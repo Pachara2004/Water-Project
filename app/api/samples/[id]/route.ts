@@ -92,13 +92,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }
         }
 
-        let finalMeasurementsPayload: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];
+        let finalMeasurementsPayload: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: any; message?: string | null }> = [];
 
         if (measurements && Array.isArray(measurements)) {
             finalMeasurementsPayload = measurements.map((m: any) => ({
                 parameterId: Number(m.parameterId),
                 value: parseFloat(m.value || "0"),
-                confidence: parseFloat(oldSample.measurements[0]?.confidence || "0.90"),
+                confidence: oldSample.measurements[0]?.confidence ?? 0.90,
                 boundingBox: oldSample.measurements[0]?.boundingBox || null,
                 message: oldSample.measurements[0]?.message || null,
             }));
@@ -216,10 +216,104 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     try {
         const { id } = await params;
-        const sampleId = Number(id);
+        
+        const pendingGroups = await getPendingSessionGroups();
+        const isPendingParam = pendingGroups.includes(id);
+        
+        // 1. ลองค้นหาใน SampleRecord ก่อน (ถ้าไม่ใช่สถานะ Pending)
+        const isNumeric = !isNaN(Number(id));
+        let sampleRecord = null;
+        
+        if (!isPendingParam) {
+            sampleRecord = await prisma.sampleRecord.findFirst({
+                where: {
+                    OR: [
+                        { code: id },
+                        ...(isNumeric ? [{ id: Number(id) }] : [])
+                    ],
+                    isDeleted: false
+                },
+                orderBy: { id: "desc" },
+            });
+        }
 
-        const mainSample = await prisma.waterSample.findUnique({
-            where: { id: sampleId },
+        if (sampleRecord) {
+            let allMeasurements: any[] = [];
+            let sampleImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
+            
+            if (sampleRecord.parameterData && Array.isArray(sampleRecord.parameterData)) {
+                sampleRecord.parameterData.forEach((m: any, index: number) => {
+                    const paramId = m.parameterId || index;
+                    allMeasurements.push({
+                        sampleId: paramId,
+                        parameterId: paramId,
+                        parameter: { id: paramId, name: m.parameterName || "unknown" },
+                        value: m.value,
+                        confidence: m.confidence || 0.9,
+                    });
+                });
+            }
+
+            let rawImageUrl = null;
+            let analyzedPlotUrl = null;
+            if (sampleRecord.imageUrl && typeof sampleRecord.imageUrl === 'object') {
+                const imgData = sampleRecord.imageUrl as any;
+                if (imgData.rawImageUrls && imgData.rawImageUrls.length > 0) rawImageUrl = imgData.rawImageUrls[0];
+                if (imgData.plotImageUrls && imgData.plotImageUrls.length > 0) analyzedPlotUrl = imgData.plotImageUrls[0];
+                
+                // สำหรับ history page (รองรับ multiple images per parameter ถ้าทำได้ แต่ตอนนี้ mapping ง่ายๆ ก่อน)
+                allMeasurements.forEach((m) => {
+                    sampleImagesMap[m.sampleId] = {
+                        raw: rawImageUrl,
+                        plot: analyzedPlotUrl
+                    };
+                });
+            }
+
+            const responseGetData = {
+                id: sampleRecord.id,
+                code: sampleRecord.code,
+                collectorId: sampleRecord.collectorNameCurrentId,
+                locationId: sampleRecord.locationNameCurrentId,
+                collectionTime: cleanDateString(sampleRecord.collectionTime),
+                uploadedActiveAt: cleanDateString(sampleRecord.uploadedActiveAt),
+                updatedActiveAt: cleanDateString(sampleRecord.uploadedActiveAt),
+                dissolvedOxygen: sampleRecord.dissolvedOxygen,
+                airTemperature: sampleRecord.airTemperature,
+                rainAccumulation: sampleRecord.rainAccumulation,
+                weatherCondCode: sampleRecord.weatherCondCode,
+                status: sampleRecord.status,
+                rawImageUrl: rawImageUrl,
+                analyzedPlotUrl: analyzedPlotUrl,
+                sessionGroup: sampleRecord.code,
+                reviewStatus: "APPROVED",
+                
+                location: {
+                    id: sampleRecord.locationNameCurrentId,
+                    stationName: sampleRecord.locationNameFrom,
+                    governingAgency: "-",
+                    latitude: 0,
+                    longitude: 0,
+                },
+                collector: {
+                    id: sampleRecord.collectorNameCurrentId,
+                    lineProfileName: sampleRecord.collectorNameFrom,
+                },
+                measurements: allMeasurements,
+                sampleImagesMap: sampleImagesMap,
+            };
+            return NextResponse.json(responseGetData);
+        }
+
+        // 2. ถ้าไม่พบใน SampleRecord ให้มาค้นใน WaterSample (สำหรับ Pending หรือ Rejected)
+        const sampleIdNum = Number(id);
+        const mainSample = await prisma.waterSample.findFirst({
+            where: {
+                OR: [
+                    { sessionGroup: id },
+                    ...(!isNaN(sampleIdNum) ? [{ id: sampleIdNum }] : [])
+                ],
+            },
             include: {
                 location: true,
                 collector: {
@@ -234,6 +328,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     include: { parameter: true },
                 },
             },
+            orderBy: { id: "desc" }
         });
 
         if (!mainSample || mainSample.isDeleted) {
@@ -256,7 +351,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             const partnerSamples = await prisma.waterSample.findMany({
                 where: {
                     sessionGroup: mainSample.sessionGroup,
-                    id: { not: sampleId },
+                    id: { not: mainSample.id },
                     isDeleted: false,
                 },
                 include: {
@@ -282,7 +377,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             }
         });
 
-        const pendingGroups = await getPendingSessionGroups();
         const baseLocationSampleWhere: any = { locationId: mainSample.locationId, isDeleted: false };
         if (pendingGroups.length > 0) {
             baseLocationSampleWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];

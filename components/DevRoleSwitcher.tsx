@@ -25,7 +25,7 @@ export default function DevRoleSwitcher() {
             currentUser: {
                 ...currentUser,
                 role: roleId,
-                fullName: `Test ${roleId.toUpperCase()}`,
+                lineProfileName: `Test ${roleId.toUpperCase()}`,
             },
         });
 

@@ -13,6 +13,7 @@ import { loadStandardsForParameters } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 import { generateSessionGroup } from "@/lib/sessionGroup";
 import { parsePageParams, pageResult } from "@/lib/pagination";
+import { createSampleRecordSnapshot, createNotificationEntry } from "@/lib/sampleRecord";
 
 /** ลำดับความรุนแรงของสถานะ ใช้หาค่า "แย่สุด" ของกลุ่มตัวอย่าง (หนึ่ง sessionGroup อาจมีหลายแถว หนึ่งแถวต่อสาร) */
 const STATUS_SEVERITY: Record<WaterStatus, number> = { safe: 0, warning: 1, danger: 2 };
@@ -90,17 +91,15 @@ export async function GET(request: NextRequest) {
 
         const where: any = { isDeleted: false };
         if (auth.user!.roleName === "collector") {
-            where.collectorId = auth.user!.id;
+            where.collectorNameCurrentId = auth.user!.id;
         } else if (auth.user!.roleName === "admin" && mine) {
-            where.collectorId = auth.user!.id;
+            where.collectorNameCurrentId = auth.user!.id;
         }
 
         if (search) {
             where.OR = [
-                { sessionGroup: { contains: search } },
                 { code: { contains: search } },
-                { location: { stationName: { contains: search } } },
-                { location: { governingAgency: { contains: search } } },
+                { locationNameFrom: { contains: search } },
             ];
         }
 
@@ -109,138 +108,99 @@ export async function GET(request: NextRequest) {
             if (startDate) where.collectionTime.gte = new Date(`${startDate}T00:00:00`);
             if (endDate) where.collectionTime.lte = new Date(`${endDate}T23:59:59.999`);
         }
+        
+        if (selectedStatuses.size > 0) {
+            where.status = { in: Array.from(selectedStatuses) };
+        }
 
-        const pendingGroups = await getPendingSessionGroups();
-        const pendingSet = new Set(pendingGroups);
-
-        // ─── รอบ 1: ฟิลด์เบา ใช้ group/กรอง status/เรียง/นับ/ตัดหน้า ───
-        const lightRows = await prisma.waterSample.findMany({
+        // ดึงข้อมูลทั้งหมดที่ตรงกับเงื่อนไข แล้ว Group by code (sessionGroup) เอาอันล่าสุด
+        const rawRecords = await prisma.sampleRecord.findMany({
             where,
-            select: { id: true, sessionGroup: true, collectionTime: true, status: true },
-            orderBy: { collectionTime: sort },
+            orderBy: { id: sort }, // เรียงตาม id เพื่อให้ได้อันล่าสุดหากมีซ้ำ (id มากคือใหม่สุด)
         });
 
-        const groupOrder: string[] = [];
-        const groupStatus = new Map<string, WaterStatus>();
-        for (const s of lightRows) {
-            const groupKey = s.sessionGroup || `single-${s.id}`;
-            const existing = groupStatus.get(groupKey);
-            if (existing === undefined) {
-                groupOrder.push(groupKey);
-                groupStatus.set(groupKey, s.status);
+        const latestRecordMap = new Map<string, any>();
+        for (const record of rawRecords) {
+            if (!record.code) continue;
+            // ถ้า sort === "desc" อันแรกที่เจอคือใหม่สุด
+            // ถ้า sort === "asc" อันหลังที่เจอคือใหม่สุด 
+            // เอาเป็นว่าเก็บอันที่มี id มากที่สุดเสมอสำหรับ code นั้นๆ
+            if (!latestRecordMap.has(record.code)) {
+                latestRecordMap.set(record.code, record);
             } else {
-                groupStatus.set(groupKey, worseStatus(existing, s.status));
+                const existing = latestRecordMap.get(record.code);
+                if (record.id > existing.id) {
+                    latestRecordMap.set(record.code, record);
+                }
             }
         }
 
-        const filteredGroupKeys = selectedStatuses.size > 0 ? groupOrder.filter((key) => selectedStatuses.has(groupStatus.get(key)!)) : groupOrder;
+        // แปลง Map เป็น Array และเรียงลำดับอีกครั้งตาม collectionTime
+        let uniqueRecords = Array.from(latestRecordMap.values());
+        uniqueRecords.sort((a, b) => {
+            const timeA = new Date(a.collectionTime).getTime();
+            const timeB = new Date(b.collectionTime).getTime();
+            return sort === "asc" ? timeA - timeB : timeB - timeA;
+        });
 
-        const total = filteredGroupKeys.length;
-        const pageGroupKeys = filteredGroupKeys.slice(pageParams.skip, pageParams.skip + pageParams.take);
+        const total = uniqueRecords.length;
+        const pageRecords = uniqueRecords.slice(pageParams.skip, pageParams.skip + pageParams.take);
 
-        if (pageGroupKeys.length === 0) {
+        if (pageRecords.length === 0) {
             return NextResponse.json(pageResult([], total, pageParams));
         }
 
-        const pageGroupKeySet = new Set(pageGroupKeys);
-        const sessionGroupsInPage = pageGroupKeys.filter((k) => !k.startsWith("single-"));
-        const singleIdsInPage = pageGroupKeys.filter((k) => k.startsWith("single-")).map((k) => Number(k.replace("single-", "")));
+        const formattedSamples = pageRecords.map((record) => {
+            let currentMeasurements: Record<string, number> = {};
+            let rawImageUrl = null;
+            let analyzedPlotUrl = null;
 
-        // ─── รอบ 2: รายละเอียดเต็ม เฉพาะกลุ่มของหน้านี้ ───
-        const samples = await prisma.waterSample.findMany({
-            where: {
-                ...where,
-                OR: [
-                    ...(sessionGroupsInPage.length > 0 ? [{ sessionGroup: { in: sessionGroupsInPage } }] : []),
-                    ...(singleIdsInPage.length > 0 ? [{ id: { in: singleIdsInPage } }] : []),
-                ],
-            },
-            include: {
-                location: true,
-                collector: {
-                    select: {
-                        id: true,
-                        lineProfileName: true,
-                        firstName: true,
-                        lastName: true,
-                        phoneNumber: true,
-                    },
-                },
-                measurements: {
-                    include: {
-                        parameter: true,
-                    },
-                },
-            },
-            orderBy: { collectionTime: sort },
-        });
-
-        const groupedSamples = new Map<string, any>();
-
-        samples.forEach((s: any) => {
-            const groupKey = s.sessionGroup || `single-${s.id}`;
-            if (!pageGroupKeySet.has(groupKey)) return;
-
-            const currentMeasurements: Record<string, number> = {};
-            s.measurements.forEach((m: any) => {
-                if (m.parameter?.name) {
-                    const keyName = `${m.parameter.name.toLowerCase()}Val`;
-                    currentMeasurements[keyName] = m.value;
-                }
-            });
-
-            if (!groupedSamples.has(groupKey)) {
-                groupedSamples.set(groupKey, {
-                    id: s.id,
-                    code: s.code,
-                    collectorId: s.collectorId,
-                    locationId: s.locationId,
-                    // 🟢 ตัด Z ออกเพื่อไม่ให้ Frontend บวก 7 ชั่วโมงซ้ำ
-                    collectionTime: s.collectionTime ? s.collectionTime.toISOString().replace("Z", "") : null,
-                    uploadedActiveAt: s.uploadedActiveAt ? s.uploadedActiveAt.toISOString().replace("Z", "") : null,
-                    dissolvedOxygen: s.dissolvedOxygen,
-                    airTemperature: s.airTemperature,
-                    rainAccumulation: s.rainAccumulation,
-                    weatherCondCode: s.weatherCondCode,
-                    rawImageUrl: s.rawImageUrl,
-                    analyzedPlotUrl: s.analyzedPlotUrl,
-                    isDeleted: s.isDeleted,
-                    sessionGroup: s.sessionGroup,
-
-                    reviewStatus: pendingSet.has(groupKey) ? "PENDING" : "APPROVED",
-
-                    ...currentMeasurements,
-
-                    location: s.location
-                        ? {
-                              id: s.location.id,
-                              name: s.location.stationName,
-                              organization: s.location.governingAgency,
-                              lat: s.location.latitude,
-                              lng: s.location.longitude,
-                          }
-                        : null,
-                    collector: s.collector,
-                    status: s.status ? s.status.toUpperCase() : "SAFE",
+            if (record.parameterData && Array.isArray(record.parameterData)) {
+                record.parameterData.forEach((m: any) => {
+                    if (m.parameterName) {
+                        const keyName = `${m.parameterName.toLowerCase()}Val`;
+                        currentMeasurements[keyName] = m.value;
+                    }
                 });
-            } else {
-                const existing = groupedSamples.get(groupKey);
-
-                Object.assign(existing, currentMeasurements);
-
-                if (!existing.rawImageUrl && s.rawImageUrl) existing.rawImageUrl = s.rawImageUrl;
-                if (!existing.analyzedPlotUrl && s.analyzedPlotUrl) existing.analyzedPlotUrl = s.analyzedPlotUrl;
-
-                const currentStatus = s.status ? s.status.toUpperCase() : "SAFE";
-                if (currentStatus === "DANGER") {
-                    existing.status = "DANGER";
-                } else if (currentStatus === "WARNING" && existing.status !== "DANGER") {
-                    existing.status = "WARNING";
-                }
             }
-        });
 
-        const formattedSamples = pageGroupKeys.map((key) => groupedSamples.get(key)).filter(Boolean);
+            if (record.imageUrl && typeof record.imageUrl === 'object') {
+                const imgData = record.imageUrl as any;
+                if (imgData.rawImageUrls && imgData.rawImageUrls.length > 0) rawImageUrl = imgData.rawImageUrls[0];
+                if (imgData.plotImageUrls && imgData.plotImageUrls.length > 0) analyzedPlotUrl = imgData.plotImageUrls[0];
+            }
+
+            return {
+                id: record.id,
+                code: record.code, // นี่คือ sessionGroup 
+                collectorId: record.collectorNameCurrentId,
+                locationId: record.locationNameCurrentId,
+                collectionTime: record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null,
+                uploadedActiveAt: record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null,
+                dissolvedOxygen: record.dissolvedOxygen,
+                airTemperature: record.airTemperature,
+                rainAccumulation: record.rainAccumulation,
+                weatherCondCode: record.weatherCondCode,
+                rawImageUrl: rawImageUrl,
+                analyzedPlotUrl: analyzedPlotUrl,
+                isDeleted: record.isDeleted,
+                sessionGroup: record.code,
+
+                reviewStatus: record.reviewStatus ? record.reviewStatus.toUpperCase() : "APPROVED",
+
+                ...currentMeasurements,
+
+                location: {
+                    id: record.locationNameCurrentId,
+                    name: record.locationNameFrom,
+                },
+                collector: {
+                    id: record.collectorNameCurrentId,
+                    lineProfileName: record.collectorNameFrom,
+                },
+                status: record.status ? record.status.toUpperCase() : "SAFE",
+            };
+        });
 
         return NextResponse.json(pageResult(formattedSamples, total, pageParams));
     } catch (error) {
@@ -521,6 +481,32 @@ export async function POST(request: NextRequest) {
                     create: { sessionGroup: sessionGroupToUse, statusRequest: "pending" },
                     update: {},
                 });
+                await createNotificationEntry(tx, {
+                    userId: secureCollectorId,
+                    code: sessionGroupToUse,
+                    status: "pending",
+                    message: "ข้อมูลของคุณกำลังรอการตรวจสอบ",
+                });
+            } else if (!needsReview && sessionGroupToUse) {
+                // Auto Approve Path
+                const fullSample = await tx.waterSample.findUnique({
+                    where: { id: created.id },
+                    include: {
+                        collector: true,
+                        location: true,
+                        measurements: { include: { parameter: true } }
+                    }
+                });
+
+                if (fullSample) {
+                    await createSampleRecordSnapshot(tx, [fullSample]);
+                    await createNotificationEntry(tx, {
+                        userId: secureCollectorId,
+                        code: sessionGroupToUse,
+                        status: "approved",
+                        message: "ผลตรวจคุณภาพน้ำได้รับการบันทึกเรียบร้อยแล้ว",
+                    });
+                }
             }
 
             return created;

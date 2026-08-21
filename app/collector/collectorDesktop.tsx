@@ -278,7 +278,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                             return (
                                                 <div
                                                     key={sample.id}
-                                                    onClick={() => router.push(`/collector/history/${sample.id}`)}
+                                                    onClick={() => router.push(`/collector/history/${sample.sessionGroup}`)}
                                                     className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
                                                 >
                                                     {/* ฝั่งเนื้อหาข้อมูล - ถอด h-15 ออกเพื่อให้ขยายแนวตั้งได้ตามจริง */}

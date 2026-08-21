@@ -92,6 +92,7 @@ export default function SubmitMobile(props: any) {
                                 onNearestLocationsUpdate={setNearestLocations}
                                 allLocations={allLocations}
                                 setIsRecommending={setIsRecommending}
+                                onRevertAutoSwitch={() => props.revertAutoSwitch(key)}
                             />
                         ))}
                 {step === "upload" && (
@@ -129,6 +130,16 @@ export default function SubmitMobile(props: any) {
                                     {needsAdminReview ? <Send size={15} /> : <Database size={15} />}
                                     {needsAdminReview ? "ส่งให้ผู้เชี่ยวชาญตรวจสอบ" : "บันทึกผลตรวจ"}
                                 </button>
+
+                                {!needsAdminReview && (
+                                    <button
+                                        onClick={() => onConfirmSave(true)}
+                                        className="w-full py-3 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-[#FE9A00] border-2 border-[#FE9A00] bg-transparent hover:bg-orange-50 transition-all duration-200"
+                                    >
+                                        <Send size={15} />
+                                        ส่งให้ผู้เชี่ยวชาญตรวจสอบ
+                                    </button>
+                                )}
 
                                 <button
                                     onClick={onResetClick}

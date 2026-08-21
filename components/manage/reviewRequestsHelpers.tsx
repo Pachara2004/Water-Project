@@ -4,7 +4,7 @@ import { useState } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
 import { readChemMeasurements } from "@/lib/chemLabels";
-import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2 } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
@@ -34,7 +34,7 @@ export interface PreviewImages {
 export interface ReviewRequestItem {
     id: number;
     sessionGroup: string;
-    statusRequest: ReviewStatusFilter;
+    statusRequest: ReviewStatusFilter | "edited_approved";
     createdAt: string;
     reviewedAt: string | null;
     reviewNote: string | null;
@@ -159,13 +159,15 @@ export function RequestDetailPopup({
     const waterStatus = getSampleWaterStatus(item, standards);
     const samplesWithImage = item.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
 
-    const requestStatusLabel = item.statusRequest === "pending" ? "รอตรวจสอบ" : item.statusRequest === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว";
+    const requestStatusLabel = item.statusRequest === "pending" ? "รอตรวจสอบ" : item.statusRequest === "approved" ? "อนุมัติแล้ว" : item.statusRequest === "edited_approved" ? "แก้ไขแล้วอนุมัติ" : "ปฏิเสธแล้ว";
     const requestStatusStyle =
         item.statusRequest === "pending"
             ? "text-text-warning bg-bg-warning border-border-warning"
             : item.statusRequest === "approved"
               ? "text-teal-600 bg-teal-50 border-teal-200"
-              : "text-red-600 bg-red-50 border-red-200";
+              : item.statusRequest === "edited_approved"
+                ? "text-orange-600 bg-orange-50 border-orange-200"
+                : "text-red-600 bg-red-50 border-red-200";
 
     return (
         <Popup title="รายละเอียดคำร้อง" onClose={onClose} maxWidth="max-w-xl">
@@ -269,7 +271,7 @@ export function RequestDetailPopup({
                 {item.statusRequest !== "pending" && (
                     <div className="space-y-2">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-text">
-                            {item.statusRequest === "approved" ? <CheckCircle2 size={14} className="text-teal-600" /> : <XCircle size={14} className="text-red-600" />}
+                            {item.statusRequest === "approved" ? <CheckCircle2 size={14} className="text-teal-600" /> : item.statusRequest === "edited_approved" ? <CheckCircle2 size={14} className="text-orange-600" /> : <XCircle size={14} className="text-red-600" />}
                             <span>ผลการตัดสิน</span>
                         </div>
                         <div className="bg-surface-subtle border border-border rounded-xl p-3.5 space-y-2.5">
@@ -295,6 +297,8 @@ export function RequestCard({
     onOpenReject,
     onApprove,
     onPreviewImage,
+    onOpenEditApprove,
+    mobile,
 }: {
     item: ReviewRequestItem;
     standards: StandardRow[];
@@ -302,6 +306,7 @@ export function RequestCard({
     onOpenReject: (item: ReviewRequestItem) => void;
     onApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
     onPreviewImage: (images: PreviewImages) => void;
+    onOpenEditApprove?: (item: ReviewRequestItem) => void;
     mobile?: boolean;
 }) {
     const isMultiSample = item.samples.length > 1;
@@ -368,12 +373,17 @@ export function RequestCard({
                         </span>
                     )}
                     {item.statusRequest === "approved" && (
-                        <span className="inline-flex items-center w-20 text-xs font-semibold text-teal-600 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 text-xs font-semibold text-teal-600 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
                             อนุมัติแล้ว
                         </span>
                     )}
+                    {item.statusRequest === "edited_approved" && (
+                        <span className="inline-flex items-center px-2 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 p-1 justify-center rounded-md whitespace-nowrap">
+                            แก้ไขแล้วอนุมัติ
+                        </span>
+                    )}
                     {item.statusRequest === "rejected" && (
-                        <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
                             ปฏิเสธแล้ว
                         </span>
                     )}
@@ -463,7 +473,7 @@ export function RequestCard({
                             type="button"
                             disabled={actingId === item.id}
                             onClick={() => onOpenReject(item)}
-                            className="flex-1 min-h-9 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <XCircle size={14} />
                             <span>ปฏิเสธ</span>
@@ -471,8 +481,17 @@ export function RequestCard({
                         <button
                             type="button"
                             disabled={actingId === item.id || noneSelected}
+                            onClick={() => onOpenEditApprove?.(item)}
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            <Edit2 size={14} />
+                            <span>แก้ไข</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={actingId === item.id || noneSelected}
                             onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-9 px-3 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
                             <span>อนุมัติ</span>
@@ -530,6 +549,84 @@ export function RejectDrawer({
                 >
                     {rejectSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <X size={14} />}
                     ยืนยันปฏิเสธคำร้อง
+                </button>
+            </div>
+        </Popup>
+    );
+}
+
+export function EditApproveDrawer({
+    editTarget,
+    editNote,
+    setEditNote,
+    editMeasurements,
+    setEditMeasurements,
+    editSaving,
+    onClose,
+    onSubmit,
+}: {
+    editTarget: ReviewRequestItem;
+    editNote: string;
+    setEditNote: (v: string) => void;
+    editMeasurements: Record<number, number>;
+    setEditMeasurements: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
+    editSaving: boolean;
+    onClose: () => void;
+    onSubmit: () => void;
+}) {
+    return (
+        <Popup title="แก้ไขและอนุมัติคำร้อง" onClose={() => !editSaving && onClose()}>
+            <div className="space-y-6">
+                <p className="text-xs text-text-secondary leading-relaxed">
+                    คุณสามารถแก้ไขค่าสารที่ระบบ AI วิเคราะห์ผิดพลาดได้ที่นี่ และเมื่อยืนยัน ข้อมูลจะถูกบันทึกเป็นค่าที่ถูกต้องและได้รับการอนุมัติ
+                </p>
+
+                <div className="space-y-2.5">
+                    <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
+                    <div className="bg-surface-subtle border border-border rounded-xl p-3 space-y-3">
+                        {editTarget.samples.flatMap(s => s.measurements).map(m => (
+                            <div key={m.parameterId} className="flex items-center justify-between gap-3">
+                                <span className="text-xs font-bold text-text">{m.parameterName || "ไม่ระบุสาร"} (เดิม: {m.value.toFixed(2)})</span>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={editMeasurements[m.parameterId] ?? m.value}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setEditMeasurements(prev => ({...prev, [m.parameterId]: val ? parseFloat(val) : 0}));
+                                        }}
+                                        className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    />
+                                    {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-2.5">
+                    <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">หมายเหตุการแก้ไข *</label>
+                    <textarea
+                        value={editNote}
+                        onChange={(e) => setEditNote(e.target.value)}
+                        placeholder="เช่น ปรับค่า pH ตามรูปถ่ายที่เห็นจริง"
+                        rows={3}
+                        maxLength={REVIEW_NOTE_MAX_LENGTH}
+                        className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all resize-none"
+                    />
+                    <div className={`text-right text-xs font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                        {editNote.length}/{REVIEW_NOTE_MAX_LENGTH}
+                    </div>
+                </div>
+
+                <button
+                    onClick={onSubmit}
+                    disabled={editSaving || !editNote.trim()}
+                    className="w-full py-4 min-h-13 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                >
+                    {editSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
+                    บันทึกและอนุมัติ
                 </button>
             </div>
         </Popup>

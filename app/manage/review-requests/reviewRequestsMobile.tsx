@@ -8,8 +8,9 @@ import {
     StatusTabs,
     RequestCard,
     RejectDrawer,
-    ImageLightbox,
+    EditApproveDrawer,
     getSampleWaterStatus,
+    ImageLightbox,
     type ReviewStatusFilter,
     type ReviewRequestItem,
     type PreviewImages,
@@ -48,6 +49,16 @@ export interface ReviewRequestsPageProps {
     handleApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
     openReject: (item: ReviewRequestItem) => void;
     submitReject: () => void;
+
+    editTarget: ReviewRequestItem | null;
+    setEditTarget: (v: ReviewRequestItem | null) => void;
+    editNote: string;
+    setEditNote: (v: string) => void;
+    editMeasurements: Record<number, number>;
+    setEditMeasurements: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
+    editSaving: boolean;
+    openEditApprove: (item: ReviewRequestItem) => void;
+    submitEditApprove: () => void;
 }
 
 const statusOptions = [
@@ -79,6 +90,15 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
         handleApprove,
         openReject,
         submitReject,
+        editTarget,
+        setEditTarget,
+        editNote,
+        setEditNote,
+        editMeasurements,
+        setEditMeasurements,
+        editSaving,
+        openEditApprove,
+        submitEditApprove,
     } = props;
 
     // ─── Control States สำหรับ Filter Panel ───
@@ -363,6 +383,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                                             onOpenReject={openReject}
                                             onApprove={handleApprove}
                                             onPreviewImage={setPreviewImages}
+                                            onOpenEditApprove={openEditApprove}
                                             mobile
                                         />
                                     ))}
@@ -409,6 +430,18 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                     rejectSaving={rejectSaving}
                     onClose={() => setRejectTarget(null)}
                     onSubmit={submitReject}
+                />
+            )}
+            {editTarget && (
+                <EditApproveDrawer
+                    editTarget={editTarget}
+                    editNote={editNote}
+                    setEditNote={setEditNote}
+                    editMeasurements={editMeasurements}
+                    setEditMeasurements={setEditMeasurements}
+                    editSaving={editSaving}
+                    onClose={() => setEditTarget(null)}
+                    onSubmit={submitEditApprove}
                 />
             )}
             {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}
