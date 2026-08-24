@@ -295,79 +295,74 @@ export default function CollectorMobile(props: CollectorProps) {
                                             <div
                                                 key={sample.id}
                                                 onClick={() => router.push(`/collector/history/${sample.sessionGroup}`)}
-                                                className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
+                                                className="bg-card-general shadow-xs rounded-2xl border border-border active:scale-[0.99] transition-all flex flex-col cursor-pointer group min-w-0 overflow-hidden"
                                             >
-                                                {/* ฝั่งเนื้อหาข้อมูล - ถอด h-15 ออกเพื่อให้ขยายแนวตั้งได้ตามจริง */}
-                                                <div className="flex-1 min-w-0 flex flex-col ">
-                                                    {/* แถวบน: ชื่อสถานที่ และ สถานะ */}
-                                                    <div className="flex items-start justify-between gap-4 w-full">
-                                                        {/* ฝั่งซ้าย: ชื่อสถานที่ + วันที่ */}
+                                                {/* Header: Session ID & Review Status */}
+                                                <div className="flex items-center justify-between p-2.5 bg-primary border-b border-border">
+                                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                                                        <FileScan size={14} className="text-white" />
+                                                        <span>
+                                                            รหัสอ้างอิง : <span className="font-semibold text-white">{sample.sessionGroup}</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        {sample.reviewStatus === "PENDING" && (
+                                                            <span className="inline-flex justify-center items-center text-xs font-semibold text-text-warning bg-card-general border border-border p-1 w-30 rounded-md whitespace-nowrap">
+                                                                รอตรวจสอบ
+                                                            </span>
+                                                        )}
+                                                        {sample.reviewStatus === "REJECTED" && (
+                                                            <span className="inline-flex justify-center items-center text-xs font-semibold text-text-danger bg-card-general border border-border p-1 w-30 rounded-md whitespace-nowrap">
+                                                                ถูกปฏิเสธ
+                                                            </span>
+                                                        )}
+                                                        {sample.reviewStatus === "EDITED_APPROVED" && (
+                                                            <span className="inline-flex justify-center items-center text-xs font-semibold text-text-safe bg-card-general border border-border p-1 w-30 rounded-md whitespace-nowrap">
+                                                                อนุมัติ (มีการแก้ไข)
+                                                            </span>
+                                                        )}
+                                                        {sample.reviewStatus === "APPROVED" && (
+                                                            <span className="inline-flex justify-center items-center text-xs font-semibold text-text-safe bg-card-general border border-border p-1 w-30 rounded-md whitespace-nowrap">
+                                                                อนุมัติ
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Body: Location, Date, Chems, Water Status */}
+                                                <div className="flex items-start justify-between gap-4 w-full p-3.5">
+                                                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                                                        <MapPin size={32} className="text-primary shrink-0 mt-0.5" />
                                                         <div className="flex-1 min-w-0">
-                                                            {/* จัดให้อยู่ตรงกลางแนวตั้งด้วย items-center */}
-                                                            <div className="flex items-center gap-3 min-w-0">
-                                                                {/* ไอคอน MapPin อยู่ตรงกลางแนวตั้งขนานกับกลุ่มข้อความ */}
-                                                                <MapPin size={36} className="text-primary shrink-0" />
-
-                                                                {/* กลุ่มข้อความ ชื่อสถานที่, วันที่ และค่าสารเคมี */}
-                                                                <div className="flex-1 min-w-0">
-                                                                    <h4 className="font-semibold text-sm text-text">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
-                                                                    {/* แถวกลาง: เมทาดาต้า วันที่ */}
-                                                                    <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5">
-                                                                        <div className="flex items-center gap-1.5 shrink-0">
-                                                                            <FileScan size={13} className="text-text-muted shrink-0" />
-                                                                            <span>{sample.sessionGroup}</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-1.5 shrink-0">
-                                                                            <Calendar size={13} className="text-text-muted shrink-0" />
-                                                                            <span>
-                                                                                {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                                                                                    day: "numeric",
-                                                                                    month: "short",
-                                                                                    year: "2-digit",
-                                                                                })}
-                                                                            </span>
-                                                                        </div>
+                                                            <h4 className="font-semibold text-sm text-text">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+                                                            <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
+                                                                <Calendar size={13} className="text-text-muted shrink-0" />
+                                                                <span className="leading-none">
+                                                                    {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                                        day: "numeric",
+                                                                        month: "short",
+                                                                        year: "2-digit",
+                                                                    })}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-2 w-full flex-wrap">
+                                                                {readChemValues(sample).map((c) => (
+                                                                    <div
+                                                                        key={c.key}
+                                                                        className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
+                                                                    >
+                                                                        <Beaker size={10} className={c.color} />
+                                                                        <span>
+                                                                            {c.abbrev}: {c.value.toFixed(2)}
+                                                                        </span>
                                                                     </div>
-
-                                                                    {/* แถวล่าง: แสดงค่าสารเคมี — dynamic ตามสารที่มีอยู่จริงบนตัวอย่างนี้ ไม่ผูกชื่อ/ตัวย่อไว้ตายตัว */}
-                                                                    <div className="flex items-center gap-2 mt-1 w-full">
-                                                                        {readChemValues(sample).map((c) => (
-                                                                            <div
-                                                                                key={c.key}
-                                                                                className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
-                                                                            >
-                                                                                <Beaker size={10} className={c.color} />
-                                                                                <span>
-                                                                                    {c.abbrev}: {c.value.toFixed(2)}
-                                                                                </span>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
+                                                                ))}
                                                             </div>
                                                         </div>
-
-                                                        {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
-                                                        <div className="flex flex-col items-end text-center gap-1 shrink-0">
-                                                            <StatusBadge status={sample.status} size="sm" />
-                                                            {sample.reviewStatus === "PENDING" && (
-                                                                <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
-                                                                    รอตรวจสอบ
-                                                                </span>
-                                                            )}
-                                                            {sample.reviewStatus === "REJECTED" && (
-                                                                <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
-                                                                    ถูกปฏิเสธ
-                                                                </span>
-                                                            )}
-                                                            {sample.reviewStatus === "EDITED_APPROVED" && (
-                                                                <span className="inline-flex items-center w-30 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
-                                                                    อนุมัติ (มีการแก้ไข)
-                                                                </span>
-                                                            )}
-                                                        </div>
                                                     </div>
-                                                    {/* แถวล่าง: ค่าสารเคมี - เอา grid และ justify-end ออกเพื่อให้ชิดซ้ายตามปกติ */}
+                                                    <div className="shrink-0 flex flex-col items-end gap-1 mt-0.5">
+                                                        <StatusBadge status={sample.status} size="sm" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
