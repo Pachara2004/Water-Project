@@ -159,7 +159,8 @@ export function RequestDetailPopup({
     const waterStatus = getSampleWaterStatus(item, standards);
     const samplesWithImage = item.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
 
-    const requestStatusLabel = item.statusRequest === "pending" ? "รอตรวจสอบ" : item.statusRequest === "approved" ? "อนุมัติแล้ว" : item.statusRequest === "edited_approved" ? "แก้ไขแล้วอนุมัติ" : "ปฏิเสธแล้ว";
+    const requestStatusLabel =
+        item.statusRequest === "pending" ? "รอตรวจสอบ" : item.statusRequest === "approved" ? "อนุมัติแล้ว" : item.statusRequest === "edited_approved" ? "แก้ไขแล้วอนุมัติ" : "ปฏิเสธแล้ว";
     const requestStatusStyle =
         item.statusRequest === "pending"
             ? "text-text-warning bg-bg-warning border-border-warning"
@@ -223,7 +224,7 @@ export function RequestDetailPopup({
                                             </span>
                                         </div>
                                     </div>
-                                ))
+                                )),
                             )}
                         </div>
                     )}
@@ -244,7 +245,11 @@ export function RequestDetailPopup({
                     ) : (
                         <div className="space-y-3">
                             {samplesWithImage.map((s) => {
-                                const sampleLabel = s.measurements.map((m) => m.parameterName).filter(Boolean).join(", ") || "ไม่ระบุสาร";
+                                const sampleLabel =
+                                    s.measurements
+                                        .map((m) => m.parameterName)
+                                        .filter(Boolean)
+                                        .join(", ") || "ไม่ระบุสาร";
                                 return (
                                     <div key={s.id} className="space-y-1.5">
                                         <span className="text-[11px] font-bold text-text-secondary">{sampleLabel}</span>
@@ -271,7 +276,13 @@ export function RequestDetailPopup({
                 {item.statusRequest !== "pending" && (
                     <div className="space-y-2">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-text">
-                            {item.statusRequest === "approved" ? <CheckCircle2 size={14} className="text-teal-600" /> : item.statusRequest === "edited_approved" ? <CheckCircle2 size={14} className="text-orange-600" /> : <XCircle size={14} className="text-red-600" />}
+                            {item.statusRequest === "approved" ? (
+                                <CheckCircle2 size={14} className="text-teal-600" />
+                            ) : item.statusRequest === "edited_approved" ? (
+                                <CheckCircle2 size={14} className="text-orange-600" />
+                            ) : (
+                                <XCircle size={14} className="text-red-600" />
+                            )}
                             <span>ผลการตัดสิน</span>
                         </div>
                         <div className="bg-surface-subtle border border-border rounded-xl p-3.5 space-y-2.5">
@@ -393,7 +404,7 @@ export function RequestCard({
             {/* ── โซนเลือกสารกรณีมีหลายสารในแท็บรออนุมัติ ── */}
             {showSampleSelect && (
                 <div className="bg-surface-subtle border border-border/60 rounded-xl p-2.5 space-y-2">
-                    <span className="text-[11px] font-bold text-text-secondary uppercase block">เลือกอนุมัติเฉพาะสาร:</span>
+                    <span className="text-xs font-bold text-text-secondary uppercase block">เลือกอนุมัติเฉพาะสาร:</span>
                     {item.samples.map((s) => (
                         <label key={s.id} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2 cursor-pointer">
                             <div className="flex items-center gap-2">
@@ -427,19 +438,21 @@ export function RequestCard({
             {/* ── สารตัวเดียว: ไม่มีอะไรให้เลือกซับเซ็ต แต่ยังต้องเห็น conf. เหมือนกรณีหลายสาร ── */}
             {item.statusRequest === "pending" && !isMultiSample && (
                 <div className="bg-surface-subtle border border-border/60 rounded-xl p-2.5 space-y-1.5">
-                    {item.samples.flatMap((s) => s.measurements).map((m) => (
-                        <div key={m.parameterId} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2">
-                            <span className="font-bold text-text">{m.parameterName || "ไม่ระบุสาร"}</span>
-                            <span
-                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                                    isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
-                                }`}
-                                title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
-                            >
-                                conf. {m.confidence.toFixed(2)}
-                            </span>
-                        </div>
-                    ))}
+                    {item.samples
+                        .flatMap((s) => s.measurements)
+                        .map((m) => (
+                            <div key={m.parameterId} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2">
+                                <span className="font-bold text-text">{m.parameterName || "ไม่ระบุสาร"}</span>
+                                <span
+                                    className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                        isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
+                                    }`}
+                                    title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
+                                >
+                                    conf. {m.confidence.toFixed(2)}
+                                </span>
+                            </div>
+                        ))}
                 </div>
             )}
 
@@ -449,31 +462,28 @@ export function RequestCard({
                     <p>
                         ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
                     </p>
-                    {item.reviewNote && (
-                        <p className="text-text-danger font-semibold bg-red-500/5 p-1.5 rounded-md border border-red-500/10 mt-1 break-words [overflow-wrap:anywhere]">เหตุผล: {item.reviewNote}</p>
-                    )}
+                    {item.reviewNote && <p className="text-text-danger font-semibold bg-red-500/5 p-1.5 rounded-md border border-red-500/10 mt-1 wrap-break-word">เหตุผล: {item.reviewNote}</p>}
                 </div>
             )}
 
             {/* ── แถบปุ่ม Actions จัดการ ── */}
-            {/* ปุ่มแบ่งความกว้างเท่ากันด้วย flex-1 เพื่อให้แถวเต็มการ์ดเสมอ ไม่ว่าจะมี 1 หรือ 3 ปุ่ม */}
-            <div className="flex items-stretch gap-2 pt-3 border-t border-border">
+            <div className="flex flex-col gap-2 pt-3 border-t border-border">
                 <button
                     type="button"
                     onClick={() => setIsDetailOpen(true)}
-                    className="flex-1 min-h-9 px-3 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full min-h-9 px-3 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                     <Info size={14} />
                     <span>ดูรายละเอียด</span>
                 </button>
 
                 {item.statusRequest === "pending" && (
-                    <>
+                    <div className="flex items-stretch gap-2 w-full">
                         <button
                             type="button"
                             disabled={actingId === item.id}
                             onClick={() => onOpenReject(item)}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-danger hover:bg-red-100 text-text-danger border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <XCircle size={14} />
                             <span>ปฏิเสธ</span>
@@ -482,7 +492,7 @@ export function RequestCard({
                             type="button"
                             disabled={actingId === item.id || noneSelected}
                             onClick={() => onOpenEditApprove?.(item)}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <Edit2 size={14} />
                             <span>แก้ไข</span>
@@ -496,7 +506,7 @@ export function RequestCard({
                             {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
                             <span>อนุมัติ</span>
                         </button>
-                    </>
+                    </div>
                 )}
             </div>
 
@@ -526,34 +536,37 @@ export function RejectDrawer({
         <Popup title="ปฏิเสธคำร้อง" onClose={() => !rejectSaving && onClose()}>
             <div className="space-y-6">
                 <p className="text-xs text-text-secondary leading-relaxed">
-                    ผลตรวจของ &quot;{rejectTarget.location?.name ?? "จุดตรวจนี้"}&quot; จะไม่ถูกนำไปคำนวณในภาพรวมของระบบ กรุณาระบุเหตุผลเพื่อให้ผู้เก็บตัวอย่างรับทราบ (ผู้เก็บจะยังคงเห็นรายการนี้ในหน้าประวัติของตนเอง)
+                    ผลตรวจของ &quot;{rejectTarget.location?.name ?? "จุดตรวจนี้"}&quot; จะไม่ถูกนำไปคำนวณในภาพรวมของระบบ กรุณาระบุเหตุผลเพื่อให้ผู้เก็บตัวอย่างรับทราบ
+                    (ผู้เก็บจะยังคงเห็นรายการนี้ในหน้าประวัติของตนเอง)
                 </p>
 
                 {/* Image Context */}
-                {rejectTarget.samples.some(s => s.rawImageUrl || s.analyzedPlotUrl) && (
+                {rejectTarget.samples.some((s) => s.rawImageUrl || s.analyzedPlotUrl) && (
                     <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
                         <span className="text-[10px] font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
                         <div className="flex items-center gap-2">
-                            {rejectTarget.samples.filter(s => s.rawImageUrl || s.analyzedPlotUrl).map(s => (
-                                <div key={s.id} className="flex gap-2">
-                                    {s.rawImageUrl && (
-                                        <img 
-                                            src={s.rawImageUrl} 
-                                            alt="ภาพถ่าย" 
-                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
-                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
-                                        />
-                                    )}
-                                    {s.analyzedPlotUrl && (
-                                        <img 
-                                            src={s.analyzedPlotUrl} 
-                                            alt="ภาพ AI" 
-                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
-                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
-                                        />
-                                    )}
-                                </div>
-                            ))}
+                            {rejectTarget.samples
+                                .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
+                                .map((s) => (
+                                    <div key={s.id} className="flex gap-2">
+                                        {s.rawImageUrl && (
+                                            <img
+                                                src={s.rawImageUrl}
+                                                alt="ภาพถ่าย"
+                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
+                                            />
+                                        )}
+                                        {s.analyzedPlotUrl && (
+                                            <img
+                                                src={s.analyzedPlotUrl}
+                                                alt="ภาพ AI"
+                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
                         </div>
                     </div>
                 )}
@@ -565,7 +578,7 @@ export function RejectDrawer({
                             {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
                         </span>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {["ภาพไม่ชัดเจน/เบลอ", "สเกลสีไม่ตรงรุ่น", "แสงจ้า/เงาบัง"].map((text) => (
                             <button
@@ -632,30 +645,32 @@ export function EditApproveDrawer({
                 </p>
 
                 {/* Image Context */}
-                {editTarget.samples.some(s => s.rawImageUrl || s.analyzedPlotUrl) && (
+                {editTarget.samples.some((s) => s.rawImageUrl || s.analyzedPlotUrl) && (
                     <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
                         <span className="text-[10px] font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
                         <div className="flex items-center gap-2">
-                            {editTarget.samples.filter(s => s.rawImageUrl || s.analyzedPlotUrl).map(s => (
-                                <div key={s.id} className="flex gap-2">
-                                    {s.rawImageUrl && (
-                                        <img 
-                                            src={s.rawImageUrl} 
-                                            alt="ภาพถ่าย" 
-                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
-                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
-                                        />
-                                    )}
-                                    {s.analyzedPlotUrl && (
-                                        <img 
-                                            src={s.analyzedPlotUrl} 
-                                            alt="ภาพ AI" 
-                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
-                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
-                                        />
-                                    )}
-                                </div>
-                            ))}
+                            {editTarget.samples
+                                .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
+                                .map((s) => (
+                                    <div key={s.id} className="flex gap-2">
+                                        {s.rawImageUrl && (
+                                            <img
+                                                src={s.rawImageUrl}
+                                                alt="ภาพถ่าย"
+                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
+                                            />
+                                        )}
+                                        {s.analyzedPlotUrl && (
+                                            <img
+                                                src={s.analyzedPlotUrl}
+                                                alt="ภาพ AI"
+                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
                         </div>
                     </div>
                 )}
@@ -663,24 +678,28 @@ export function EditApproveDrawer({
                 <div className="space-y-2.5">
                     <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
                     <div className="bg-surface-subtle border border-border rounded-xl p-3 space-y-3">
-                        {editTarget.samples.flatMap(s => s.measurements).map(m => (
-                            <div key={m.parameterId} className="flex items-center justify-between gap-3">
-                                <span className="text-xs font-bold text-text uppercase">{m.parameterName || "ไม่ระบุสาร"} <span className="font-normal text-text-muted lowercase">(เดิม: {m.value.toFixed(2)})</span></span>
-                                <div className="flex items-center gap-2">
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        value={editMeasurements[m.parameterId] ?? m.value}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setEditMeasurements(prev => ({...prev, [m.parameterId]: val ? parseFloat(val) : 0}));
-                                        }}
-                                        className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                                    />
-                                    {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                        {editTarget.samples
+                            .flatMap((s) => s.measurements)
+                            .map((m) => (
+                                <div key={m.parameterId} className="flex items-center justify-between gap-3">
+                                    <span className="text-xs font-bold text-text uppercase">
+                                        {m.parameterName || "ไม่ระบุสาร"} <span className="font-normal text-text-muted lowercase">(เดิม: {m.value.toFixed(2)})</span>
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={editMeasurements[m.parameterId] ?? m.value}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
+                                            }}
+                                            className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                        />
+                                        {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
 
