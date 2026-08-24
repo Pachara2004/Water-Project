@@ -270,6 +270,42 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 });
             }
 
+            const sampleLocationId = sampleRecord.locationNameCurrentId;
+            const sampleCollectionTime = sampleRecord.collectionTime;
+            const baseLocationSampleWhere: any = { locationId: sampleLocationId, isDeleted: false };
+            if (pendingGroups.length > 0) {
+                baseLocationSampleWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
+            }
+            const locationSampleSelect = {
+                collectionTime: true,
+                measurements: { select: { value: true, parameterId: true, parameter: { select: { name: true } } } },
+            };
+            const [beforeOrAtSamples, afterSamples] = await Promise.all([
+                prisma.waterSample.findMany({
+                    where: { ...baseLocationSampleWhere, collectionTime: { lte: sampleCollectionTime } },
+                    orderBy: { collectionTime: "desc" },
+                    take: 50,
+                    select: locationSampleSelect,
+                }),
+                prisma.waterSample.findMany({
+                    where: { ...baseLocationSampleWhere, collectionTime: { gt: sampleCollectionTime } },
+                    orderBy: { collectionTime: "asc" },
+                    take: 50,
+                    select: locationSampleSelect,
+                }),
+            ]);
+            const latestByParameter = computeValueByParameterAsOf(beforeOrAtSamples, afterSamples);
+            const locationStandards = await loadAllStandards();
+            const locationStatus =
+                latestByParameter.length > 0
+                    ? evaluateSample(
+                          latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value })),
+                          locationStandards,
+                      )
+                    : null;
+
+            const reviewReq = await prisma.reviewRequest.findUnique({ where: { sessionGroup: sampleRecord.code } });
+
             const responseGetData = {
                 id: sampleRecord.id,
                 code: sampleRecord.code,
@@ -286,7 +322,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 rawImageUrl: rawImageUrl,
                 analyzedPlotUrl: analyzedPlotUrl,
                 sessionGroup: sampleRecord.code,
-                reviewStatus: "APPROVED",
+                reviewStatus: reviewReq?.statusRequest === "edited_approved" ? "EDITED_APPROVED" : "APPROVED",
+                
+                locationStatus,
+                latestByParameter: latestByParameter.map((item: any) => ({
+                    ...item,
+                    collectedAt: cleanDateString(item.collectedAt || item.collectionTime),
+                    collectionTime: cleanDateString(item.collectionTime || item.collectedAt),
+                })),
                 
                 location: {
                     id: sampleRecord.locationNameCurrentId,
@@ -331,7 +374,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             orderBy: { id: "desc" }
         });
 
-        if (!mainSample || mainSample.isDeleted) {
+        const reviewReq = await prisma.reviewRequest.findUnique({
+            where: { sessionGroup: mainSample.sessionGroup ?? "" },
+            select: { statusRequest: true }
+        });
+        const isRejected = reviewReq?.statusRequest === "rejected";
+
+        if (!mainSample || (mainSample.isDeleted && !isRejected)) {
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 
@@ -339,21 +388,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 
-        let allMeasurements = [...mainSample.measurements];
-
+        let allMeasurements: any[] = [];
         const sampleImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
-        sampleImagesMap[mainSample.id] = {
-            raw: mainSample.rawImageUrl,
-            plot: mainSample.analyzedPlotUrl,
-        };
 
         if (mainSample.sessionGroup) {
-            const partnerSamples = await prisma.waterSample.findMany({
-                where: {
-                    sessionGroup: mainSample.sessionGroup,
-                    id: { not: mainSample.id },
-                    isDeleted: false,
-                },
+            const allGroupSamples = await prisma.waterSample.findMany({
+                where: { sessionGroup: mainSample.sessionGroup },
+                orderBy: { id: "asc" },
                 include: {
                     measurements: {
                         include: { parameter: true },
@@ -361,13 +402,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 },
             });
 
-            partnerSamples.forEach((ps) => {
-                allMeasurements.push(...ps.measurements);
-                sampleImagesMap[ps.id] = {
-                    raw: ps.rawImageUrl,
-                    plot: ps.analyzedPlotUrl,
+            const measMap = new Map<number, any>();
+            allGroupSamples.forEach((s) => {
+                s.measurements.forEach((m) => {
+                    measMap.set(m.parameterId, m);
+                });
+                sampleImagesMap[s.id] = {
+                    raw: s.rawImageUrl,
+                    plot: s.analyzedPlotUrl,
                 };
             });
+            allMeasurements = Array.from(measMap.values());
+        } else {
+            allMeasurements = [...mainSample.measurements];
+            sampleImagesMap[mainSample.id] = {
+                raw: mainSample.rawImageUrl,
+                plot: mainSample.analyzedPlotUrl,
+            };
         }
 
         const dynamicMeasurements: Record<string, number> = {};
@@ -430,7 +481,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             sessionGroup: mainSample.sessionGroup,
 
             // 🟢 แนบ reviewStatus ให้หน้าประวัติใช้งาน
-            reviewStatus: isPending ? "PENDING" : "APPROVED",
+            reviewStatus: isRejected ? "REJECTED" : (reviewReq?.statusRequest === "edited_approved" ? "EDITED_APPROVED" : (isPending ? "PENDING" : "APPROVED")),
 
             location: mainSample.location
                 ? {

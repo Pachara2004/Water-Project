@@ -340,6 +340,16 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                                         รอตรวจสอบ
                                                                     </span>
                                                                 )}
+                                                                {sample.reviewStatus === "REJECTED" && (
+                                                                    <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                                                                        ถูกปฏิเสธ
+                                                                    </span>
+                                                                )}
+                                                                {sample.reviewStatus === "EDITED_APPROVED" && (
+                                                                    <span className="inline-flex items-center w-30 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
+                                                                        อนุมัติ (มีการแก้ไข)
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

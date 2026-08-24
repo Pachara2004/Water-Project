@@ -89,17 +89,20 @@ export async function GET(request: NextRequest) {
         const mine = searchParams.get("mine") === "true";
         const pageParams = parsePageParams(searchParams, 10);
 
-        const where: any = { isDeleted: false };
+        const where: any = {};
+        const baseFilter: any = { OR: [{ isDeleted: false }] };
+
         if (auth.user!.roleName === "collector") {
-            where.collectorNameCurrentId = auth.user!.id;
+            where.collectorId = auth.user!.id;
         } else if (auth.user!.roleName === "admin" && mine) {
-            where.collectorNameCurrentId = auth.user!.id;
+            where.collectorId = auth.user!.id;
         }
 
         if (search) {
             where.OR = [
+                { sessionGroup: { contains: search } },
                 { code: { contains: search } },
-                { locationNameFrom: { contains: search } },
+                { location: { stationName: { contains: search } } },
             ];
         }
 
@@ -113,30 +116,131 @@ export async function GET(request: NextRequest) {
             where.status = { in: Array.from(selectedStatuses) };
         }
 
-        // ดึงข้อมูลทั้งหมดที่ตรงกับเงื่อนไข แล้ว Group by code (sessionGroup) เอาอันล่าสุด
-        const rawRecords = await prisma.sampleRecord.findMany({
-            where,
-            orderBy: { id: sort }, // เรียงตาม id เพื่อให้ได้อันล่าสุดหากมีซ้ำ (id มากคือใหม่สุด)
-        });
-
-        const latestRecordMap = new Map<string, any>();
-        for (const record of rawRecords) {
-            if (!record.code) continue;
-            // ถ้า sort === "desc" อันแรกที่เจอคือใหม่สุด
-            // ถ้า sort === "asc" อันหลังที่เจอคือใหม่สุด 
-            // เอาเป็นว่าเก็บอันที่มี id มากที่สุดเสมอสำหรับ code นั้นๆ
-            if (!latestRecordMap.has(record.code)) {
-                latestRecordMap.set(record.code, record);
-            } else {
-                const existing = latestRecordMap.get(record.code);
-                if (record.id > existing.id) {
-                    latestRecordMap.set(record.code, record);
+        // 2. Map ReviewRequest statuses and fetch rejected ones
+        const reviewRequests = await prisma.reviewRequest.findMany();
+        const reviewStatusMap = new Map<string, string>();
+        const rejectedSessionGroups: string[] = [];
+        
+        for (const rr of reviewRequests) {
+            if (rr.sessionGroup) {
+                reviewStatusMap.set(rr.sessionGroup, rr.statusRequest);
+                if (rr.statusRequest === "rejected") {
+                    rejectedSessionGroups.push(rr.sessionGroup);
                 }
             }
         }
 
-        // แปลง Map เป็น Array และเรียงลำดับอีกครั้งตาม collectionTime
-        let uniqueRecords = Array.from(latestRecordMap.values());
+        // Apply rejected sessions to baseFilter
+        if (rejectedSessionGroups.length > 0) {
+            baseFilter.OR.push({ sessionGroup: { in: rejectedSessionGroups } });
+        }
+        where.AND = [baseFilter];
+
+        // 1. Fetch raw records from WaterSample instead of SampleRecord
+        const rawRecords = await prisma.waterSample.findMany({
+            where,
+            orderBy: { id: "asc" }, // Ascending to process chronologically
+            include: {
+                location: true,
+                collector: true,
+                measurements: { include: { parameter: true } },
+            },
+        });
+
+        // 3. Group by sessionGroup
+        const sessionMap = new Map<string, any>();
+        
+        for (const record of rawRecords) {
+            if (!record.sessionGroup) continue;
+            
+            if (!sessionMap.has(record.sessionGroup)) {
+                // Initialize the group with the first record's data
+                const reviewStatusRaw = reviewStatusMap.get(record.sessionGroup) || "approved";
+                let reviewStatus = "APPROVED";
+                if (reviewStatusRaw === "pending") reviewStatus = "PENDING";
+                else if (reviewStatusRaw === "rejected") reviewStatus = "REJECTED";
+                else if (reviewStatusRaw === "edited_approved") reviewStatus = "EDITED_APPROVED";
+                
+                const measMap = new Map<number, any>();
+                record.measurements.forEach((m: any) => measMap.set(m.parameterId, m));
+
+                sessionMap.set(record.sessionGroup, {
+                    id: record.id,
+                    code: record.sessionGroup, // Using sessionGroup as the code for History lists
+                    sessionGroup: record.sessionGroup,
+                    collectorId: record.collectorId,
+                    locationId: record.locationId,
+                    collectionTime: record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null,
+                    uploadedActiveAt: record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null,
+                    dissolvedOxygen: record.dissolvedOxygen,
+                    airTemperature: record.airTemperature,
+                    rainAccumulation: record.rainAccumulation,
+                    weatherCondCode: record.weatherCondCode,
+                    rawImageUrl: record.rawImageUrl,
+                    analyzedPlotUrl: record.analyzedPlotUrl,
+                    isDeleted: record.isDeleted,
+                    reviewStatus: reviewStatus,
+                    status: record.status, 
+                    
+                    location: record.location ? {
+                        id: record.location.id,
+                        name: record.location.stationName,
+                    } : null,
+                    collector: record.collector ? {
+                        id: record.collector.id,
+                        lineProfileName: record.collector.lineProfileName,
+                    } : null,
+                    
+                    measMap, // Temporary map for reliable deduplication
+                    dynamicMeasurements: {} as Record<string, number>,
+                });
+            } else {
+                const existing = sessionMap.get(record.sessionGroup);
+                
+                // Overwrite measurements for this parameter using the map
+                record.measurements.forEach((m: any) => existing.measMap.set(m.parameterId, m));
+                
+                // Overwrite properties from the latest record
+                existing.id = record.id;
+                existing.collectionTime = record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null;
+                existing.uploadedActiveAt = record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null;
+                existing.dissolvedOxygen = record.dissolvedOxygen;
+                existing.airTemperature = record.airTemperature;
+                existing.rainAccumulation = record.rainAccumulation;
+                existing.weatherCondCode = record.weatherCondCode;
+                existing.isDeleted = record.isDeleted;
+                
+                // Dynamically update the overall status to the worst one
+                existing.status = worseStatus(existing.status as WaterStatus, record.status as WaterStatus);
+                
+                // If earlier batch didn't have images, take them from later batches
+                if (!existing.rawImageUrl && record.rawImageUrl) existing.rawImageUrl = record.rawImageUrl;
+                if (!existing.analyzedPlotUrl && record.analyzedPlotUrl) existing.analyzedPlotUrl = record.analyzedPlotUrl;
+            }
+        }
+
+        let uniqueRecords = Array.from(sessionMap.values());
+        
+        // 4. Map dynamic measurements (e.g. pHVal, DOVal)
+        for (const grp of uniqueRecords) {
+            grp.measurements = Array.from(grp.measMap.values());
+            grp.measurements.forEach((m: any) => {
+                if (m.parameter?.name) {
+                    grp.dynamicMeasurements[`${m.parameter.name.toLowerCase()}Val`] = m.value;
+                }
+            });
+            Object.assign(grp, grp.dynamicMeasurements);
+            delete grp.measMap;
+            delete grp.measurements;
+            delete grp.dynamicMeasurements;
+        }
+
+        // 5. Apply selected status filters
+        if (selectedStatuses.size > 0) {
+            uniqueRecords = uniqueRecords.filter(r => selectedStatuses.has(r.status.toLowerCase()));
+        }
+
+        // 6. Sort and Paginate
         uniqueRecords.sort((a, b) => {
             const timeA = new Date(a.collectionTime).getTime();
             const timeB = new Date(b.collectionTime).getTime();
@@ -150,59 +254,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(pageResult([], total, pageParams));
         }
 
-        const formattedSamples = pageRecords.map((record) => {
-            let currentMeasurements: Record<string, number> = {};
-            let rawImageUrl = null;
-            let analyzedPlotUrl = null;
-
-            if (record.parameterData && Array.isArray(record.parameterData)) {
-                record.parameterData.forEach((m: any) => {
-                    if (m.parameterName) {
-                        const keyName = `${m.parameterName.toLowerCase()}Val`;
-                        currentMeasurements[keyName] = m.value;
-                    }
-                });
-            }
-
-            if (record.imageUrl && typeof record.imageUrl === 'object') {
-                const imgData = record.imageUrl as any;
-                if (imgData.rawImageUrls && imgData.rawImageUrls.length > 0) rawImageUrl = imgData.rawImageUrls[0];
-                if (imgData.plotImageUrls && imgData.plotImageUrls.length > 0) analyzedPlotUrl = imgData.plotImageUrls[0];
-            }
-
-            return {
-                id: record.id,
-                code: record.code, // นี่คือ sessionGroup 
-                collectorId: record.collectorNameCurrentId,
-                locationId: record.locationNameCurrentId,
-                collectionTime: record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null,
-                uploadedActiveAt: record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null,
-                dissolvedOxygen: record.dissolvedOxygen,
-                airTemperature: record.airTemperature,
-                rainAccumulation: record.rainAccumulation,
-                weatherCondCode: record.weatherCondCode,
-                rawImageUrl: rawImageUrl,
-                analyzedPlotUrl: analyzedPlotUrl,
-                isDeleted: record.isDeleted,
-                sessionGroup: record.code,
-
-                reviewStatus: record.reviewStatus ? record.reviewStatus.toUpperCase() : "APPROVED",
-
-                ...currentMeasurements,
-
-                location: {
-                    id: record.locationNameCurrentId,
-                    name: record.locationNameFrom,
-                },
-                collector: {
-                    id: record.collectorNameCurrentId,
-                    lineProfileName: record.collectorNameFrom,
-                },
-                status: record.status ? record.status.toUpperCase() : "SAFE",
-            };
-        });
-
-        return NextResponse.json(pageResult(formattedSamples, total, pageParams));
+        return NextResponse.json(pageResult(pageRecords, total, pageParams));
     } catch (error) {
         console.error("GET /api/samples error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" }, { status: 500 });
