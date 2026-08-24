@@ -304,7 +304,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       )
                     : null;
 
-            const reviewReq = await prisma.reviewRequest.findUnique({ where: { sessionGroup: sampleRecord.code } });
+            const reviewReq = await prisma.reviewRequest.findUnique({ 
+                where: { sessionGroup: sampleRecord.code },
+                select: { statusRequest: true, reviewNote: true }
+            });
+            
+            let rawLogs: any[] = [];
+            if (sampleRecord.code) {
+                const auditLog = await prisma.sampleRawLog.findFirst({
+                    where: { sessionGroup: sampleRecord.code },
+                    orderBy: { id: "desc" },
+                });
+                if (auditLog && auditLog.sampleParameterName) {
+                    rawLogs = auditLog.sampleParameterName as any[];
+                }
+            }
 
             const responseGetData = {
                 id: sampleRecord.id,
@@ -323,6 +337,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 analyzedPlotUrl: analyzedPlotUrl,
                 sessionGroup: sampleRecord.code,
                 reviewStatus: reviewReq?.statusRequest === "edited_approved" ? "EDITED_APPROVED" : "APPROVED",
+                reviewNote: reviewReq?.reviewNote || null,
                 
                 locationStatus,
                 latestByParameter: latestByParameter.map((item: any) => ({
@@ -342,7 +357,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     id: sampleRecord.collectorNameCurrentId,
                     lineProfileName: sampleRecord.collectorNameFrom,
                 },
-                measurements: allMeasurements,
+                measurements: allMeasurements.map(m => {
+                    const orig = rawLogs.find(rl => rl.param === m.parameter.name);
+                    return {
+                        ...m,
+                        originalValue: orig ? orig.value : null
+                    };
+                }),
                 sampleImagesMap: sampleImagesMap,
             };
             return NextResponse.json(responseGetData);
@@ -376,7 +397,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const reviewReq = await prisma.reviewRequest.findUnique({
             where: { sessionGroup: mainSample.sessionGroup ?? "" },
-            select: { statusRequest: true }
+            select: { statusRequest: true, reviewNote: true }
         });
         const isRejected = reviewReq?.statusRequest === "rejected";
 
@@ -422,9 +443,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         const dynamicMeasurements: Record<string, number> = {};
+        
+        let rawLogs: any[] = [];
+        if (mainSample.sessionGroup) {
+            const auditLog = await prisma.sampleRawLog.findFirst({
+                where: { sessionGroup: mainSample.sessionGroup },
+                orderBy: { id: "desc" },
+            });
+            if (auditLog && auditLog.sampleParameterName) {
+                rawLogs = auditLog.sampleParameterName as any[];
+            }
+        }
+
         allMeasurements.forEach((m: any) => {
             if (m.parameter?.name) {
-                dynamicMeasurements[`${m.parameter.name.toLowerCase()}Value`] = m.value;
+                dynamicMeasurements[`${m.parameter.name.toLowerCase()}Val`] = m.value;
+                const orig = rawLogs.find(rl => rl.param === m.parameter.name);
+                m.originalValue = orig ? orig.value : null;
             }
         });
 
@@ -482,6 +517,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
             // 🟢 แนบ reviewStatus ให้หน้าประวัติใช้งาน
             reviewStatus: isRejected ? "REJECTED" : (reviewReq?.statusRequest === "edited_approved" ? "EDITED_APPROVED" : (isPending ? "PENDING" : "APPROVED")),
+            reviewNote: reviewReq?.reviewNote || null,
 
             location: mainSample.location
                 ? {

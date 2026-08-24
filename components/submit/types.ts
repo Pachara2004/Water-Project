@@ -29,6 +29,7 @@ export interface MeasurementResult {
     parameterId: number;
     // true เมื่อภาพนี้ชนกับอีกภาพในชุดเดียวกัน (AI ตรวจเป็นสารเดียวกัน) — ต้องบังคับส่งเข้าคิว pending เสมอ
     isDuplicateSubstance?: boolean;
+    originalValue?: number | null;
     // ผู้ใช้กดยืนยันสารเดิมที่ AI ทำนายผิดช่อง — บังคับส่งให้ Admin ตรวจสอบ
     userInsistedOriginal?: boolean;
     // ระบบไม่รู้จักสารที่ AI ทำนายกลับมา (ไม่มีใน DB) — ภาพคงอยู่ในช่องเดิมที่อัปโหลดและบังคับส่งให้ Admin ตรวจสอบ

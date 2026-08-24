@@ -1,6 +1,6 @@
 // components/submit/ResultsPanel.tsx
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Check } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, ArrowLeft } from "lucide-react";
 import { evaluateValueAgainstStandards, groupStandardsByParameter } from "@/lib/standards";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
@@ -16,9 +16,10 @@ interface ResultsPanelProps {
     // optional เพราะหน้าประวัติ (read-only) ก็ใช้ component นี้ แต่ข้อมูลที่บันทึกแล้วไม่มีสารซ้ำให้เลือก
     duplicateChoice?: Record<number, number>;
     chooseDuplicate?: (parameterId: number, key: number) => void;
+    reviewNote?: string | null;
 }
 
-export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate }: ResultsPanelProps) {
+export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate, reviewNote }: ResultsPanelProps) {
     const [openParamId, setOpenParamId] = useState<number | null>(null);
     const { locationTypes } = useLocationTypes();
 
@@ -37,8 +38,15 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
     return (
         <div className="space-y-4">
             {/* ตารางแสดงรายละเอียดแต่ละสารพารามิเตอร์ */}
-            <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-1                                                                                                                                                           ">
-                <div className="px-5 py-3 border-b border-border  flex justify-between items-center text-text text-xs font-semibold">
+            <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-1">
+                {reviewNote && (
+                    <div className="mx-2 mt-2 bg-red-50/50 border border-red-100 rounded-lg p-3">
+                        <h3 className="text-[11px] font-semibold text-red-700 mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
+                        <p className="text-xs text-red-600 whitespace-pre-wrap leading-relaxed">{reviewNote}</p>
+                    </div>
+                )}
+                
+                <div className="px-5 py-3 border-b border-border flex justify-between items-center text-text text-xs font-semibold">
                     <div>สารที่ตรวจ</div>
                     <div>ค่าที่วัดได้</div>
                 </div>
@@ -100,8 +108,29 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                             </span>
                                         )}
                                     </div>
-                                    <div className="text-xl font-semibold text-text text-right">
-                                        {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
+                                    <div className="flex flex-col items-end">
+                                        <div className="flex flex-col items-end gap-1">
+                                            {measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
+                                                <>
+                                                    <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                                                        <span>ค่าที่ส่ง:</span>
+                                                        <span className="line-through decoration-red-400">
+                                                            {measurement.originalValue.toFixed(2)} mg/L
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-[11px]">
+                                                        <span className="text-teal-700 font-medium">แก้ไขเป็น:</span>
+                                                        <span className="font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md">
+                                                            {measurement.concentrated.toFixed(2)} mg/L
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="text-xl font-semibold text-text text-right">
+                                                    {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 {/* สารที่ไม่มีเกณฑ์กำหนด: ไม่มีสเกลให้วาดแถบ — ซ่อนดีกว่าวาดด้วยเกณฑ์ที่กุขึ้นมา */}
