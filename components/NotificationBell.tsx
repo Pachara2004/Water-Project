@@ -274,7 +274,7 @@ export default function NotificationBell() {
                     >
                         {/* Header Bar */}
                         <div
-                            className="relative w-full flex items-center justify-center pt-3 pb-1 px-4 select-none cursor-grab active:cursor-grabbing md:cursor-default"
+                            className="relative w-full flex items-center justify-center pt-5 pb-1 px-4 select-none cursor-grab active:cursor-grabbing md:cursor-default"
                             onMouseDown={handleDragStart}
                             onTouchStart={handleDragStart}
                         >
@@ -296,7 +296,7 @@ export default function NotificationBell() {
                                 <Bell size={20} className="text-primary shrink-0" />
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <h3 className="text-md font-bold text-primary leading-tight">การแจ้งเตือน</h3>
-                                    <p className="text-xs text-text-muted truncate">รายการที่รับทราบแล้วจะไม่แสดงในรายการหลังครบ 7 วัน</p>
+                                    <p className="text-xs text-text truncate">รายการที่รับทราบแล้วจะไม่แสดงในรายการหลังครบ 7 วัน</p>
                                 </div>
                             </div>
                         </div>
@@ -314,25 +314,25 @@ export default function NotificationBell() {
                                 displayedItems.map((item) => {
                                 const isRead = item.isReading;
 
-                                    let badgeColor = "bg-bg-danger border-border-danger text-text-danger";
+                                    let badgeColor = "bg-bg-danger text-text-danger";
                                     let badgeText = "ถูกปฏิเสธ";
-                                    let bgColor = isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-red-500/5 border-red-200";
+                                    let bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
                                     let iconColor = "text-text-danger";
 
                                     if (item.status === "pending") {
-                                        badgeColor = "bg-yellow-500/10 border-yellow-200 text-yellow-700";
+                                        badgeColor = "bg-bg-warning text-text-warning";
                                         badgeText = "รอตรวจสอบ";
-                                        bgColor = isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-yellow-500/5 border-yellow-200";
+                                        bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
                                         iconColor = "text-yellow-600";
                                     } else if (item.status === "approved") {
-                                        badgeColor = "bg-green-500/10 border-green-200 text-green-700";
+                                        badgeColor = "bg-bg-safe text-text-safe";
                                         badgeText = "อนุมัติแล้ว";
-                                        bgColor = isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-green-500/5 border-green-200";
+                                        bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
                                         iconColor = "text-green-600";
                                     } else if (item.status === "edited_approved") {
-                                        badgeColor = "bg-orange-500/10 border-orange-200 text-orange-700";
+                                        badgeColor = "bg-bg-safe text-text-safe";
                                         badgeText = "แก้ไขแล้วอนุมัติ";
-                                        bgColor = isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-orange-500/5 border-orange-200";
+                                        bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
                                         iconColor = "text-orange-600";
                                     }
 
@@ -350,16 +350,16 @@ export default function NotificationBell() {
                                             <div className="flex items-start gap-3">
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                                        <div className="flex items-center justify-between gap-2">
                                                             {item.code && (
                                                                 <div className="flex items-center gap-1 shrink-0">
-                                                                    <FileScan size={12} className="text-text-muted shrink-0" />
+                                                                    <FileScan size={15} className="text-text shrink-0" />
                                                                     <span className="font-medium text-text text-xs">{item.code}</span>
                                                                 </div>
                                                             )}
 
                                                             <div className="flex items-center gap-1.5 min-w-0">
-                                                                <span className={`inline-flex items-center gap-1 text-xs font-bold border p-1 rounded-md shrink-0 ${badgeColor}`}>
+                                                                <span className={`inline-flex justify-center items-center gap-1 text-xs font-bold  p-1.5 w-30 rounded-md shrink-0 ${badgeColor}`}>
                                                                     {badgeText}
                                                                 </span>
                                                             </div>
@@ -368,20 +368,20 @@ export default function NotificationBell() {
                                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium mt-0.5">
                                                             {item.code && (
                                                                 <div className="flex items-center gap-1 shrink-0">
-                                                                    <MapPin size={12} className="shrink-0" />
+                                                                    <MapPin size={15} className="shrink-0" />
                                                                     <span className="font-medium text-text">{item.location?.name ?? "ไม่ทราบสถานที่"}</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex items-center gap-1 shrink-0">
-                                                                <Calendar size={12} className="shrink-0" />
+                                                                <Calendar size={15} className="shrink-0" />
                                                                 <span>{formatDateTime(item.collectionTime)}</span>
                                                             </div>
                                                         </div>
 
                                                         {item.message && (
-                                                            <p className={`flex items-start gap-1.5 text-xs font-semibold mt-1.5 leading-relaxed p-1.5 rounded-lg border min-w-0 ${badgeColor}`}>
+                                                            <p className={`flex items-start gap-1.5 text-xs font-semibold mt-1.5 leading-relaxed p-1.5 rounded-lg min-w-0 ${badgeColor}`}>
                                                                 <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                                                                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{item.message}</span>
+                                                                <span className="min-w-0 wrap-break-word">{item.message}</span>
                                                             </p>
                                                         )}
                                                     </div>
