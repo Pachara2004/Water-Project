@@ -375,15 +375,17 @@ export async function POST(request: NextRequest) {
 
         const getNowAsLocalDateTime = (): Date => {
             const now = new Date();
+            // Convert server time (usually UTC in Vercel) to Thai Time (+7)
+            const thaiTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
             return new Date(
                 Date.UTC(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                    now.getHours(),
-                    now.getMinutes(),
-                    now.getSeconds(),
-                    now.getMilliseconds()
+                    thaiTime.getUTCFullYear(),
+                    thaiTime.getUTCMonth(),
+                    thaiTime.getUTCDate(),
+                    thaiTime.getUTCHours(),
+                    thaiTime.getUTCMinutes(),
+                    thaiTime.getUTCSeconds(),
+                    thaiTime.getUTCMilliseconds()
                 )
             );
         };

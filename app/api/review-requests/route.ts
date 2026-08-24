@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
                 reviewNote: r.reviewNote,
                 reviewedBy: reviewer ? { id: reviewer.id, name: `${reviewer.firstName || ""} ${reviewer.lastName || ""}`.trim() || reviewer.lineProfileName } : null,
 
-                collectionTime: first?.collectionTime ?? null,
+                collectionTime: first?.collectionTime ? first.collectionTime.toISOString().replace("Z", "") : null,
                 location: first?.location
                     ? { id: first.location.id, name: first.location.stationName, organization: first.location.governingAgency }
                     : null,
