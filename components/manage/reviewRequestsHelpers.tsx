@@ -512,6 +512,7 @@ export function RejectDrawer({
     rejectSaving,
     onClose,
     onSubmit,
+    onPreviewImage,
 }: {
     rejectTarget: ReviewRequestItem;
     rejectNote: string;
@@ -519,16 +520,65 @@ export function RejectDrawer({
     rejectSaving: boolean;
     onClose: () => void;
     onSubmit: () => void;
+    onPreviewImage?: (images: PreviewImages) => void;
 }) {
     return (
         <Popup title="ปฏิเสธคำร้อง" onClose={() => !rejectSaving && onClose()}>
             <div className="space-y-6">
                 <p className="text-xs text-text-secondary leading-relaxed">
-                    ผลตรวจของ &quot;{rejectTarget.location?.name ?? "จุดตรวจนี้"}&quot; จะถูกลบออกจากระบบทันที และไม่สามารถกู้คืนได้ กรุณาระบุเหตุผลให้ผู้เก็บตัวอย่างทราบ
+                    ผลตรวจของ &quot;{rejectTarget.location?.name ?? "จุดตรวจนี้"}&quot; จะไม่ถูกนำไปคำนวณในภาพรวมของระบบ กรุณาระบุเหตุผลเพื่อให้ผู้เก็บตัวอย่างรับทราบ (ผู้เก็บจะยังคงเห็นรายการนี้ในหน้าประวัติของตนเอง)
                 </p>
 
+                {/* Image Context */}
+                {rejectTarget.samples.some(s => s.rawImageUrl || s.analyzedPlotUrl) && (
+                    <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
+                        <span className="text-[10px] font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
+                        <div className="flex items-center gap-2">
+                            {rejectTarget.samples.filter(s => s.rawImageUrl || s.analyzedPlotUrl).map(s => (
+                                <div key={s.id} className="flex gap-2">
+                                    {s.rawImageUrl && (
+                                        <img 
+                                            src={s.rawImageUrl} 
+                                            alt="ภาพถ่าย" 
+                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
+                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
+                                        />
+                                    )}
+                                    {s.analyzedPlotUrl && (
+                                        <img 
+                                            src={s.analyzedPlotUrl} 
+                                            alt="ภาพ AI" 
+                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
+                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="space-y-2.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
+                        <span className={`text-[10px] font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                            {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
+                        </span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                        {["ภาพไม่ชัดเจน/เบลอ", "สเกลสีไม่ตรงรุ่น", "แสงจ้า/เงาบัง"].map((text) => (
+                            <button
+                                key={text}
+                                type="button"
+                                onClick={() => setRejectNote(rejectNote ? `${rejectNote} ${text}` : text)}
+                                className="text-[10px] font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
+                            >
+                                {text}
+                            </button>
+                        ))}
+                    </div>
+
                     <textarea
                         value={rejectNote}
                         onChange={(e) => setRejectNote(e.target.value)}
@@ -537,9 +587,7 @@ export function RejectDrawer({
                         maxLength={REVIEW_NOTE_MAX_LENGTH}
                         className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-red-400 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
                     />
-                    <div className={`text-right text-xs font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
-                        {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
-                    </div>
+                    <p className="text-[10px] text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
                 </div>
 
                 <button
@@ -564,6 +612,7 @@ export function EditApproveDrawer({
     editSaving,
     onClose,
     onSubmit,
+    onPreviewImage,
 }: {
     editTarget: ReviewRequestItem;
     editNote: string;
@@ -573,6 +622,7 @@ export function EditApproveDrawer({
     editSaving: boolean;
     onClose: () => void;
     onSubmit: () => void;
+    onPreviewImage?: (images: PreviewImages) => void;
 }) {
     return (
         <Popup title="แก้ไขและอนุมัติคำร้อง" onClose={() => !editSaving && onClose()}>
@@ -581,12 +631,41 @@ export function EditApproveDrawer({
                     คุณสามารถแก้ไขค่าสารที่ระบบ AI วิเคราะห์ผิดพลาดได้ที่นี่ และเมื่อยืนยัน ข้อมูลจะถูกบันทึกเป็นค่าที่ถูกต้องและได้รับการอนุมัติ
                 </p>
 
+                {/* Image Context */}
+                {editTarget.samples.some(s => s.rawImageUrl || s.analyzedPlotUrl) && (
+                    <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
+                        <span className="text-[10px] font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
+                        <div className="flex items-center gap-2">
+                            {editTarget.samples.filter(s => s.rawImageUrl || s.analyzedPlotUrl).map(s => (
+                                <div key={s.id} className="flex gap-2">
+                                    {s.rawImageUrl && (
+                                        <img 
+                                            src={s.rawImageUrl} 
+                                            alt="ภาพถ่าย" 
+                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
+                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
+                                        />
+                                    )}
+                                    {s.analyzedPlotUrl && (
+                                        <img 
+                                            src={s.analyzedPlotUrl} 
+                                            alt="ภาพ AI" 
+                                            className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity" 
+                                            onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="space-y-2.5">
                     <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
                     <div className="bg-surface-subtle border border-border rounded-xl p-3 space-y-3">
                         {editTarget.samples.flatMap(s => s.measurements).map(m => (
                             <div key={m.parameterId} className="flex items-center justify-between gap-3">
-                                <span className="text-xs font-bold text-text">{m.parameterName || "ไม่ระบุสาร"} (เดิม: {m.value.toFixed(2)})</span>
+                                <span className="text-xs font-bold text-text uppercase">{m.parameterName || "ไม่ระบุสาร"} <span className="font-normal text-text-muted lowercase">(เดิม: {m.value.toFixed(2)})</span></span>
                                 <div className="flex items-center gap-2">
                                     <input 
                                         type="number" 
@@ -606,7 +685,26 @@ export function EditApproveDrawer({
                 </div>
 
                 <div className="space-y-2.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">หมายเหตุการแก้ไข *</label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">หมายเหตุการแก้ไข *</label>
+                        <span className={`text-[10px] font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                            {editNote.length}/{REVIEW_NOTE_MAX_LENGTH}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                        {["ปรับค่าตามภาพที่เห็นจริง", "AI อ่านค่าผิดพลาดจากแสง", "แก้ให้ตรงกับสีมาตรฐาน"].map((text) => (
+                            <button
+                                key={text}
+                                type="button"
+                                onClick={() => setEditNote(editNote ? `${editNote} ${text}` : text)}
+                                className="text-[10px] font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
+                            >
+                                {text}
+                            </button>
+                        ))}
+                    </div>
+
                     <textarea
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
@@ -615,9 +713,7 @@ export function EditApproveDrawer({
                         maxLength={REVIEW_NOTE_MAX_LENGTH}
                         className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all resize-none"
                     />
-                    <div className={`text-right text-xs font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
-                        {editNote.length}/{REVIEW_NOTE_MAX_LENGTH}
-                    </div>
+                    <p className="text-[10px] text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
                 </div>
 
                 <button

@@ -351,6 +351,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     rejectSaving={rejectSaving}
                     onClose={() => setRejectTarget(null)}
                     onSubmit={submitReject}
+                    onPreviewImage={setPreviewImages}
                 />
             )}
             {editTarget && (
@@ -363,6 +364,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     editSaving={editSaving}
                     onClose={() => setEditTarget(null)}
                     onSubmit={submitEditApprove}
+                    onPreviewImage={setPreviewImages}
                 />
             )}
             {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}
