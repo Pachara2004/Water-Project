@@ -45,6 +45,8 @@ export default function AdminReviewRequestsPage() {
     const [editTarget, setEditTarget] = useState<ReviewRequestItem | null>(null);
     const [editNote, setEditNote] = useState("");
     const [editMeasurements, setEditMeasurements] = useState<Record<number, number>>({});
+    // เริ่มต้นเลือกทุกสาร — สารที่ถูกยกเลิกเลือกจะถูกปฏิเสธเหมือนปุ่มอนุมัติ
+    const [editSelectedSampleIds, setEditSelectedSampleIds] = useState<number[]>([]);
     const [editSaving, setEditSaving] = useState(false);
 
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
@@ -157,10 +159,10 @@ export default function AdminReviewRequestsPage() {
         }
     };
 
-    const openEditApprove = (item: ReviewRequestItem) => {
+    const openEditApprove = (item: ReviewRequestItem, preSelectedSampleIds?: number[]) => {
         setEditTarget(item);
         setEditNote("");
-        
+
         // Initialize measurements from sample
         const initialMeasurements: Record<number, number> = {};
         item.samples.forEach(s => {
@@ -169,22 +171,44 @@ export default function AdminReviewRequestsPage() {
             });
         });
         setEditMeasurements(initialMeasurements);
+
+        // เริ่มต้นเลือกตามที่การ์ดเลือกไว้ (ถ้ามี) ไม่งั้นเลือกทุกสารเป็นค่าเริ่มต้น
+        setEditSelectedSampleIds(preSelectedSampleIds ?? item.samples.map((s) => s.id));
     };
 
     const submitEditApprove = async () => {
-        if (!editTarget || !editNote.trim()) return;
+        if (!editTarget || !editNote.trim() || editSelectedSampleIds.length === 0) return;
+
+        const isPartial = editSelectedSampleIds.length < editTarget.samples.length;
+        if (isPartial) {
+            const confirmed = await confirmDialog({
+                title: "ยืนยันแก้ไขและอนุมัติคำร้อง?",
+                text: `จะแก้ไขและอนุมัติ ${editSelectedSampleIds.length} จาก ${editTarget.samples.length} สารของ "${editTarget.location?.name ?? "จุดตรวจนี้"}" ส่วนสารที่ไม่ได้เลือกจะถูกปฏิเสธ`,
+                confirmText: "ยืนยัน",
+                tone: "primary",
+            });
+            if (!confirmed) return;
+        }
 
         setEditSaving(true);
         try {
-            const editedMeasurementsArray = Object.entries(editMeasurements).map(([parameterId, value]) => ({
-                parameterId: Number(parameterId),
-                value: Number(value),
-            }));
+            const editedMeasurementsArray = editTarget.samples
+                .filter((s) => editSelectedSampleIds.includes(s.id))
+                .flatMap((s) => s.measurements)
+                .map((m) => ({
+                    parameterId: m.parameterId,
+                    value: Number(editMeasurements[m.parameterId] ?? m.value),
+                }));
 
             const res = await fetch(`/api/review-requests/${editTarget.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getAccessToken()}` },
-                body: JSON.stringify({ action: "edited_approve", note: editNote.trim(), editedMeasurements: editedMeasurementsArray }),
+                body: JSON.stringify({
+                    action: "edited_approve",
+                    note: editNote.trim(),
+                    editedMeasurements: editedMeasurementsArray,
+                    ...(isPartial ? { approvedSampleIds: editSelectedSampleIds } : {}),
+                }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการแก้ไขและอนุมัติคำร้อง");
@@ -247,6 +271,8 @@ export default function AdminReviewRequestsPage() {
         setEditNote,
         editMeasurements,
         setEditMeasurements,
+        editSelectedSampleIds,
+        setEditSelectedSampleIds,
         editSaving,
         openEditApprove,
         submitEditApprove,

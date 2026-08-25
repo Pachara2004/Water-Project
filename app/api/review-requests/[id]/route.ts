@@ -6,9 +6,37 @@ import { generateSessionGroup } from "@/lib/sessionGroup";
 import { ReviewStatus } from "@prisma/client";
 import { createSampleRecordSnapshot, createSampleRawAuditLog, createNotificationEntry } from "@/lib/sampleRecord";
 
+/**
+ * แยกสารที่ไม่ได้ถูกเลือกอนุมัติออกเป็น sessionGroup ใหม่ + ปฏิเสธ (isDeleted)
+ * ใช้ร่วมกันทั้งกรณี approve และ edited_approve แบบเลือกอนุมัติเฉพาะบางสาร
+ */
+async function splitRejectedSamples(tx: any, sessionGroup: string, approvedSampleIds: number[], reviewedById: number) {
+    const rejectedSamples = await tx.waterSample.findMany({
+        where: { sessionGroup, isDeleted: false, id: { notIn: approvedSampleIds } },
+        select: { id: true, collectionTime: true },
+    });
+
+    if (rejectedSamples.length === 0) return;
+
+    const newGroup = await generateSessionGroup(tx, rejectedSamples[0].collectionTime);
+    await tx.waterSample.updateMany({
+        where: { id: { in: rejectedSamples.map((s: { id: number }) => s.id) } },
+        data: { sessionGroup: newGroup, isDeleted: true, lastModifiedBy: reviewedById },
+    });
+    await tx.reviewRequest.create({
+        data: {
+            sessionGroup: newGroup,
+            statusRequest: "rejected",
+            reviewedById,
+            reviewedAt: new Date(),
+            reviewNote: PARTIAL_REJECT_NOTE,
+        },
+    });
+}
+
 // ========================================================
 // PATCH /api/review-requests/[id]
-// body: { action: "approve" | "reject" | "edited_approve", note?: string, editedMeasurements?: any[] }
+// body: { action: "approve" | "reject" | "edited_approve", note?: string, editedMeasurements?: any[], approvedSampleIds?: number[] }
 // ========================================================
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const auth = await verifyAuth(request, ["admin"]);
@@ -45,7 +73,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             return NextResponse.json({ error: `เหตุผลต้องยาวไม่เกิน ${REVIEW_NOTE_MAX_LENGTH} ตัวอักษร` }, { status: 400 });
         }
 
-        if (action === "approve" && approvedSampleIds && approvedSampleIds.length === 0) {
+        if ((action === "approve" || action === "edited_approve") && approvedSampleIds && approvedSampleIds.length === 0) {
             return NextResponse.json({ error: "ต้องเลือกอย่างน้อยหนึ่งสารเพื่ออนุมัติ" }, { status: 400 });
         }
 
@@ -54,7 +82,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             return NextResponse.json({ error: "ไม่พบคำร้องที่ระบุ" }, { status: 404 });
         }
 
-        if (action === "approve" && approvedSampleIds) {
+        if ((action === "approve" || action === "edited_approve") && approvedSampleIds) {
             const groupSampleIds = new Set((await prisma.waterSample.findMany({ where: { sessionGroup: existing.sessionGroup, isDeleted: false }, select: { id: true } })).map((s) => s.id));
             if (approvedSampleIds.some((id) => !groupSampleIds.has(id))) {
                 return NextResponse.json({ error: "รายการสารที่เลือกไม่ตรงกับคำร้องนี้" }, { status: 400 });
@@ -121,6 +149,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                     reviewedById: auth.user!.id,
                 });
 
+                // sample ที่ไม่ถูกเลือกอนุมัติ (ถ้ามี) จะถูกแยกไปปฏิเสธเหมือนปุ่มอนุมัติ — ไม่แตะค่า/ไม่ snapshot
+                const approvedSampleIdSet = approvedSampleIds ? new Set(approvedSampleIds) : null;
+                const approvedSampleDbIds = approvedSampleIdSet ? groupSamples.filter((s) => approvedSampleIdSet.has(s.id)).map((s) => s.id) : groupSamples.map((s) => s.id);
+
                 if (editedMeasurements) {
                     for (const m of editedMeasurements) {
                         if (m.id) {
@@ -130,7 +162,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                             });
                         } else {
                             await tx.waterSampleMeasurement.updateMany({
-                                where: { parameterId: m.parameterId, sampleId: { in: groupSamples.map(s => s.id) } },
+                                where: { parameterId: m.parameterId, sampleId: { in: approvedSampleDbIds } },
                                 data: { value: Number(m.value) }
                             });
                         }
@@ -138,12 +170,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 }
 
                 await tx.waterSample.updateMany({
-                    where: { sessionGroup: existing.sessionGroup, isDeleted: false },
+                    where: { id: { in: approvedSampleDbIds } },
                     data: { lastModifiedBy: auth.user!.id }
                 });
 
+                if (approvedSampleIdSet) {
+                    await splitRejectedSamples(tx, existing.sessionGroup, approvedSampleIds!, auth.user!.id);
+                }
+
                 const updatedGroupSamples = await tx.waterSample.findMany({
-                    where: { sessionGroup: existing.sessionGroup, isDeleted: false },
+                    where: { id: { in: approvedSampleDbIds }, isDeleted: false },
                     include: { collector: true, location: true, measurements: { include: { parameter: true } } }
                 });
 
@@ -162,29 +198,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 let finalSamplesToSnapshot = groupSamples;
 
                 if (approvedSampleIds) {
-                    const rejectedSamples = await tx.waterSample.findMany({
-                        where: { sessionGroup: existing.sessionGroup, isDeleted: false, id: { notIn: approvedSampleIds } },
-                        select: { id: true, collectionTime: true },
-                    });
-
-                    if (rejectedSamples.length > 0) {
-                        const newGroup = await generateSessionGroup(tx as any, rejectedSamples[0].collectionTime);
-                        await tx.waterSample.updateMany({
-                            where: { id: { in: rejectedSamples.map((s) => s.id) } },
-                            data: { sessionGroup: newGroup, isDeleted: true, lastModifiedBy: auth.user!.id },
-                        });
-                        await tx.reviewRequest.create({
-                            data: {
-                                sessionGroup: newGroup,
-                                statusRequest: "rejected",
-                                reviewedById: auth.user!.id,
-                                reviewedAt: new Date(),
-                                reviewNote: PARTIAL_REJECT_NOTE,
-                            },
-                        });
-                        
-                        finalSamplesToSnapshot = groupSamples.filter(s => approvedSampleIds.includes(s.id));
-                    }
+                    await splitRejectedSamples(tx, existing.sessionGroup, approvedSampleIds, auth.user!.id);
+                    finalSamplesToSnapshot = groupSamples.filter(s => approvedSampleIds.includes(s.id));
                 }
 
                 await createSampleRecordSnapshot(tx as any, finalSamplesToSnapshot, auth.user!.id);
