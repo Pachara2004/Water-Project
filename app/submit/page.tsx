@@ -32,6 +32,7 @@ function SubmitContent() {
         router,
         saved,
         savedSampleId,
+        submittedForReview,
         handleSave,
         resetToUpload,
         processImageExif,
@@ -93,14 +94,15 @@ function SubmitContent() {
             title: needsAdminReview ? "ยืนยันส่งข้อมูลเพื่อรอตรวจสอบ" : "ยืนยันการบันทึกข้อมูล",
             text: needsAdminReview ? 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน' : "คุณต้องการบันทึกผลตรวจน้ำครั้งนี้ใช่หรือไม่",
             confirmText: needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกข้อมูล",
-            tone: needsAdminReview ? "warning" : "primary",
+            tone: needsAdminReview ? "review" : "primary",
         });
         if (!confirmed) return;
 
         loadingDialog("กำลังบันทึกข้อมูล...", "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล");
 
         try {
-            await handleSave();
+            // needsAdminReview ที่นี่คือ "ผู้ใช้ต้องการส่งเข้าคิวตรวจสอบ" (ทั้งกรณีบังคับจาก conf ต่ำ และกรณีกดส่งตรวจสอบเอง)
+            await handleSave(needsAdminReview);
             closeDialog();
         } catch (err: any) {
             alertError("เกิดข้อผิดพลาด", err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง");
@@ -146,6 +148,7 @@ function SubmitContent() {
         onResetClick,
         saved,
         savedSampleId,
+        submittedForReview,
         router,
         revertAutoSwitch: hook.revertAutoSwitch,
     };

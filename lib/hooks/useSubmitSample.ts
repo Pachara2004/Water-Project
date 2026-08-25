@@ -52,6 +52,8 @@ export function useSubmitSample() {
     const [saved, setSaved] = useState(false);
     // id ของ sample ตัวแรกที่บันทึกสำเร็จในรอบนี้ — ใช้พาไปหน้ารายละเอียดของชุดนี้โดยตรงหลังบันทึกเสร็จ
     const [savedSampleId, setSavedSampleId] = useState<number | null>(null);
+    // ผู้ใช้กดปุ่ม "ส่งให้ผู้เชี่ยวชาญตรวจสอบ" เอง (conf สูงพอที่จะ auto-approve ได้ แต่เลือกส่งเข้าคิว pending แทน)
+    const [submittedForReview, setSubmittedForReview] = useState(false);
     const [isRecommending, setIsRecommending] = useState(false);
     const [nearestLocations, setNearestLocations] = useState<LocationItem[]>([]);
     const [allLocations, setAllLocations] = useState<LocationItem[]>([]);
@@ -513,7 +515,7 @@ export function useSubmitSample() {
     };
 
 
-    const handleSave = async () => {
+    const handleSave = async (forceReview = false) => {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
 
         try {
@@ -537,6 +539,9 @@ export function useSubmitSample() {
                 // ไม่ส่ง status แล้ว — server คำนวณเองจากค่าที่วัดได้จริง และไม่เคยเชื่อค่าจาก client อยู่แล้ว
                 fd.append("collectionTime", `${collectionTime}:00+07:00`);
                 if (oxygen) fd.append("oxygen", oxygen);
+                // ผู้ใช้ขอส่งให้ผู้เชี่ยวชาญตรวจสอบเอง — บังคับทุกสารในชุดเข้าคิว pending เหมือนกันทั้งหมด
+                // (ไม่งั้นสารที่ conf สูงจะหลุด auto-approve ไปคนละสถานะกับสารอื่นในชุดเดียวกัน)
+                if (forceReview) fd.append("forceReview", "true");
 
                 const singleMeasurementPayload = [
                     {
@@ -572,6 +577,7 @@ export function useSubmitSample() {
 
             if (firstSavedId !== null) setSavedSampleId(firstSavedId);
             setSaved(true);
+            setSubmittedForReview(forceReview);
         } catch (err: any) {
             console.error("Save failed:", err);
             // ... ลอจิก Swal แจ้งเตือนข้อผิดพลาดตามเดิม
@@ -589,6 +595,7 @@ export function useSubmitSample() {
         setVerifyErrors({});
         setSaved(false);
         setSavedSampleId(null);
+        setSubmittedForReview(false);
         setSessionId(generateSessionId());
         setStep("upload");
     };
@@ -652,6 +659,7 @@ export function useSubmitSample() {
         overallStatus,
         saved,
         savedSampleId,
+        submittedForReview,
         isRecommending,
         setIsRecommending,
         nearestLocations,

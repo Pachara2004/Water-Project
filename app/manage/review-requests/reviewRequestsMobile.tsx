@@ -56,8 +56,10 @@ export interface ReviewRequestsPageProps {
     setEditNote: (v: string) => void;
     editMeasurements: Record<number, number>;
     setEditMeasurements: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
+    editSelectedSampleIds: number[];
+    setEditSelectedSampleIds: (fn: (prev: number[]) => number[]) => void;
     editSaving: boolean;
-    openEditApprove: (item: ReviewRequestItem) => void;
+    openEditApprove: (item: ReviewRequestItem, preSelectedSampleIds?: number[]) => void;
     submitEditApprove: () => void;
 }
 
@@ -96,6 +98,8 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
         setEditNote,
         editMeasurements,
         setEditMeasurements,
+        editSelectedSampleIds,
+        setEditSelectedSampleIds,
         editSaving,
         openEditApprove,
         submitEditApprove,
@@ -440,6 +444,8 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                     setEditNote={setEditNote}
                     editMeasurements={editMeasurements}
                     setEditMeasurements={setEditMeasurements}
+                    editSelectedSampleIds={editSelectedSampleIds}
+                    setEditSelectedSampleIds={setEditSelectedSampleIds}
                     editSaving={editSaving}
                     onClose={() => setEditTarget(null)}
                     onSubmit={submitEditApprove}

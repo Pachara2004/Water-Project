@@ -33,6 +33,7 @@ export default function SubmitDesktop(props: any) {
         onResetClick,
         saved,
         savedSampleId,
+        submittedForReview,
         router,
     } = props;
 
@@ -106,7 +107,7 @@ export default function SubmitDesktop(props: any) {
                                         {!needsAdminReview && (
                                             <button
                                                 onClick={() => onConfirmSave(true)}
-                                                className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-text-warning border border-border-warning bg-transparent hover:bg-bg-warning transition-all cursor-pointer"
+                                                className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white bg-text-warning hover:bg-text-warning/80 shadow-sm transition-all cursor-pointer"
                                             >
                                                 <Clock size={15} />
                                                 <span>ส่งให้ผู้เชี่ยวชาญตรวจสอบ</span>
@@ -126,13 +127,13 @@ export default function SubmitDesktop(props: any) {
                                 {step === "results" && saved && (
                                     <div className="space-y-3 text-center">
                                         <div className="flex items-center justify-center gap-2 text-xs font-medium text-text-safe">
-                                            {needsAdminReview ? <Clock className="text-text-warning" size={18} /> : <CheckCircle2 className="text-text-safe" size={18} />}
-                                            <span>{needsAdminReview ? "รอการตรวจสอบ" : "บันทึกสำเร็จ"}</span>
+                                            {needsAdminReview || submittedForReview ? <Clock className="text-text-warning" size={18} /> : <CheckCircle2 className="text-text-safe" size={18} />}
+                                            <span>{needsAdminReview || submittedForReview ? "รอการตรวจสอบ" : "บันทึกสำเร็จ"}</span>
                                         </div>
                                         <button
                                             onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                             className={`w-full py-2.5 text-white rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                                                needsAdminReview ? "bg-primary hover:bg-secondary" : "bg-secondary hover:bg-primary"
+                                                needsAdminReview || submittedForReview ? "bg-primary hover:bg-secondary" : "bg-secondary hover:bg-primary"
                                             }`}
                                         >
                                             {savedSampleId ? "ดูผลการตรวจสอบ" : "กลับสู่หน้าประวัติ"}
@@ -194,7 +195,8 @@ export default function SubmitDesktop(props: any) {
                                             onNearestLocationsUpdate={setNearestLocations}
                                             allLocations={allLocations}
                                             setIsRecommending={setIsRecommending}
-                                            onRevertAutoSwitch={() => props.revertAutoSwitch(key)}
+                                            onRevertAutoSwitch={saved ? undefined : () => props.revertAutoSwitch(key)}
+                                            isSaved={saved}
                                         />
                                     </div>
                                 ))}

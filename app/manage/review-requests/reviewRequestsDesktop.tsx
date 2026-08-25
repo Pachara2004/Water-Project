@@ -43,6 +43,8 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
         setEditNote,
         editMeasurements,
         setEditMeasurements,
+        editSelectedSampleIds,
+        setEditSelectedSampleIds,
         editSaving,
         openEditApprove,
         submitEditApprove,
@@ -361,6 +363,8 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     setEditNote={setEditNote}
                     editMeasurements={editMeasurements}
                     setEditMeasurements={setEditMeasurements}
+                    editSelectedSampleIds={editSelectedSampleIds}
+                    setEditSelectedSampleIds={setEditSelectedSampleIds}
                     editSaving={editSaving}
                     onClose={() => setEditTarget(null)}
                     onSubmit={submitEditApprove}

@@ -317,7 +317,7 @@ export function RequestCard({
     onOpenReject: (item: ReviewRequestItem) => void;
     onApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
     onPreviewImage: (images: PreviewImages) => void;
-    onOpenEditApprove?: (item: ReviewRequestItem) => void;
+    onOpenEditApprove?: (item: ReviewRequestItem, preSelectedSampleIds?: number[]) => void;
     mobile?: boolean;
 }) {
     const isMultiSample = item.samples.length > 1;
@@ -491,7 +491,7 @@ export function RequestCard({
                         <button
                             type="button"
                             disabled={actingId === item.id || noneSelected}
-                            onClick={() => onOpenEditApprove?.(item)}
+                            onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
                             className="flex-1 min-h-9 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <Edit2 size={14} />
@@ -622,6 +622,8 @@ export function EditApproveDrawer({
     setEditNote,
     editMeasurements,
     setEditMeasurements,
+    editSelectedSampleIds,
+    setEditSelectedSampleIds,
     editSaving,
     onClose,
     onSubmit,
@@ -632,11 +634,17 @@ export function EditApproveDrawer({
     setEditNote: (v: string) => void;
     editMeasurements: Record<number, number>;
     setEditMeasurements: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
+    editSelectedSampleIds: number[];
+    setEditSelectedSampleIds: (fn: (prev: number[]) => number[]) => void;
     editSaving: boolean;
     onClose: () => void;
     onSubmit: () => void;
     onPreviewImage?: (images: PreviewImages) => void;
 }) {
+    const isMultiSample = editTarget.samples.length > 1;
+    const toggleSample = (id: number) => setEditSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    const noneSelected = editSelectedSampleIds.length === 0;
+
     return (
         <Popup title="แก้ไขและอนุมัติคำร้อง" onClose={() => !editSaving && onClose()}>
             <div className="space-y-6">
@@ -676,31 +684,58 @@ export function EditApproveDrawer({
                 )}
 
                 <div className="space-y-2.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
+                        {isMultiSample && <span className="text-[10px] font-medium text-text-muted">เลือกเฉพาะสารที่จะอนุมัติ</span>}
+                    </div>
                     <div className="bg-surface-subtle border border-border rounded-xl p-3 space-y-3">
-                        {editTarget.samples
-                            .flatMap((s) => s.measurements)
-                            .map((m) => (
-                                <div key={m.parameterId} className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-bold text-text uppercase">
-                                        {m.parameterName || "ไม่ระบุสาร"} <span className="font-normal text-text-muted lowercase">(เดิม: {m.value.toFixed(2)})</span>
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={editMeasurements[m.parameterId] ?? m.value}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
-                                            }}
-                                            className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                                        />
-                                        {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                        {editTarget.samples.map((s) => {
+                            const isSelected = editSelectedSampleIds.includes(s.id);
+                            return (
+                                <div key={s.id} className={`space-y-2 ${isMultiSample ? "pb-2.5 border-b border-border/60 last:border-b-0 last:pb-0" : ""}`}>
+                                    {isMultiSample && (
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => toggleSample(s.id)}
+                                                className="w-4 h-4 accent-teal-700 cursor-pointer"
+                                            />
+                                            <span className="text-xs font-bold text-text">{s.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</span>
+                                        </label>
+                                    )}
+                                    <div className={`space-y-2 ${isMultiSample ? "pl-6" : ""} ${!isSelected ? "opacity-40" : ""}`}>
+                                        {s.measurements.map((m) => (
+                                            <div key={m.parameterId} className="flex items-center justify-between gap-3">
+                                                <span className="text-xs font-bold text-text uppercase">
+                                                    {m.parameterName || "ไม่ระบุสาร"} <span className="font-normal text-text-muted lowercase">(เดิม: {m.value.toFixed(2)})</span>
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        disabled={!isSelected}
+                                                        value={editMeasurements[m.parameterId] ?? m.value}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
+                                                        }}
+                                                        className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
+                                                    />
+                                                    {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            ))}
+                            );
+                        })}
                     </div>
+                    {isMultiSample && editSelectedSampleIds.length < editTarget.samples.length && (
+                        <p className="text-[10px] font-medium text-text-danger bg-red-500/5 px-2.5 py-1.5 rounded-lg border border-red-500/10">
+                            สารที่ไม่ได้เลือกจะถูกปฏิเสธ
+                        </p>
+                    )}
                 </div>
 
                 <div className="space-y-2.5">
@@ -737,7 +772,7 @@ export function EditApproveDrawer({
 
                 <button
                     onClick={onSubmit}
-                    disabled={editSaving || !editNote.trim()}
+                    disabled={editSaving || !editNote.trim() || noneSelected}
                     className="w-full py-4 min-h-13 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                 >
                     {editSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}

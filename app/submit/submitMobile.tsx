@@ -33,6 +33,7 @@ export default function SubmitMobile(props: any) {
         onResetClick,
         saved,
         savedSampleId,
+        submittedForReview,
         router,
     } = props;
 
@@ -92,7 +93,8 @@ export default function SubmitMobile(props: any) {
                                 onNearestLocationsUpdate={setNearestLocations}
                                 allLocations={allLocations}
                                 setIsRecommending={setIsRecommending}
-                                onRevertAutoSwitch={() => props.revertAutoSwitch(key)}
+                                onRevertAutoSwitch={saved ? undefined : () => props.revertAutoSwitch(key)}
+                                isSaved={saved}
                             />
                         ))}
                 {step === "upload" && (
@@ -134,7 +136,7 @@ export default function SubmitMobile(props: any) {
                                 {!needsAdminReview && (
                                     <button
                                         onClick={() => onConfirmSave(true)}
-                                        className="w-full py-3 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-[#FE9A00] border-2 border-[#FE9A00] bg-transparent hover:bg-orange-50 transition-all duration-200"
+                                        className="w-full py-3 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-[#FE9A00] hover:bg-bg-warning shadow-sm transition-all duration-200"
                                     >
                                         <Send size={15} />
                                         ส่งให้ผู้เชี่ยวชาญตรวจสอบ
@@ -151,20 +153,20 @@ export default function SubmitMobile(props: any) {
                         ) : (
                             <div
                                 className={`text-center p-6 border rounded-xl flex flex-col items-center gap-3 ${
-                                    needsAdminReview ? "border-border-warning/30 bg-card-general" : "border-border-safe/30 bg-card-general"
+                                    needsAdminReview || submittedForReview ? "border-border-warning/30 bg-card-general" : "border-border-safe/30 bg-card-general"
                                 }`}
                             >
-                                {needsAdminReview ? <Clock className="text-text-warning" size={28} /> : <CheckCircle2 className="text-text-safe animate-bounce" size={28} />}
+                                {needsAdminReview || submittedForReview ? <Clock className="text-text-warning" size={28} /> : <CheckCircle2 className="text-text-safe animate-bounce" size={28} />}
                                 <div>
-                                    <p className={`text-sm font-semibold ${needsAdminReview ? "text-text-warning" : "text-text-safe"}`}>
-                                        {needsAdminReview ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
+                                    <p className={`text-sm font-semibold ${needsAdminReview || submittedForReview ? "text-text-warning" : "text-text-safe"}`}>
+                                        {needsAdminReview || submittedForReview ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
                                     </p>
                                 </div>
 
                                 <button
                                     onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                     className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
-                                        needsAdminReview ? "bg-[#FE9A00] hover:bg-bg-warning " : "bg-secondary hover:bg-bg-safe"
+                                        needsAdminReview || submittedForReview ? "bg-[#FE9A00] hover:bg-bg-warning " : "bg-secondary hover:bg-bg-safe"
                                     }`}
                                 >
                                     {savedSampleId ? "ตรวจสอบข้อมูล" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
