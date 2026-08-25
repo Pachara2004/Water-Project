@@ -13,10 +13,10 @@ enum WaterStatus {
   danger
 }
 
-// สถานะการตรวจสอบผลตรวจที่ confidence ต่ำกว่าเกณฑ์ (คนละมิติกับ WaterStatus)
 enum ReviewStatus {
   pending
   approved
+  edited_approved // เพิ่มสถานะ Admin แก้ไขแล้วอนุมัติ
   rejected
 }
 
@@ -31,22 +31,23 @@ model Role {
 }
 
 model User {
-  id              Int             @id @default(autoincrement())
-  lineUniqueId    String          @unique @map("line_unique_id")
-  lineProfileName String          @map("line_profile_name")
-  firstName       String?         @map("first_name")
-  lastName        String?         @map("last_name")
-  phoneNumber     String?         @map("phone_number")
+  id               Int             @id @default(autoincrement())
+  lineUniqueId     String          @unique @map("line_unique_id")
+  lineProfileName  String          @map("line_profile_name")
+  firstName        String?         @map("first_name")
+  lastName         String?         @map("last_name")
+  phoneNumber      String?         @map("phone_number")
   
-  roleId          Int             @map("role_id")
-  systemRole      Role            @relation(fields: [roleId], references: [id])
+  roleId           Int             @map("role_id")
+  systemRole       Role            @relation(fields: [roleId], references: [id])
   
-  samples         WaterSample[]
-  roleRequests    RoleRequest[]
-  reviewedRequests ReviewRequest[] @relation("ReviewedByUser") // [NEW] เชื่อม Foreign Key กับ ReviewRequest
+  samples          WaterSample[]
+  roleRequests     RoleRequest[]
+  reviewedRequests ReviewRequest[] @relation("ReviewedByUser")
+  notifications    Notification[]  @relation("UserNotifications") // เชื่อมโยงกับแจ้งเตือนของ User
 
-  registeredAt    DateTime        @default(now()) @map("registered_at")
-  lastActiveAt    DateTime        @updatedAt @map("last_active_at")
+  registeredAt     DateTime        @default(now()) @map("registered_at")
+  lastActiveAt     DateTime        @updatedAt @map("last_active_at")
 
   @@map("users")
 }
@@ -66,22 +67,16 @@ model RoleRequest {
   @@map("role_requests")
 }
 
-// ประเภทการใช้ประโยชน์ของแหล่งน้ำ — เป็นแค่ "ชุดเกณฑ์ 6 แบบ" ที่เอาไว้เทียบ
-// จงใจไม่ผูกกับ Location: จุดเก็บไม่ได้ถูกกำหนดให้เป็นประเภทใดประเภทหนึ่ง
-// ผลตรวจของทุกจุดจะถูกเทียบกับทั้ง 6 ชุดพร้อมกันเสมอ แล้วเอาผลที่แย่สุดเป็นสถานะ
 model LocationType {
   id        Int        @id @default(autoincrement())
-  code      String     @unique @map("code")      // รหัสที่โค้ดใช้อ้างอิง เช่น CONSERVATION, CORAL_REEF — เป็นตัวที่ codegen เอาไป gen เป็น TypeScript union (npm run gen:location-types)
-  labelTh   String     @map("label_th")          // ป้ายภาษาไทยสำหรับแสดงผล เช่น "เพื่อการอนุรักษ์แหล่งปะการัง"
+  code      String     @unique @map("code")
+  labelTh   String     @map("label_th")
 
   standards Standard[]
 
   @@map("location_types")
 }
 
-// เกณฑ์สูงสุดของสารแต่ละตัว
-// ผูก Parameter ด้วย id ไม่ใช่ชื่อ — สารที่ไม่มีแถวที่นี่ = ไม่มีเกณฑ์กำหนด (ไม่ใช่เกณฑ์เท่ากับ 0)
-// เพิ่มสารใหม่เข้าระบบ = insert Parameter 1 แถว + Standard อีกโซนละแถว ไม่ต้องแก้โค้ด
 model Standard {
   id             Int          @id @default(autoincrement())
 
@@ -91,12 +86,12 @@ model Standard {
   parameterId    Int          @map("parameter_id")
   parameter      Parameter    @relation(fields: [parameterId], references: [id], onDelete: Cascade)
 
-  maxValue       Float        @map("max_value")  // ค่าสูงสุดที่ยอมรับได้ หน่วยตาม Parameter.unit — เกิน = danger, ตั้งแต่ 70% ขึ้นไป = warning (กฎ 70% อยู่ในโค้ด ไม่ได้เก็บที่นี่)
+  maxValue       Float        @map("max_value")
 
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  @@unique([locationTypeId, parameterId]) // 1 สาร มีได้เกณฑ์เดียวต่อ 1 ประเภทการใช้ประโยชน์
+  @@unique([locationTypeId, parameterId])
   @@map("standards")
 }
 
@@ -116,10 +111,12 @@ model Location {
   @@map("locations")
 }
 
+// -------------------------------------------------------------
+// 1. STAGING / WORKFLOW TABLES
+// -------------------------------------------------------------
+
 model WaterSample {
   id               Int                      @id @default(autoincrement())
-  
-  // [NEW] รหัสตัวอย่างน้ำ (อิงจาก sessionGroup ได้)
   code             String?                  @map("code")
   
   collectorId      Int                      @map("collector_id")
@@ -137,7 +134,6 @@ model WaterSample {
   weatherCondCode  Int?                     @map("weather_cond_code")
   
   status           WaterStatus
-  
   sessionGroup     String?                  @map("session_group")
   
   rawImageUrl      String?                  @map("raw_image_url") @db.Text
@@ -150,100 +146,159 @@ model WaterSample {
 
   measurements     WaterSampleMeasurement[]
 
-  // เชื่อมกับ ReviewRequest ผ่าน sessionGroup (string link ไม่ใช่ FK จริง — ดู ReviewRequest ด้านล่าง)
   @@index([sessionGroup])
-  @@index([code]) // [NEW] Index สำหรับค้นหา code
-
-  // ทุก query ของแดชบอร์ด/ส่งออก กรองด้วยช่วงเวลาเสมอ และเรียงด้วย collection_time + id (cursor ของ streaming export)
-  // ไม่มี index ชุดนี้ = full table scan ทุกครั้ง ซึ่งเริ่มรู้สึกที่หลักหมื่นแถวขึ้นไป
+  @@index([code])
   @@index([collectionTime])
   @@index([locationId, collectionTime])
   @@index([status, collectionTime])
   @@map("samples")
 }
 
-// 1. ตารางสำหรับเก็บรายชื่อสาร/พารามิเตอร์ทั้งหมดในระบบ (Master Data)
 model Parameter {
   id          Int                      @id @default(autoincrement())
-  name        String                   @unique @map("name") // เช่น "ammonia", "phosphate", "nitrate", "ph"
-  unit        String?                  @map("unit") // เช่น "mg/L", "pH"
-  description String?                  @map("description") @db.Text
+  name        String                   @unique @map("name")
+  unit        String?                  @map("unit")
+  description String?                  @db.Text
   createdAt   DateTime                 @default(now()) @map("created_at")
   updatedAt   DateTime                 @updatedAt @map("updated_at")
 
-  // Relation กลับไปยังตารางบันทึกผล
   measurements WaterSampleMeasurement[]
   widgets      DashboardWidget[]
-  standards    Standard[] // เกณฑ์ของสารตัวนี้ในแต่ละประเภทการใช้ประโยชน์
+  standards    Standard[]
+
   @@map("parameters")
 }
 
-// 2. ตารางเชื่อม (Junction Table) สำหรับเก็บค่าผลลัพธ์ของสารแต่ละชนิดในรอบการเก็บน้ำนั้นๆ
 model WaterSampleMeasurement {
   id          Int         @id @default(autoincrement())
   sampleId    Int         @map("sample_id")
   parameterId Int         @map("parameter_id")
   value       Float       @map("value")      
   confidence  Float       @map("confidence")  
-  
-  // [UPDATED] ปรับจาก String? เป็น Json? เพื่อความสะดวกในการจัดการพิกัด AI
   boundingBox Json?       @map("bounding_box") 
-  
-  message     String?     @map("message") @db.Text
+  message     String?     @db.Text
 
   sample      WaterSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
   parameter   Parameter   @relation(fields: [parameterId], references: [id], onDelete: Cascade)
 
-  // ทำ Unique Constraint ร่วมกัน เพื่อป้องกันไม่ให้สารชนิดเดียวกัน บันทึกซ้ำซ้อนใน Sample ID เดียวกัน
   @@unique([sampleId, parameterId])
   @@map("sample_measurements")
 }
 
-// คำร้องขอตรวจสอบผลตรวจที่ confidence ต่ำกว่าเกณฑ์ — 1 คำร้องต่อ 1 sessionGroup (1:1 กับการเก็บ 1 ครั้ง)
-// จงใจไม่ประกาศ @relation ไปยัง WaterSample.sessionGroup เพราะฝั่งนั้นไม่ unique (ตั้งใจให้หลายแถวใช้ sessionGroup ร่วมกัน)
-// การอ่านข้อมูลข้ามสองตารางนี้ต้อง query แยกด้วย sessionGroup เอง ดู lib/review.ts
 model ReviewRequest {
-  id            Int          @id @default(autoincrement())
-  sessionGroup  String       @unique @map("session_group")
+  id             Int          @id @default(autoincrement())
+  sessionGroup   String       @unique @map("session_group")
+  statusRequest  ReviewStatus @default(pending) @map("status_request")
 
-  statusRequest ReviewStatus @default(pending) @map("status_request")
+  reviewedById   Int?         @map("reviewed_by_id")
+  reviewedBy     User?        @relation("ReviewedByUser", fields: [reviewedById], references: [id], onDelete: SetNull)
 
-  reviewedById  Int?         @map("reviewed_by_id")
-  // [NEW] เพิ่ม Foreign Key เชื่อมกับ User สำหรับผู้ตรวจทาน
-  reviewedBy    User?        @relation("ReviewedByUser", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?    @map("reviewed_at")
+  reviewNote     String?      @map("review_note") @db.Text
+  acknowledgedAt DateTime?    @map("acknowledged_at")
 
-  reviewedAt    DateTime?    @map("reviewed_at")
-  reviewNote    String?      @map("review_note") @db.Text
-  
-  acknowledgedAt DateTime?   @map("acknowledged_at")  // null = ยังไม่อ่าน | มีค่า = รับทราบแล้ว
-
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@index([statusRequest])
   @@map("review_requests")
 }
 
-model DashboardWidget {
-  id           Int      @id @default(autoincrement())
-  title        String   @map("title")         // ชื่อหัวข้อที่จะแสดงบนการ์ดหรือกราฟ
-  widgetType   String   @map("widget_type")   // ประเภท: 'CARD', 'LINE_CHART', 'PIE_CHART', 'BAR_CHART'
+// -------------------------------------------------------------
+// 2. MASTER DATA (IMMUTABLE & INDEPENDENT)
+// -------------------------------------------------------------
+
+model SampleRecord {
+  id                       Int         @id @default(autoincrement())
+  code                     String?     @map("code")
   
-  metricType   String   @map("metric_type")   // ประเภทสถิติ: 'COUNT', 'AVG', 'SUM', 'MIN', 'MAX'
-  targetType   String   @map("target_type")   // เป้าหมาย: 'SAMPLE_STATUS' (สถานะรวม), 'ENVIRONMENT' (ค่าส่วนกลาง), 'PARAMETER' (สารเคมีย่อย)
-  targetColumn String?  @map("target_column") // ใช้กรณี ENVIRONMENT: 'dissolved_oxygen', 'air_temperature', 'rain_accumulation'
-  parameterId  Int?     @map("parameter_id")  // ใช้กรณี PARAMETER: เชื่อมผูกกับ ID ของตาราง Parameter
-  filterValue  String?  @map("filter_value")  // เงื่อนไขตัวกรองค่า เช่น 'safe', 'warning', 'danger'
-  unit         String?  @map("unit")           // หน่วยนับ เช่น 'รายการ', 'mg/L', '%'
-  cardColor    String   @default("blue") @map("card_color") // สีธีมหลัก: 'blue', 'red', 'green', 'yellow'
+  // Snapshot ข้อมูลผู้เก็บ
+  collectorNameFrom        String?     @map("collector_name_from")
+  collectorNameCurrentId   Int?        @map("collector_name_current_id")
+  
+  // Snapshot ข้อมูลสถานที่
+  locationNameFrom         String?     @map("location_name_from")
+  locationNameCurrentId    Int?        @map("location_name_current_id")
+  
+  collectionTime           DateTime    @map("collection_time")
+  uploadedActiveAt         DateTime    @default(now()) @map("uploaded_active_at")
+  
+  dissolvedOxygen          Float?      @map("dissolved_oxygen")
+  airTemperature           Float?      @map("air_temperature")
+  rainAccumulation         Float?      @map("rain_accumulation")
+  weatherCondCode          Int?        @map("weather_cond_code")
+  status                   WaterStatus @map("status")
+  
+  imageUrl                 Json?       @map("image_url") // รวม { rawImageUrl, plotImageUrl }
+  imageExpiresAt           DateTime?   @map("image_expires_at")
+  isDeleted                Boolean     @default(false) @map("is_deleted")
+  
+  lastModifiedBy           Int?        @map("last_modified_by")
+  updatedActiveAt          DateTime    @default(now()) @updatedAt @map("updated_active_at")
+  
+  // Self-contained Array of Object สำหรับผลตรวจสารทั้งหมด
+  parameterData            Json        @map("parameter_data")
+  reviewedById             Int?        @map("reviewed_by_id")
 
-  w            Int      @default(3)           // ความกว้างกริดบนหน้าจอ เช่น 3, 4, 6, 12 ช่อง
+  @@index([code])
+  @@index([collectionTime])
+  @@index([locationNameCurrentId, collectionTime])
+  @@map("sample_record")
+}
 
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+// -------------------------------------------------------------
+// 3. NOTIFICATION & AUDIT LOGS
+// -------------------------------------------------------------
 
-  // Relation เชื่อมต่อไปตาราง Parameter
+model Notification {
+  id        Int          @id @default(autoincrement())
+  userId    Int?         @map("user_id") // ส่งให้ User คนไหน
+  code      String?      @map("code")    // Sample Code อ้างอิง
+  status    ReviewStatus @map("status")  // ผลการตรวจสอบ (approved / edited_approved / rejected)
+  message   String?      @db.Text        // เหตุผล / ข้อความแจ้งเตือน
+  reviewBy  Int?         @map("review_by") // ผู้ตรวจสอบ
+  isReading Boolean      @default(false) @map("is_reading") // สถานะการเปิดอ่าน
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  user      User?        @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isReading])
+  @@map("noti")
+}
+
+model SampleRawLog {
+  id                  Int      @id @default(autoincrement())
+  sessionGroup        String?  @map("session_group")
+  sampleParameterName Json     @map("sample_parameter_name") // ค่าสารเดิมก่อนถูกแก้ หรือ ค่าสารที่พัง
+  message             Json?    @map("message")               // เหตุผลปฏิเสธแต่ละสาร
+  imageRawUrl         Json?    @map("image_raw_url")         // URLs รูปดิบ/Bounding box
+  reviewedById        Int?     @map("reviewed_by_id")        // ผู้ตรวจ
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([sessionGroup])
+  @@map("sample_raw_log")
+}
+
+// -------------------------------------------------------------
+// 4. DASHBOARD & SYSTEM
+// -------------------------------------------------------------
+
+model DashboardWidget {
+  id           Int        @id @default(autoincrement())
+  title        String     @map("title")
+  widgetType   String     @map("widget_type")
+  metricType   String     @map("metric_type")
+  targetType   String     @map("target_type")
+  targetColumn String?    @map("target_column")
+  parameterId  Int?       @map("parameter_id")
+  filterValue  String?    @map("filter_value")
+  unit         String?    @map("unit")
+  cardColor    String     @default("blue") @map("card_color")
+  w            Int        @default(3)
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
   parameter    Parameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
 
   @@map("dashboard_widgets")
@@ -251,17 +306,15 @@ model DashboardWidget {
 
 model WeatherData {
   id               String   @id @default(uuid())
-  locationId       Int      @map("location_id") // เปลี่ยนมาอิง Location ID ของระบบ
-  timestamp        DateTime // เวลาในรูปแบบ ISO ต้นชั่วโมง (เช่น 2026-07-13 13:00:00)
-  temperature      Float    // tc (°C)
-  rainVolume       Float    // ปริมาณน้ำฝน (mm)
-  weatherCondition Int      // รหัสสภาพอากาศแปลงเข้าระบบเดิม (1-12)
+  locationId       Int      @map("location_id")
+  timestamp        DateTime
+  temperature      Float
+  rainVolume       Float
+  weatherCondition Int
   createdAt        DateTime @default(now()) @map("created_at")
 
-  // Relation เชื่อมไปตาราง Location
   location         Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  // เปลี่ยน Composite Unique มาเช็คที่คู่ของ Location ID และ Timestamp
   @@unique([locationId, timestamp])
   @@index([locationId])
   @@index([timestamp])

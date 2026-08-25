@@ -98,29 +98,6 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         <span className="font-bold truncate">{collectorFullName}</span>
                     </div>
                 </div>
-                {/* ปริมาณออกซิเจนละลายน้ำ — คอมเมนต์ซ่อนการแสดงผลไว้ชั่วคราว
-                <div className="bg-surface-subtle border border-border rounded-xl p-4">
-                    <div className="flex items-center justify-between gap-2 w-full">
-                        <div className="flex items-center gap-2">
-                            <FlaskConical size={24} className="text-secondary" />
-                            <p className="text-xs font-bold text-secondary">ปริมาณออกซิเจนละลายน้ำ</p>
-                        </div>
-                        {isEditing ? (
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={editData.oxygen}
-                                onChange={(e) => setEditData((p: any) => ({ ...p, oxygen: e.target.value }))}
-                                placeholder="ไม่ได้ระบุ"
-                                className="flex-1 text-xs font-bold text-text bg-transparent text-right outline-none px-2"
-                            />
-                        ) : (
-                            <span className="text-xs font-bold text-text ml-auto pr-2">{sample.dissolvedOxygen === null ? "-" : sample.dissolvedOxygen.toFixed(2)}</span>
-                        )}
-                        <span className="text-xs font-bold shrink-0">mg/L</span>
-                    </div>
-                </div>
-                */}
 
                 <div className="grid grid-cols-1 gap-2">
                     <div className="bg-surface-subtle border border-border rounded-xl p-4 text-center">
@@ -201,6 +178,18 @@ export default function CollectorHistoryDetailMobile(props: any) {
                             รอตรวจสอบ
                         </span>
                     </div>
+                ) : sample?.reviewStatus === "REJECTED" ? (
+                    <div className="flex flex-col items-end text-center shrink-0">
+                        <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                            ถูกปฏิเสธ
+                        </span>
+                    </div>
+                ) : sample?.reviewStatus === "EDITED_APPROVED" ? (
+                    <div className="flex flex-col items-end text-center shrink-0">
+                        <span className="inline-flex items-center w-30 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
+                            อนุมัติ (มีการแก้ไข)
+                        </span>
+                    </div>
                 ) : (
                     <div className="w-15" />
                 )}
@@ -222,7 +211,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         isHistoryView={true}
                     />
                 ))}
-                <ResultsPanel {...mockSubmitHook} />
+                <ResultsPanel {...mockSubmitHook} reviewNote={sample?.reviewNote} />
                 <HistoryMetaBlocks />
             </div>
         </div>

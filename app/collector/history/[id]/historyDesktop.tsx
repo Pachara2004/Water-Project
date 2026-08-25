@@ -226,10 +226,27 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                                 รอตรวจสอบ
                                             </span>
                                         )}
+                                        {sample.reviewStatus === "REJECTED" && (
+                                            <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                                                ถูกปฏิเสธ
+                                            </span>
+                                        )}
+                                        {sample.reviewStatus === "EDITED_APPROVED" && (
+                                            <span className="inline-flex items-center w-30 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
+                                                อนุมัติ (มีการแก้ไข)
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
                             </div>
+
+                            {sample.reviewNote && (
+                                <div className="bg-red-50/50 border border-red-100 rounded-lg p-3 my-2">
+                                    <h3 className="text-[11px] font-semibold text-red-700 mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
+                                    <p className="text-xs text-red-600 whitespace-pre-wrap leading-relaxed">{sample.reviewNote}</p>
+                                </div>
+                            )}
 
                             <div className="pt-1 space-y-2">
                                 <p className="text-xs uppercase text-text font-medium">สารที่ตรวจพบ</p>
@@ -239,13 +256,34 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                             {param.name}
                                             {measurement.isDuplicateSubstance && <span className="ml-1 text-amber-600">•ซ้ำ</span>}
                                         </span>
-                                        <span className="font-medium text-text">
-                                            {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted font-mediuml">mg/L</span>
-                                        </span>
+                                        <div className="flex flex-col items-end gap-1">
+                                            {measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
+                                                <>
+                                                    <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                                                        <span>ค่าที่ส่ง:</span>
+                                                        <span className="line-through decoration-red-400">
+                                                            {measurement.originalValue.toFixed(2)} mg/L
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-[11px]">
+                                                        <span className="text-teal-700 font-medium">แก้ไขเป็น:</span>
+                                                        <span className="font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md">
+                                                            {measurement.concentrated.toFixed(2)} mg/L
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <span className="font-medium text-text text-sm">
+                                                    {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted font-mediuml">mg/L</span>
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
+
+
 
                         {/* Location & Context Detail Component */}
                         <HistoryMetaBlocks />

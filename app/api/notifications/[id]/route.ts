@@ -3,8 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 
 // ==========================================
-// PATCH /api/notifications/[id] — collector กด "รับทราบ" การแจ้งเตือนถูกปฏิเสธ
-// set acknowledgedAt เพื่อเคลียร์ตัวเลขบนกระดิ่ง (idempotent — กดซ้ำไม่เป็นไร)
+// PATCH /api/notifications/[id]
 // ==========================================
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const auth = await verifyAuth(request, ["collector", "admin"]);
@@ -14,30 +13,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     try {
         const { id } = await params;
-        const requestId = Number(id);
-        if (!Number.isInteger(requestId)) {
+        const notificationId = Number(id);
+        if (!Number.isInteger(notificationId)) {
             return NextResponse.json({ error: "รหัสการแจ้งเตือนไม่ถูกต้อง" }, { status: 400 });
         }
 
-        const existing = await prisma.reviewRequest.findUnique({ where: { id: requestId } });
+        const existing = await prisma.notification.findUnique({ where: { id: notificationId } });
         if (!existing) {
             return NextResponse.json({ error: "ไม่พบการแจ้งเตือนที่ระบุ" }, { status: 404 });
         }
 
-        // ตรวจความเป็นเจ้าของ — ต้องมี sample ในกลุ่มนี้ที่เป็นของผู้เรียก (กันคนอื่นกดรับทราบแทน)
-        const owned = await prisma.waterSample.findFirst({
-            where: { sessionGroup: existing.sessionGroup, collectorId: auth.user!.id },
-            select: { id: true },
-        });
-        if (!owned) {
+        if (existing.userId !== auth.user!.id) {
             return NextResponse.json({ error: "คุณไม่มีสิทธิ์จัดการการแจ้งเตือนนี้" }, { status: 403 });
         }
 
-        // เขียนแบบมีเงื่อนไข: อัปเดตเฉพาะคำร้องที่ถูกปฏิเสธและยังไม่รับทราบ
-        // ถ้าเคยรับทราบไปแล้ว updateMany จะคืน count=0 แต่ยังถือว่าสำเร็จ (idempotent)
-        await prisma.reviewRequest.updateMany({
-            where: { id: requestId, statusRequest: "rejected", acknowledgedAt: null },
-            data: { acknowledgedAt: new Date() },
+        await prisma.notification.updateMany({
+            where: { id: notificationId, isReading: false },
+            data: { isReading: true },
         });
 
         return NextResponse.json({ ok: true });

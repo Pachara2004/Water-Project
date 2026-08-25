@@ -16,9 +16,9 @@ const statusStyles = {
 
 // 🌟 ปรับขนาด min-w และ w- ให้ฟิกซ์ความกว้างเท่ากันทุกสถานะ + จัดข้อความอยู่ตรงกลาง (justify-center)
 const sizeStyles = {
-    sm: "text-xs p-1 w-20 justify-center",
-    md: "text-xs p-1 w-20 justify-center",
-    lg: "text-sm p-1 w-20 justify-center",
+    sm: "text-xs p-1 w-30 justify-center",
+    md: "text-xs p-1 w-30 justify-center",
+    lg: "text-sm p-1 w-30 justify-center",
 };
 
 export default function StatusBadge({ status, size = "md", fullWidth = false }: StatusBadgeProps) {

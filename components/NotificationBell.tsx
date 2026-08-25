@@ -4,14 +4,15 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import liff from "@line/liff";
 import { Bell, X, MapPin, FileScan, Calendar, AlertCircle, ImageOff, Check, BellOff } from "lucide-react";
 import { refreshNavDots } from "@/lib/navEvents";
+import { useRouter } from "next/navigation";
 
 interface NotificationItem {
     id: number;
-    sessionGroup: string;
-    code?: string | null;
-    reviewNote: string | null;
-    reviewedAt: string | null;
-    acknowledgedAt: string | null;
+    code: string | null;
+    status: "approved" | "edited_approved" | "rejected";
+    message: string | null;
+    isReading: boolean;
+    createdAt: string;
     collectionTime: string | null;
     rawImageUrl: string | null;
     location: { id: number; name: string; organization: string } | null;
@@ -33,6 +34,7 @@ export default function NotificationBell() {
     const [items, setItems] = useState<NotificationItem[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [ackingId, setAckingId] = useState<number | null>(null);
+    const router = useRouter();
 
     // ─── Bottom Sheet Dragging States (Mobile Only) ───
     const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("collapsed");
@@ -193,10 +195,10 @@ export default function NotificationBell() {
     }, [open]);
 
     const handleAck = async (item: NotificationItem) => {
-        if (item.acknowledgedAt || ackingId === item.id) return;
+        if (item.isReading || ackingId === item.id) return;
         setAckingId(item.id);
 
-        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, acknowledgedAt: new Date().toISOString() } : i)));
+        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, isReading: true } : i)));
         setUnreadCount((c) => Math.max(0, c - 1));
 
         try {
@@ -208,7 +210,7 @@ export default function NotificationBell() {
             refreshNavDots();
         } catch (err) {
             console.error("Failed to acknowledge notification:", err);
-            setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, acknowledgedAt: null } : i)));
+            setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, isReading: false } : i)));
             setUnreadCount((c) => c + 1);
         } finally {
             setAckingId(null);
@@ -272,7 +274,7 @@ export default function NotificationBell() {
                     >
                         {/* Header Bar */}
                         <div
-                            className="relative w-full flex items-center justify-center pt-3 pb-1 px-4 select-none cursor-grab active:cursor-grabbing md:cursor-default"
+                            className="relative w-full flex items-center justify-center pt-5 pb-1 px-4 select-none cursor-grab active:cursor-grabbing md:cursor-default"
                             onMouseDown={handleDragStart}
                             onTouchStart={handleDragStart}
                         >
@@ -294,7 +296,7 @@ export default function NotificationBell() {
                                 <Bell size={20} className="text-primary shrink-0" />
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <h3 className="text-md font-bold text-primary leading-tight">การแจ้งเตือน</h3>
-                                    <p className="text-xs text-text-muted truncate">รายการที่รับทราบแล้วจะไม่แสดงในรายการหลังครบ 7 วัน</p>
+                                    <p className="text-xs text-text truncate">รายการที่รับทราบแล้วจะไม่แสดงในรายการหลังครบ 7 วัน</p>
                                 </div>
                             </div>
                         </div>
@@ -310,27 +312,55 @@ export default function NotificationBell() {
                                 </div>
                             ) : (
                                 displayedItems.map((item) => {
-                                    const isRead = !!item.acknowledgedAt;
+                                const isRead = item.isReading;
+
+                                    let badgeColor = "bg-bg-danger text-text-danger";
+                                    let badgeText = "ถูกปฏิเสธ";
+                                    let bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
+                                    let iconColor = "text-text-danger";
+
+                                    if (item.status === "pending") {
+                                        badgeColor = "bg-bg-warning text-text-warning";
+                                        badgeText = "รอตรวจสอบ";
+                                        bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
+                                        iconColor = "text-yellow-600";
+                                    } else if (item.status === "approved") {
+                                        badgeColor = "bg-bg-safe text-text-safe";
+                                        badgeText = "อนุมัติแล้ว";
+                                        bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
+                                        iconColor = "text-green-600";
+                                    } else if (item.status === "edited_approved") {
+                                        badgeColor = "bg-bg-safe text-text-safe";
+                                        badgeText = "แก้ไขแล้วอนุมัติ";
+                                        bgColor = isRead ? "bg-card-general border-border opacity-60" : "bg-card-general border-border";
+                                        iconColor = "text-orange-600";
+                                    }
 
                                     return (
                                         <div
                                             key={item.id}
-                                            className={`rounded-2xl shadow-xs border p-3 transition-all ${isRead ? "bg-card-general shadow-xs border-border opacity-60" : "bg-red-500/5 border-red-200"}`}
+                                            onClick={() => {
+                                                if (item.code) {
+                                                    setOpen(false);
+                                                    router.push(`/collector/history/${item.code}`);
+                                                }
+                                            }}
+                                            className={`rounded-2xl shadow-xs border p-3 transition-all cursor-pointer ${bgColor}`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                                        <div className="flex items-center justify-between gap-2">
                                                             {item.code && (
                                                                 <div className="flex items-center gap-1 shrink-0">
-                                                                    <FileScan size={12} className="text-text-muted shrink-0" />
+                                                                    <FileScan size={15} className="text-text shrink-0" />
                                                                     <span className="font-medium text-text text-xs">{item.code}</span>
                                                                 </div>
                                                             )}
 
                                                             <div className="flex items-center gap-1.5 min-w-0">
-                                                                <span className="inline-flex items-center gap-1 text-xs font-bold text-text-danger bg-bg-danger border border-border-danger p-1 rounded-md shrink-0">
-                                                                    ถูกปฏิเสธ
+                                                                <span className={`inline-flex justify-center items-center gap-1 text-xs font-bold  p-1.5 w-30 rounded-md shrink-0 ${badgeColor}`}>
+                                                                    {badgeText}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -338,20 +368,20 @@ export default function NotificationBell() {
                                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium mt-0.5">
                                                             {item.code && (
                                                                 <div className="flex items-center gap-1 shrink-0">
-                                                                    <MapPin size={12} className="shrink-0" />
+                                                                    <MapPin size={15} className="shrink-0" />
                                                                     <span className="font-medium text-text">{item.location?.name ?? "ไม่ทราบสถานที่"}</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex items-center gap-1 shrink-0">
-                                                                <Calendar size={12} className="shrink-0" />
+                                                                <Calendar size={15} className="shrink-0" />
                                                                 <span>{formatDateTime(item.collectionTime)}</span>
                                                             </div>
                                                         </div>
 
-                                                        {item.reviewNote && (
-                                                            <p className="flex items-start gap-1.5 text-xs font-semibold text-text-danger mt-1.5 leading-relaxed bg-bg-danger p-1.5 rounded-lg border border-border-danger min-w-0">
+                                                        {item.message && (
+                                                            <p className={`flex items-start gap-1.5 text-xs font-semibold mt-1.5 leading-relaxed p-1.5 rounded-lg min-w-0 ${badgeColor}`}>
                                                                 <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                                                                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{item.reviewNote}</span>
+                                                                <span className="min-w-0 wrap-break-word">{item.message}</span>
                                                             </p>
                                                         )}
                                                     </div>
@@ -360,7 +390,10 @@ export default function NotificationBell() {
 
                                             {!isRead && (
                                                 <button
-                                                    onClick={() => handleAck(item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAck(item);
+                                                    }}
                                                     disabled={ackingId === item.id}
                                                     className="w-full mt-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-surface border border-border text-text-secondary hover:bg-surface-subtle hover:text-text-primary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >

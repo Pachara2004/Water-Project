@@ -92,13 +92,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }
         }
 
-        let finalMeasurementsPayload: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: string | null; message?: string | null }> = [];
+        let finalMeasurementsPayload: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: any; message?: string | null }> = [];
 
         if (measurements && Array.isArray(measurements)) {
             finalMeasurementsPayload = measurements.map((m: any) => ({
                 parameterId: Number(m.parameterId),
                 value: parseFloat(m.value || "0"),
-                confidence: parseFloat(oldSample.measurements[0]?.confidence || "0.90"),
+                confidence: oldSample.measurements[0]?.confidence ?? 0.90,
                 boundingBox: oldSample.measurements[0]?.boundingBox || null,
                 message: oldSample.measurements[0]?.message || null,
             }));
@@ -216,10 +216,168 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     try {
         const { id } = await params;
-        const sampleId = Number(id);
+        
+        const pendingGroups = await getPendingSessionGroups();
+        const isPendingParam = pendingGroups.includes(id);
+        
+        // 1. ลองค้นหาใน SampleRecord ก่อน (ถ้าไม่ใช่สถานะ Pending)
+        const isNumeric = !isNaN(Number(id));
+        let sampleRecord = null;
+        
+        if (!isPendingParam) {
+            sampleRecord = await prisma.sampleRecord.findFirst({
+                where: {
+                    OR: [
+                        { code: id },
+                        ...(isNumeric ? [{ id: Number(id) }] : [])
+                    ],
+                    isDeleted: false
+                },
+                orderBy: { id: "desc" },
+            });
+        }
 
-        const mainSample = await prisma.waterSample.findUnique({
-            where: { id: sampleId },
+        if (sampleRecord) {
+            let allMeasurements: any[] = [];
+            let sampleImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
+            
+            if (sampleRecord.parameterData && Array.isArray(sampleRecord.parameterData)) {
+                sampleRecord.parameterData.forEach((m: any, index: number) => {
+                    const paramId = m.parameterId || index;
+                    allMeasurements.push({
+                        sampleId: paramId,
+                        parameterId: paramId,
+                        parameter: { id: paramId, name: m.parameterName || "unknown" },
+                        value: m.value,
+                        confidence: m.confidence || 0.9,
+                    });
+                });
+            }
+
+            let rawImageUrl = null;
+            let analyzedPlotUrl = null;
+            if (sampleRecord.imageUrl && typeof sampleRecord.imageUrl === 'object') {
+                const imgData = sampleRecord.imageUrl as any;
+                if (imgData.rawImageUrls && imgData.rawImageUrls.length > 0) rawImageUrl = imgData.rawImageUrls[0];
+                if (imgData.plotImageUrls && imgData.plotImageUrls.length > 0) analyzedPlotUrl = imgData.plotImageUrls[0];
+                
+                // สำหรับ history page (รองรับ multiple images per parameter ถ้าทำได้ แต่ตอนนี้ mapping ง่ายๆ ก่อน)
+                allMeasurements.forEach((m) => {
+                    sampleImagesMap[m.sampleId] = {
+                        raw: rawImageUrl,
+                        plot: analyzedPlotUrl
+                    };
+                });
+            }
+
+            const sampleLocationId = sampleRecord.locationNameCurrentId;
+            const sampleCollectionTime = sampleRecord.collectionTime;
+            const baseLocationSampleWhere: any = { locationId: sampleLocationId, isDeleted: false };
+            if (pendingGroups.length > 0) {
+                baseLocationSampleWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
+            }
+            const locationSampleSelect = {
+                collectionTime: true,
+                measurements: { select: { value: true, parameterId: true, parameter: { select: { name: true } } } },
+            };
+            const [beforeOrAtSamples, afterSamples] = await Promise.all([
+                prisma.waterSample.findMany({
+                    where: { ...baseLocationSampleWhere, collectionTime: { lte: sampleCollectionTime } },
+                    orderBy: { collectionTime: "desc" },
+                    take: 50,
+                    select: locationSampleSelect,
+                }),
+                prisma.waterSample.findMany({
+                    where: { ...baseLocationSampleWhere, collectionTime: { gt: sampleCollectionTime } },
+                    orderBy: { collectionTime: "asc" },
+                    take: 50,
+                    select: locationSampleSelect,
+                }),
+            ]);
+            const latestByParameter = computeValueByParameterAsOf(beforeOrAtSamples, afterSamples);
+            const locationStandards = await loadAllStandards();
+            const locationStatus =
+                latestByParameter.length > 0
+                    ? evaluateSample(
+                          latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value })),
+                          locationStandards,
+                      )
+                    : null;
+
+            const reviewReq = await prisma.reviewRequest.findUnique({ 
+                where: { sessionGroup: sampleRecord.code },
+                select: { statusRequest: true, reviewNote: true }
+            });
+            
+            let rawLogs: any[] = [];
+            if (sampleRecord.code) {
+                const auditLog = await prisma.sampleRawLog.findFirst({
+                    where: { sessionGroup: sampleRecord.code },
+                    orderBy: { id: "desc" },
+                });
+                if (auditLog && auditLog.sampleParameterName) {
+                    rawLogs = auditLog.sampleParameterName as any[];
+                }
+            }
+
+            const responseGetData = {
+                id: sampleRecord.id,
+                code: sampleRecord.code,
+                collectorId: sampleRecord.collectorNameCurrentId,
+                locationId: sampleRecord.locationNameCurrentId,
+                collectionTime: cleanDateString(sampleRecord.collectionTime),
+                uploadedActiveAt: cleanDateString(sampleRecord.uploadedActiveAt),
+                updatedActiveAt: cleanDateString(sampleRecord.uploadedActiveAt),
+                dissolvedOxygen: sampleRecord.dissolvedOxygen,
+                airTemperature: sampleRecord.airTemperature,
+                rainAccumulation: sampleRecord.rainAccumulation,
+                weatherCondCode: sampleRecord.weatherCondCode,
+                status: sampleRecord.status,
+                rawImageUrl: rawImageUrl,
+                analyzedPlotUrl: analyzedPlotUrl,
+                sessionGroup: sampleRecord.code,
+                reviewStatus: reviewReq?.statusRequest === "edited_approved" ? "EDITED_APPROVED" : "APPROVED",
+                reviewNote: reviewReq?.reviewNote || null,
+                
+                locationStatus,
+                latestByParameter: latestByParameter.map((item: any) => ({
+                    ...item,
+                    collectedAt: cleanDateString(item.collectedAt || item.collectionTime),
+                    collectionTime: cleanDateString(item.collectionTime || item.collectedAt),
+                })),
+                
+                location: {
+                    id: sampleRecord.locationNameCurrentId,
+                    stationName: sampleRecord.locationNameFrom,
+                    governingAgency: "-",
+                    latitude: 0,
+                    longitude: 0,
+                },
+                collector: {
+                    id: sampleRecord.collectorNameCurrentId,
+                    lineProfileName: sampleRecord.collectorNameFrom,
+                },
+                measurements: allMeasurements.map(m => {
+                    const orig = rawLogs.find(rl => rl.param === m.parameter.name);
+                    return {
+                        ...m,
+                        originalValue: orig ? orig.value : null
+                    };
+                }),
+                sampleImagesMap: sampleImagesMap,
+            };
+            return NextResponse.json(responseGetData);
+        }
+
+        // 2. ถ้าไม่พบใน SampleRecord ให้มาค้นใน WaterSample (สำหรับ Pending หรือ Rejected)
+        const sampleIdNum = Number(id);
+        const mainSample = await prisma.waterSample.findFirst({
+            where: {
+                OR: [
+                    { sessionGroup: id },
+                    ...(!isNaN(sampleIdNum) ? [{ id: sampleIdNum }] : [])
+                ],
+            },
             include: {
                 location: true,
                 collector: {
@@ -234,9 +392,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     include: { parameter: true },
                 },
             },
+            orderBy: { id: "desc" }
         });
 
-        if (!mainSample || mainSample.isDeleted) {
+        const reviewReq = await prisma.reviewRequest.findUnique({
+            where: { sessionGroup: mainSample.sessionGroup ?? "" },
+            select: { statusRequest: true, reviewNote: true }
+        });
+        const isRejected = reviewReq?.statusRequest === "rejected";
+
+        if (!mainSample || (mainSample.isDeleted && !isRejected)) {
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 
@@ -244,21 +409,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 
-        let allMeasurements = [...mainSample.measurements];
-
+        let allMeasurements: any[] = [];
         const sampleImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
-        sampleImagesMap[mainSample.id] = {
-            raw: mainSample.rawImageUrl,
-            plot: mainSample.analyzedPlotUrl,
-        };
 
         if (mainSample.sessionGroup) {
-            const partnerSamples = await prisma.waterSample.findMany({
-                where: {
-                    sessionGroup: mainSample.sessionGroup,
-                    id: { not: sampleId },
-                    isDeleted: false,
-                },
+            const allGroupSamples = await prisma.waterSample.findMany({
+                where: { sessionGroup: mainSample.sessionGroup },
+                orderBy: { id: "asc" },
                 include: {
                     measurements: {
                         include: { parameter: true },
@@ -266,23 +423,46 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 },
             });
 
-            partnerSamples.forEach((ps) => {
-                allMeasurements.push(...ps.measurements);
-                sampleImagesMap[ps.id] = {
-                    raw: ps.rawImageUrl,
-                    plot: ps.analyzedPlotUrl,
+            const measMap = new Map<number, any>();
+            allGroupSamples.forEach((s) => {
+                s.measurements.forEach((m) => {
+                    measMap.set(m.parameterId, m);
+                });
+                sampleImagesMap[s.id] = {
+                    raw: s.rawImageUrl,
+                    plot: s.analyzedPlotUrl,
                 };
             });
+            allMeasurements = Array.from(measMap.values());
+        } else {
+            allMeasurements = [...mainSample.measurements];
+            sampleImagesMap[mainSample.id] = {
+                raw: mainSample.rawImageUrl,
+                plot: mainSample.analyzedPlotUrl,
+            };
         }
 
         const dynamicMeasurements: Record<string, number> = {};
+        
+        let rawLogs: any[] = [];
+        if (mainSample.sessionGroup) {
+            const auditLog = await prisma.sampleRawLog.findFirst({
+                where: { sessionGroup: mainSample.sessionGroup },
+                orderBy: { id: "desc" },
+            });
+            if (auditLog && auditLog.sampleParameterName) {
+                rawLogs = auditLog.sampleParameterName as any[];
+            }
+        }
+
         allMeasurements.forEach((m: any) => {
             if (m.parameter?.name) {
-                dynamicMeasurements[`${m.parameter.name.toLowerCase()}Value`] = m.value;
+                dynamicMeasurements[`${m.parameter.name.toLowerCase()}Val`] = m.value;
+                const orig = rawLogs.find(rl => rl.param === m.parameter.name);
+                m.originalValue = orig ? orig.value : null;
             }
         });
 
-        const pendingGroups = await getPendingSessionGroups();
         const baseLocationSampleWhere: any = { locationId: mainSample.locationId, isDeleted: false };
         if (pendingGroups.length > 0) {
             baseLocationSampleWhere.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
@@ -336,7 +516,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             sessionGroup: mainSample.sessionGroup,
 
             // 🟢 แนบ reviewStatus ให้หน้าประวัติใช้งาน
-            reviewStatus: isPending ? "PENDING" : "APPROVED",
+            reviewStatus: isRejected ? "REJECTED" : (reviewReq?.statusRequest === "edited_approved" ? "EDITED_APPROVED" : (isPending ? "PENDING" : "APPROVED")),
+            reviewNote: reviewReq?.reviewNote || null,
 
             location: mainSample.location
                 ? {

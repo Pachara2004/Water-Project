@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
                         phosphateVal: currentMeasurements["phosphateVal"] ?? null,
                         ammoniaVal: currentMeasurements["ammoniaVal"] ?? null,
 
-                        collectedAt: s.collectionTime.toISOString(),
+                        collectedAt: s.collectionTime.toISOString().replace("Z", ""),
                         oxygen: s.dissolvedOxygen,
                         temperature: s.airTemperature,
                         rainVolume: s.rainAccumulation,

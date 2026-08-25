@@ -55,6 +55,7 @@ interface ImageZoneProps {
     setIsRecommending: (b: boolean) => void;
     enabled?: boolean;
     onToggle?: () => void;
+    onRevertAutoSwitch?: () => void;
     isHistoryView?: boolean;
 }
 
@@ -71,6 +72,7 @@ export function ImageZone({
     setIsRecommending,
     enabled = true,
     onToggle,
+    onRevertAutoSwitch,
     isHistoryView = false,
 }: ImageZoneProps) {
     const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -210,15 +212,37 @@ export function ImageZone({
 
             {enabled && (
                 <div className="p-4">
-                    {measurement?.autoSwitchedFrom && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-border text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
-                            <FlaskConical size={15} className="shrink-0 mt-0.5" />
-                            <div className="text-xs leading-relaxed font-medium">
-                                <p className="font-semibold mb-0.5">เปลี่ยนชนิดสารให้อัตโนมัติ</p>
+                    {measurement?.isSystemUnknown && (
+                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200 dark:border-orange-900">
+                            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                            <div className="text-xs leading-relaxed font-medium w-full">
+                                <p className="font-semibold mb-0.5">พบสารที่ไม่รู้จักในระบบ</p>
                                 <p>
-                                    เดิมเลือก {measurement.autoSwitchedFrom.toUpperCase()} แต่ระบบตรวจพบว่าสารในภาพเป็น {param.name.toUpperCase()} จึงเปลี่ยนให้อัตโนมัติ
+                                    AI ทำนายว่าภาพนี้คือ {measurement.verifiedParameterName?.toUpperCase()} ซึ่งไม่ได้ถูกตั้งค่าไว้ในฐานข้อมูล การบันทึกภาพนี้จะถูกส่งไปให้ผู้ดูแลระบบตรวจสอบ
                                 </p>
                             </div>
+                        </div>
+                    )}
+
+                    {measurement?.autoSwitchedFrom && (
+                        <div className="mb-3 flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
+                            <div className="flex items-start gap-2">
+                                <FlaskConical size={15} className="shrink-0 mt-0.5" />
+                                <div className="text-xs leading-relaxed font-medium">
+                                    <p className="font-semibold mb-0.5">เปลี่ยนชนิดสารให้อัตโนมัติ</p>
+                                    <p>
+                                        เดิมเลือก {measurement.autoSwitchedFrom.toUpperCase()} แต่ระบบตรวจพบว่าสารในภาพเป็น {param.name.toUpperCase()} จึงเปลี่ยนให้อัตโนมัติ
+                                    </p>
+                                </div>
+                            </div>
+                            {onRevertAutoSwitch && (
+                                <button
+                                    onClick={onRevertAutoSwitch}
+                                    className="self-end mt-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 rounded-md text-xs font-semibold transition-colors"
+                                >
+                                    ยืนยันส่งเป็น {measurement.autoSwitchedFrom.toUpperCase()} (สารเดิม)
+                                </button>
+                            )}
                         </div>
                     )}
 

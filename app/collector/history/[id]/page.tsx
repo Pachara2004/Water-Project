@@ -116,6 +116,7 @@ export default function CollectorHistoryDetailPage() {
                 status: sample.status,
                 parameterId: paramId,
                 isDuplicateSubstance: (countByParam.get(paramId) || 0) > 1,
+                originalValue: m.originalValue,
             };
 
             const specificImages = m.sampleId !== undefined ? sample.sampleImagesMap?.[m.sampleId] : undefined;

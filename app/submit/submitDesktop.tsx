@@ -103,6 +103,16 @@ export default function SubmitDesktop(props: any) {
                                             <span>{needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกผลตรวจ"}</span>
                                         </button>
 
+                                        {!needsAdminReview && (
+                                            <button
+                                                onClick={() => onConfirmSave(true)}
+                                                className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-text-warning border border-border-warning bg-transparent hover:bg-bg-warning transition-all cursor-pointer"
+                                            >
+                                                <Clock size={15} />
+                                                <span>ส่งให้ผู้เชี่ยวชาญตรวจสอบ</span>
+                                            </button>
+                                        )}
+
                                         <button
                                             onClick={onResetClick}
                                             className="w-full py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 text-text border border-border bg-card-general hover:bg-surface-subtle transition-all cursor-pointer"
@@ -184,6 +194,7 @@ export default function SubmitDesktop(props: any) {
                                             onNearestLocationsUpdate={setNearestLocations}
                                             allLocations={allLocations}
                                             setIsRecommending={setIsRecommending}
+                                            onRevertAutoSwitch={() => props.revertAutoSwitch(key)}
                                         />
                                     </div>
                                 ))}

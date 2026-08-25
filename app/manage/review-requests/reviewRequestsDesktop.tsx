@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText, ArrowLeft, ArrowRight } from "lucide-react";
-import { StatusTabs, RequestCard, RejectDrawer, ImageLightbox, getSampleWaterStatus } from "@/components/manage/reviewRequestsHelpers";
+import { StatusTabs, RequestCard, RejectDrawer, EditApproveDrawer, ImageLightbox, getSampleWaterStatus } from "@/components/manage/reviewRequestsHelpers";
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
 import { ReviewRequestCardSkeleton } from "./loading";
 import PageHeader from "@/components/PageHeader";
@@ -37,6 +37,15 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
         handleApprove,
         openReject,
         submitReject,
+        editTarget,
+        setEditTarget,
+        editNote,
+        setEditNote,
+        editMeasurements,
+        setEditMeasurements,
+        editSaving,
+        openEditApprove,
+        submitEditApprove,
     } = props;
 
     // ─── Control States สำหรับ Filter Panel ───
@@ -300,7 +309,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {filteredRequests.map((item) => (
-                            <RequestCard key={item.id} item={item} standards={standards} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} />
+                            <RequestCard key={item.id} item={item} standards={standards} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} onOpenEditApprove={openEditApprove} />
                         ))}
                     </div>
                 )}
@@ -342,6 +351,20 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     rejectSaving={rejectSaving}
                     onClose={() => setRejectTarget(null)}
                     onSubmit={submitReject}
+                    onPreviewImage={setPreviewImages}
+                />
+            )}
+            {editTarget && (
+                <EditApproveDrawer
+                    editTarget={editTarget}
+                    editNote={editNote}
+                    setEditNote={setEditNote}
+                    editMeasurements={editMeasurements}
+                    setEditMeasurements={setEditMeasurements}
+                    editSaving={editSaving}
+                    onClose={() => setEditTarget(null)}
+                    onSubmit={submitEditApprove}
+                    onPreviewImage={setPreviewImages}
                 />
             )}
             {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}

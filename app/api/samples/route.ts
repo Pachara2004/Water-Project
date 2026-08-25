@@ -13,6 +13,7 @@ import { loadStandardsForParameters } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 import { generateSessionGroup } from "@/lib/sessionGroup";
 import { parsePageParams, pageResult } from "@/lib/pagination";
+import { createSampleRecordSnapshot, createNotificationEntry } from "@/lib/sampleRecord";
 
 /** ลำดับความรุนแรงของสถานะ ใช้หาค่า "แย่สุด" ของกลุ่มตัวอย่าง (หนึ่ง sessionGroup อาจมีหลายแถว หนึ่งแถวต่อสาร) */
 const STATUS_SEVERITY: Record<WaterStatus, number> = { safe: 0, warning: 1, danger: 2 };
@@ -88,7 +89,9 @@ export async function GET(request: NextRequest) {
         const mine = searchParams.get("mine") === "true";
         const pageParams = parsePageParams(searchParams, 10);
 
-        const where: any = { isDeleted: false };
+        const where: any = {};
+        const baseFilter: any = { OR: [{ isDeleted: false }] };
+
         if (auth.user!.roleName === "collector") {
             where.collectorId = auth.user!.id;
         } else if (auth.user!.roleName === "admin" && mine) {
@@ -100,7 +103,6 @@ export async function GET(request: NextRequest) {
                 { sessionGroup: { contains: search } },
                 { code: { contains: search } },
                 { location: { stationName: { contains: search } } },
-                { location: { governingAgency: { contains: search } } },
             ];
         }
 
@@ -109,140 +111,150 @@ export async function GET(request: NextRequest) {
             if (startDate) where.collectionTime.gte = new Date(`${startDate}T00:00:00`);
             if (endDate) where.collectionTime.lte = new Date(`${endDate}T23:59:59.999`);
         }
+        
+        if (selectedStatuses.size > 0) {
+            where.status = { in: Array.from(selectedStatuses) };
+        }
 
-        const pendingGroups = await getPendingSessionGroups();
-        const pendingSet = new Set(pendingGroups);
-
-        // ─── รอบ 1: ฟิลด์เบา ใช้ group/กรอง status/เรียง/นับ/ตัดหน้า ───
-        const lightRows = await prisma.waterSample.findMany({
-            where,
-            select: { id: true, sessionGroup: true, collectionTime: true, status: true },
-            orderBy: { collectionTime: sort },
-        });
-
-        const groupOrder: string[] = [];
-        const groupStatus = new Map<string, WaterStatus>();
-        for (const s of lightRows) {
-            const groupKey = s.sessionGroup || `single-${s.id}`;
-            const existing = groupStatus.get(groupKey);
-            if (existing === undefined) {
-                groupOrder.push(groupKey);
-                groupStatus.set(groupKey, s.status);
-            } else {
-                groupStatus.set(groupKey, worseStatus(existing, s.status));
+        // 2. Map ReviewRequest statuses and fetch rejected ones
+        const reviewRequests = await prisma.reviewRequest.findMany();
+        const reviewStatusMap = new Map<string, string>();
+        const rejectedSessionGroups: string[] = [];
+        
+        for (const rr of reviewRequests) {
+            if (rr.sessionGroup) {
+                reviewStatusMap.set(rr.sessionGroup, rr.statusRequest);
+                if (rr.statusRequest === "rejected") {
+                    rejectedSessionGroups.push(rr.sessionGroup);
+                }
             }
         }
 
-        const filteredGroupKeys = selectedStatuses.size > 0 ? groupOrder.filter((key) => selectedStatuses.has(groupStatus.get(key)!)) : groupOrder;
+        // Apply rejected sessions to baseFilter
+        if (rejectedSessionGroups.length > 0) {
+            baseFilter.OR.push({ sessionGroup: { in: rejectedSessionGroups } });
+        }
+        where.AND = [baseFilter];
 
-        const total = filteredGroupKeys.length;
-        const pageGroupKeys = filteredGroupKeys.slice(pageParams.skip, pageParams.skip + pageParams.take);
+        // 1. Fetch raw records from WaterSample instead of SampleRecord
+        const rawRecords = await prisma.waterSample.findMany({
+            where,
+            orderBy: { id: "asc" }, // Ascending to process chronologically
+            include: {
+                location: true,
+                collector: true,
+                measurements: { include: { parameter: true } },
+            },
+        });
 
-        if (pageGroupKeys.length === 0) {
+        // 3. Group by sessionGroup
+        const sessionMap = new Map<string, any>();
+        
+        for (const record of rawRecords) {
+            if (!record.sessionGroup) continue;
+            
+            if (!sessionMap.has(record.sessionGroup)) {
+                // Initialize the group with the first record's data
+                const reviewStatusRaw = reviewStatusMap.get(record.sessionGroup) || "approved";
+                let reviewStatus = "APPROVED";
+                if (reviewStatusRaw === "pending") reviewStatus = "PENDING";
+                else if (reviewStatusRaw === "rejected") reviewStatus = "REJECTED";
+                else if (reviewStatusRaw === "edited_approved") reviewStatus = "EDITED_APPROVED";
+                
+                const measMap = new Map<number, any>();
+                record.measurements.forEach((m: any) => measMap.set(m.parameterId, m));
+
+                sessionMap.set(record.sessionGroup, {
+                    id: record.id,
+                    code: record.sessionGroup, // Using sessionGroup as the code for History lists
+                    sessionGroup: record.sessionGroup,
+                    collectorId: record.collectorId,
+                    locationId: record.locationId,
+                    collectionTime: record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null,
+                    uploadedActiveAt: record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null,
+                    dissolvedOxygen: record.dissolvedOxygen,
+                    airTemperature: record.airTemperature,
+                    rainAccumulation: record.rainAccumulation,
+                    weatherCondCode: record.weatherCondCode,
+                    rawImageUrl: record.rawImageUrl,
+                    analyzedPlotUrl: record.analyzedPlotUrl,
+                    isDeleted: record.isDeleted,
+                    reviewStatus: reviewStatus,
+                    status: record.status, 
+                    
+                    location: record.location ? {
+                        id: record.location.id,
+                        name: record.location.stationName,
+                    } : null,
+                    collector: record.collector ? {
+                        id: record.collector.id,
+                        lineProfileName: record.collector.lineProfileName,
+                    } : null,
+                    
+                    measMap, // Temporary map for reliable deduplication
+                    dynamicMeasurements: {} as Record<string, number>,
+                });
+            } else {
+                const existing = sessionMap.get(record.sessionGroup);
+                
+                // Overwrite measurements for this parameter using the map
+                record.measurements.forEach((m: any) => existing.measMap.set(m.parameterId, m));
+                
+                // Overwrite properties from the latest record
+                existing.id = record.id;
+                existing.collectionTime = record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null;
+                existing.uploadedActiveAt = record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null;
+                existing.dissolvedOxygen = record.dissolvedOxygen;
+                existing.airTemperature = record.airTemperature;
+                existing.rainAccumulation = record.rainAccumulation;
+                existing.weatherCondCode = record.weatherCondCode;
+                existing.isDeleted = record.isDeleted;
+                
+                // Dynamically update the overall status to the worst one
+                existing.status = worseStatus(existing.status as WaterStatus, record.status as WaterStatus);
+                
+                // If earlier batch didn't have images, take them from later batches
+                if (!existing.rawImageUrl && record.rawImageUrl) existing.rawImageUrl = record.rawImageUrl;
+                if (!existing.analyzedPlotUrl && record.analyzedPlotUrl) existing.analyzedPlotUrl = record.analyzedPlotUrl;
+            }
+        }
+
+        let uniqueRecords = Array.from(sessionMap.values());
+        
+        // 4. Map dynamic measurements (e.g. pHVal, DOVal)
+        for (const grp of uniqueRecords) {
+            grp.measurements = Array.from(grp.measMap.values());
+            grp.measurements.forEach((m: any) => {
+                if (m.parameter?.name) {
+                    grp.dynamicMeasurements[`${m.parameter.name.toLowerCase()}Val`] = m.value;
+                }
+            });
+            Object.assign(grp, grp.dynamicMeasurements);
+            delete grp.measMap;
+            delete grp.measurements;
+            delete grp.dynamicMeasurements;
+        }
+
+        // 5. Apply selected status filters
+        if (selectedStatuses.size > 0) {
+            uniqueRecords = uniqueRecords.filter(r => selectedStatuses.has(r.status.toLowerCase()));
+        }
+
+        // 6. Sort and Paginate
+        uniqueRecords.sort((a, b) => {
+            const timeA = new Date(a.collectionTime).getTime();
+            const timeB = new Date(b.collectionTime).getTime();
+            return sort === "asc" ? timeA - timeB : timeB - timeA;
+        });
+
+        const total = uniqueRecords.length;
+        const pageRecords = uniqueRecords.slice(pageParams.skip, pageParams.skip + pageParams.take);
+
+        if (pageRecords.length === 0) {
             return NextResponse.json(pageResult([], total, pageParams));
         }
 
-        const pageGroupKeySet = new Set(pageGroupKeys);
-        const sessionGroupsInPage = pageGroupKeys.filter((k) => !k.startsWith("single-"));
-        const singleIdsInPage = pageGroupKeys.filter((k) => k.startsWith("single-")).map((k) => Number(k.replace("single-", "")));
-
-        // ─── รอบ 2: รายละเอียดเต็ม เฉพาะกลุ่มของหน้านี้ ───
-        const samples = await prisma.waterSample.findMany({
-            where: {
-                ...where,
-                OR: [
-                    ...(sessionGroupsInPage.length > 0 ? [{ sessionGroup: { in: sessionGroupsInPage } }] : []),
-                    ...(singleIdsInPage.length > 0 ? [{ id: { in: singleIdsInPage } }] : []),
-                ],
-            },
-            include: {
-                location: true,
-                collector: {
-                    select: {
-                        id: true,
-                        lineProfileName: true,
-                        firstName: true,
-                        lastName: true,
-                        phoneNumber: true,
-                    },
-                },
-                measurements: {
-                    include: {
-                        parameter: true,
-                    },
-                },
-            },
-            orderBy: { collectionTime: sort },
-        });
-
-        const groupedSamples = new Map<string, any>();
-
-        samples.forEach((s: any) => {
-            const groupKey = s.sessionGroup || `single-${s.id}`;
-            if (!pageGroupKeySet.has(groupKey)) return;
-
-            const currentMeasurements: Record<string, number> = {};
-            s.measurements.forEach((m: any) => {
-                if (m.parameter?.name) {
-                    const keyName = `${m.parameter.name.toLowerCase()}Val`;
-                    currentMeasurements[keyName] = m.value;
-                }
-            });
-
-            if (!groupedSamples.has(groupKey)) {
-                groupedSamples.set(groupKey, {
-                    id: s.id,
-                    code: s.code,
-                    collectorId: s.collectorId,
-                    locationId: s.locationId,
-                    // 🟢 ตัด Z ออกเพื่อไม่ให้ Frontend บวก 7 ชั่วโมงซ้ำ
-                    collectionTime: s.collectionTime ? s.collectionTime.toISOString().replace("Z", "") : null,
-                    uploadedActiveAt: s.uploadedActiveAt ? s.uploadedActiveAt.toISOString().replace("Z", "") : null,
-                    dissolvedOxygen: s.dissolvedOxygen,
-                    airTemperature: s.airTemperature,
-                    rainAccumulation: s.rainAccumulation,
-                    weatherCondCode: s.weatherCondCode,
-                    rawImageUrl: s.rawImageUrl,
-                    analyzedPlotUrl: s.analyzedPlotUrl,
-                    isDeleted: s.isDeleted,
-                    sessionGroup: s.sessionGroup,
-
-                    reviewStatus: pendingSet.has(groupKey) ? "PENDING" : "APPROVED",
-
-                    ...currentMeasurements,
-
-                    location: s.location
-                        ? {
-                              id: s.location.id,
-                              name: s.location.stationName,
-                              organization: s.location.governingAgency,
-                              lat: s.location.latitude,
-                              lng: s.location.longitude,
-                          }
-                        : null,
-                    collector: s.collector,
-                    status: s.status ? s.status.toUpperCase() : "SAFE",
-                });
-            } else {
-                const existing = groupedSamples.get(groupKey);
-
-                Object.assign(existing, currentMeasurements);
-
-                if (!existing.rawImageUrl && s.rawImageUrl) existing.rawImageUrl = s.rawImageUrl;
-                if (!existing.analyzedPlotUrl && s.analyzedPlotUrl) existing.analyzedPlotUrl = s.analyzedPlotUrl;
-
-                const currentStatus = s.status ? s.status.toUpperCase() : "SAFE";
-                if (currentStatus === "DANGER") {
-                    existing.status = "DANGER";
-                } else if (currentStatus === "WARNING" && existing.status !== "DANGER") {
-                    existing.status = "WARNING";
-                }
-            }
-        });
-
-        const formattedSamples = pageGroupKeys.map((key) => groupedSamples.get(key)).filter(Boolean);
-
-        return NextResponse.json(pageResult(formattedSamples, total, pageParams));
+        return NextResponse.json(pageResult(pageRecords, total, pageParams));
     } catch (error) {
         console.error("GET /api/samples error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" }, { status: 500 });
@@ -363,15 +375,17 @@ export async function POST(request: NextRequest) {
 
         const getNowAsLocalDateTime = (): Date => {
             const now = new Date();
+            // Convert server time (usually UTC in Vercel) to Thai Time (+7)
+            const thaiTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
             return new Date(
                 Date.UTC(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                    now.getHours(),
-                    now.getMinutes(),
-                    now.getSeconds(),
-                    now.getMilliseconds()
+                    thaiTime.getUTCFullYear(),
+                    thaiTime.getUTCMonth(),
+                    thaiTime.getUTCDate(),
+                    thaiTime.getUTCHours(),
+                    thaiTime.getUTCMinutes(),
+                    thaiTime.getUTCSeconds(),
+                    thaiTime.getUTCMilliseconds()
                 )
             );
         };
@@ -521,6 +535,32 @@ export async function POST(request: NextRequest) {
                     create: { sessionGroup: sessionGroupToUse, statusRequest: "pending" },
                     update: {},
                 });
+                await createNotificationEntry(tx, {
+                    userId: secureCollectorId,
+                    code: sessionGroupToUse,
+                    status: "pending",
+                    message: "ข้อมูลของคุณกำลังรอการตรวจสอบ",
+                });
+            } else if (!needsReview && sessionGroupToUse) {
+                // Auto Approve Path
+                const fullSample = await tx.waterSample.findUnique({
+                    where: { id: created.id },
+                    include: {
+                        collector: true,
+                        location: true,
+                        measurements: { include: { parameter: true } }
+                    }
+                });
+
+                if (fullSample) {
+                    await createSampleRecordSnapshot(tx, [fullSample]);
+                    await createNotificationEntry(tx, {
+                        userId: secureCollectorId,
+                        code: sessionGroupToUse,
+                        status: "approved",
+                        message: "ผลตรวจคุณภาพน้ำได้รับการบันทึกเรียบร้อยแล้ว",
+                    });
+                }
             }
 
             return created;

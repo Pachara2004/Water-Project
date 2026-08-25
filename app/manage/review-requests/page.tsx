@@ -41,6 +41,12 @@ export default function AdminReviewRequestsPage() {
     const [rejectNote, setRejectNote] = useState("");
     const [rejectSaving, setRejectSaving] = useState(false);
 
+    // Edit Approve drawer
+    const [editTarget, setEditTarget] = useState<ReviewRequestItem | null>(null);
+    const [editNote, setEditNote] = useState("");
+    const [editMeasurements, setEditMeasurements] = useState<Record<number, number>>({});
+    const [editSaving, setEditSaving] = useState(false);
+
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
     const fetchRequests = useCallback(async (status: ReviewStatusFilter, targetPage: number, silent = false) => {
         if (!silent) setIsLoadingRequests(true);
@@ -151,6 +157,49 @@ export default function AdminReviewRequestsPage() {
         }
     };
 
+    const openEditApprove = (item: ReviewRequestItem) => {
+        setEditTarget(item);
+        setEditNote("");
+        
+        // Initialize measurements from sample
+        const initialMeasurements: Record<number, number> = {};
+        item.samples.forEach(s => {
+            s.measurements.forEach(m => {
+                initialMeasurements[m.parameterId] = m.value;
+            });
+        });
+        setEditMeasurements(initialMeasurements);
+    };
+
+    const submitEditApprove = async () => {
+        if (!editTarget || !editNote.trim()) return;
+
+        setEditSaving(true);
+        try {
+            const editedMeasurementsArray = Object.entries(editMeasurements).map(([parameterId, value]) => ({
+                parameterId: Number(parameterId),
+                value: Number(value),
+            }));
+
+            const res = await fetch(`/api/review-requests/${editTarget.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getAccessToken()}` },
+                body: JSON.stringify({ action: "edited_approve", note: editNote.trim(), editedMeasurements: editedMeasurementsArray }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการแก้ไขและอนุมัติคำร้อง");
+
+            showToast(`แก้ไขและอนุมัติผลตรวจของ "${editTarget.location?.name ?? "จุดตรวจ"}" แล้ว`, "success");
+            setEditTarget(null);
+            fetchRequests(tab, page, true);
+            refreshNavDots();
+        } catch (err) {
+            alertError("แก้ไขและอนุมัติไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
     // Role Security Gate
     if (!currentUser || currentUser.role !== "admin") {
         return (
@@ -192,6 +241,15 @@ export default function AdminReviewRequestsPage() {
         handleApprove,
         openReject,
         submitReject,
+        editTarget,
+        setEditTarget,
+        editNote,
+        setEditNote,
+        editMeasurements,
+        setEditMeasurements,
+        editSaving,
+        openEditApprove,
+        submitEditApprove,
     };
 
     return isMobile ? <ReviewRequestsMobile {...props} /> : <ReviewRequestsDesktop {...props} />;

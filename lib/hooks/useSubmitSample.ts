@@ -15,6 +15,7 @@ interface AnalyzedItem {
     plottedFile: File | null;
     aiData: any; // response ดิบจาก /api/analyze
     isMismatch: boolean; // targetParam ตรงกับช่องเดิมหรือไม่
+    isSystemUnknown: boolean; // AI ทำนายสารที่ระบบไม่รู้จัก (ไม่มีใน DB)
 }
 
 const getNowLocalDateTimeString = () => {
@@ -376,9 +377,10 @@ export function useSubmitSample() {
                     boundingBox: it.aiData["bounding box"],
                     isTestTube: it.aiData.isTestTube ?? true,
                     verifiedParameterName: it.aiData.verifiedParameterName || it.targetParam.name,
-                    autoSwitchedFrom: it.isMismatch ? it.originalParamName : undefined,
+                    autoSwitchedFrom: it.isMismatch && !it.isSystemUnknown ? it.originalParamName : undefined,
                     parameterId: paramId,
                     isDuplicateSubstance,
+                    isSystemUnknown: it.isSystemUnknown,
                 };
 
                 if (currentStatus === "danger") hasDanger = true;
@@ -445,18 +447,17 @@ export function useSubmitSample() {
 
                 // ด่าน 2: AI ตรวจพบว่าสารในภาพเป็นคนละชนิดกับช่องเดิม — หาสารจริงจาก systemParameters
                 let targetParam = param;
+                let isSystemUnknown = false;
+                
                 if (isMismatch) {
                     const matchedParam = systemParameters.find((p) => p.name.toLowerCase() === verifiedName.toLowerCase());
                     if (!matchedParam) {
-                        // AI ตรวจเจอสารที่ระบบไม่รู้จัก (ไม่มีในฐานข้อมูล) — บล็อกไว้เพราะสลับให้ไม่ได้
-                        const verifiedLabel = verifiedName.charAt(0).toUpperCase() + verifiedName.slice(1).toLowerCase();
-                        newErrors[param.id] = {
-                            reason: "wrong_solution",
-                            detail: `สารในภาพนี้ตรวจพบว่าเป็น ${verifiedLabel} ซึ่งไม่มีในระบบ กรุณาถ่ายภาพใหม่`,
-                        };
-                        continue;
+                        // AI ตรวจเจอสารที่ระบบไม่รู้จัก (ไม่มีในฐานข้อมูล) — ให้ targetParam เป็นตัวเดิม แต่บันทึก flag ไว้
+                        targetParam = param;
+                        isSystemUnknown = true;
+                    } else {
+                        targetParam = matchedParam;
                     }
-                    targetParam = matchedParam;
                 }
 
                 const plotted = await generateAiImagePlot(file, data);
@@ -469,6 +470,7 @@ export function useSubmitSample() {
                     plottedFile: plotted,
                     aiData: data,
                     isMismatch,
+                    isSystemUnknown,
                 });
             }
 
@@ -597,6 +599,27 @@ export function useSubmitSample() {
         setSearchQuery("");
     };
 
+    const revertAutoSwitch = (key: number) => {
+        setResults((prev) => {
+            const current = prev[key];
+            if (!current || !current.autoSwitchedFrom) return prev;
+            
+            const originalParam = systemParameters.find(p => p.name.toLowerCase() === current.autoSwitchedFrom?.toLowerCase());
+            if (!originalParam) return prev;
+
+            return {
+                ...prev,
+                [key]: {
+                    ...current,
+                    parameterId: originalParam.id,
+                    userInsistedOriginal: true,
+                    autoSwitchedFrom: undefined, 
+                    isDuplicateSubstance: false // When reverting, it goes back to its original isolated slot
+                }
+            };
+        });
+    };
+
     return {
         systemParameters,
         activeParameters,
@@ -646,6 +669,7 @@ export function useSubmitSample() {
         handleSave,
         resetToUpload,
         clearLocation,
+        revertAutoSwitch,
 
         gpsCoords,
         exifCoords,

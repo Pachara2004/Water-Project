@@ -105,9 +105,9 @@ export default function CollectorDesktop(props: CollectorProps) {
                     <div className="relative w-full bg-card-general border border-border rounded-2xl p-5 space-y-4">
                         {/* Title Bar & Toggle */}
                         <div className="flex items-center justify-between gap-4  border-border mb-4">
-                            <div className="inline-flex items-center gap-2">
-                                <FileText size={20} className="text-primary" />
-                                <h3 className="text-sm text-primary font-medium">ประวัติการส่งตรวจ</h3>
+                            <div className="inline-flex items-center gap-1.5">
+                                <FileText size={24} className="text-primary" />
+                                <h3 className="text-md text-primary font-medium">ประวัติการส่งตรวจ</h3>
                             </div>
 
                             {currentUser?.role === "admin" && (
@@ -115,7 +115,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                     <span className="text-xs font-medium text-text">เฉพาะของฉัน</span>
                                     <div className="relative">
                                         <input type="checkbox" checked={showOnlyMine} onChange={(e) => setShowOnlyMine(e.target.checked)} className="sr-only peer" />
-                                        <div className="relative w-9 h-5 bg-card-general border border-border peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-secondary after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary/20" />
+                                        <div className="relative w-9 h-5 bg-card-general border border-border peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:inset-s-0.5 after:bg-secondary after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary/20" />
                                     </div>
                                 </label>
                             )}
@@ -124,7 +124,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                         {/* Desktop Search & Filters Toolbar */}
                         <div className="grid grid-cols-12 gap-3 items-center">
                             {/* 1. Search Box */}
-                            <div className="col-span-12 lg:col-span-6 relative flex items-center bg-surface-subtle border border-border rounded-xl px-4 transition-all focus-within:border-primary">
+                            <div className="col-span-12 lg:col-span-6 relative flex items-center bg-surface-subtle border border-primary/30 rounded-lg px-4 transition-all focus-within:border-primary">
                                 <input
                                     type="text"
                                     placeholder="ค้นหาชื่อสถานที่ หรือข้อมูล..."
@@ -140,8 +140,8 @@ export default function CollectorDesktop(props: CollectorProps) {
                                 <button
                                     type="button"
                                     onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
-                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-xl text-xs font-medium transition-all cursor-pointer select-none ${
-                                        isDateActive ? "border-primary text-text ring-1 ring-primary" : "border-border text-secondary hover:bg-surface-subtle"
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
+                                        isDateActive ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
@@ -165,7 +165,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                         </div>
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="text-[11px] font-medium uppercase text-text block mb-1">จากวันที่</label>
+                                                <label className="text-xs font-medium uppercase text-text block mb-1">จากวันที่</label>
                                                 <input
                                                     title="start date"
                                                     type="date"
@@ -175,7 +175,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[11px] font-medium uppercase text-text block mb-1">ถึงวันที่</label>
+                                                <label className="text-xs font-medium uppercase text-text block mb-1">ถึงวันที่</label>
                                                 <input
                                                     title="end date"
                                                     type="date"
@@ -205,8 +205,8 @@ export default function CollectorDesktop(props: CollectorProps) {
                                 <button
                                     type="button"
                                     onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
-                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-xl text-xs font-medium transition-all cursor-pointer select-none ${
-                                        selectedStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-border text-text hover:bg-surface-subtle"
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
+                                        selectedStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <span className="truncate">{currentStatusLabel}</span>
@@ -245,10 +245,8 @@ export default function CollectorDesktop(props: CollectorProps) {
                         </div>
 
                         {/* Status Summary & Sort Order */}
-                        <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-border">
-                            <div className="text-text font-medium">
-                                พบทั้งหมด <span className="font-medium text-primary">{total}</span> รายการ
-                            </div>
+                        <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-primary">
+                            <div className="text-text font-medium">พบทั้งหมด {total} รายการ</div>
 
                             <button onClick={toggleSortDirection} className="flex items-center gap-1.5 cursor-pointer hover:text-text text-text transition-colors py-0.5 select-none font-medium">
                                 <span>เรียงตาม: {sortDesc ? "ล่าสุดไปเก่าสุด" : "เก่าสุดไปล่าสุด"}</span>
@@ -264,8 +262,8 @@ export default function CollectorDesktop(props: CollectorProps) {
                                         <div className="w-12 h-12 bg-card-general rounded-2xl flex items-center justify-center mb-3 text-text-muted border border-border shadow-xs">
                                             <FileText size={20} />
                                         </div>
-                                        <p className="text-text font-medium text-sm">ไม่พบข้อมูลประวัติ</p>
-                                        <p className="text-xs text-text-muted mt-1 max-w-sm leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
+                                        <p className="text-text font-medium text-xs">ไม่พบข้อมูลประวัติ</p>
+                                        <p className="text-xs text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
                                     </div>
                                 );
                             }
@@ -278,69 +276,77 @@ export default function CollectorDesktop(props: CollectorProps) {
                                             return (
                                                 <div
                                                     key={sample.id}
-                                                    onClick={() => router.push(`/collector/history/${sample.id}`)}
-                                                    className="bg-card-general shadow-xs rounded-2xl p-3.5 border border-border active:scale-[0.99] transition-all flex items-start sm:items-center gap-3.5 cursor-pointer group min-w-0"
+                                                    onClick={() => router.push(`/collector/history/${sample.sessionGroup}`)}
+                                                    className="bg-card-general shadow-xs rounded-xl border border-primary active:scale-[0.99] transition-all flex flex-col cursor-pointer group min-w-0 overflow-hidden"
                                                 >
-                                                    {/* ฝั่งเนื้อหาข้อมูล - ถอด h-15 ออกเพื่อให้ขยายแนวตั้งได้ตามจริง */}
-                                                    <div className="flex-1 min-w-0 flex flex-col ">
-                                                        {/* แถวบน: ชื่อสถานที่ และ สถานะ */}
-                                                        <div className="flex items-start justify-between gap-4 w-full">
-                                                            {/* ฝั่งซ้าย: ชื่อสถานที่ + วันที่ */}
+                                                    {/* Header: Session ID & Review Status */}
+                                                    <div className="flex items-center justify-between p-2.5 px-4 bg-primary border-b border-border">
+                                                        {/* ฝั่งซ้าย */}
+                                                        <div className="flex items-center gap-2 text-xs font-medium text-white">
+                                                            <FileScan size={16} className="text-white shrink-0" />
+                                                            <span className="leading-none">
+                                                                รหัสอ้างอิง : <span className="font-medium text-white">{sample.sessionGroup}</span>
+                                                            </span>
+                                                        </div>
+
+                                                        {/* ฝั่งขวา (Badge สถานะ) */}
+                                                        <div className="flex items-center">
+                                                            {sample.reviewStatus === "PENDING" && (
+                                                                <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-warning bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                                                    รอตรวจสอบ
+                                                                </span>
+                                                            )}
+                                                            {sample.reviewStatus === "REJECTED" && (
+                                                                <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-danger bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                                                    ถูกปฏิเสธ
+                                                                </span>
+                                                            )}
+                                                            {sample.reviewStatus === "EDITED_APPROVED" && (
+                                                                <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-safe bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                                                    อนุมัติ (มีการแก้ไข)
+                                                                </span>
+                                                            )}
+                                                            {sample.reviewStatus === "APPROVED" && (
+                                                                <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-safe bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                                                    อนุมัติ
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Body: Location, Date, Chems, Water Status */}
+                                                    <div className="flex items-start justify-between gap-4 w-full px-4 py-2">
+                                                        <div className="flex items-start gap-3 flex-1">
+                                                            <MapPin size={36} className="text-primary shrink-0 ml-2 mr-2" />
                                                             <div className="flex-1 min-w-0">
-                                                                {/* จัดให้อยู่ตรงกลางแนวตั้งด้วย items-center */}
-                                                                <div className="flex items-center gap-3 min-w-0">
-                                                                    {/* ไอคอน MapPin อยู่ตรงกลางแนวตั้งขนานกับกลุ่มข้อความ */}
-                                                                    <MapPin size={36} className="text-primary shrink-0" />
-
-                                                                    {/* กลุ่มข้อความ ชื่อสถานที่, วันที่ และค่าสารเคมี */}
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <h4 className="font-semibold text-sm text-text">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
-                                                                        {/* แถวกลาง: เมทาดาต้า วันที่ */}
-                                                                        <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5 gap-2">
-                                                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                                                <FileScan size={13} className="text-text-muted shrink-0" />
-                                                                                <span className="leading-none">{sample.sessionGroup}</span>
-                                                                            </div>
-
-                                                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                                                <Calendar size={13} className="text-text-muted shrink-0" />
-                                                                                <span className="leading-none">
-                                                                                    {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                                                                                        day: "numeric",
-                                                                                        month: "short",
-                                                                                        year: "2-digit",
-                                                                                    })}
-                                                                                </span>
-                                                                            </div>
+                                                                <h4 className="font-medium text-xs text-text">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+                                                                <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
+                                                                    <Calendar size={13} className="text-text-muted shrink-0" />
+                                                                    <span className="leading-none">
+                                                                        {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                                            day: "numeric",
+                                                                            month: "short",
+                                                                            year: "2-digit",
+                                                                        })}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-2 w-full flex-wrap">
+                                                                    {readChemValues(sample).map((c) => (
+                                                                        <div
+                                                                            key={c.key}
+                                                                            className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-medium text-text shrink-0"
+                                                                        >
+                                                                            <Beaker size={10} className={c.color} />
+                                                                            <span>
+                                                                                {c.abbrev}: {c.value.toFixed(2)}
+                                                                            </span>
                                                                         </div>
-
-                                                                        {/* แถวล่าง: แสดงค่าสารเคมี — dynamic ตามสารที่มีอยู่จริงบนตัวอย่างนี้ ไม่ผูกชื่อ/ตัวย่อไว้ตายตัว */}
-                                                                        <div className="flex items-center gap-2 mt-1 w-full">
-                                                                            {readChemValues(sample).map((c) => (
-                                                                                <div
-                                                                                    key={c.key}
-                                                                                    className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
-                                                                                >
-                                                                                    <Beaker size={10} className={c.color} />
-                                                                                    <span>
-                                                                                        {c.abbrev}: {c.value.toFixed(2)}
-                                                                                    </span>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
+                                                                    ))}
                                                                 </div>
                                                             </div>
-
-                                                            {/* ฝั่งขวา: Badge สถานะ ขยับไปชิดขวาสุดเสมอ */}
-                                                            <div className="flex flex-col items-end text-center gap-1 shrink-0">
-                                                                <StatusBadge status={sample.status} size="sm" />
-                                                                {sample.reviewStatus === "PENDING" && (
-                                                                    <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
-                                                                        รอตรวจสอบ
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                        </div>
+                                                        <div className="shrink-0 flex flex-col items-end gap-1 mt-0.5">
+                                                            <StatusBadge status={sample.status} size="sm" />
                                                         </div>
                                                     </div>
                                                 </div>
