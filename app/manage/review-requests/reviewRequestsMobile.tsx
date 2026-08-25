@@ -6,7 +6,6 @@ import { CONFIDENCE_THRESHOLD, type StandardRow } from "@/lib/standards";
 import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText, ArrowLeft, ArrowRight } from "lucide-react";
 import {
     StatusTabs,
-    RequestCard,
     RejectDrawer,
     EditApproveDrawer,
     getSampleWaterStatus,
@@ -14,6 +13,7 @@ import {
     type ReviewStatusFilter,
     type ReviewRequestItem,
     type PreviewImages,
+    RequestCardMobile,
 } from "@/components/manage/reviewRequestsHelpers";
 import { ReviewRequestCardSkeleton } from "./loading";
 import PageHeader from "@/components/PageHeader";
@@ -385,7 +385,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                             <div className="space-y-4">
                                 <div className="flex flex-col gap-3">
                                     {filteredRequests.map((item) => (
-                                        <RequestCard
+                                        <RequestCardMobile
                                             key={item.id}
                                             item={item}
                                             standards={standards}
@@ -394,7 +394,6 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                                             onApprove={handleApprove}
                                             onPreviewImage={setPreviewImages}
                                             onOpenEditApprove={openEditApprove}
-                                            mobile
                                         />
                                     ))}
                                 </div>

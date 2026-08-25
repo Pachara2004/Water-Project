@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText, ArrowLeft, ArrowRight } from "lucide-react";
-import { StatusTabs, RequestCard, RejectDrawer, EditApproveDrawer, ImageLightbox, getSampleWaterStatus } from "@/components/manage/reviewRequestsHelpers";
+import { StatusTabs, RequestCardDesktop, RejectDrawer, EditApproveDrawer, ImageLightbox, getSampleWaterStatus } from "@/components/manage/reviewRequestsHelpers";
 import type { ReviewRequestsPageProps } from "./reviewRequestsMobile";
 import { ReviewRequestCardSkeleton } from "./loading";
 import PageHeader from "@/components/PageHeader";
@@ -140,7 +140,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
             <PageHeader title="คุณภาพน้ำที่ต้องการยืนยัน" onBack={() => router.back()} />
 
-            <div className="w-full max-w-[1600px] mx-auto px-8 pt-8 space-y-6">
+            <div className="w-full max-w-400 mx-auto px-8 pt-8 space-y-6">
                 {/* Header Welcome Card */}
                 <div className="bg-card-general rounded-2xl border border-border p-6 transition-colors duration-300">
                     <h1 className="font-display text-lg font-bold text-text-primary">
@@ -159,7 +159,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     {/* แถวการกรองสำหรับ Desktop Layout */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                         {/* Input ค้นหาชื่อสถานที่ / โค้ด */}
-                        <div className="md:col-span-6 relative flex items-center bg-surface-subtle border border-border rounded-xl px-4">
+                        <div className="md:col-span-6 relative flex items-center bg-surface-subtle border border-primary/30 rounded-lg px-4">
                             <input
                                 type="text"
                                 placeholder="ค้นหาตามสถานที่ หรือ รหัส..."
@@ -175,8 +175,8 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                             <button
                                 type="button"
                                 onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
-                                className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
-                                    isDateActive ? "border-primary text-text ring-1 ring-primary" : "border-border text-secondary hover:bg-surface-subtle"
+                                className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-semibold transition-all cursor-pointer select-none ${
+                                    isDateActive ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
                                 }`}
                             >
                                 <div className="flex items-center gap-2 min-w-0">
@@ -241,8 +241,8 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                             <button
                                 type="button"
                                 onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
-                                className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
-                                    selectedStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-border text-text hover:bg-surface-subtle"
+                                className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-semibold transition-all cursor-pointer select-none ${
+                                    selectedStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
                                 }`}
                             >
                                 <div className="flex items-center gap-2 min-w-0">
@@ -284,7 +284,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     </div>
 
                     {/* สรุปข้อมูลผลลัพธ์และระบบสลับ ล่าสุด/เก่าสุด */}
-                    <div className="flex items-center justify-between text-xs text-text-muted px-0.5 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between text-xs text-text-muted px-0.5 pt-2 border-t border-primary">
                         <div className="text-text">พบ {filteredRequests.length} รายการ</div>
 
                         <div onClick={() => setSortDesc(!sortDesc)} className="flex items-center gap-1 cursor-pointer hover:text-text text-text transition-colors py-0.5 select-none">
@@ -292,59 +292,68 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                             <div className="flex items-center text-text-muted">{sortDesc ? <ArrowDown size={13} className="text-text" /> : <ArrowUp size={13} className="text-text" />}</div>
                         </div>
                     </div>
+
+                    {/* Content Render List แบบ Grid 2 Columns */}
+                    {isLoadingRequests ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <ReviewRequestCardSkeleton key={i} />
+                            ))}
+                        </div>
+                    ) : filteredRequests.length === 0 ? (
+                        <div className="bg-surface rounded-2xl p-14 text-center border border-border flex flex-col items-center justify-center">
+                            <div className="w-12 h-12 bg-surface-subtle border border-border rounded-xl flex items-center justify-center mb-4">
+                                <FileText size={20} className="text-text-muted" />
+                            </div>
+                            <p className="text-xs font-bold text-text">
+                                {tab === "pending" ? "ไม่มีคำร้องรออนุมัติในขณะนี้" : tab === "approved" ? "ยังไม่มีคำร้องที่อนุมัติ" : "ยังไม่มีคำร้องที่ปฏิเสธ"}
+                            </p>
+                            <p className="text-xs text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                            {filteredRequests.map((item) => (
+                                <RequestCardDesktop
+                                    key={item.id}
+                                    item={item}
+                                    standards={standards}
+                                    actingId={actingId}
+                                    onOpenReject={openReject}
+                                    onApprove={handleApprove}
+                                    onPreviewImage={setPreviewImages}
+                                    onOpenEditApprove={openEditApprove}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Pagination Controls */}
+                    {!isLoadingRequests && totalPages > 1 && (
+                        <div className="flex items-center justify-between border-t border-border pt-4 mt-2 select-none">
+                            <div className="text-xs text-text-muted font-medium">
+                                หน้า <span className="font-bold text-text">{page}</span> จาก <span className="font-bold text-text">{totalPages}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    disabled={page <= 1}
+                                    onClick={() => setPage(page - 1)}
+                                    className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+                                >
+                                    <ArrowLeft size={15} strokeWidth={2.5} className="text-text shrink-0" />
+                                    ก่อนหน้า
+                                </button>
+                                <button
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage(page + 1)}
+                                    className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
+                                >
+                                    ถัดไป
+                                    <ArrowRight size={15} strokeWidth={2.5} className="text-text shrink-0" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-
-                {/* Content Render List แบบ Grid 2 Columns */}
-                {isLoadingRequests ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <ReviewRequestCardSkeleton key={i} />
-                        ))}
-                    </div>
-                ) : filteredRequests.length === 0 ? (
-                    <div className="bg-surface rounded-2xl p-14 text-center border border-border flex flex-col items-center justify-center">
-                        <div className="w-12 h-12 bg-surface-subtle border border-border rounded-xl flex items-center justify-center mb-4">
-                            <FileText size={20} className="text-text-muted" />
-                        </div>
-                        <p className="text-xs font-bold text-text">
-                            {tab === "pending" ? "ไม่มีคำร้องรออนุมัติในขณะนี้" : tab === "approved" ? "ยังไม่มีคำร้องที่อนุมัติ" : "ยังไม่มีคำร้องที่ปฏิเสธ"}
-                        </p>
-                        <p className="text-xs text-text-muted mt-1 max-w-xs leading-relaxed">ไม่พบผลลัพธ์ประวัติที่ตรงกับเงื่อนไขการเลือกหลายสถานะ หรือช่วงเวลาที่กำหนดไว้ครับ</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {filteredRequests.map((item) => (
-                            <RequestCard key={item.id} item={item} standards={standards} actingId={actingId} onOpenReject={openReject} onApprove={handleApprove} onPreviewImage={setPreviewImages} onOpenEditApprove={openEditApprove} />
-                        ))}
-                    </div>
-                )}
-
-                {/* Pagination Controls */}
-                {!isLoadingRequests && totalPages > 1 && (
-                    <div className="flex items-center justify-between border-t border-border pt-4 mt-2 select-none">
-                        <div className="text-xs text-text-muted font-medium">
-                            หน้า <span className="font-bold text-text">{page}</span> จาก <span className="font-bold text-text">{totalPages}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                disabled={page <= 1}
-                                onClick={() => setPage(page - 1)}
-                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
-                            >
-                                <ArrowLeft size={15} strokeWidth={2.5} className="text-text shrink-0" />
-                                ก่อนหน้า
-                            </button>
-                            <button
-                                disabled={page >= totalPages}
-                                onClick={() => setPage(page + 1)}
-                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
-                            >
-                                ถัดไป
-                                <ArrowRight size={15} strokeWidth={2.5} className="text-text shrink-0" />
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Drawers & Lightbox */}
