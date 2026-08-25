@@ -57,6 +57,8 @@ interface ImageZoneProps {
     onToggle?: () => void;
     onRevertAutoSwitch?: () => void;
     isHistoryView?: boolean;
+    /** บันทึก/ส่งตรวจสอบไปแล้ว — ซ่อนแบนเนอร์แจ้งเตือนก่อนบันทึก (สลับสารอัตโนมัติ/สารไม่รู้จัก) ที่ทำอะไรไม่ได้แล้ว */
+    isSaved?: boolean;
 }
 
 export function ImageZone({
@@ -74,6 +76,7 @@ export function ImageZone({
     onToggle,
     onRevertAutoSwitch,
     isHistoryView = false,
+    isSaved = false,
 }: ImageZoneProps) {
     const galleryInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -212,7 +215,7 @@ export function ImageZone({
 
             {enabled && (
                 <div className="p-4">
-                    {measurement?.isSystemUnknown && (
+                    {!isSaved && measurement?.isSystemUnknown && (
                         <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200 dark:border-orange-900">
                             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                             <div className="text-xs leading-relaxed font-medium w-full">
@@ -224,7 +227,7 @@ export function ImageZone({
                         </div>
                     )}
 
-                    {measurement?.autoSwitchedFrom && (
+                    {!isSaved && measurement?.autoSwitchedFrom && (
                         <div className="mb-3 flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
                             <div className="flex items-start gap-2">
                                 <FlaskConical size={15} className="shrink-0 mt-0.5" />

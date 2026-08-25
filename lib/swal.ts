@@ -7,12 +7,14 @@ import Swal from "sweetalert2";
    - danger  = ย้อนกลับไม่ได้ (ปฏิเสธคำร้อง, ลบข้อมูล)
    - warning = ย้อนกลับได้แต่กระทบคนอื่น/ระบบถ้าเลือกผิด (เปลี่ยนสิทธิ์ผู้ใช้)
    - primary = action เชิงบวก ความเสี่ยงต่ำ (อนุมัติคำร้องที่ผู้ใช้ขอเอง) */
-export type SwalTone = "danger" | "warning" | "primary";
+export type SwalTone = "danger" | "warning" | "primary" | "review";
 
 export const TONE_COLOR: Record<SwalTone, string> = {
     danger: "#B91C1C",
     warning: "#B45309",
     primary: "var(--color-primary, #06647F)",
+    // เดียวกับปุ่ม "ส่งให้ผู้เชี่ยวชาญตรวจสอบ" (#FE9A00) — ใช้เฉพาะ dialog ยืนยันการส่งตรวจสอบ
+    review: "#FE9A00",
 };
 
 export const ICON_SVG = {
