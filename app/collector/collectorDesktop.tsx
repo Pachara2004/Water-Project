@@ -15,6 +15,15 @@ const statusOptions = [
     { id: "danger", label: "อันตราย", color: "bg-bg-danger" },
 ];
 
+/* สถานะการตรวจสอบ (ReviewRequest) — คนละมิติกับ statusOptions ที่เป็นคุณภาพน้ำ
+   id ต้องเป็นตัวพิมพ์ใหญ่ให้ตรงกับค่า reviewStatus ที่ /api/samples ส่งกลับมา */
+const reviewStatusOptions = [
+    { id: "PENDING", label: "รอตรวจสอบ" },
+    { id: "APPROVED", label: "อนุมัติ" },
+    { id: "EDITED_APPROVED", label: "อนุมัติ (มีการแก้ไข)" },
+    { id: "REJECTED", label: "ถูกปฏิเสธ" },
+];
+
 export default function CollectorDesktop(props: CollectorProps) {
     const { currentUser } = useAppStore();
     const router = useRouter();
@@ -31,6 +40,8 @@ export default function CollectorDesktop(props: CollectorProps) {
         setGlobalFilter,
         selectedStatuses,
         handleStatusToggle,
+        selectedReviewStatuses,
+        handleReviewStatusToggle,
         startDate,
         setStartDate,
         endDate,
@@ -42,9 +53,11 @@ export default function CollectorDesktop(props: CollectorProps) {
 
     const [isDatePanelOpen, setIsDatePanelOpen] = useState(false);
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+    const [isReviewMenuOpen, setIsReviewMenuOpen] = useState(false);
 
     const datePanelRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
+    const reviewMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -53,6 +66,9 @@ export default function CollectorDesktop(props: CollectorProps) {
             }
             if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
                 setIsStatusMenuOpen(false);
+            }
+            if (reviewMenuRef.current && !reviewMenuRef.current.contains(event.target as Node)) {
+                setIsReviewMenuOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -68,12 +84,21 @@ export default function CollectorDesktop(props: CollectorProps) {
     };
 
     const currentStatusLabel = useMemo(() => {
-        if (selectedStatuses.length === 0) return "ทุกสถานะ";
+        if (selectedStatuses.length === 0) return "ทุกสถานะน้ำ";
         if (selectedStatuses.length === 1) {
-            return statusOptions.find((o) => o.id === selectedStatuses[0])?.label || "ทุกสถานะ";
+            return statusOptions.find((o) => o.id === selectedStatuses[0])?.label || "ทุกสถานะน้ำ";
         }
-        return `เลือกแล้ว ${selectedStatuses.length} สถานะ`;
+        return `เลือกแล้ว ${selectedStatuses.length} สถานะน้ำ`;
     }, [selectedStatuses]);
+
+    // ข้อความแสดงสถานะการตรวจสอบบนปุ่ม (แยกจากปุ่มสถานะคุณภาพน้ำ)
+    const currentReviewLabel = useMemo(() => {
+        if (selectedReviewStatuses.length === 0) return "ทุกสถานะการตรวจสอบ";
+        if (selectedReviewStatuses.length === 1) {
+            return reviewStatusOptions.find((o) => o.id === selectedReviewStatuses[0])?.label || "ทุกสถานะการตรวจสอบ";
+        }
+        return `เลือกแล้ว ${selectedReviewStatuses.length} สถานะการตรวจสอบ`;
+    }, [selectedReviewStatuses]);
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
@@ -124,7 +149,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                         {/* Desktop Search & Filters Toolbar */}
                         <div className="grid grid-cols-12 gap-3 items-center">
                             {/* 1. Search Box */}
-                            <div className="col-span-12 lg:col-span-6 relative flex items-center bg-surface-subtle border border-primary/30 rounded-lg px-4 transition-all focus-within:border-primary">
+                            <div className="col-span-12 md:col-span-6 lg:col-span-3 relative flex items-center bg-surface-subtle border border-primary/30 rounded-lg px-4 transition-all focus-within:border-primary">
                                 <input
                                     type="text"
                                     placeholder="ค้นหาชื่อสถานที่ หรือข้อมูล..."
@@ -222,6 +247,49 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                     key={option.id}
                                                     type="button"
                                                     onClick={() => handleStatusToggle(option.id)}
+                                                    className={`w-full px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-all cursor-pointer ${
+                                                        isChecked ? "bg-surface-subtle text-text" : "text-text-secondary hover:bg-surface-subtle/50"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className={`w-3.5 h-3.5 border rounded-xs flex items-center justify-center transition-all ${
+                                                                isChecked ? "border-primary bg-primary text-card-general" : "border-border bg-card-general"
+                                                            }`}
+                                                        >
+                                                            {isChecked && <Check size={10} strokeWidth={4} />}
+                                                        </div>
+                                                        <span>{option.label}</span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 4. Multi-Select Review Status Dropdown */}
+                            <div className="col-span-6 lg:col-span-3 relative" ref={reviewMenuRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsReviewMenuOpen(!isReviewMenuOpen)}
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
+                                        selectedReviewStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                    }`}
+                                >
+                                    <span className="truncate">{currentReviewLabel}</span>
+                                    <ChevronDown size={13} className="text-text shrink-0" />
+                                </button>
+
+                                {isReviewMenuOpen && (
+                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full bg-card-general border border-border rounded-2xl p-1.5 z-50 shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
+                                        {reviewStatusOptions.map((option) => {
+                                            const isChecked = selectedReviewStatuses.includes(option.id);
+                                            return (
+                                                <button
+                                                    key={option.id}
+                                                    type="button"
+                                                    onClick={() => handleReviewStatusToggle(option.id)}
                                                     className={`w-full px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-all cursor-pointer ${
                                                         isChecked ? "bg-surface-subtle text-text" : "text-text-secondary hover:bg-surface-subtle/50"
                                                     }`}

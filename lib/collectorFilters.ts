@@ -11,6 +11,8 @@ export interface CollectorFilterState {
     showOnlyMine: boolean;
     globalFilter: string;
     selectedStatuses: string[];
+    /** สถานะการตรวจสอบเป็นตัวพิมพ์ใหญ่ (PENDING/APPROVED/EDITED_APPROVED/REJECTED) ตรงกับค่าที่ /api/samples ส่งกลับมา */
+    selectedReviewStatuses: string[];
     startDate: string;
     endDate: string;
     sortDesc: boolean;
@@ -30,6 +32,8 @@ export function readCollectorFilters(): CollectorFilterState | null {
             showOnlyMine: typeof parsed.showOnlyMine === "boolean" ? parsed.showOnlyMine : true,
             globalFilter: typeof parsed.globalFilter === "string" ? parsed.globalFilter : "",
             selectedStatuses: Array.isArray(parsed.selectedStatuses) ? parsed.selectedStatuses.filter((s: unknown) => typeof s === "string") : [],
+            // ค่าที่บันทึกไว้ก่อนมีตัวกรองการตรวจสอบจะไม่มีคีย์นี้ — ถือว่าไม่ได้กรอง
+            selectedReviewStatuses: Array.isArray(parsed.selectedReviewStatuses) ? parsed.selectedReviewStatuses.filter((s: unknown) => typeof s === "string") : [],
             startDate: typeof parsed.startDate === "string" ? parsed.startDate : "",
             endDate: typeof parsed.endDate === "string" ? parsed.endDate : "",
             sortDesc: typeof parsed.sortDesc === "boolean" ? parsed.sortDesc : true,
