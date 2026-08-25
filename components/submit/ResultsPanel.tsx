@@ -162,8 +162,8 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                     </div>
                                 )}
 
-                                {/* Checkbox ขอให้แอดมินช่วยแก้ไขชนิดสาร */}
-                                {toggleRequestChange && !saved && (
+                                {/* Checkbox ขอให้แอดมินช่วยแก้ไขชนิดสาร (ซ่อนถ้าเป็นสารซ้ำที่ไม่ได้เลือก หรือถ้ามีแบนเนอร์ Auto-switch อยู่เพื่อให้จัดการทีละ step) */}
+                                {toggleRequestChange && !saved && (!isDuplicate || isChosen) && !measurement.autoSwitchedFrom && (
                                     <label className="mt-2.5 flex items-start gap-2.5 px-3 py-2.5 rounded-lg border border-orange-200 bg-orange-50/50 cursor-pointer hover:bg-orange-50 transition-colors">
                                         <div className="pt-0.5">
                                             <input 
