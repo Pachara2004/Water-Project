@@ -90,7 +90,6 @@ export function useSubmitSample() {
     );
 
     // เมื่อคลิกเลือกแหล่งพิกัด (GPS หรือ EXIF)
-    // เมื่อคลิกเลือกแหล่งพิกัด (GPS หรือ EXIF)
     const handleSelectSource = (source: "gps" | "exif") => {
         setActiveSource(source);
         if (source === "gps" && gpsCoords) {
@@ -402,20 +401,6 @@ export function useSubmitSample() {
         setStep("results");
     };
 
-    const toggleRequestChange = useCallback((key: number) => {
-        setResults((prev) => {
-            const current = prev[key];
-            if (!current) return prev;
-            return {
-                ...prev,
-                [key]: {
-                    ...current,
-                    requestAdminChange: !current.requestAdminChange,
-                },
-            };
-        });
-    }, []);
-
     // ── Handlers ──
     const handleAnalyze = async () => {
         if (activeParameters.length === 0) return;
@@ -529,7 +514,7 @@ export function useSubmitSample() {
     };
 
 
-    const handleSave = async (forceReview = false) => {
+    const handleSave = async (forceReview = false, reviewNote?: string, allowAdminChange = false) => {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
 
         try {
@@ -553,13 +538,13 @@ export function useSubmitSample() {
                 // ไม่ส่ง status แล้ว — server คำนวณเองจากค่าที่วัดได้จริง และไม่เคยเชื่อค่าจาก client อยู่แล้ว
                 fd.append("collectionTime", `${collectionTime}:00+07:00`);
                 if (oxygen) fd.append("oxygen", oxygen);
+                if (reviewNote) fd.append("reviewNote", reviewNote);
                 
-                // ผู้ใช้ขอส่งให้ผู้เชี่ยวชาญตรวจสอบเอง หรือ ขอเปลี่ยนชนิดสาร — บังคับทุกสารในชุดเข้าคิว pending เหมือนกันทั้งหมด
-                const hasRequestedChange = Object.values(results).some(r => r.requestAdminChange);
-                if (forceReview || hasRequestedChange) fd.append("forceReview", "true");
+                // บังคับส่งให้แอดมินถ้ามีแรงจูงใจ (เช่น มีสารซ้ำ หรือ ความมั่นใจต่ำ หรือ ผู้ใช้บังคับส่งเอง)
+                if (forceReview) fd.append("forceReview", "true");
 
                 let finalMessage = resData.message || null;
-                if (resData.requestAdminChange) {
+                if (allowAdminChange) {
                     finalMessage = finalMessage ? `[USER_REQUEST_CHANGE] ${finalMessage}` : "[USER_REQUEST_CHANGE]";
                 }
 
@@ -712,7 +697,6 @@ export function useSubmitSample() {
         handleAnalyze,
         handleSave,
         resetToUpload,
-        toggleRequestChange,
         clearLocation,
         revertAutoSwitch,
 

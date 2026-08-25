@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import { useSubmitSample } from "@/lib/hooks/useSubmitSample";
 import { isLowConfidence } from "@/lib/standards";
 import type { DbParameter } from "@/components/submit/types";
-import { confirmDialog, alertError, loadingDialog, closeDialog } from "@/lib/swal";
+import { confirmDialog, alertError, loadingDialog, closeDialog, reviewConfirmDialog } from "@/lib/swal";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 import SubmitMobile from "./submitMobile";
@@ -89,31 +89,58 @@ function SubmitContent() {
         })
         .filter((e): e is { key: number; param: DbParameter; measurement: (typeof results)[number] } => e !== null);
 
-    const onConfirmSave = async (needsAdminReview: boolean) => {
-        const confirmed = await confirmDialog({
-            title: needsAdminReview ? "ยืนยันส่งข้อมูลเพื่อรอตรวจสอบ" : "ยืนยันการบันทึกข้อมูล",
-            text: needsAdminReview ? 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน' : "คุณต้องการบันทึกผลตรวจน้ำครั้งนี้ใช่หรือไม่",
-            confirmText: needsAdminReview ? "ส่งเพื่อรอตรวจสอบ" : "บันทึกข้อมูล",
-            tone: needsAdminReview ? "review" : "primary",
-        });
-        if (!confirmed) return;
-
-        loadingDialog("กำลังบันทึกข้อมูล...", "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล");
-
-        try {
-            // needsAdminReview ที่นี่คือ "ผู้ใช้ต้องการส่งเข้าคิวตรวจสอบ" (ทั้งกรณีบังคับจาก conf ต่ำ และกรณีกดส่งตรวจสอบเอง)
-            await handleSave(needsAdminReview);
-            closeDialog();
-        } catch (err: any) {
-            alertError("เกิดข้อผิดพลาด", err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง");
-        }
-    };
-
     const hasLowConfidence = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && isLowConfidence(r.confidence));
     const hasDuplicateSubstance = Object.values(results).some((r) => r.isDuplicateSubstance);
     const hasUserInsistedOriginal = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.userInsistedOriginal);
     const hasSystemUnknown = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.isSystemUnknown);
-    const needsAdminReview = hasLowConfidence || hasUserInsistedOriginal || hasSystemUnknown;
+    const needsAdminReview = hasLowConfidence || hasUserInsistedOriginal || hasSystemUnknown || hasDuplicateSubstance;
+
+    const onConfirmSave = async (forceReview: boolean) => {
+        const isReviewSubmit = needsAdminReview || forceReview;
+
+        if (isReviewSubmit) {
+            const reasons: string[] = [];
+            if (hasLowConfidence) reasons.push("ความมั่นใจของ AI ต่ำกว่า 60%");
+            if (hasSystemUnknown) reasons.push("พบสารเคมีที่ไม่รู้จักในระบบ");
+            if (hasDuplicateSubstance) reasons.push("มีภาพสารเคมีชนิดเดียวกันซ้ำกัน");
+            if (hasUserInsistedOriginal) reasons.push("ผู้ใช้ยกเลิกการสลับสารอัตโนมัติของ AI");
+            
+            if (reasons.length === 0 && forceReview) reasons.push("ผู้ใช้ร้องขอให้ตรวจสอบเพิ่มเติม");
+
+            const result = await reviewConfirmDialog({
+                title: "ยืนยันส่งข้อมูลเพื่อรอตรวจสอบ",
+                text: 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน',
+                reasons,
+                requireNote: !needsAdminReview && forceReview,
+            });
+
+            if (!result.confirmed) return;
+            
+            loadingDialog("กำลังบันทึกข้อมูล...", "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล");
+            try {
+                await handleSave(isReviewSubmit, result.reviewNote, result.allowAdminChange);
+                closeDialog();
+            } catch (err: any) {
+                alertError("เกิดข้อผิดพลาด", err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง");
+            }
+        } else {
+            const confirmed = await confirmDialog({
+                title: "ยืนยันการบันทึกข้อมูล",
+                text: "คุณต้องการบันทึกผลตรวจน้ำครั้งนี้ใช่หรือไม่",
+                confirmText: "บันทึกข้อมูล",
+                tone: "primary",
+            });
+            if (!confirmed) return;
+
+            loadingDialog("กำลังบันทึกข้อมูล...", "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล");
+            try {
+                await handleSave(false);
+                closeDialog();
+            } catch (err: any) {
+                alertError("เกิดข้อผิดพลาด", err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง");
+            }
+        }
+    };
 
     const onResetClick = async () => {
         const confirmed = await confirmDialog({

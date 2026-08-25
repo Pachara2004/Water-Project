@@ -195,6 +195,29 @@ export function RequestDetailPopup({
                     <InfoRow icon={Clock} label="ส่งคำร้องเมื่อ" value={formatDateTimeFull(item.createdAt)} />
                 </div>
 
+                {/* แสดงสิทธิ์การแก้ไขสาร และ หมายเหตุจากผู้แจ้ง (เฉพาะสถานะ pending) */}
+                {item.statusRequest === "pending" && (
+                    <div className="space-y-2">
+                        {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-teal-50 text-teal-700 rounded-md text-xs font-bold border border-teal-200">
+                                <CheckCircle2 size={14} />
+                                <span>ผู้แจ้งอนุญาตให้ผู้เชี่ยวชาญสลับสารได้</span>
+                            </div>
+                        ) : (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-red-50 text-red-700 rounded-md text-xs font-bold border border-red-200">
+                                <XCircle size={14} />
+                                <span>ไม่อนุญาตให้ผู้เชี่ยวชาญสลับสาร</span>
+                            </div>
+                        )}
+                        {item.reviewNote && (
+                            <div className="text-sm bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-3 rounded-lg break-words [overflow-wrap:anywhere]">
+                                <span className="font-semibold">หมายเหตุจากผู้แจ้ง: </span>
+                                {item.reviewNote}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* ค่าที่วัดได้ทุกสาร พร้อมค่าความมั่นใจของ AI */}
                 <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-text">
@@ -372,11 +395,28 @@ export function RequestCard({
                                 ))}
                             </div>
                             
-                            {/* แจ้งเตือนผู้ใช้ขอเปลี่ยนชนิดสาร */}
-                            {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) && (
-                                <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-orange-100 text-orange-700 rounded-md text-[10px] font-bold border border-orange-200">
-                                    <Info size={12} />
-                                    <span>ผู้ใช้แจ้งว่าระบบวิเคราะห์สารผิด</span>
+                            {/* แสดงหมายเหตุผู้แจ้ง (ถ้ามีและยัง pending อยู่) */}
+                            {item.statusRequest === "pending" && item.reviewNote && (
+                                <div className="mt-2 text-xs bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-2 rounded-md break-words [overflow-wrap:anywhere]">
+                                    <span className="font-semibold">หมายเหตุ: </span>
+                                    {item.reviewNote}
+                                </div>
+                            )}
+                            
+                            {/* แจ้งเตือนสิทธิ์การแก้ไขชนิดสาร (เฉพาะสถานะ pending) */}
+                            {item.statusRequest === "pending" && (
+                                <div className="mt-2 flex items-center gap-2">
+                                    {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-[10px] font-bold border border-teal-200">
+                                            <CheckCircle2 size={12} />
+                                            <span>ผู้แจ้งอนุญาตให้สลับสารได้</span>
+                                        </div>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-200">
+                                            <XCircle size={12} />
+                                            <span>ไม่อนุญาตให้สลับสาร</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

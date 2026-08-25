@@ -16,13 +16,12 @@ interface ResultsPanelProps {
     // optional เพราะหน้าประวัติ (read-only) ก็ใช้ component นี้ แต่ข้อมูลที่บันทึกแล้วไม่มีสารซ้ำให้เลือก
     duplicateChoice?: Record<number, number>;
     chooseDuplicate?: (parameterId: number, key: number) => void;
-    toggleRequestChange?: (key: number) => void;
     revertAutoSwitch?: (key: number) => void;
     reviewNote?: string | null;
     saved?: boolean;
 }
 
-export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate, toggleRequestChange, revertAutoSwitch, reviewNote, saved }: ResultsPanelProps) {
+export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate, revertAutoSwitch, reviewNote, saved }: ResultsPanelProps) {
     const [openParamId, setOpenParamId] = useState<number | null>(null);
     const { locationTypes } = useLocationTypes();
 
@@ -162,23 +161,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                     </div>
                                 )}
 
-                                {/* Checkbox ขอให้แอดมินช่วยแก้ไขชนิดสาร (ซ่อนถ้าเป็นสารซ้ำที่ไม่ได้เลือก หรือถ้ามีแบนเนอร์ Auto-switch อยู่เพื่อให้จัดการทีละ step) */}
-                                {toggleRequestChange && !saved && (!isDuplicate || isChosen) && !measurement.autoSwitchedFrom && (
-                                    <label className="mt-2.5 flex items-start gap-2.5 px-3 py-2.5 rounded-lg border border-orange-200 bg-orange-50/50 cursor-pointer hover:bg-orange-50 transition-colors">
-                                        <div className="pt-0.5">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={measurement.requestAdminChange || false}
-                                                onChange={() => toggleRequestChange(entryKey)}
-                                                className="w-4 h-4 rounded border-orange-300 text-orange-500 focus:ring-orange-500"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col text-xs">
-                                            <span className="font-semibold text-orange-800 leading-tight">ขอให้แอดมินช่วยแก้ไขชนิดสาร</span>
-                                            <span className="text-[10px] text-orange-600/80 leading-snug mt-0.5">ติ๊กเมื่อมั่นใจว่า AI ทายชนิดสารผิด หรือหลอดสารนี้ซ้ำกับหลอดอื่น</span>
-                                        </div>
-                                    </label>
-                                )}
+
 
                                 <div className="w-full mt-1.5">
                                     <button

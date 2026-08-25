@@ -302,6 +302,7 @@ export async function POST(request: NextRequest) {
         const oxygen = formData.get("oxygen") as string | null;
         let clientSessionGroup = formData.get("sessionGroup") as string | null;
         const forceReview = formData.get("forceReview") === "true";
+        const reviewNote = formData.get("reviewNote") as string | null;
 
         if (!locationId || !collectionTime) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลหลักให้ครบถ้วน" }, { status: 400 });
@@ -532,8 +533,14 @@ export async function POST(request: NextRequest) {
             if (needsReview && sessionGroupToUse) {
                 await tx.reviewRequest.upsert({
                     where: { sessionGroup: sessionGroupToUse },
-                    create: { sessionGroup: sessionGroupToUse, statusRequest: "pending" },
-                    update: {},
+                    create: { 
+                        sessionGroup: sessionGroupToUse, 
+                        statusRequest: "pending",
+                        reviewNote: reviewNote || null 
+                    },
+                    update: {
+                        reviewNote: reviewNote || null
+                    },
                 });
                 await createNotificationEntry(tx, {
                     userId: secureCollectorId,
