@@ -227,28 +227,6 @@ export function ImageZone({
                         </div>
                     )}
 
-                    {!isSaved && measurement?.autoSwitchedFrom && (
-                        <div className="mb-3 flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
-                            <div className="flex items-start gap-2">
-                                <FlaskConical size={15} className="shrink-0 mt-0.5" />
-                                <div className="text-xs leading-relaxed font-medium">
-                                    <p className="font-semibold mb-0.5">เปลี่ยนชนิดสารให้อัตโนมัติ</p>
-                                    <p>
-                                        เดิมเลือก {measurement.autoSwitchedFrom.toUpperCase()} แต่ระบบตรวจพบว่าสารในภาพเป็น {param.name.toUpperCase()} จึงเปลี่ยนให้อัตโนมัติ
-                                    </p>
-                                </div>
-                            </div>
-                            {onRevertAutoSwitch && (
-                                <button
-                                    onClick={onRevertAutoSwitch}
-                                    className="self-end mt-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 rounded-md text-xs font-semibold transition-colors"
-                                >
-                                    ยืนยันส่งเป็น {measurement.autoSwitchedFrom.toUpperCase()} (สารเดิม)
-                                </button>
-                            )}
-                        </div>
-                    )}
-
                     {verifyError && (
                         <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">
                             {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}

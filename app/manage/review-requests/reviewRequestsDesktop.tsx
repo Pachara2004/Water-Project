@@ -43,9 +43,12 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
         setEditNote,
         editMeasurements,
         setEditMeasurements,
+        editParameters,
+        setEditParameters,
         editSelectedSampleIds,
         setEditSelectedSampleIds,
         editSaving,
+        systemParameters,
         openEditApprove,
         submitEditApprove,
     } = props;
@@ -363,12 +366,15 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     setEditNote={setEditNote}
                     editMeasurements={editMeasurements}
                     setEditMeasurements={setEditMeasurements}
+                    editParameters={editParameters}
+                    setEditParameters={setEditParameters}
                     editSelectedSampleIds={editSelectedSampleIds}
                     setEditSelectedSampleIds={setEditSelectedSampleIds}
                     editSaving={editSaving}
+                    systemParameters={systemParameters}
                     onClose={() => setEditTarget(null)}
                     onSubmit={submitEditApprove}
-                    onPreviewImage={setPreviewImages}
+                    onPreviewImage={(imgs) => setPreviewImages({ ...imgs, active: imgs.analyzed ? "analyzed" : "raw" })}
                 />
             )}
             {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}

@@ -1,6 +1,6 @@
 // components/submit/ResultsPanel.tsx
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Check, ArrowLeft } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, ArrowLeft, FlaskConical } from "lucide-react";
 import { evaluateValueAgainstStandards, groupStandardsByParameter } from "@/lib/standards";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
@@ -16,10 +16,13 @@ interface ResultsPanelProps {
     // optional เพราะหน้าประวัติ (read-only) ก็ใช้ component นี้ แต่ข้อมูลที่บันทึกแล้วไม่มีสารซ้ำให้เลือก
     duplicateChoice?: Record<number, number>;
     chooseDuplicate?: (parameterId: number, key: number) => void;
+    toggleRequestChange?: (key: number) => void;
+    revertAutoSwitch?: (key: number) => void;
     reviewNote?: string | null;
+    saved?: boolean;
 }
 
-export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate, reviewNote }: ResultsPanelProps) {
+export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate, toggleRequestChange, revertAutoSwitch, reviewNote, saved }: ResultsPanelProps) {
     const [openParamId, setOpenParamId] = useState<number | null>(null);
     const { locationTypes } = useLocationTypes();
 
@@ -136,7 +139,48 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                 {/* สารที่ไม่มีเกณฑ์กำหนด: ไม่มีสเกลให้วาดแถบ — ซ่อนดีกว่าวาดด้วยเกณฑ์ที่กุขึ้นมา */}
                                 {strictestMax !== null && paramStatus !== null && <ThresholdBar value={measurement.concentrated} max={strictestMax} status={paramStatus} />}
 
-                                <div className="w-full mt-1">
+                                {/* แบนเนอร์เปลี่ยนชนิดสารอัตโนมัติ */}
+                                {!saved && measurement.autoSwitchedFrom && (
+                                    <div className="mt-2.5 flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
+                                        <div className="flex items-start gap-2">
+                                            <FlaskConical size={15} className="shrink-0 mt-0.5" />
+                                            <div className="text-xs leading-relaxed font-medium">
+                                                <p className="font-semibold mb-0.5">เปลี่ยนชนิดสารให้อัตโนมัติ</p>
+                                                <p>
+                                                    เดิมเลือก {measurement.autoSwitchedFrom.toUpperCase()} แต่ระบบตรวจพบว่าสารในภาพเป็น {param.name.toUpperCase()} จึงเปลี่ยนให้อัตโนมัติ
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {revertAutoSwitch && (
+                                            <button
+                                                onClick={() => revertAutoSwitch(entryKey)}
+                                                className="self-end mt-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+                                            >
+                                                ยืนยันส่งเป็น {measurement.autoSwitchedFrom.toUpperCase()} (สารเดิม)
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Checkbox ขอให้แอดมินช่วยแก้ไขชนิดสาร */}
+                                {toggleRequestChange && !saved && (
+                                    <label className="mt-2.5 flex items-start gap-2.5 px-3 py-2.5 rounded-lg border border-orange-200 bg-orange-50/50 cursor-pointer hover:bg-orange-50 transition-colors">
+                                        <div className="pt-0.5">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={measurement.requestAdminChange || false}
+                                                onChange={() => toggleRequestChange(entryKey)}
+                                                className="w-4 h-4 rounded border-orange-300 text-orange-500 focus:ring-orange-500"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col text-xs">
+                                            <span className="font-semibold text-orange-800 leading-tight">ขอให้แอดมินช่วยแก้ไขชนิดสาร</span>
+                                            <span className="text-[10px] text-orange-600/80 leading-snug mt-0.5">ติ๊กเมื่อมั่นใจว่า AI ทายชนิดสารผิด หรือหลอดสารนี้ซ้ำกับหลอดอื่น</span>
+                                        </div>
+                                    </label>
+                                )}
+
+                                <div className="w-full mt-1.5">
                                     <button
                                         type="button"
                                         onClick={() => toggleDropdown(entryKey)}

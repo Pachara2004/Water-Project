@@ -16,6 +16,7 @@ export interface ReviewMeasurement {
     unit: string | null;
     value: number;
     confidence: number;
+    message: string | null;
 }
 
 export interface ReviewSample {
@@ -370,6 +371,14 @@ export function RequestCard({
                                     </div>
                                 ))}
                             </div>
+                            
+                            {/* แจ้งเตือนผู้ใช้ขอเปลี่ยนชนิดสาร */}
+                            {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) && (
+                                <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-orange-100 text-orange-700 rounded-md text-[10px] font-bold border border-orange-200">
+                                    <Info size={12} />
+                                    <span>ผู้ใช้แจ้งว่าระบบวิเคราะห์สารผิด</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -622,9 +631,12 @@ export function EditApproveDrawer({
     setEditNote,
     editMeasurements,
     setEditMeasurements,
+    editParameters,
+    setEditParameters,
     editSelectedSampleIds,
     setEditSelectedSampleIds,
     editSaving,
+    systemParameters,
     onClose,
     onSubmit,
     onPreviewImage,
@@ -634,14 +646,18 @@ export function EditApproveDrawer({
     setEditNote: (v: string) => void;
     editMeasurements: Record<number, number>;
     setEditMeasurements: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
+    editParameters: Record<number, number>;
+    setEditParameters: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
     editSelectedSampleIds: number[];
     setEditSelectedSampleIds: (fn: (prev: number[]) => number[]) => void;
     editSaving: boolean;
+    systemParameters: { id: number; name: string }[];
     onClose: () => void;
     onSubmit: () => void;
     onPreviewImage?: (images: PreviewImages) => void;
 }) {
     const isMultiSample = editTarget.samples.length > 1;
+    const userRequestedChange = editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]"));
     const toggleSample = (id: number) => setEditSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     const noneSelected = editSelectedSampleIds.length === 0;
 
@@ -704,28 +720,54 @@ export function EditApproveDrawer({
                                             <span className="text-xs font-bold text-text">{s.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</span>
                                         </label>
                                     )}
-                                    <div className={`space-y-2 ${isMultiSample ? "pl-6" : ""} ${!isSelected ? "opacity-40" : ""}`}>
-                                        {s.measurements.map((m) => (
-                                            <div key={m.parameterId} className="flex items-center justify-between gap-3">
-                                                <span className="text-xs font-bold text-text uppercase">
-                                                    {m.parameterName || "ไม่ระบุสาร"} <span className="font-normal text-text-muted lowercase">(เดิม: {m.value.toFixed(2)})</span>
-                                                </span>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        disabled={!isSelected}
-                                                        value={editMeasurements[m.parameterId] ?? m.value}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
-                                                        }}
-                                                        className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
-                                                    />
-                                                    {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                                    <div className={`space-y-3 ${isMultiSample ? "pl-6" : ""} ${!isSelected ? "opacity-40" : ""}`}>
+                                        {s.measurements.map((m) => {
+                                            // หารายชื่อสารที่ถูกเลือกในใบอื่น ๆ ของ session เดียวกัน (ป้องกันการเลือกสารซ้ำ)
+                                            const otherSelectedParams = editTarget.samples
+                                                .filter(otherS => otherS.id !== s.id && editSelectedSampleIds.includes(otherS.id))
+                                                .flatMap(otherS => otherS.measurements.map(otherM => editParameters[otherM.parameterId] ?? otherM.parameterId));
+
+                                            return (
+                                                <div key={m.parameterId} className="flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <select
+                                                            disabled={!isSelected || !userRequestedChange}
+                                                            title={!userRequestedChange ? "ผู้ใช้ไม่ได้เปิดสิทธิ์ให้แอดมินเปลี่ยนสาร (หากผิดกรุณากดปฏิเสธ)" : ""}
+                                                            value={editParameters[m.parameterId] ?? m.parameterId}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value);
+                                                                setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }));
+                                                            }}
+                                                            className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-2 py-1.5 text-xs font-semibold text-text uppercase outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+                                                        >
+                                                            {systemParameters.map(p => (
+                                                                <option 
+                                                                    key={p.id} 
+                                                                    value={p.id}
+                                                                    disabled={otherSelectedParams.includes(p.id)}
+                                                                >
+                                                                    {p.name} {p.id === m.parameterId ? "(เดิม)" : ""} {otherSelectedParams.includes(p.id) ? "(เลือกแล้ว)" : ""}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                disabled={!isSelected}
+                                                                value={editMeasurements[m.parameterId] ?? m.value}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
+                                                                }}
+                                                                className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
+                                                            />
+                                                            {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );

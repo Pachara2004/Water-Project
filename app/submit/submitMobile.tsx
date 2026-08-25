@@ -93,7 +93,7 @@ export default function SubmitMobile(props: any) {
                                 onNearestLocationsUpdate={setNearestLocations}
                                 allLocations={allLocations}
                                 setIsRecommending={setIsRecommending}
-                                onRevertAutoSwitch={saved ? undefined : () => props.revertAutoSwitch(key)}
+                                onRevertAutoSwitch={saved ? undefined : () => hook.revertAutoSwitch(key)}
                                 isSaved={saved}
                             />
                         ))}
