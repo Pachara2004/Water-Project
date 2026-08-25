@@ -33,6 +33,7 @@ export default function SubmitMobile(props: any) {
         onResetClick,
         saved,
         savedSampleId,
+        submittedForReview,
         router,
     } = props;
 
@@ -151,20 +152,20 @@ export default function SubmitMobile(props: any) {
                         ) : (
                             <div
                                 className={`text-center p-6 border rounded-xl flex flex-col items-center gap-3 ${
-                                    needsAdminReview ? "border-border-warning/30 bg-card-general" : "border-border-safe/30 bg-card-general"
+                                    needsAdminReview || submittedForReview ? "border-border-warning/30 bg-card-general" : "border-border-safe/30 bg-card-general"
                                 }`}
                             >
-                                {needsAdminReview ? <Clock className="text-text-warning" size={28} /> : <CheckCircle2 className="text-text-safe animate-bounce" size={28} />}
+                                {needsAdminReview || submittedForReview ? <Clock className="text-text-warning" size={28} /> : <CheckCircle2 className="text-text-safe animate-bounce" size={28} />}
                                 <div>
-                                    <p className={`text-sm font-semibold ${needsAdminReview ? "text-text-warning" : "text-text-safe"}`}>
-                                        {needsAdminReview ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
+                                    <p className={`text-sm font-semibold ${needsAdminReview || submittedForReview ? "text-text-warning" : "text-text-safe"}`}>
+                                        {needsAdminReview || submittedForReview ? "ส่งข้อมูลเรียบร้อย รอการตรวจสอบจากผู้ดูแลระบบ" : "บันทึกข้อมูลเข้าสู่ระบบเรียบร้อย"}
                                     </p>
                                 </div>
 
                                 <button
                                     onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                     className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
-                                        needsAdminReview ? "bg-[#FE9A00] hover:bg-bg-warning " : "bg-secondary hover:bg-bg-safe"
+                                        needsAdminReview || submittedForReview ? "bg-[#FE9A00] hover:bg-bg-warning " : "bg-secondary hover:bg-bg-safe"
                                     }`}
                                 >
                                     {savedSampleId ? "ตรวจสอบข้อมูล" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}
