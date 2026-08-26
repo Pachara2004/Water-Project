@@ -119,10 +119,6 @@ export async function GET(request: NextRequest) {
             if (startDate) where.collectionTime.gte = new Date(`${startDate}T00:00:00`);
             if (endDate) where.collectionTime.lte = new Date(`${endDate}T23:59:59.999`);
         }
-        
-        if (selectedStatuses.size > 0) {
-            where.status = { in: Array.from(selectedStatuses) };
-        }
 
         // 2. Map ReviewRequest statuses and fetch rejected ones
         const reviewRequests = await prisma.reviewRequest.findMany();
