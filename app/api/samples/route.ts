@@ -119,56 +119,130 @@ export async function GET(request: NextRequest) {
             if (startDate) where.collectionTime.gte = new Date(`${startDate}T00:00:00`);
             if (endDate) where.collectionTime.lte = new Date(`${endDate}T23:59:59.999`);
         }
-        
-        if (selectedStatuses.size > 0) {
-            where.status = { in: Array.from(selectedStatuses) };
-        }
 
-        // 2. Map ReviewRequest statuses and fetch rejected ones
-        const reviewRequests = await prisma.reviewRequest.findMany();
-        const reviewStatusMap = new Map<string, string>();
-        const rejectedSessionGroups: string[] = [];
-        
-        for (const rr of reviewRequests) {
-            if (rr.sessionGroup) {
-                reviewStatusMap.set(rr.sessionGroup, rr.statusRequest);
-                if (rr.statusRequest === "rejected") {
-                    rejectedSessionGroups.push(rr.sessionGroup);
-                }
-            }
-        }
+        // 2. หากลุ่มที่ถูกปฏิเสธไว้ก่อน — สมาชิกกลุ่มถูก soft-delete แล้ว (isDeleted จริง) จึงต้องเปิดพิเศษ
+        // ให้หลุด baseFilter ปกติมาได้ ใช้ where กรองที่ index @@index([statusRequest]) ให้ตรง ไม่ดึงทั้งตาราง
+        const rejectedGroups = await prisma.reviewRequest.findMany({
+            where: { statusRequest: "rejected" },
+            select: { sessionGroup: true },
+        });
+        const rejectedSessionGroups = rejectedGroups.map((rr) => rr.sessionGroup);
 
-        // Apply rejected sessions to baseFilter
         if (rejectedSessionGroups.length > 0) {
             baseFilter.OR.push({ sessionGroup: { in: rejectedSessionGroups } });
         }
         where.AND = [baseFilter];
+        where.sessionGroup = { not: null }; // การ์ดต้องมี sessionGroup เสมอ ตัดตั้งแต่ query ดีกว่าไปข้ามทีหลัง
 
-        // 1. Fetch raw records from WaterSample instead of SampleRecord
-        const rawRecords = await prisma.waterSample.findMany({
+        // 3. เฟส 1 (เบา): หากลุ่มทั้งหมดที่ผ่านตัวกรอง ด้วย groupBy — ไม่ join location/collector/รูป
+        // ได้ (sessionGroup, status) คู่ที่มีอยู่จริงของแต่ละกลุ่ม + เวลาล่าสุดของ status นั้น
+        const statusGroups = await prisma.waterSample.groupBy({
+            by: ["sessionGroup", "status"],
             where,
+            _max: { collectionTime: true },
+        });
+
+        // ยุบหลาย (sessionGroup, status) ให้เหลือ 1 สรุปต่อกลุ่ม — สถานะ = แย่สุดของกลุ่ม (worseStatus)
+        // เวลา = ล่าสุดของกลุ่ม ใช้แค่เป็นคีย์เรียงลำดับ/ตัดหน้าเท่านั้น ไม่ใช่ค่าที่ส่งกลับให้ client
+        const groupSummary = new Map<string, { status: WaterStatus; collectionTime: Date }>();
+        for (const g of statusGroups) {
+            if (!g.sessionGroup) continue;
+            const maxTime = g._max.collectionTime ?? new Date(0);
+            const existing = groupSummary.get(g.sessionGroup);
+            if (!existing) {
+                groupSummary.set(g.sessionGroup, { status: g.status, collectionTime: maxTime });
+            } else {
+                existing.status = worseStatus(existing.status, g.status);
+                if (maxTime > existing.collectionTime) existing.collectionTime = maxTime;
+            }
+        }
+        const candidateGroups = Array.from(groupSummary.keys());
+
+        // 4. สถานะการตรวจสอบเฉพาะกลุ่มที่ผ่านตัวกรองแล้ว (ไม่ใช่ทั้งตาราง ReviewRequest)
+        // ใช้ทั้งกรอง review และติด badge ในขั้นตอนที่ 6
+        const reviewRequests =
+            candidateGroups.length > 0
+                ? await prisma.reviewRequest.findMany({
+                      where: { sessionGroup: { in: candidateGroups } },
+                      select: { sessionGroup: true, statusRequest: true },
+                  })
+                : [];
+        const reviewStatusMap = new Map<string, string>();
+        for (const rr of reviewRequests) {
+            if (rr.sessionGroup) reviewStatusMap.set(rr.sessionGroup, rr.statusRequest);
+        }
+        const toReviewStatus = (raw: string | undefined) => {
+            if (raw === "pending") return "PENDING";
+            if (raw === "rejected") return "REJECTED";
+            if (raw === "edited_approved") return "EDITED_APPROVED";
+            return "APPROVED"; // ไม่มีแถวใน ReviewRequest เลย = auto-approve ตอนส่ง ก็นับเป็น approved เหมือนกัน
+        };
+
+        // 5. กรองสถานะคุณภาพน้ำ + สถานะตรวจสอบ แล้วเรียง/ตัดหน้า — ทำกับแค่รายชื่อกลุ่ม เบามาก
+        // (สถานะคุณภาพน้ำเป็นค่าระดับกลุ่มที่เพิ่งคำนวณเสร็จข้างบน จึงกรองใน Prisma where ไม่ได้ตั้งแต่ต้น)
+        let filteredGroups = candidateGroups.map((sg) => {
+            const summary = groupSummary.get(sg)!;
+            return {
+                sessionGroup: sg,
+                status: summary.status,
+                collectionTime: summary.collectionTime,
+                reviewStatus: toReviewStatus(reviewStatusMap.get(sg)),
+            };
+        });
+
+        if (selectedStatuses.size > 0) {
+            filteredGroups = filteredGroups.filter((g) => selectedStatuses.has(g.status.toLowerCase()));
+        }
+        if (selectedReviewStatuses.size > 0) {
+            filteredGroups = filteredGroups.filter((g) => selectedReviewStatuses.has(g.reviewStatus));
+        }
+
+        filteredGroups.sort((a, b) => {
+            const timeA = a.collectionTime.getTime();
+            const timeB = b.collectionTime.getTime();
+            return sort === "asc" ? timeA - timeB : timeB - timeA;
+        });
+
+        const total = filteredGroups.length;
+        const pageGroupEntries = filteredGroups.slice(pageParams.skip, pageParams.skip + pageParams.take);
+
+        if (pageGroupEntries.length === 0) {
+            return NextResponse.json(pageResult([], total, pageParams));
+        }
+
+        // 6. เฟส 2 (หนักแต่แคบ): ดึงรายละเอียดเต็ม (รูป, location, collector, ค่าสาร) เฉพาะกลุ่มที่จะแสดงหน้านี้
+        const pageGroupNames = pageGroupEntries.map((g) => g.sessionGroup);
+        const rawRecords = await prisma.waterSample.findMany({
+            where: { sessionGroup: { in: pageGroupNames } },
             orderBy: { id: "asc" }, // Ascending to process chronologically
-            include: {
-                location: true,
-                collector: true,
-                measurements: { include: { parameter: true } },
+            select: {
+                id: true,
+                sessionGroup: true,
+                collectorId: true,
+                locationId: true,
+                collectionTime: true,
+                uploadedActiveAt: true,
+                dissolvedOxygen: true,
+                airTemperature: true,
+                rainAccumulation: true,
+                weatherCondCode: true,
+                rawImageUrl: true,
+                analyzedPlotUrl: true,
+                isDeleted: true,
+                status: true,
+                location: { select: { id: true, stationName: true } },
+                collector: { select: { id: true, lineProfileName: true } },
+                measurements: { select: { parameterId: true, value: true, parameter: { select: { name: true } } } },
             },
         });
 
-        // 3. Group by sessionGroup
+        // 7. Group by sessionGroup (เหมือนขั้นตอนเดิม ต่างแค่ input มาจากแค่หน้านี้แล้ว)
         const sessionMap = new Map<string, any>();
-        
+
         for (const record of rawRecords) {
             if (!record.sessionGroup) continue;
-            
+
             if (!sessionMap.has(record.sessionGroup)) {
-                // Initialize the group with the first record's data
-                const reviewStatusRaw = reviewStatusMap.get(record.sessionGroup) || "approved";
-                let reviewStatus = "APPROVED";
-                if (reviewStatusRaw === "pending") reviewStatus = "PENDING";
-                else if (reviewStatusRaw === "rejected") reviewStatus = "REJECTED";
-                else if (reviewStatusRaw === "edited_approved") reviewStatus = "EDITED_APPROVED";
-                
                 const measMap = new Map<number, any>();
                 record.measurements.forEach((m: any) => measMap.set(m.parameterId, m));
 
@@ -187,9 +261,9 @@ export async function GET(request: NextRequest) {
                     rawImageUrl: record.rawImageUrl,
                     analyzedPlotUrl: record.analyzedPlotUrl,
                     isDeleted: record.isDeleted,
-                    reviewStatus: reviewStatus,
-                    status: record.status, 
-                    
+                    reviewStatus: toReviewStatus(reviewStatusMap.get(record.sessionGroup)),
+                    status: record.status,
+
                     location: record.location ? {
                         id: record.location.id,
                         name: record.location.stationName,
@@ -198,16 +272,16 @@ export async function GET(request: NextRequest) {
                         id: record.collector.id,
                         lineProfileName: record.collector.lineProfileName,
                     } : null,
-                    
+
                     measMap, // Temporary map for reliable deduplication
                     dynamicMeasurements: {} as Record<string, number>,
                 });
             } else {
                 const existing = sessionMap.get(record.sessionGroup);
-                
+
                 // Overwrite measurements for this parameter using the map
                 record.measurements.forEach((m: any) => existing.measMap.set(m.parameterId, m));
-                
+
                 // Overwrite properties from the latest record
                 existing.id = record.id;
                 existing.collectionTime = record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null;
@@ -217,20 +291,18 @@ export async function GET(request: NextRequest) {
                 existing.rainAccumulation = record.rainAccumulation;
                 existing.weatherCondCode = record.weatherCondCode;
                 existing.isDeleted = record.isDeleted;
-                
+
                 // Dynamically update the overall status to the worst one
                 existing.status = worseStatus(existing.status as WaterStatus, record.status as WaterStatus);
-                
+
                 // If earlier batch didn't have images, take them from later batches
                 if (!existing.rawImageUrl && record.rawImageUrl) existing.rawImageUrl = record.rawImageUrl;
                 if (!existing.analyzedPlotUrl && record.analyzedPlotUrl) existing.analyzedPlotUrl = record.analyzedPlotUrl;
             }
         }
 
-        let uniqueRecords = Array.from(sessionMap.values());
-        
-        // 4. Map dynamic measurements (e.g. pHVal, DOVal)
-        for (const grp of uniqueRecords) {
+        // 8. Map dynamic measurements (e.g. pHVal, DOVal)
+        for (const grp of sessionMap.values()) {
             grp.measurements = Array.from(grp.measMap.values());
             grp.measurements.forEach((m: any) => {
                 if (m.parameter?.name) {
@@ -243,28 +315,8 @@ export async function GET(request: NextRequest) {
             delete grp.dynamicMeasurements;
         }
 
-        // 5. Apply selected status filters
-        if (selectedStatuses.size > 0) {
-            uniqueRecords = uniqueRecords.filter(r => selectedStatuses.has(r.status.toLowerCase()));
-        }
-
-        if (selectedReviewStatuses.size > 0) {
-            uniqueRecords = uniqueRecords.filter(r => selectedReviewStatuses.has(r.reviewStatus));
-        }
-
-        // 6. Sort and Paginate
-        uniqueRecords.sort((a, b) => {
-            const timeA = new Date(a.collectionTime).getTime();
-            const timeB = new Date(b.collectionTime).getTime();
-            return sort === "asc" ? timeA - timeB : timeB - timeA;
-        });
-
-        const total = uniqueRecords.length;
-        const pageRecords = uniqueRecords.slice(pageParams.skip, pageParams.skip + pageParams.take);
-
-        if (pageRecords.length === 0) {
-            return NextResponse.json(pageResult([], total, pageParams));
-        }
+        // ใช้ลำดับที่คำนวณไว้ตอนตัดหน้า (ขั้นตอนที่ 5) ไม่ใช่ลำดับที่ query เฟส 2 คืนมา
+        const pageRecords = pageGroupNames.map((sg) => sessionMap.get(sg)).filter(Boolean);
 
         return NextResponse.json(pageResult(pageRecords, total, pageParams));
     } catch (error) {

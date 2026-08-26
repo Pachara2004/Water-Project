@@ -61,6 +61,8 @@ export async function createSampleRecordSnapshot(
       collectorNameFrom: baseSample.collector?.lineProfileName || baseSample.collector?.firstName || 'Unknown',
       collectorNameCurrentId: baseSample.collectorId,
       locationNameFrom: baseSample.location?.stationName || 'Unknown',
+      // null ได้เมื่อสถานีนั้นยังไม่ได้ระบุหน่วยงาน — ฝั่งแสดงผลเป็นคนตัดสินใจว่าจะโชว์อะไรแทน
+      governingAgencyFrom: baseSample.location?.governingAgency ?? null,
       locationNameCurrentId: baseSample.locationId,
       collectionTime: baseSample.collectionTime,
       dissolvedOxygen: baseSample.dissolvedOxygen,

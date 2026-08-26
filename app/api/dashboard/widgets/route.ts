@@ -238,7 +238,7 @@ export async function GET(request: NextRequest) {
                     unit: unit,
                     color: color,
                     trend: trend, // การเปลี่ยนแปลงเทียบช่วงก่อนหน้า (null = ไม่มีข้อมูลช่วงก่อน/ไม่ใช่การ์ดสถานะ)
-                    w: w.w, // ความกว้างกริด (1-12 ช่อง) ตามที่ตั้งค่าไว้ใน dashboard_widgets
+                    w: w.width, // ความกว้างกริด (1-12 ช่อง) ตามที่ตั้งค่าไว้ใน dashboard_widgets
                 };
             });
 
