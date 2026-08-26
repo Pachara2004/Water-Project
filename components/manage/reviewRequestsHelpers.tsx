@@ -397,7 +397,7 @@ export function RequestCard({
                             
                             {/* แสดงหมายเหตุผู้แจ้ง (ถ้ามีและยัง pending อยู่) */}
                             {item.statusRequest === "pending" && item.reviewNote && (
-                                <div className="mt-2 text-xs bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-2 rounded-md break-words [overflow-wrap:anywhere]">
+                                <div className="mt-2 text-xs bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-2 rounded-md wrap-break-word">
                                     <span className="font-semibold">หมายเหตุ: </span>
                                     {item.reviewNote}
                                 </div>
@@ -520,7 +520,7 @@ export function RequestCard({
                 <button
                     type="button"
                     onClick={() => setIsDetailOpen(true)}
-                    className="w-full min-h-9 px-3 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full min-h-9 px-3 rounded-xl border border-primary/30 text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                     <Info size={14} />
                     <span>ดูรายละเอียด</span>
@@ -987,7 +987,9 @@ export function RequestCardMobile({
                                 {chemReadings.map((c) => (
                                     <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-medium text-text shrink-0">
                                         <Beaker size={10} className={c.color} />
-                                        <span>{c.abbrev}: {c.value.toFixed(2)}</span>
+                                        <span>
+                                            {c.abbrev}: {c.value.toFixed(2)}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -999,38 +1001,40 @@ export function RequestCardMobile({
                 </div>
 
                 {/* Section 2: Request specific info (Notes, Permissions, Sample Select) */}
-                <div className="flex flex-col gap-3 px-4 py-3 border-t border-border/40 bg-surface-subtle/20">
-                    {/* Notes */}
-                    {item.statusRequest === "pending" && item.reviewNote && (
-                        <div className="text-xs bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-2.5 rounded-md break-words [overflow-wrap:anywhere]">
-                            <span className="font-semibold">หมายเหตุ: </span>
-                            {item.reviewNote}
-                        </div>
-                    )}
-                    
+                <div className="flex flex-col gap-3 px-4 py-3 border-t border-primary bg-surface-subtle/20">
                     {/* Permissions */}
                     {item.statusRequest === "pending" && (
                         <div className="flex items-center gap-2">
                             {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-[10px] font-bold border border-teal-200">
+                                <div className="inline-flex items-center gap-1.5 w-100  text-teal-700 text-xs font-medium ">
                                     <CheckCircle2 size={12} />
-                                    <span>ผู้แจ้งอนุญาตให้สลับสารได้</span>
+                                    <span>ผู้ส่งตรวจคุณภาพน้ำอนุญาตให้สลับสารได้</span>
                                 </div>
                             ) : (
-                                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-200">
+                                <div className="inline-flex items-center gap-1.5 w-100 text-red-700 text-xs font-medium">
                                     <XCircle size={12} />
-                                    <span>ไม่อนุญาตให้สลับสาร</span>
+                                    <span>ผู้ส่งตรวจคุณภาพน้ำไม่อนุญาตให้สลับสาร</span>
                                 </div>
                             )}
+                        </div>
+                    )}
+                    {/* Notes */}
+                    {item.statusRequest === "pending" && item.reviewNote && (
+                        <div className="text-xs  text-text border border-dashed border-primary p-2.5 rounded-md wrap-break-word">
+                            <span className="font-semibold">หมายเหตุ: </span>
+                            {item.reviewNote}
                         </div>
                     )}
 
                     {/* Sample Selection */}
                     {showSampleSelect && (
-                        <div className="bg-surface-subtle border border-border/60 rounded-xl p-3 space-y-2">
-                            <span className="text-xs font-bold text-text-secondary uppercase block">เลือกอนุมัติเฉพาะสาร:</span>
+                        <div className="bg-surface-subtle border border-border/60 rounded-lg p-2 space-y-2">
+                            <span className="text-xs font-medium text-text uppercase block">เลือกอนุมัติเฉพาะสาร:</span>
                             {item.samples.map((s) => (
-                                <label key={s.id} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2.5 cursor-pointer hover:bg-surface transition-colors">
+                                <label
+                                    key={s.id}
+                                    className="flex items-center justify-between text-xs bg-card-general border border-primary/30 rounded-sm p-2.5 cursor-pointer hover:bg-surface transition-colors"
+                                >
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
@@ -1039,18 +1043,18 @@ export function RequestCardMobile({
                                             disabled={actingId === item.id}
                                             className="w-4 h-4 accent-teal-700 cursor-pointer"
                                         />
-                                        <span className="font-bold text-text">{s.measurements.map((m) => m.parameterName).join(", ")}</span>
+                                        <span className="font-medium text-text">{s.measurements.map((m) => m.parameterName).join(", ")}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         {s.measurements.map((m) => (
                                             <span
                                                 key={m.parameterId}
-                                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                                                    isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
+                                                className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                                    isLowConfidence(m.confidence) ? "text-text-danger" : "text-text-safe"
                                                 }`}
                                                 title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
                                             >
-                                                conf. {m.confidence.toFixed(2)}
+                                                ค่าความมั่นใจ {m.confidence.toFixed(2)}
                                             </span>
                                         ))}
                                     </div>
@@ -1061,19 +1065,21 @@ export function RequestCardMobile({
 
                     {/* Single Sample */}
                     {item.statusRequest === "pending" && !isMultiSample && (
-                        <div className="bg-surface-subtle border border-border/60 rounded-xl p-3 flex flex-wrap items-center gap-2">
-                            {item.samples.flatMap((s) => s.measurements).map((m) => (
-                                <div key={m.parameterId} className="flex-1 min-w-[200px] flex items-center justify-between gap-2 bg-card-general border border-border/50 rounded-lg px-3 py-2.5">
-                                    <span className="font-bold text-text text-sm">{m.parameterName || "ไม่ระบุสาร"}</span>
-                                    <span
-                                        className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                                            isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
-                                        }`}
-                                    >
-                                        conf. {m.confidence.toFixed(2)}
-                                    </span>
-                                </div>
-                            ))}
+                        <div className="bg-surface-subtle border border-border/60 rounded-lg p-2 flex flex-wrap items-center gap-2">
+                            {item.samples
+                                .flatMap((s) => s.measurements)
+                                .map((m) => (
+                                    <div key={m.parameterId} className="flex-1 min-w-50 flex items-center justify-between gap-2 bg-card-general border border-primary/30 rounded-sm px-3 py-2">
+                                        <span className="font-medium text-text text-sm">{m.parameterName || "ไม่ระบุสาร"}</span>
+                                        <span
+                                            className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                                isLowConfidence(m.confidence) ? "text-text-danger" : "text-text-safe"
+                                            }`}
+                                        >
+                                            ค่าความมั่นใจ {m.confidence.toFixed(2)}
+                                        </span>
+                                    </div>
+                                ))}
                         </div>
                     )}
 
@@ -1094,7 +1100,7 @@ export function RequestCardMobile({
                 <button
                     type="button"
                     onClick={() => setIsDetailOpen(true)}
-                    className="w-full min-h-10 px-4 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full min-h-10 px-4 rounded-xl border border-primary/30 text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                     <Info size={14} />
                     <span>ดูรายละเอียด</span>
@@ -1106,7 +1112,7 @@ export function RequestCardMobile({
                             type="button"
                             disabled={actingId === item.id}
                             onClick={() => onOpenReject(item)}
-                            className="flex-1 min-h-10 px-2 rounded-xl bg-bg-danger hover:bg-red-100 text-text-danger border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-danger hover:bg-red-100 text-text-danger  text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <XCircle size={14} />
                             <span>ปฏิเสธ</span>
@@ -1115,7 +1121,7 @@ export function RequestCardMobile({
                             type="button"
                             disabled={actingId === item.id || noneSelected}
                             onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-10 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-warning hover:bg-orange-100 text-text-warning  text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <Edit2 size={14} />
                             <span>แก้ไข</span>
@@ -1124,7 +1130,7 @@ export function RequestCardMobile({
                             type="button"
                             disabled={actingId === item.id || noneSelected}
                             onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-10 px-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-10 px-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
                             <span>อนุมัติ</span>
