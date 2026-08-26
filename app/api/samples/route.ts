@@ -83,6 +83,14 @@ export async function GET(request: NextRequest) {
             .flatMap((s) => s.split(","))
             .filter(Boolean);
         const selectedStatuses = new Set(statusParam.map((s) => s.toLowerCase()));
+        // สถานะการตรวจสอบ (PENDING/APPROVED/EDITED_APPROVED/REJECTED) เป็นคนละมิติกับ status คุณภาพน้ำ
+        // ค่านี้ไม่มีในตาราง WaterSample — ถูกคำนวณจาก ReviewRequest หลังจับกลุ่ม sessionGroup แล้ว
+        // จึงกรองใน Prisma where ไม่ได้ ต้องไปกรองในหน่วยความจำที่ขั้นตอนที่ 5
+        const reviewParam = searchParams
+            .getAll("review")
+            .flatMap((s) => s.split(","))
+            .filter(Boolean);
+        const selectedReviewStatuses = new Set(reviewParam.map((s) => s.toUpperCase()));
         const startDate = searchParams.get("startDate");
         const endDate = searchParams.get("endDate");
         const sort = searchParams.get("sort") === "asc" ? "asc" : "desc";
@@ -238,6 +246,10 @@ export async function GET(request: NextRequest) {
         // 5. Apply selected status filters
         if (selectedStatuses.size > 0) {
             uniqueRecords = uniqueRecords.filter(r => selectedStatuses.has(r.status.toLowerCase()));
+        }
+
+        if (selectedReviewStatuses.size > 0) {
+            uniqueRecords = uniqueRecords.filter(r => selectedReviewStatuses.has(r.reviewStatus));
         }
 
         // 6. Sort and Paginate

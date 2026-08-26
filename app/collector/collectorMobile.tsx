@@ -17,6 +17,15 @@ const statusOptions = [
     { id: "danger", label: "อันตราย", color: "bg-bg-danger" },
 ];
 
+/* สถานะการตรวจสอบ (ReviewRequest) — คนละมิติกับ statusOptions ที่เป็นคุณภาพน้ำ
+   id ต้องเป็นตัวพิมพ์ใหญ่ให้ตรงกับค่า reviewStatus ที่ /api/samples ส่งกลับมา */
+const reviewStatusOptions = [
+    { id: "PENDING", label: "รอตรวจสอบ" },
+    { id: "APPROVED", label: "อนุมัติ" },
+    { id: "EDITED_APPROVED", label: "อนุมัติ (มีการแก้ไข)" },
+    { id: "REJECTED", label: "ถูกปฏิเสธ" },
+];
+
 export default function CollectorMobile(props: CollectorProps) {
     const { currentUser } = useAppStore();
     const router = useRouter();
@@ -34,6 +43,8 @@ export default function CollectorMobile(props: CollectorProps) {
         setGlobalFilter,
         selectedStatuses,
         handleStatusToggle,
+        selectedReviewStatuses,
+        handleReviewStatusToggle,
         startDate,
         setStartDate,
         endDate,
@@ -46,9 +57,11 @@ export default function CollectorMobile(props: CollectorProps) {
     // ─── State สำหรับควบคุมป็อปอัปช่วงเวลา / Dropdown สถานะ (เรื่อง UI ล้วน ไม่เกี่ยวกับค่าที่ถูกจำ) ───
     const [isDatePanelOpen, setIsDatePanelOpen] = useState(false);
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+    const [isReviewMenuOpen, setIsReviewMenuOpen] = useState(false);
 
     const datePanelRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
+    const reviewMenuRef = useRef<HTMLDivElement>(null);
 
     // เคลียร์ป็อปอัปต่าง ๆ เมื่อคลิกด้านนอกกล่องควบคุม
     useEffect(() => {
@@ -58,6 +71,9 @@ export default function CollectorMobile(props: CollectorProps) {
             }
             if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
                 setIsStatusMenuOpen(false);
+            }
+            if (reviewMenuRef.current && !reviewMenuRef.current.contains(event.target as Node)) {
+                setIsReviewMenuOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -75,12 +91,21 @@ export default function CollectorMobile(props: CollectorProps) {
 
     // ข้อความแสดงสถานะบนปุ่มหลัก (กรณีเลือกตัวเดียว หรือเลือกหลายตัว)
     const currentStatusLabel = useMemo(() => {
-        if (selectedStatuses.length === 0) return "ทุกสถานะ";
+        if (selectedStatuses.length === 0) return "ทุกสถานะน้ำ";
         if (selectedStatuses.length === 1) {
-            return statusOptions.find((o) => o.id === selectedStatuses[0])?.label || "ทุกสถานะ";
+            return statusOptions.find((o) => o.id === selectedStatuses[0])?.label || "ทุกสถานะน้ำ";
         }
-        return `เลือกแล้ว ${selectedStatuses.length} สถานะ`;
+        return `เลือกแล้ว ${selectedStatuses.length} สถานะน้ำ`;
     }, [selectedStatuses]);
+
+    // ข้อความแสดงสถานะการตรวจสอบบนปุ่ม (แยกจากปุ่มสถานะคุณภาพน้ำ)
+    const currentReviewLabel = useMemo(() => {
+        if (selectedReviewStatuses.length === 0) return "ทุกสถานะการตรวจสอบ";
+        if (selectedReviewStatuses.length === 1) {
+            return reviewStatusOptions.find((o) => o.id === selectedReviewStatuses[0])?.label || "ทุกสถานะการตรวจสอบ";
+        }
+        return `เลือกแล้ว ${selectedReviewStatuses.length} สถานะการตรวจสอบ`;
+    }, [selectedReviewStatuses]);
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
@@ -146,9 +171,9 @@ export default function CollectorMobile(props: CollectorProps) {
                         </div>
 
                         {/* แถวแถบปุ่มกดตัวเลือก Dropdown สำหรับ Mobile */}
-                        <div className="flex items-center gap-2.5 relative">
+                        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 items-center gap-2.5 relative">
                             {/* 1. ปุ่มเปิดตัวเลือกช่วงวันที่ (Date Range Popover) */}
-                            <div className="relative flex-1" ref={datePanelRef}>
+                            <div className="relative min-w-0" ref={datePanelRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
@@ -171,7 +196,7 @@ export default function CollectorMobile(props: CollectorProps) {
 
                                 {/* กล่องเลือกช่วงวันที่ */}
                                 {isDatePanelOpen && (
-                                    <div className="absolute top-[calc(100%+6px)] left-0 w-65 bg-surface border border-border rounded-2xl  p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="absolute top-[calc(100%+6px)] left-0 w-65 max-w-[calc(100vw-2.5rem)] bg-surface border border-border rounded-2xl  p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                                         <div className="flex items-center gap-1.5 text-xs font-bold text-primary mb-3 pb-1 border-b border-border">
                                             <CalendarDays size={13} className="text-primary" />
                                             <span>ระบุช่วงเวลาเก็บตัวอย่าง</span>
@@ -214,7 +239,7 @@ export default function CollectorMobile(props: CollectorProps) {
                             </div>
 
                             {/* 2. ปุ่มเลือกสถานะแบบ Multi-Select Dropdown ที่ต้องการ */}
-                            <div className="relative flex-1" ref={statusMenuRef}>
+                            <div className="relative min-w-0" ref={statusMenuRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
@@ -230,7 +255,7 @@ export default function CollectorMobile(props: CollectorProps) {
 
                                 {/* รายการตัวเลือกสถานะภายในเมนู (Multi-Select Menu) */}
                                 {isStatusMenuOpen && (
-                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full min-w-40 bg-card-general border border-border rounded-2xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="absolute top-[calc(100%+6px)] right-0 w-full bg-card-general border border-border rounded-2xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                                         {/* ลูปรายการสถานะให้สามารถเลือกพร้อมกันได้หลายตัว */}
                                         {statusOptions.map((option) => {
                                             const isChecked = selectedStatuses.includes(option.id);
@@ -260,6 +285,51 @@ export default function CollectorMobile(props: CollectorProps) {
                                     </div>
                                 )}
                             </div>
+                        </div>
+
+                        {/* 3. ปุ่มเลือกสถานะการตรวจสอบ — แยกบรรทัดเต็มความกว้าง เพราะแถวบนแคบเกินจะใส่ปุ่มที่สาม */}
+                        <div className="relative" ref={reviewMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setIsReviewMenuOpen(!isReviewMenuOpen)}
+                                className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-semibold transition-all cursor-pointer select-none ${
+                                    selectedReviewStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="truncate">{currentReviewLabel}</span>
+                                </div>
+                                <ChevronDown size={13} className="text-text shrink-0" />
+                            </button>
+
+                            {isReviewMenuOpen && (
+                                <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-card-general border border-border rounded-2xl p-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                    {reviewStatusOptions.map((option) => {
+                                        const isChecked = selectedReviewStatuses.includes(option.id);
+                                        return (
+                                            <button
+                                                key={option.id}
+                                                type="button"
+                                                onClick={() => handleReviewStatusToggle(option.id)}
+                                                className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                                                    isChecked ? "bg-surface-subtle text-text" : "text-text-secondary hover:bg-surface"
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className={`w-3.5 h-3.5 border rounded-sm flex items-center justify-center transition-all ${
+                                                            isChecked ? "border-primary bg-primary text-text" : "border-border bg-card-general"
+                                                        }`}
+                                                    >
+                                                        {isChecked && <Check size={10} strokeWidth={4} />}
+                                                    </div>
+                                                    <span>{option.label}</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         {/* สรุปข้อมูลผลลัพธ์และระบบสลับ ล่าสุด/เก่าสุด */}

@@ -17,7 +17,7 @@ export interface CollectorSample {
     updatedBy?: number | null;
     sessionGroup?: string | null;
     // สถานะการตรวจสอบ (คนละมิติกับ status คุณภาพน้ำ) — มีค่าเฉพาะรายการที่ confidence ต่ำกว่าเกณฑ์เท่านั้น
-    reviewStatus?: "PENDING" | "APPROVED";
+    reviewStatus?: "PENDING" | "APPROVED" | "EDITED_APPROVED" | "REJECTED";
     location?: {
         id: number;
         name: string;
@@ -55,6 +55,8 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
     const [globalFilter, setGlobalFilter] = useState("");
     const [debouncedFilter, setDebouncedFilter] = useState("");
     const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+    // สถานะการตรวจสอบ — คนละมิติกับ selectedStatuses (คุณภาพน้ำ) จึงแยกตัวแปรและแยก query param
+    const [selectedReviewStatuses, setSelectedReviewStatuses] = useState<string[]>([]);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [sortDesc, setSortDesc] = useState(true);
@@ -79,6 +81,7 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
             setGlobalFilter(saved.globalFilter);
             setDebouncedFilter(saved.globalFilter);
             setSelectedStatuses(saved.selectedStatuses);
+            setSelectedReviewStatuses(saved.selectedReviewStatuses);
             setStartDate(saved.startDate);
             setEndDate(saved.endDate);
             setSortDesc(saved.sortDesc);
@@ -93,7 +96,7 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
     useEffect(() => {
         if (!filtersRestored) return;
         setPage(1);
-    }, [showOnlyMine, debouncedFilter, JSON.stringify(selectedStatuses), startDate, endDate, sortDesc, filtersRestored]);
+    }, [showOnlyMine, debouncedFilter, JSON.stringify(selectedStatuses), JSON.stringify(selectedReviewStatuses), startDate, endDate, sortDesc, filtersRestored]);
 
     useEffect(() => {
         if (!filtersRestored || !currentUser) return;
@@ -107,6 +110,7 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
         if (startDate) params.set("startDate", startDate);
         if (endDate) params.set("endDate", endDate);
         selectedStatuses.forEach((s) => params.append("status", s));
+        selectedReviewStatuses.forEach((s) => params.append("review", s));
         // "เฉพาะของฉัน" มีความหมายเฉพาะ admin (เลือกดูของตัวเอง vs ดูทุกคน) — collector เห็นแค่ของตัวเองอยู่แล้วจาก API เสมอ
         if (currentUser.role === "admin" && showOnlyMine) params.set("mine", "true");
 
@@ -162,19 +166,19 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
 
         return () => controller.abort();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filtersRestored, currentUser, page, sortDesc, debouncedFilter, startDate, endDate, JSON.stringify(selectedStatuses), showOnlyMine]);
+    }, [filtersRestored, currentUser, page, sortDesc, debouncedFilter, startDate, endDate, JSON.stringify(selectedStatuses), JSON.stringify(selectedReviewStatuses), showOnlyMine]);
 
     // เก็บตัวกรองปัจจุบันทุกครั้งที่เปลี่ยน
     // หน่วงไว้เพราะ sessionStorage.setItem เป็น API แบบ synchronous — ถ้าเขียนทุกตัวอักษรที่พิมพ์ในช่องค้นหา
     // จะไปบล็อก main thread ถี่ๆ บนเครื่องช้า และเราไม่ได้ต้องการความสดระดับ keystroke อยู่แล้ว
     useEffect(() => {
         if (!filtersRestored) return;
-        const payload: CollectorFilterState = { showOnlyMine, globalFilter, selectedStatuses, startDate, endDate, sortDesc, page };
+        const payload: CollectorFilterState = { showOnlyMine, globalFilter, selectedStatuses, selectedReviewStatuses, startDate, endDate, sortDesc, page };
         latestFiltersRef.current = payload;
 
         const timer = setTimeout(() => writeCollectorFilters(payload), SAVE_DEBOUNCE_MS);
         return () => clearTimeout(timer);
-    }, [filtersRestored, showOnlyMine, globalFilter, selectedStatuses, startDate, endDate, sortDesc, page]);
+    }, [filtersRestored, showOnlyMine, globalFilter, selectedStatuses, selectedReviewStatuses, startDate, endDate, sortDesc, page]);
 
     // เขียนค่าล่าสุดทิ้งไว้ตอนออกจากหน้า — ถ้าผู้ใช้เปลี่ยนตัวกรองแล้วกดดูรายละเอียดภายในช่วงหน่วง
     // cleanup ด้านบนจะล้าง timer ทิ้งก่อนได้เขียน การเปลี่ยนครั้งสุดท้ายจะหายไปเฉยๆ
@@ -189,6 +193,11 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
     // ติ๊กเลือก/เอาออกสถานะแบบ Multi-Select
     const handleStatusToggle = (status: string) => {
         setSelectedStatuses((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]));
+    };
+
+    // ติ๊กเลือก/เอาออกสถานะการตรวจสอบแบบ Multi-Select
+    const handleReviewStatusToggle = (reviewStatus: string) => {
+        setSelectedReviewStatuses((prev) => (prev.includes(reviewStatus) ? prev.filter((s) => s !== reviewStatus) : [...prev, reviewStatus]));
     };
 
     const clearDateRange = () => {
@@ -211,6 +220,8 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
         setGlobalFilter,
         selectedStatuses,
         handleStatusToggle,
+        selectedReviewStatuses,
+        handleReviewStatusToggle,
         startDate,
         setStartDate,
         endDate,
