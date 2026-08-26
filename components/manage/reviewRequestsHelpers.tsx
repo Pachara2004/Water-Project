@@ -16,6 +16,7 @@ export interface ReviewMeasurement {
     unit: string | null;
     value: number;
     confidence: number;
+    message: string | null;
 }
 
 export interface ReviewSample {
@@ -194,6 +195,29 @@ export function RequestDetailPopup({
                     <InfoRow icon={Clock} label="ส่งคำร้องเมื่อ" value={formatDateTimeFull(item.createdAt)} />
                 </div>
 
+                {/* แสดงสิทธิ์การแก้ไขสาร และ หมายเหตุจากผู้แจ้ง (เฉพาะสถานะ pending) */}
+                {item.statusRequest === "pending" && (
+                    <div className="space-y-2">
+                        {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-teal-50 text-teal-700 rounded-md text-xs font-bold border border-teal-200">
+                                <CheckCircle2 size={14} />
+                                <span>ผู้แจ้งอนุญาตให้ผู้เชี่ยวชาญสลับสารได้</span>
+                            </div>
+                        ) : (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-red-50 text-red-700 rounded-md text-xs font-bold border border-red-200">
+                                <XCircle size={14} />
+                                <span>ไม่อนุญาตให้ผู้เชี่ยวชาญสลับสาร</span>
+                            </div>
+                        )}
+                        {item.reviewNote && (
+                            <div className="text-sm bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-3 rounded-lg break-words [overflow-wrap:anywhere]">
+                                <span className="font-semibold">หมายเหตุจากผู้แจ้ง: </span>
+                                {item.reviewNote}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* ค่าที่วัดได้ทุกสาร พร้อมค่าความมั่นใจของ AI */}
                 <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-text">
@@ -370,6 +394,31 @@ export function RequestCard({
                                     </div>
                                 ))}
                             </div>
+                            
+                            {/* แสดงหมายเหตุผู้แจ้ง (ถ้ามีและยัง pending อยู่) */}
+                            {item.statusRequest === "pending" && item.reviewNote && (
+                                <div className="mt-2 text-xs bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-2 rounded-md break-words [overflow-wrap:anywhere]">
+                                    <span className="font-semibold">หมายเหตุ: </span>
+                                    {item.reviewNote}
+                                </div>
+                            )}
+                            
+                            {/* แจ้งเตือนสิทธิ์การแก้ไขชนิดสาร (เฉพาะสถานะ pending) */}
+                            {item.statusRequest === "pending" && (
+                                <div className="mt-2 flex items-center gap-2">
+                                    {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-[10px] font-bold border border-teal-200">
+                                            <CheckCircle2 size={12} />
+                                            <span>ผู้แจ้งอนุญาตให้สลับสารได้</span>
+                                        </div>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-200">
+                                            <XCircle size={12} />
+                                            <span>ไม่อนุญาตให้สลับสาร</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -379,7 +428,7 @@ export function RequestCard({
                     <StatusBadge status={waterStatus} size="sm" />
 
                     {item.statusRequest === "pending" && (
-                        <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center w-30 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
                             รอตรวจสอบ
                         </span>
                     )}
@@ -622,9 +671,12 @@ export function EditApproveDrawer({
     setEditNote,
     editMeasurements,
     setEditMeasurements,
+    editParameters,
+    setEditParameters,
     editSelectedSampleIds,
     setEditSelectedSampleIds,
     editSaving,
+    systemParameters,
     onClose,
     onSubmit,
     onPreviewImage,
@@ -634,14 +686,18 @@ export function EditApproveDrawer({
     setEditNote: (v: string) => void;
     editMeasurements: Record<number, number>;
     setEditMeasurements: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
+    editParameters: Record<number, number>;
+    setEditParameters: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
     editSelectedSampleIds: number[];
     setEditSelectedSampleIds: (fn: (prev: number[]) => number[]) => void;
     editSaving: boolean;
+    systemParameters: { id: number; name: string }[];
     onClose: () => void;
     onSubmit: () => void;
     onPreviewImage?: (images: PreviewImages) => void;
 }) {
     const isMultiSample = editTarget.samples.length > 1;
+    const userRequestedChange = editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]"));
     const toggleSample = (id: number) => setEditSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     const noneSelected = editSelectedSampleIds.length === 0;
 
@@ -704,28 +760,54 @@ export function EditApproveDrawer({
                                             <span className="text-xs font-bold text-text">{s.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</span>
                                         </label>
                                     )}
-                                    <div className={`space-y-2 ${isMultiSample ? "pl-6" : ""} ${!isSelected ? "opacity-40" : ""}`}>
-                                        {s.measurements.map((m) => (
-                                            <div key={m.parameterId} className="flex items-center justify-between gap-3">
-                                                <span className="text-xs font-bold text-text uppercase">
-                                                    {m.parameterName || "ไม่ระบุสาร"} <span className="font-normal text-text-muted lowercase">(เดิม: {m.value.toFixed(2)})</span>
-                                                </span>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        disabled={!isSelected}
-                                                        value={editMeasurements[m.parameterId] ?? m.value}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
-                                                        }}
-                                                        className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
-                                                    />
-                                                    {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                                    <div className={`space-y-3 ${isMultiSample ? "pl-6" : ""} ${!isSelected ? "opacity-40" : ""}`}>
+                                        {s.measurements.map((m) => {
+                                            // หารายชื่อสารที่ถูกเลือกในใบอื่น ๆ ของ session เดียวกัน (ป้องกันการเลือกสารซ้ำ)
+                                            const otherSelectedParams = editTarget.samples
+                                                .filter(otherS => otherS.id !== s.id && editSelectedSampleIds.includes(otherS.id))
+                                                .flatMap(otherS => otherS.measurements.map(otherM => editParameters[otherM.parameterId] ?? otherM.parameterId));
+
+                                            return (
+                                                <div key={m.parameterId} className="flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <select
+                                                            disabled={!isSelected || !userRequestedChange}
+                                                            title={!userRequestedChange ? "ผู้ใช้ไม่ได้เปิดสิทธิ์ให้แอดมินเปลี่ยนสาร (หากผิดกรุณากดปฏิเสธ)" : ""}
+                                                            value={editParameters[m.parameterId] ?? m.parameterId}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value);
+                                                                setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }));
+                                                            }}
+                                                            className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-2 py-1.5 text-xs font-semibold text-text uppercase outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+                                                        >
+                                                            {systemParameters.map(p => (
+                                                                <option 
+                                                                    key={p.id} 
+                                                                    value={p.id}
+                                                                    disabled={otherSelectedParams.includes(p.id)}
+                                                                >
+                                                                    {p.name} {p.id === m.parameterId ? "(เดิม)" : ""} {otherSelectedParams.includes(p.id) ? "(เลือกแล้ว)" : ""}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                disabled={!isSelected}
+                                                                value={editMeasurements[m.parameterId] ?? m.value}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
+                                                                }}
+                                                                className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
+                                                            />
+                                                            {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );
@@ -826,5 +908,264 @@ export function ImageLightbox({ images, onClose }: { images: PreviewImages; onCl
             </div>
             <p className="text-white text-xs font-semibold mt-4 tracking-wide select-none">แตะพื้นที่ว่างเพื่อปิดหน้าต่างขยาย</p>
         </div>
+    );
+}
+export function RequestCardMobile({
+    item,
+    standards,
+    actingId,
+    onOpenReject,
+    onApprove,
+    onPreviewImage,
+    onOpenEditApprove,
+}: {
+    item: ReviewRequestItem;
+    standards: StandardRow[];
+    actingId: number | null;
+    onOpenReject: (item: ReviewRequestItem) => void;
+    onApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
+    onPreviewImage: (images: PreviewImages) => void;
+    onOpenEditApprove?: (item: ReviewRequestItem, preSelectedSampleIds?: number[]) => void;
+}) {
+    const isMultiSample = item.samples.length > 1;
+    const showSampleSelect = item.statusRequest === "pending" && isMultiSample;
+    const [selectedSampleIds, setSelectedSampleIds] = useState<number[]>(() => item.samples.filter((s) => !s.measurements.some((m) => isLowConfidence(m.confidence))).map((s) => s.id));
+    const toggleSample = (id: number) => setSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+    const noneSelected = showSampleSelect && selectedSampleIds.length === 0;
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+    const chemReadings = readChemMeasurements(item.samples.flatMap((s) => s.measurements));
+    const waterStatus = getSampleWaterStatus(item, standards);
+
+    return (
+        <div className="bg-card-general shadow-xs rounded-xl border border-primary active:scale-[0.99] transition-all flex flex-col group min-w-0 overflow-hidden h-full justify-between">
+            <div>
+                {/* Header: Session ID & Review Status */}
+                <div className="flex items-center justify-between p-2.5 px-4 bg-primary border-b border-border">
+                    <div className="flex items-center gap-2 text-xs font-medium text-white">
+                        <FileScan size={16} className="text-white shrink-0" />
+                        <span className="leading-none">
+                            รหัสอ้างอิง : <span className="font-medium text-white">{item.sessionGroup}</span>
+                        </span>
+                    </div>
+                    <div className="flex items-center">
+                        {item.statusRequest === "pending" && (
+                            <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-warning bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                รอตรวจสอบ
+                            </span>
+                        )}
+                        {item.statusRequest === "rejected" && (
+                            <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-danger bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                ถูกปฏิเสธ
+                            </span>
+                        )}
+                        {item.statusRequest === "edited_approved" && (
+                            <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-safe bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                อนุมัติ (แก้ไข)
+                            </span>
+                        )}
+                        {item.statusRequest === "approved" && (
+                            <span className="inline-flex items-center justify-center text-center text-xs font-medium text-text-safe bg-card-general w-30 py-1.5 px-2 rounded-md whitespace-nowrap leading-none">
+                                อนุมัติ
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Section 1: Collector-like Info */}
+                <div className="flex items-start justify-between gap-4 w-full px-4 py-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <MapPin size={36} className="text-primary shrink-0 ml-1 mr-1" />
+                        <div className="flex-1 min-w-0 flex flex-col justify-center min-h-[36px]">
+                            <h4 className="font-medium text-xs text-text truncate">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
+                            <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
+                                <Calendar size={13} className="text-text-muted shrink-0" />
+                                <span className="leading-none">{formatDateTime(item.collectionTime || item.createdAt)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 w-full flex-wrap pt-2.5">
+                                {chemReadings.map((c) => (
+                                    <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-medium text-text shrink-0">
+                                        <Beaker size={10} className={c.color} />
+                                        <span>{c.abbrev}: {c.value.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="shrink-0 flex flex-col items-end justify-start min-h-[36px] pt-0.5">
+                        <StatusBadge status={waterStatus} size="sm" />
+                    </div>
+                </div>
+
+                {/* Section 2: Request specific info (Notes, Permissions, Sample Select) */}
+                <div className="flex flex-col gap-3 px-4 py-3 border-t border-border/40 bg-surface-subtle/20">
+                    {/* Notes */}
+                    {item.statusRequest === "pending" && item.reviewNote && (
+                        <div className="text-xs bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-2.5 rounded-md break-words [overflow-wrap:anywhere]">
+                            <span className="font-semibold">หมายเหตุ: </span>
+                            {item.reviewNote}
+                        </div>
+                    )}
+                    
+                    {/* Permissions */}
+                    {item.statusRequest === "pending" && (
+                        <div className="flex items-center gap-2">
+                            {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
+                                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-[10px] font-bold border border-teal-200">
+                                    <CheckCircle2 size={12} />
+                                    <span>ผู้แจ้งอนุญาตให้สลับสารได้</span>
+                                </div>
+                            ) : (
+                                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-200">
+                                    <XCircle size={12} />
+                                    <span>ไม่อนุญาตให้สลับสาร</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Sample Selection */}
+                    {showSampleSelect && (
+                        <div className="bg-surface-subtle border border-border/60 rounded-xl p-3 space-y-2">
+                            <span className="text-xs font-bold text-text-secondary uppercase block">เลือกอนุมัติเฉพาะสาร:</span>
+                            {item.samples.map((s) => (
+                                <label key={s.id} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2.5 cursor-pointer hover:bg-surface transition-colors">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedSampleIds.includes(s.id)}
+                                            onChange={() => toggleSample(s.id)}
+                                            disabled={actingId === item.id}
+                                            className="w-4 h-4 accent-teal-700 cursor-pointer"
+                                        />
+                                        <span className="font-bold text-text">{s.measurements.map((m) => m.parameterName).join(", ")}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {s.measurements.map((m) => (
+                                            <span
+                                                key={m.parameterId}
+                                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                                    isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
+                                                }`}
+                                                title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
+                                            >
+                                                conf. {m.confidence.toFixed(2)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Single Sample */}
+                    {item.statusRequest === "pending" && !isMultiSample && (
+                        <div className="bg-surface-subtle border border-border/60 rounded-xl p-3 flex flex-wrap items-center gap-2">
+                            {item.samples.flatMap((s) => s.measurements).map((m) => (
+                                <div key={m.parameterId} className="flex-1 min-w-[200px] flex items-center justify-between gap-2 bg-card-general border border-border/50 rounded-lg px-3 py-2.5">
+                                    <span className="font-bold text-text text-sm">{m.parameterName || "ไม่ระบุสาร"}</span>
+                                    <span
+                                        className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                            isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
+                                        }`}
+                                    >
+                                        conf. {m.confidence.toFixed(2)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* สรุปผลการตรวจเดิมกรณีอนุมัติ/ปฏิเสธแล้ว */}
+                    {item.statusRequest !== "pending" && (
+                        <div className="text-xs text-text-muted bg-surface-subtle border border-border/60 rounded-xl p-3 font-medium">
+                            <p>
+                                ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
+                            </p>
+                            {item.reviewNote && <p className="text-text-danger font-semibold bg-red-500/5 p-2 rounded-lg border border-red-500/10 mt-2 wrap-break-word">เหตุผล: {item.reviewNote}</p>}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Section 3: Actions */}
+            <div className="flex flex-col gap-2 p-3 border-t border-border bg-card-general">
+                <button
+                    type="button"
+                    onClick={() => setIsDetailOpen(true)}
+                    className="w-full min-h-10 px-4 rounded-xl border border-border text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                    <Info size={14} />
+                    <span>ดูรายละเอียด</span>
+                </button>
+
+                {item.statusRequest === "pending" && (
+                    <div className="flex items-stretch gap-2 w-full mt-1">
+                        <button
+                            type="button"
+                            disabled={actingId === item.id}
+                            onClick={() => onOpenReject(item)}
+                            className="flex-1 min-h-10 px-2 rounded-xl bg-bg-danger hover:bg-red-100 text-text-danger border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            <XCircle size={14} />
+                            <span>ปฏิเสธ</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={actingId === item.id || noneSelected}
+                            onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
+                            className="flex-1 min-h-10 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            <Edit2 size={14} />
+                            <span>แก้ไข</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={actingId === item.id || noneSelected}
+                            onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
+                            className="flex-1 min-h-10 px-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
+                            <span>อนุมัติ</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {isDetailOpen && <RequestDetailPopup item={item} standards={standards} onClose={() => setIsDetailOpen(false)} onPreviewImage={onPreviewImage} />}
+        </div>
+    );
+}
+
+export function RequestCardDesktop({
+    item,
+    standards,
+    actingId,
+    onOpenReject,
+    onApprove,
+    onPreviewImage,
+    onOpenEditApprove,
+}: {
+    item: ReviewRequestItem;
+    standards: StandardRow[];
+    actingId: number | null;
+    onOpenReject: (item: ReviewRequestItem) => void;
+    onApprove: (item: ReviewRequestItem, approvedSampleIds?: number[]) => void;
+    onPreviewImage: (images: PreviewImages) => void;
+    onOpenEditApprove?: (item: ReviewRequestItem, preSelectedSampleIds?: number[]) => void;
+}) {
+    // ใช้ component ตัวเดียวกันกับการ์ด Mobile เลย เพราะโครงสร้างเหมือนกัน 
+    // และ Desktop grid ก็จัดการความกว้างให้พอดีแล้ว
+    return (
+        <RequestCardMobile
+            item={item}
+            standards={standards}
+            actingId={actingId}
+            onOpenReject={onOpenReject}
+            onApprove={onApprove}
+            onPreviewImage={onPreviewImage}
+            onOpenEditApprove={onOpenEditApprove}
+        />
     );
 }

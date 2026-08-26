@@ -158,12 +158,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                         if (m.id) {
                             await tx.waterSampleMeasurement.update({
                                 where: { id: m.id },
-                                data: { value: Number(m.value) }
+                                data: { value: Number(m.value) } // Not used currently from UI but kept for compatibility
+                            });
+                        } else if (m.originalParameterId) {
+                            await tx.waterSampleMeasurement.updateMany({
+                                where: { parameterId: m.originalParameterId, sampleId: { in: approvedSampleDbIds } },
+                                data: { 
+                                    parameterId: m.parameterId ? Number(m.parameterId) : m.originalParameterId,
+                                    value: Number(m.value),
+                                    message: null // Clear the message when admin edits and approves
+                                }
                             });
                         } else {
                             await tx.waterSampleMeasurement.updateMany({
                                 where: { parameterId: m.parameterId, sampleId: { in: approvedSampleDbIds } },
-                                data: { value: Number(m.value) }
+                                data: { 
+                                    value: Number(m.value),
+                                    message: null
+                                }
                             });
                         }
                     }

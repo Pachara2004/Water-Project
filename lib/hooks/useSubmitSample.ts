@@ -90,7 +90,6 @@ export function useSubmitSample() {
     );
 
     // เมื่อคลิกเลือกแหล่งพิกัด (GPS หรือ EXIF)
-    // เมื่อคลิกเลือกแหล่งพิกัด (GPS หรือ EXIF)
     const handleSelectSource = (source: "gps" | "exif") => {
         setActiveSource(source);
         if (source === "gps" && gpsCoords) {
@@ -515,7 +514,7 @@ export function useSubmitSample() {
     };
 
 
-    const handleSave = async (forceReview = false) => {
+    const handleSave = async (forceReview = false, reviewNote?: string, allowAdminChange = false) => {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
 
         try {
@@ -539,9 +538,15 @@ export function useSubmitSample() {
                 // ไม่ส่ง status แล้ว — server คำนวณเองจากค่าที่วัดได้จริง และไม่เคยเชื่อค่าจาก client อยู่แล้ว
                 fd.append("collectionTime", `${collectionTime}:00+07:00`);
                 if (oxygen) fd.append("oxygen", oxygen);
-                // ผู้ใช้ขอส่งให้ผู้เชี่ยวชาญตรวจสอบเอง — บังคับทุกสารในชุดเข้าคิว pending เหมือนกันทั้งหมด
-                // (ไม่งั้นสารที่ conf สูงจะหลุด auto-approve ไปคนละสถานะกับสารอื่นในชุดเดียวกัน)
+                if (reviewNote) fd.append("reviewNote", reviewNote);
+                
+                // บังคับส่งให้แอดมินถ้ามีแรงจูงใจ (เช่น มีสารซ้ำ หรือ ความมั่นใจต่ำ หรือ ผู้ใช้บังคับส่งเอง)
                 if (forceReview) fd.append("forceReview", "true");
+
+                let finalMessage = resData.message || null;
+                if (allowAdminChange) {
+                    finalMessage = finalMessage ? `[USER_REQUEST_CHANGE] ${finalMessage}` : "[USER_REQUEST_CHANGE]";
+                }
 
                 const singleMeasurementPayload = [
                     {
@@ -549,7 +554,7 @@ export function useSubmitSample() {
                         value: resData.concentrated || 0,
                         confidence: resData.confidence || 0,
                         boundingBox: resData.boundingBox ? JSON.stringify(resData.boundingBox) : null,
-                        message: resData.message || null,
+                        message: finalMessage,
                     },
                 ];
                 fd.append("measurements", JSON.stringify(singleMeasurementPayload));
@@ -614,16 +619,32 @@ export function useSubmitSample() {
             const originalParam = systemParameters.find(p => p.name.toLowerCase() === current.autoSwitchedFrom?.toLowerCase());
             if (!originalParam) return prev;
 
-            return {
+            const newResults = {
                 ...prev,
                 [key]: {
                     ...current,
                     parameterId: originalParam.id,
                     userInsistedOriginal: true,
-                    autoSwitchedFrom: undefined, 
-                    isDuplicateSubstance: false // When reverting, it goes back to its original isolated slot
-                }
+                    autoSwitchedFrom: undefined,
+                    isDuplicateSubstance: false,
+                },
             };
+
+            // Recalculate isDuplicateSubstance for all items
+            const counts = new Map<number, number>();
+            Object.values(newResults).forEach((r) => {
+                counts.set(r.parameterId, (counts.get(r.parameterId) || 0) + 1);
+            });
+
+            const finalResults: Record<number, MeasurementResult> = {};
+            Object.entries(newResults).forEach(([k, r]) => {
+                finalResults[Number(k)] = {
+                    ...r,
+                    isDuplicateSubstance: (counts.get(r.parameterId) || 0) > 1,
+                };
+            });
+
+            return finalResults;
         });
     };
 

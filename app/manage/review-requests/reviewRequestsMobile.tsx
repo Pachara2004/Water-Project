@@ -6,7 +6,6 @@ import { CONFIDENCE_THRESHOLD, type StandardRow } from "@/lib/standards";
 import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText, ArrowLeft, ArrowRight } from "lucide-react";
 import {
     StatusTabs,
-    RequestCard,
     RejectDrawer,
     EditApproveDrawer,
     getSampleWaterStatus,
@@ -14,6 +13,7 @@ import {
     type ReviewStatusFilter,
     type ReviewRequestItem,
     type PreviewImages,
+    RequestCardMobile,
 } from "@/components/manage/reviewRequestsHelpers";
 import { ReviewRequestCardSkeleton } from "./loading";
 import PageHeader from "@/components/PageHeader";
@@ -56,9 +56,12 @@ export interface ReviewRequestsPageProps {
     setEditNote: (v: string) => void;
     editMeasurements: Record<number, number>;
     setEditMeasurements: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
+    editParameters: Record<number, number>;
+    setEditParameters: (fn: (prev: Record<number, number>) => Record<number, number>) => void;
     editSelectedSampleIds: number[];
     setEditSelectedSampleIds: (fn: (prev: number[]) => number[]) => void;
     editSaving: boolean;
+    systemParameters: { id: number; name: string }[];
     openEditApprove: (item: ReviewRequestItem, preSelectedSampleIds?: number[]) => void;
     submitEditApprove: () => void;
 }
@@ -98,9 +101,12 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
         setEditNote,
         editMeasurements,
         setEditMeasurements,
+        editParameters,
+        setEditParameters,
         editSelectedSampleIds,
         setEditSelectedSampleIds,
         editSaving,
+        systemParameters,
         openEditApprove,
         submitEditApprove,
     } = props;
@@ -379,7 +385,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                             <div className="space-y-4">
                                 <div className="flex flex-col gap-3">
                                     {filteredRequests.map((item) => (
-                                        <RequestCard
+                                        <RequestCardMobile
                                             key={item.id}
                                             item={item}
                                             standards={standards}
@@ -388,7 +394,6 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                                             onApprove={handleApprove}
                                             onPreviewImage={setPreviewImages}
                                             onOpenEditApprove={openEditApprove}
-                                            mobile
                                         />
                                     ))}
                                 </div>
@@ -444,12 +449,15 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                     setEditNote={setEditNote}
                     editMeasurements={editMeasurements}
                     setEditMeasurements={setEditMeasurements}
+                    editParameters={editParameters}
+                    setEditParameters={setEditParameters}
                     editSelectedSampleIds={editSelectedSampleIds}
                     setEditSelectedSampleIds={setEditSelectedSampleIds}
                     editSaving={editSaving}
+                    systemParameters={systemParameters}
                     onClose={() => setEditTarget(null)}
                     onSubmit={submitEditApprove}
-                    onPreviewImage={setPreviewImages}
+                    onPreviewImage={(imgs) => setPreviewImages({ ...imgs, active: imgs.analyzed ? "analyzed" : "raw" })}
                 />
             )}
             {previewImages && <ImageLightbox images={previewImages} onClose={() => setPreviewImages(null)} />}

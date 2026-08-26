@@ -34,6 +34,8 @@ export interface MeasurementResult {
     userInsistedOriginal?: boolean;
     // ระบบไม่รู้จักสารที่ AI ทำนายกลับมา (ไม่มีใน DB) — ภาพคงอยู่ในช่องเดิมที่อัปโหลดและบังคับส่งให้ Admin ตรวจสอบ
     isSystemUnknown?: boolean;
+    // ผู้ใช้ติ๊กขอให้ Admin ช่วยตรวจสอบและแก้ไขชนิดสารให้ (เช่น ตรวจซ้ำ หรือ AI ทำนายผิด)
+    requestAdminChange?: boolean;
 }
 
 // เหตุผลที่ผลวิเคราะห์ถูกบล็อก ก่อนเข้าขั้นตอนแสดงผล/บันทึก

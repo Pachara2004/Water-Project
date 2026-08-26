@@ -11,6 +11,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { ShieldAlert } from "lucide-react";
 import type { StandardRow } from "@/lib/standards";
+import { type DbParameter } from "@/components/submit/types";
 import { type ReviewStatusFilter, type ReviewRequestItem, type PreviewImages } from "@/components/manage/reviewRequestsHelpers";
 import ReviewRequestsMobile from "./reviewRequestsMobile";
 import ReviewRequestsDesktop from "./reviewRequestsDesktop";
@@ -22,6 +23,15 @@ export default function AdminReviewRequestsPage() {
     const isMobile = useMediaQuery("(max-width: 767px)");
 
     const [previewImages, setPreviewImages] = useState<PreviewImages | null>(null);
+
+    const [systemParameters, setSystemParameters] = useState<DbParameter[]>([]);
+    useEffect(() => {
+        fetch("/api/parameters")
+            .then((r) => r.json())
+            .then((data) => {
+                if (Array.isArray(data)) setSystemParameters(data);
+            });
+    }, []);
 
     // เกณฑ์จริงจากตาราง standards — ใช้คำนวณ badge สถานะน้ำในหน้านี้ (ต้องตรงกับที่ server ใช้ตัดสิน)
     const { locationTypes } = useLocationTypes();
@@ -45,6 +55,7 @@ export default function AdminReviewRequestsPage() {
     const [editTarget, setEditTarget] = useState<ReviewRequestItem | null>(null);
     const [editNote, setEditNote] = useState("");
     const [editMeasurements, setEditMeasurements] = useState<Record<number, number>>({});
+    const [editParameters, setEditParameters] = useState<Record<number, number>>({});
     // เริ่มต้นเลือกทุกสาร — สารที่ถูกยกเลิกเลือกจะถูกปฏิเสธเหมือนปุ่มอนุมัติ
     const [editSelectedSampleIds, setEditSelectedSampleIds] = useState<number[]>([]);
     const [editSaving, setEditSaving] = useState(false);
@@ -165,12 +176,15 @@ export default function AdminReviewRequestsPage() {
 
         // Initialize measurements from sample
         const initialMeasurements: Record<number, number> = {};
+        const initialParameters: Record<number, number> = {};
         item.samples.forEach(s => {
             s.measurements.forEach(m => {
                 initialMeasurements[m.parameterId] = m.value;
+                initialParameters[m.parameterId] = m.parameterId;
             });
         });
         setEditMeasurements(initialMeasurements);
+        setEditParameters(initialParameters);
 
         // เริ่มต้นเลือกตามที่การ์ดเลือกไว้ (ถ้ามี) ไม่งั้นเลือกทุกสารเป็นค่าเริ่มต้น
         setEditSelectedSampleIds(preSelectedSampleIds ?? item.samples.map((s) => s.id));
@@ -196,7 +210,8 @@ export default function AdminReviewRequestsPage() {
                 .filter((s) => editSelectedSampleIds.includes(s.id))
                 .flatMap((s) => s.measurements)
                 .map((m) => ({
-                    parameterId: m.parameterId,
+                    originalParameterId: m.parameterId,
+                    parameterId: Number(editParameters[m.parameterId] ?? m.parameterId),
                     value: Number(editMeasurements[m.parameterId] ?? m.value),
                 }));
 
@@ -271,9 +286,12 @@ export default function AdminReviewRequestsPage() {
         setEditNote,
         editMeasurements,
         setEditMeasurements,
+        editParameters,
+        setEditParameters,
         editSelectedSampleIds,
         setEditSelectedSampleIds,
         editSaving,
+        systemParameters,
         openEditApprove,
         submitEditApprove,
     };

@@ -112,6 +112,7 @@ export async function GET(request: NextRequest) {
                         unit: m.parameter?.unit ?? null,
                         value: m.value,
                         confidence: m.confidence,
+                        message: m.message,
                     })),
                 })),
             };
