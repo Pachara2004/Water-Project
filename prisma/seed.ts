@@ -136,7 +136,7 @@ async function main() {
     console.log("📊 Injecting dynamic dashboard blueprints linked with parameters...");
 
     await prisma.dashboardWidget.create({
-        data: { title: "จำนวนตัวอย่างน้ำ", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 3 },
+        data: { title: "จำนวนตัวอย่างน้ำ", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", width: 3 },
     });
     await prisma.dashboardWidget.create({
         data: {
@@ -148,11 +148,11 @@ async function main() {
             filterValue: "safe",
             unit: "%",
             cardColor: "green",
-            w: 3,
+            width: 3,
         },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "ตัวอย่างที่เกินค่ามาตรฐาน (Danger)", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "danger", cardColor: "red", w: 3 },
+        data: { title: "ตัวอย่างที่เกินค่ามาตรฐาน (Danger)", widgetType: "CARD", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, filterValue: "danger", cardColor: "red", width: 3 },
     });
     await prisma.dashboardWidget.create({
         data: {
@@ -163,17 +163,17 @@ async function main() {
             targetColumn: null,
             filterValue: "warning",
             cardColor: "yellow",
-            w: 3,
+            width: 3,
         },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "สัดส่วนดัชนีคุณภาพน้ำทะเลรวม", widgetType: "PIE_CHART", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", w: 6 },
+        data: { title: "สัดส่วนดัชนีคุณภาพน้ำทะเลรวม", widgetType: "PIE_CHART", metricType: "COUNT", targetType: "SAMPLE_STATUS", targetColumn: null, cardColor: "blue", width: 6 },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "แนวโน้มการเปลี่ยนแปลงระดับความเข้มข้นสารเคมีรายเดือน", widgetType: "BAR_CHART", metricType: "AVG", targetType: "PARAMETER", targetColumn: null, cardColor: "blue", w: 6 },
+        data: { title: "แนวโน้มการเปลี่ยนแปลงระดับความเข้มข้นสารเคมีรายเดือน", widgetType: "BAR_CHART", metricType: "AVG", targetType: "PARAMETER", targetColumn: null, cardColor: "blue", width: 6 },
     });
     await prisma.dashboardWidget.create({
-        data: { title: "สหสัมพันธ์แนวโน้มปริมาณน้ำฝนสะสม", widgetType: "LINE_CHART", metricType: "AVG", targetType: "ENVIRONMENT", targetColumn: "rain_accumulation", cardColor: "blue", w: 12 },
+        data: { title: "สหสัมพันธ์แนวโน้มปริมาณน้ำฝนสะสม", widgetType: "LINE_CHART", metricType: "AVG", targetType: "ENVIRONMENT", targetColumn: "rain_accumulation", cardColor: "blue", width: 12 },
     });
 
     // ─── 5. USERS SEEDING ───

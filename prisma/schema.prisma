@@ -217,7 +217,9 @@ model SampleRecord {
   collectorNameCurrentId   Int?        @map("collector_name_current_id")
   
   // Snapshot ข้อมูลสถานที่
+  // ชื่อสถานี/หน่วยงาน เก็บค่า ณ วันที่บันทึก ส่วน CurrentId ชี้กลับไปยังสถานีจริงที่อาจถูกแก้ไขภายหลัง
   locationNameFrom         String?     @map("location_name_from")
+  governingAgencyFrom      String?     @map("governing_agency_from")
   locationNameCurrentId    Int?        @map("location_name_current_id")
   
   collectionTime           DateTime    @map("collection_time")
@@ -294,7 +296,7 @@ model DashboardWidget {
   filterValue  String?    @map("filter_value")
   unit         String?    @map("unit")
   cardColor    String     @default("blue") @map("card_color")
-  w            Int        @default(3)
+  width        Int        @default(3) // ความกว้างกริดของการ์ด นับเป็นช่องจาก 12 ช่อง
   isActive     Boolean    @default(true) @map("is_active")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")

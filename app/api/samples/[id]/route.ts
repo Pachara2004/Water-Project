@@ -349,7 +349,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 location: {
                     id: sampleRecord.locationNameCurrentId,
                     stationName: sampleRecord.locationNameFrom,
-                    governingAgency: "-",
+                    // อ่านจาก snapshot ไม่ใช่จากตาราง Location ปัจจุบัน เพื่อให้ประวัติคงค่า ณ วันที่บันทึกไว้
+                    // เป็น "-" ได้เมื่อสถานีไม่ได้ระบุหน่วยงาน หรือเป็นเรคคอร์ดเก่าก่อนมีคอลัมน์นี้ที่ backfill ไม่ถึง
+                    governingAgency: sampleRecord.governingAgencyFrom || "-",
                     latitude: 0,
                     longitude: 0,
                 },
