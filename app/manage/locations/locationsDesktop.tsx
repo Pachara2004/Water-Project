@@ -59,7 +59,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
             <PageHeader title="จัดการจุดตรวจวัดน้ำ" onBack={() => router.back()} />
 
-            <div className="w-full max-w-[1600px] mx-auto px-8 pt-8 space-y-5">
+            <div className="w-full max-w-400 mx-auto p-4 space-y-5">
                 {/* ─── ส่วนฟอร์มเพิ่มสถานีใหม่ (Add New Form Card) — ฟิลด์ซ้าย/แผนที่ขวา ─── */}
                 <div className="bg-surface rounded-2xl p-6 border border-border">
                     <div className="flex items-start gap-3">
@@ -67,7 +67,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             <MapPinPlus size={20} />
                         </div>
                         <div className="transition-colors duration-300">
-                            <h1 className="text-lg font-bold text-text-primary leading-tight">
+                            <h1 className="text-lg font-medium text-text-primary leading-tight">
                                 ตั้งค่าจุดตรวจ<span className="text-primary">สถานี</span>
                             </h1>
                             <p className="text-text-secondary text-xs leading-relaxed mt-1">กำหนดตำแหน่งพิกัดจุดเก็บตัวอย่างน้ำเพื่อการวิเคราะห์ทางวิทยาศาสตร์ร่วมกับแผนที่ระบบ</p>
@@ -79,7 +79,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                         <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 h-full">
                             {/* 1. ช่องค้นหาชื่อสถานที่ (OSM Nominatim) */}
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-text-primary flex items-center gap-1.5 uppercase tracking-wide">
+                                <label className="text-xs font-medium text-text-primary flex items-center gap-1.5 uppercase tracking-wide">
                                     <Search size={13} className="text-primary" />
                                     ค้นหาสถานที่ใกล้เคียง
                                 </label>
@@ -118,7 +118,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             {/* 2. ช่องกรอก Lat / Lng แบบพิมพ์เอง */}
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="text-xs font-bold text-text uppercase tracking-wider block mb-1">LATITUDE</label>
+                                    <label className="text-xs font-medium text-text uppercase tracking-wider block mb-1">LATITUDE</label>
                                     <input
                                         type="number"
                                         step="any"
@@ -129,7 +129,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-text uppercase tracking-wider block mb-1">LONGITUDE</label>
+                                    <label className="text-xs font-medium text-text uppercase tracking-wider block mb-1">LONGITUDE</label>
                                     <input
                                         type="number"
                                         step="any"
@@ -142,7 +142,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">ชื่อจุดเก็บตัวอย่าง</label>
+                                <label className="text-xs font-medium text-text-primary block uppercase tracking-wide">ชื่อจุดเก็บตัวอย่าง</label>
                                 <input
                                     type="text"
                                     value={name}
@@ -154,7 +154,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
 
                             {/* Dropdown หน่วยงาน */}
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">หน่วยงานที่รับผิดชอบ</label>
+                                <label className="text-xs font-medium text-text-primary block uppercase tracking-wide">หน่วยงานที่รับผิดชอบ</label>
                                 <div className="relative org-dropdown-container" onClick={(e) => e.stopPropagation()}>
                                     <input
                                         type="text"
@@ -194,7 +194,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                                     setOrgSearch("");
                                                     setOrgDropdownOpen(false);
                                                 }}
-                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1"
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1"
                                             >
                                                 <Plus size={13} className="shrink-0" />
                                                 เพิ่มหน่วยงานใหม่...
@@ -215,7 +215,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             </div>
 
                             {pickedPosition ? (
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary bg-surface-subtle border border-border w-fit py-1.5 px-3 rounded-md">
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary bg-surface-subtle border border-border w-fit py-1.5 px-3 rounded-md">
                                     <MapPinned size={12} className="text-text-muted" />
                                     LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
                                 </div>
@@ -227,7 +227,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             <button
                                 onClick={handleSubmit}
                                 disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim())}
-                                className="w-full mt-auto py-3 min-h-11 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed shrink-0"
+                                className="w-full mt-auto py-3 min-h-11 bg-primary hover:bg-primary/95 text-white font-medium rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed shrink-0"
                             >
                                 {saving ? (
                                     <>
@@ -245,7 +245,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
 
                         {/* ฝั่งขวา: แผนที่ปักหมุด — สูงเต็มคอลัมน์ให้จับตำแหน่งง่ายขึ้นบนจอกว้าง */}
                         <div className="col-span-12 lg:col-span-7 flex flex-col gap-2 h-full">
-                            <label className="text-xs font-bold text-text-primary flex items-center gap-1.5 uppercase tracking-wide shrink-0">
+                            <label className="text-xs font-medium text-text-primary flex items-center gap-1.5 uppercase tracking-wide shrink-0">
                                 <MapPin size={13} className="text-text-secondary" />
                                 ปักหมุดภูมิศาสตร์บนแผนที่
                             </label>
@@ -261,10 +261,10 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                     <div className="flex items-center justify-between pt-1 px-1">
                         <div className="inline-flex items-center gap-1.5">
                             <FileText size={18} className="text-primary" />
-                            <h2 className="text-sm text-primary font-bold tracking-wider uppercase">สถานีตรวจวัดในระบบ</h2>
+                            <h2 className="text-sm text-primary font-medium tracking-wider uppercase">สถานีตรวจวัดในระบบ</h2>
                         </div>
                         {/* นับตามผลค้นหาที่กำลังแสดงจริง ไม่ใช่จำนวนทั้งหมด — ไม่งั้นตัวเลขเพี้ยนเมื่อพิมพ์ค้นหา */}
-                        <span className="text-xs font-bold text-primary  px-2.5 py-1">{filteredLocations.length} สถานี</span>
+                        <span className="text-xs font-medium text-primary  px-2.5 py-1">{filteredLocations.length} สถานี</span>
                     </div>
 
                     {/* ช่องค้นหาสถานีสไตล์เดียวกับหน้ารายการน้ำ */}

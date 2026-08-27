@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, MapPin, Pencil, Trash2, Check } from "lucide-react";
+import { Building2, Pencil, Trash2, Check } from "lucide-react";
 import Popup from "@/components/Popup";
 
 export interface LocationItem {
@@ -11,30 +11,70 @@ export interface LocationItem {
     lng: number;
 }
 
+function MapThumbnail({ lat, lng }: { lat: number; lng: number }) {
+    const zoom = 11;
+    const n = Math.pow(2, zoom);
+    const exactX = ((lng + 180) / 360) * n;
+    const latRad = (lat * Math.PI) / 180;
+    const exactY = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+    
+    const x = Math.floor(exactX);
+    const y = Math.floor(exactY);
+
+    const pixelX = (exactX - x) * 256;
+    const pixelY = (exactY - y) * 256;
+
+    // เพื่อให้หมุดอยู่ตรงกลางเป๊ะ และไม่มีขอบขาว เราจะโหลดรูป Tile 4 รูป (2x2 grid) มาต่อกันอัตโนมัติ
+    const xDir = pixelX < 128 ? -1 : 1;
+    const yDir = pixelY < 128 ? -1 : 1;
+
+    const getTileUrl = (zx: number, zy: number) => `https://a.tile.openstreetmap.org/${zoom}/${zx}/${zy}.png`;
+
+    const tiles = [
+        { url: getTileUrl(x, y), dx: 0, dy: 0 },
+        { url: getTileUrl(x + xDir, y), dx: xDir * 256, dy: 0 },
+        { url: getTileUrl(x, y + yDir), dx: 0, dy: yDir * 256 },
+        { url: getTileUrl(x + xDir, y + yDir), dx: xDir * 256, dy: yDir * 256 },
+    ];
+
+    const offsetX = pixelX - 128;
+    const offsetY = pixelY - 128;
+
+    return (
+        <div 
+            className="w-24 shrink-0 relative bg-surface-subtle border-r border-primary overflow-hidden shadow-[inset_0_0_12px_rgba(0,0,0,0.08)] after:absolute after:inset-0 after:shadow-[inset_0_0_12px_rgba(0,0,0,0.08)] after:pointer-events-none"
+            style={{
+                backgroundImage: tiles.map(t => `url(${t.url})`).join(", "),
+                backgroundPosition: tiles.map(t => `calc(50% - ${offsetX - t.dx}px) calc(50% - ${offsetY - t.dy}px)`).join(", "),
+                backgroundRepeat: "no-repeat, no-repeat, no-repeat, no-repeat",
+                backgroundSize: "256px 256px, 256px 256px, 256px 256px, 256px 256px"
+            }}
+        >
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm box-content" />
+        </div>
+    );
+}
+
 export function StationListRow({ loc, deletingId, onEdit, onDelete }: { loc: LocationItem; deletingId: number | null; onEdit: (loc: LocationItem) => void; onDelete: (loc: LocationItem) => void }) {
     return (
-        <div className="bg-surface rounded-2xl p-3.5 border border-border flex items-center justify-between gap-4 transition-all hover:scale-[1.005] duration-150 min-w-0">
-            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <div className="bg-card-general rounded-xl border-2 border-border  flex items-stretch transition-all hover:scale-[1.005] duration-150 min-w-0 overflow-hidden">
+            <MapThumbnail lat={loc.lat} lng={loc.lng} />
+            
+            <div className="flex items-center justify-between gap-4 p-4 min-w-0 flex-1">
                 <div className="flex-1 min-w-0 text-left">
-                    <div className="gap-2 flex">
-                        <MapPin size={16} />
-                        <h4 className="font-bold text-sm text-text-primary truncate">{loc.name}</h4>
+                    <div className="gap-2 flex items-center">
+                        <h4 className="font-semibold text-sm text-text-primary truncate">{loc.name}</h4>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-text-secondary font-medium">
                         <div className="flex items-center gap-2 min-w-0 max-w-35 sm:max-w-none">
                             <Building2 size={16} className="text-secondary shrink-0" />
                             <span className="truncate font-semibold text-secondary">{loc.organization}</span>
                         </div>
-                        <span className="text-text-muted/30 hidden sm:inline">•</span>
-                        <span className="text-text-muted text-xs bg-surface-subtle px-1.5 py-0.5 rounded-md border border-border font-mono font-semibold">
-                            {loc.lat.toFixed(4)} , {loc.lng.toFixed(4)}
-                        </span>
                     </div>
                 </div>
-            </div>
 
-            {/* กลุ่มปุ่มจัดการด้านขวามือสไตล์ Rounded-xl กระชับ */}
-            <div className="flex gap-2 shrink-0">
+                {/* กลุ่มปุ่มจัดการด้านขวามือสไตล์ Rounded-xl กระชับ */}
+                <div className="flex gap-2 shrink-0">
                 <button
                     onClick={() => onEdit(loc)}
                     className="w-9 h-9 bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
@@ -52,6 +92,7 @@ export function StationListRow({ loc, deletingId, onEdit, onDelete }: { loc: Loc
                         <Trash2 size={16} className="text-text-muted group-hover:text-red-500" />
                     )}
                 </button>
+                </div>
             </div>
         </div>
     );
