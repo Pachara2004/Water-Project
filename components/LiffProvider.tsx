@@ -5,8 +5,8 @@ import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { ShieldAlert, User, Send, ArrowLeft } from "lucide-react";
 import { useToast } from "./useToast";
+import LiffBackground from "@/components/LiffBackground"; // <-- 1. Import พื้นหลังเข้ามา
 
-// โครงสร้างสำหรับเก็บสถานะ Realtime Validation แยกฟิลด์
 interface FieldErrors {
     firstName?: string;
     lastName?: string;
@@ -20,24 +20,20 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
     const currentUser = useAppStore((state) => state.currentUser);
     const setUser = useAppStore((state) => state.setUser);
 
-    // ─── Flow & Onboarding States ───
-    const [step, setStep] = useState<1 | 2>(1); // Step 1: Info, Step 2: Select Role
+    const [step, setStep] = useState<1 | 2>(1);
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
-    const [selectedRole, setSelectedRole] = useState<string>(""); // เก็บบทบาทที่ต้องการร้องขอ
+    const [selectedRole, setSelectedRole] = useState<string>("");
     const [submitting, setSubmitting] = useState(false);
 
-    // จัดการระบบ Realtime Validation แยกส่วนย่อย
     const [errors, setErrors] = useState<FieldErrors>({});
     const [globalError, setGlobalError] = useState<string | null>(null);
 
     useEffect(() => {
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
 
-        // ─── ท่อนพัฒนา/MOCK SYSTEM ───
         if (!liffId) {
-            console.warn("NEXT_PUBLIC_LIFF_ID is not set. Authenticating mock user...");
             fetch("/api/auth", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -47,7 +43,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 }),
             })
                 .then((res) => res.json())
-                .then((resData) => {
+                .then(() => {
                     setUser(null);
                     setLiffLoaded(true);
                 })
@@ -59,7 +55,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             return;
         }
 
-        // ─── ท่อนเชื่อมต่อ LINE LIFF PRODUCTION ───
         liff.init({ liffId })
             .then(async () => {
                 if (liff.isLoggedIn()) {
@@ -84,8 +79,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 try {
                     liff.login();
                 } catch (loginErr) {
-                    // เวย์นี้เกิดขึ่นเมื่อ User กดย้อนกลับ / ปฏิเสธการล็อกอิน / ปิดหน้าต่างล็อกอิน
-                    // ระบบจะไม่ค้าง และไม่เด้งซ้ำ แต่จะปล่อยให้เป็น Guest เข้าไปใช้งานหน้าแอปต่อได้เลย
                     console.warn("User cancelled or login failed, proceeding as guest", loginErr);
                     setUser(null);
                     setLiffLoaded(true);
@@ -93,51 +86,28 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             })
             .catch((err) => {
                 console.error("LIFF init error", err);
-                // เผื่อกรณี liff init พัง ก็ปล่อยให้ใช้งานแบบ Guest ได้เช่นกันครับ
                 setUser(null);
                 setLiffLoaded(true);
             })
             .finally(() => {
-                // ทับ color-scheme ที่เราตั้งไว้ก่อนหน้าไปด้วยเสมอ ไม่ว่า init จะสำเร็จหรือพัง จึงต้องตั้งค่าซ้ำทุกครั้งที่นี่
-                // อ่านจาก localStorage ตรงๆ (ไม่ใช่ store.theme) เพราะตอนนี้ children ของ LiffProvider (รวม ThemeToggle
                 const isDark = typeof window !== "undefined" && localStorage.getItem("theme") === "dark";
                 useAppStore.getState().setTheme(isDark ? "dark" : "light");
             });
     }, [setUser]);
 
-    // ─── Realtime Validation Logic (Enterprise Standard) ───
-    const validateField = (name: keyof FieldErrors, value: string, currentContext = { firstName, lastName, phoneNumber }) => {
+    const validateField = (name: keyof FieldErrors, value: string) => {
         let errorMsg = "";
         const cleanVal = value.trim();
-
         const nameRegex = /^[A-Za-z]+$/;
         const nameThaiRegex = /^[ก-์]+$/;
 
-        if (name === "firstName") {
+        if (name === "firstName" || name === "lastName") {
             if (!cleanVal) {
-                errorMsg = "กรุณากรอกชื่อจริง";
+                errorMsg = name === "firstName" ? "กรุณากรอกชื่อจริง" : "กรุณากรอกนามสกุล";
             } else if (cleanVal.length < 2) {
                 errorMsg = "ต้องยาวอย่างน้อย 2 ตัวอักษร";
             } else if (!nameRegex.test(cleanVal) && !nameThaiRegex.test(cleanVal)) {
                 errorMsg = "ใช้ได้เฉพาะ ไทย หรือ อังกฤษ ล้วน";
-            } else if (nameThaiRegex.test(cleanVal) && /^([ก-ฮ])\1{2,}$/.test(cleanVal)) {
-                errorMsg = "รูปแบบตัวอักษรซ้ำไม่ถูกต้อง";
-            } else if (nameRegex.test(cleanVal) && (/([A-Za-z])\1{2,}/.test(cleanVal) || /asdf|qwerty|zxcv/i.test(cleanVal))) {
-                errorMsg = "รูปแบบอักษรไม่เหมาะสม";
-            }
-        }
-
-        if (name === "lastName") {
-            if (!cleanVal) {
-                errorMsg = "กรุณากรอกนามสกุล";
-            } else if (cleanVal.length < 2) {
-                errorMsg = "ต้องยาวอย่างน้อย 2 ตัวอักษร";
-            } else if (!nameRegex.test(cleanVal) && !nameThaiRegex.test(cleanVal)) {
-                errorMsg = "ใช้ได้เฉพาะ ไทย หรือ อังกฤษ ล้วน";
-            } else if (nameThaiRegex.test(cleanVal) && /^([ก-ฮ])\1{2,}$/.test(cleanVal)) {
-                errorMsg = "รูปแบบตัวอักษรซ้ำไม่ถูกต้อง";
-            } else if (nameRegex.test(cleanVal) && (/([A-Za-z])\1{2,}/.test(cleanVal) || /asdf|qwerty|zxcv/i.test(cleanVal))) {
-                errorMsg = "รูปแบบอักษรไม่เหมาะสม";
             }
         }
 
@@ -148,10 +118,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 errorMsg = "ต้องเป็นตัวเลขครบ 10 หลัก";
             } else if (!/^(06|08|09)/.test(cleanVal)) {
                 errorMsg = "ต้องขึ้นต้นด้วย 06, 08 หรือ 09";
-            } else if (/^(\d)\1{9}$/.test(cleanVal)) {
-                errorMsg = "ไม่รองรับเลขซ้ำล้วน";
-            } else if ("01234567890987654321".includes(cleanVal)) {
-                errorMsg = "ไม่รองรับเลขเรียงกันกระชั้นชิด";
             }
         }
 
@@ -159,23 +125,12 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         return !errorMsg;
     };
 
-    // จัดการเมื่อเปลี่ยนหน้า Step 1 -> 2
     const handleNextStep = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!validateField("firstName", firstName) || !validateField("lastName", lastName) || !validateField("phoneNumber", phoneNumber)) return;
 
-        // ทริกเกอร์เช็คซ้ำรอบสุดท้ายก่อนข้ามขั้นตอน
-        const isFirstValid = validateField("firstName", firstName);
-        const isLastValid = validateField("lastName", lastName);
-        const isPhoneValid = validateField("phoneNumber", phoneNumber);
-
-        if (!isFirstValid || !isLastValid || !isPhoneValid) return;
-
-        // เช็คข้ามสายพันธุ์ (ภาษาไทยผสมอังกฤษ)
         const nameThaiRegex = /^[ก-์]+$/;
-        const isFirstThai = nameThaiRegex.test(firstName.trim());
-        const isLastThai = nameThaiRegex.test(lastName.trim());
-
-        if (firstName.trim() && lastName.trim() && isFirstThai !== isLastThai) {
+        if (firstName.trim() && lastName.trim() && nameThaiRegex.test(firstName.trim()) !== nameThaiRegex.test(lastName.trim())) {
             setGlobalError("กรุณาใช้ภาษาเดียวกันทั้งชื่อและนามสกุล");
             return;
         }
@@ -184,14 +139,9 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         setStep(2);
     };
 
-    // จัดการเมื่อส่งคำร้องขั้นสุดท้าย
     const handleFinalSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser) return;
-        if (!selectedRole) {
-            setGlobalError("กรุณาเลือกตำแหน่งระบบที่ท่านต้องการส่งคำร้องขอสิทธิ์");
-            return;
-        }
+        if (!currentUser || !selectedRole) return;
 
         setSubmitting(true);
         setGlobalError(null);
@@ -218,28 +168,26 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
             const resData = await res.json();
             if (resData.success) {
-                // แจ้งเตือนความสำเร็จเมื่อส่งคำร้องสำเร็จเรียบร้อย
                 showToast("ส่งคำร้องขอเข้าระบบเรียบร้อยแล้ว รอการอนุมัติ", "success");
                 setUser(resData.user);
             }
         } catch (err: unknown) {
             const errMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
             setGlobalError(errMsg);
-
-            // แจ้งเตือนฝั่ง Error แดงในกรณีที่ระบบหลังบ้านหรือเน็ตเวิร์กมีปัญหา
             showToast(errMsg, "danger");
         } finally {
             setSubmitting(false);
         }
     };
 
-    // ช่วยคำนวณปุ่มเปิดปิด
     const isFormInvalid = !firstName.trim() || !lastName.trim() || phoneNumber.length < 10 || !!errors.firstName || !!errors.lastName || !!errors.phoneNumber;
 
+    // ─── 1. ตอนกำลังโหลด LIFF ───
     if (!liffLoaded) {
         return (
-            <div className="flex h-screen w-full items-center justify-center bg-surface-muted">
-                <div className="flex flex-col items-center">
+            <div className="relative flex h-screen w-full items-center justify-center bg-bg">
+                <LiffBackground />
+                <div className="flex flex-col items-center z-10">
                     <div className="h-9 w-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                     <p className="mt-4 text-primary font-semibold text-md uppercase tracking-widest animate-pulse">
                         กำลังเชื่อมต่อ<span className="text-text-safe">ระบบ</span>
@@ -249,10 +197,12 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         );
     }
 
+    // ─── 2. ตอนเกิด LIFF Error ───
     if (liffError) {
         return (
-            <div className="flex h-screen w-full items-center justify-center p-4 bg-card-general">
-                <div className="rounded-2xl bg-surface border border-border/60 p-6 text-center shadow-lg max-w-sm w-full">
+            <div className="relative flex h-screen w-full items-center justify-center p-4">
+                <LiffBackground />
+                <div className="rounded-2xl bg-white/90 backdrop-blur-md border border-border/60 p-6 text-center shadow-lg max-w-sm w-full z-10">
                     <ShieldAlert className="w-12 h-12 text-text-danger mx-auto mb-4" />
                     <p className="font-black text-text-primary text-sm">เกิดข้อผิดพลาดในการโหลดระบบ</p>
                     <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">{liffError}</p>
@@ -261,11 +211,15 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         );
     }
 
+    // ─── 3. หน้าลงทะเบียน Onboarding ───
     if (currentUser && !currentUser.phoneNumber) {
         return (
-            <div className="fixed inset-0 z-2000 flex items-center justify-center p-4 sm:p-6 transition-all bg-bg">
-                <div className="bg-card-general w-full max-w-md rounded-2xl border border-border/60 p-6 sm:p-8 inset-shadow-sm shadow-sm flex flex-col justify-between animate-fade-in">
-                    {/* STEP 1: หน้าข้อมูลส่วนบุคคลแบบ Realtime Validation */}
+            <div className="fixed inset-0 z-2000 flex items-center justify-center p-4 sm:p-6">
+                {/* ใส่พื้นหลัง SVG */}
+                <LiffBackground />
+
+                {/* กล่อง Card แบบโปร่งเล็กน้อย (Backdrop blur) เพื่อความโมเดิร์นและตัดกับพื้นหลัง */}
+                <div className="bg-card-general w-full max-w-md rounded-2xl border border-border p-6 sm:p-8 shadow-lg flex flex-col justify-between animate-fade-in z-10">
                     {step === 1 && (
                         <>
                             <div className="text-center space-y-2.5">
@@ -273,136 +227,81 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                     <User size={56} strokeWidth={2} />
                                 </div>
                                 <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">ลงทะเบียนเข้าใช้งานครั้งแรก</h1>
-                                <p className="text-xs text-text leading-relaxed  mx-auto">กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำ</p>
+                                <p className="text-xs text-text leading-relaxed mx-auto">กรุณาระบุข้อมูลส่วนบุคคลของท่าน เพื่อใช้ตรวจสอบสิทธิ์และความปลอดภัยในการเข้าถึงฐานข้อมูลคุณภาพน้ำ</p>
                             </div>
 
                             <form onSubmit={handleNextStep} className="mt-6">
-                                {/* ช่องกรอกชื่อจริง */}
                                 <div className="space-y-1 pb-1">
                                     <div className="flex items-center justify-between">
                                         <label htmlFor="firstName" className="text-xs font-semibold text-primary block">
-                                            ชื่อจริง{" "}
-                                            <span className="text-text-danger" aria-hidden="true">
-                                                *
-                                            </span>
+                                            ชื่อจริง <span className="text-text-danger">*</span>
                                         </label>
-                                        {/* ตัวนับอักษร: เปลี่ยนเป็นสีแดงเมื่อครบ 50 ตัว */}
-                                        <span className={`text-xs font-semibold transition-colors ${firstName.length >= 50 ? "text-text-danger font-semibold" : "text-text-muted"}`}>
-                                            {firstName.length}/50
-                                        </span>
+                                        <span className={`text-xs font-semibold ${firstName.length >= 50 ? "text-text-danger" : "text-text-muted"}`}>{firstName.length}/50</span>
                                     </div>
-                                    <div className="relative">
-                                        <input
-                                            id="firstName"
-                                            type="text"
-                                            maxLength={50} // ล็อกไม่ให้พิมพ์เกิน 50 ตัว
-                                            value={firstName}
-                                            onChange={(e) => {
-                                                setFirstName(e.target.value);
-                                                validateField("firstName", e.target.value);
-                                            }}
-                                            placeholder="กรอกชื่อ"
-                                            required
-                                            aria-invalid={!!errors.firstName}
-                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
-                                        />
-                                    </div>
-                                    <div className="h-4 flex items-center">
-                                        {errors.firstName && (
-                                            <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
-                                                {errors.firstName}
-                                            </p>
-                                        )}
-                                    </div>
+                                    <input
+                                        id="firstName"
+                                        type="text"
+                                        maxLength={50}
+                                        value={firstName}
+                                        onChange={(e) => {
+                                            setFirstName(e.target.value);
+                                            validateField("firstName", e.target.value);
+                                        }}
+                                        placeholder="กรอกชื่อ"
+                                        required
+                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-white"
+                                    />
+                                    <div className="h-4 flex items-center">{errors.firstName && <p className="text-xs text-text-danger">{errors.firstName}</p>}</div>
                                 </div>
 
-                                {/* ช่องกรอกนามสกุล */}
                                 <div className="space-y-1 pb-1">
                                     <div className="flex items-center justify-between">
                                         <label htmlFor="lastName" className="text-xs font-semibold text-primary block">
-                                            นามสกุล{" "}
-                                            <span className="text-text-danger" aria-hidden="true">
-                                                *
-                                            </span>
+                                            นามสกุล <span className="text-text-danger">*</span>
                                         </label>
-                                        {/* ตัวนับอักษร: เปลี่ยนเป็นสีแดงเมื่อครบ 50 ตัว */}
-                                        <span className={`text-xs font-semibold transition-colors ${lastName.length >= 50 ? "text-text-danger font-semibold" : "text-text-muted"}`}>
-                                            {lastName.length}/50
-                                        </span>
+                                        <span className={`text-xs font-semibold ${lastName.length >= 50 ? "text-text-danger" : "text-text-muted"}`}>{lastName.length}/50</span>
                                     </div>
-                                    <div className="relative">
-                                        <input
-                                            id="lastName"
-                                            type="text"
-                                            maxLength={50} // ล็อกไม่ให้พิมพ์เกิน 50 ตัว
-                                            value={lastName}
-                                            onChange={(e) => {
-                                                setLastName(e.target.value);
-                                                validateField("lastName", e.target.value);
-                                            }}
-                                            placeholder="กรอกนามสกุล"
-                                            required
-                                            aria-invalid={!!errors.lastName}
-                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
-                                        />
-                                    </div>
-                                    <div className="h-4 flex items-center">
-                                        {errors.lastName && (
-                                            <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
-                                                {errors.lastName}
-                                            </p>
-                                        )}
-                                    </div>
+                                    <input
+                                        id="lastName"
+                                        type="text"
+                                        maxLength={50}
+                                        value={lastName}
+                                        onChange={(e) => {
+                                            setLastName(e.target.value);
+                                            validateField("lastName", e.target.value);
+                                        }}
+                                        placeholder="กรอกนามสกุล"
+                                        required
+                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-white"
+                                    />
+                                    <div className="h-4 flex items-center">{errors.lastName && <p className="text-xs text-text-danger">{errors.lastName}</p>}</div>
                                 </div>
 
-                                {/* ช่องกรอกเบอร์โทรศัพท์ */}
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
                                         <label htmlFor="phoneNumber" className="text-xs font-semibold text-primary block">
-                                            เบอร์โทรศัพท์มือถือ{" "}
-                                            <span className="text-text-danger" aria-hidden="true">
-                                                *
-                                            </span>
+                                            เบอร์โทรศัพท์มือถือ <span className="text-text-danger">*</span>
                                         </label>
-                                        {/* ตัวนับอักษร: เปลี่ยนเป็นสีแดงเมื่อครบ 10 ตัว */}
-                                        <span className={`text-xs font-semibold transition-colors ${phoneNumber.length >= 10 ? "text-text-danger font-semibold" : "text-text-muted"}`}>
-                                            {phoneNumber.length}/10
-                                        </span>
+                                        <span className={`text-xs font-semibold ${phoneNumber.length >= 10 ? "text-text-danger" : "text-text-muted"}`}>{phoneNumber.length}/10</span>
                                     </div>
-                                    <div className="relative">
-                                        <input
-                                            id="phoneNumber"
-                                            type="tel"
-                                            maxLength={10} // ล็อกไม่ให้พิมพ์เกิน 10 ตัว
-                                            value={phoneNumber}
-                                            onChange={(e) => {
-                                                const numericVal = e.target.value.replace(/[^0-9]/g, "");
-                                                setPhoneNumber(numericVal);
-                                                validateField("phoneNumber", numericVal);
-                                            }}
-                                            placeholder="0XXXXXXXXX"
-                                            required
-                                            aria-invalid={!!errors.phoneNumber}
-                                            className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold"
-                                        />
-                                    </div>
-                                    <div className="h-4 flex items-center">
-                                        {errors.phoneNumber && (
-                                            <p role="alert" className="text-xs text-text-danger flex items-center gap-1">
-                                                {errors.phoneNumber}
-                                            </p>
-                                        )}
-                                    </div>
+                                    <input
+                                        id="phoneNumber"
+                                        type="tel"
+                                        maxLength={10}
+                                        value={phoneNumber}
+                                        onChange={(e) => {
+                                            const numericVal = e.target.value.replace(/[^0-9]/g, "");
+                                            setPhoneNumber(numericVal);
+                                            validateField("phoneNumber", numericVal);
+                                        }}
+                                        placeholder="0XXXXXXXXX"
+                                        required
+                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-white"
+                                    />
+                                    <div className="h-4 flex items-center">{errors.phoneNumber && <p className="text-xs text-text-danger">{errors.phoneNumber}</p>}</div>
                                 </div>
 
-                                {/* จองบล็อกสำหรับความปลอดภัยภายนอก (Global Error เช่น ชื่อผสมสองภาษา) */}
-                                <div className="h-5 flex items-center justify-center">
-                                    {globalError && (
-                                        <div role="alert" className="text-xs text-text-danger flex items-center">
-                                            <span>{globalError}</span>
-                                        </div>
-                                    )}
-                                </div>
+                                <div className="h-5 flex items-center justify-center">{globalError && <span className="text-xs text-text-danger">{globalError}</span>}</div>
 
                                 <div className="pt-2 justify-center flex">
                                     <button
@@ -417,7 +316,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                         </>
                     )}
 
-                    {/* STEP 2: หน้าเลือก ROLE คำร้องขอเข้าระบบ */}
                     {step === 2 && (
                         <>
                             <form onSubmit={handleFinalSubmit} className="mt-6 space-y-4">
@@ -428,8 +326,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                     <div className="space-y-3 mt-2">
                                         <div
                                             onClick={() => setSelectedRole("collector")}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                                selectedRole === "collector" ? "bg-secondary/10 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-white/70 ${
+                                                selectedRole === "collector" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-border-hover"
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -439,7 +337,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                                     {selectedRole === "collector" && <div className="w-2 h-2 rounded-full bg-primary" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-black text-text">เจ้าหน้าที่ภาคสนาม (Collector)</p>
+                                                    <p className="text-sm font-semibold text-text">เจ้าหน้าที่ภาคสนาม (Collector)</p>
                                                     <p className="text-xs text-secondary mt-1">สิทธิ์สำหรับผู้จัดเก็บข้อมูล, ตรวจวัดค่าสารเคมี และทำการอัปโหลดผลน้ำเข้าสู่ฐานข้อมูล</p>
                                                 </div>
                                             </div>
@@ -447,8 +345,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                                         <div
                                             onClick={() => setSelectedRole("officer")}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                                selectedRole === "officer" ? "bg-secondary/10 border-secondary shadow-xs" : " border-border/80 hover:border-border-hover"
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-white/70 ${
+                                                selectedRole === "officer" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-border-hover"
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -458,8 +356,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                                     {selectedRole === "officer" && <div className="w-2 h-2 rounded-full bg-primary" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-text">เจ้าหน้าที่สารสนเทศ/บริหาร (Officer)</p>
-                                                    <p className="text-xs text-secondary mt-1 ">สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยของคุณภาพน้ำ</p>
+                                                    <p className="text-sm font-semibold text-text">เจ้าหน้าที่ส่วนกลาง (Officer)</p>
+                                                    <p className="text-xs text-secondary mt-1">สิทธิ์สำหรับผู้อ่านรายงานวิเคราะห์เชิงลึก สรุปสถิติมลพิษทางน้ำ และดูแดชบอร์ดความปลอดภัยของคุณภาพน้ำ</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -468,7 +366,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                                 <div className="h-5 flex items-center justify-center">
                                     {globalError && (
-                                        <div role="alert" className="text-xs text-red-500 font-extrabold flex items-center gap-2">
+                                        <div className="text-xs text-red-500 font-extrabold flex items-center gap-2">
                                             <ShieldAlert size={12} className="shrink-0" />
                                             <span>{globalError}</span>
                                         </div>
@@ -482,14 +380,14 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                             setStep(1);
                                             setGlobalError(null);
                                         }}
-                                        className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-text font-semibold rounded-xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-text font-semibold rounded-xl text-xs tracking-widest transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
                                         <ArrowLeft size={14} /> ย้อนกลับ
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={submitting || !selectedRole}
-                                        className="w-full h-11 bg-primary hover:bg-[#054E62] text-white font-semibold rounded-xl text-xs uppercase tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        className="w-full h-11 bg-primary hover:bg-[#054E62] text-white font-semibold rounded-xl text-xs tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
                                         {submitting ? (
                                             <>
