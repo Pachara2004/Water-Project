@@ -3,6 +3,7 @@
 import { MapPin, MapPinPlus, MapPinned, Building2, Save, Plus, Search, FileText } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { StationListRow, LocationEditDrawer } from "@/components/manage/locationsHelpers";
+import { ThaiAddressSelector } from "@/components/manage/ThaiAddressSelector";
 import type { LocationsPageProps } from "./locationsMobile";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ — เรียงการ์ดแนวตั้งเหมือน mobile (ฟอร์มบน รายการล่าง)
@@ -83,7 +84,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                     <Search size={13} className="text-primary" />
                                     ค้นหาสถานที่ใกล้เคียง
                                 </label>
-                                <div className="relative">
+                                <div className="relative place-dropdown-container">
                                     <input
                                         type="text"
                                         value={placeSearch}
@@ -213,6 +214,14 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                     />
                                 )}
                             </div>
+
+                            <ThaiAddressSelector 
+                                province={props.province} setProvince={props.setProvince}
+                                district={props.district} setDistrict={props.setDistrict}
+                                subdistrict={props.subdistrict} setSubdistrict={props.setSubdistrict}
+                                zipcode={props.zipcode} setZipcode={props.setZipcode}
+                                onGeocode={(lat, lng) => props.setPickedPosition({ lat, lng })}
+                            />
 
                             {pickedPosition ? (
                                 <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary bg-surface-subtle border border-border w-fit py-1.5 px-3 rounded-md">

@@ -3,12 +3,18 @@
 import { Building2, Pencil, Trash2, Check } from "lucide-react";
 import Popup from "@/components/Popup";
 
+import { ThaiAddressSelector } from "./ThaiAddressSelector";
+
 export interface LocationItem {
     id: number;
     name: string;
     organization: string;
     lat: number;
     lng: number;
+    province?: string | null;
+    district?: string | null;
+    subdistrict?: string | null;
+    zipcode?: string | null;
 }
 
 function MapThumbnail({ lat, lng }: { lat: number; lng: number }) {
@@ -70,6 +76,14 @@ export function StationListRow({ loc, deletingId, onEdit, onDelete }: { loc: Loc
                             <Building2 size={16} className="text-secondary shrink-0" />
                             <span className="truncate font-semibold text-secondary">{loc.organization}</span>
                         </div>
+                        {loc.province && (
+                            <>
+                                <span className="text-text-muted/30 hidden sm:inline">•</span>
+                                <span className="text-text-muted text-xs truncate">
+                                    {loc.district && `อ.${loc.district}, `}จ.{loc.province}
+                                </span>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -103,6 +117,14 @@ export function LocationEditDrawer({
     setEditName,
     editOrg,
     setEditOrg,
+    editProvince,
+    setEditProvince,
+    editDistrict,
+    setEditDistrict,
+    editSubdistrict,
+    setEditSubdistrict,
+    editZipcode,
+    setEditZipcode,
     editSaving,
     uniqueOrgs,
     onClose,
@@ -112,6 +134,14 @@ export function LocationEditDrawer({
     setEditName: (v: string) => void;
     editOrg: string;
     setEditOrg: (v: string) => void;
+    editProvince: string;
+    setEditProvince: (v: string) => void;
+    editDistrict: string;
+    setEditDistrict: (v: string) => void;
+    editSubdistrict: string;
+    setEditSubdistrict: (v: string) => void;
+    editZipcode: string;
+    setEditZipcode: (v: string) => void;
     editSaving: boolean;
     uniqueOrgs: string[];
     onClose: () => void;
@@ -164,6 +194,13 @@ export function LocationEditDrawer({
                             />
                         )}
                     </div>
+
+                    <ThaiAddressSelector 
+                        province={editProvince} setProvince={setEditProvince}
+                        district={editDistrict} setDistrict={setEditDistrict}
+                        subdistrict={editSubdistrict} setSubdistrict={setEditSubdistrict}
+                        zipcode={editZipcode} setZipcode={setEditZipcode}
+                    />
 
                     <button
                         onClick={onSave}
