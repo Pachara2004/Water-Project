@@ -208,7 +208,9 @@ export default function LocationsMobile(props: LocationsPageProps) {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">ชื่อจุดเก็บตัวอย่าง</label>
+                            <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                                ชื่อจุดเก็บตัวอย่าง <span className="text-text-danger">*</span>
+                            </label>
                             <input
                                 type="text"
                                 value={name}
@@ -220,7 +222,9 @@ export default function LocationsMobile(props: LocationsPageProps) {
 
                         {/* Dropdown หน่วยงาน */}
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">หน่วยงานที่รับผิดชอบ</label>
+                            <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                                หน่วยงานที่รับผิดชอบ <span className="text-text-danger">*</span>
+                            </label>
                             <div className="relative org-dropdown-container" onClick={(e) => e.stopPropagation()}>
                                 <input
                                     type="text"
@@ -292,26 +296,20 @@ export default function LocationsMobile(props: LocationsPageProps) {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-text-primary flex items-center gap-1.5 uppercase tracking-wide">
                                 <MapPin size={13} className="text-text-secondary" />
-                                ปักหมุดภูมิศาสตร์บนแผนที่
+                                ปักหมุดภูมิศาสตร์บนแผนที่ <span className="text-text-danger">*</span>
                             </label>
                             <div className="w-full h-104 rounded-xl overflow-hidden border border-border bg-surface-subtle relative z-0">
                                 <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} />
                             </div>
 
-                            {pickedPosition ? (
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary justify-center  py-1.5 px-3 rounded-md w-fit mt-2">
-                                    <MapPinned size={12} className="text-text-muted" />
-                                    LAT: {pickedPosition.lat.toFixed(6)} , LNG: {pickedPosition.lng.toFixed(6)}
-                                </div>
-                            ) : (
-                                <p className="text-xs text-text-muted italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
-                            )}
+                         
+                                <p className="text-xs text-text-danger italic mt-1.5">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
                         </div>
 
                         {/* ปุ่มบันทึกสถานี */}
                         <button
                             onClick={handleSubmit}
-                            disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim())}
+                            disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim()) || !props.province || !props.district || !props.subdistrict || !props.zipcode}
                             className="w-full mt-4 py-3 min-h-11 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
                         >
                             {saving ? (
@@ -368,6 +366,14 @@ export default function LocationsMobile(props: LocationsPageProps) {
                     setEditName={setEditName}
                     editOrg={editOrg}
                     setEditOrg={setEditOrg}
+                    editProvince={props.editProvince}
+                    setEditProvince={props.setEditProvince}
+                    editDistrict={props.editDistrict}
+                    setEditDistrict={props.setEditDistrict}
+                    editSubdistrict={props.editSubdistrict}
+                    setEditSubdistrict={props.setEditSubdistrict}
+                    editZipcode={props.editZipcode}
+                    setEditZipcode={props.setEditZipcode}
                     editSaving={editSaving}
                     uniqueOrgs={uniqueOrgs}
                     onClose={() => setEditingLoc(null)}

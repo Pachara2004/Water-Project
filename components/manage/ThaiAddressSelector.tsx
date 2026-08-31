@@ -98,12 +98,14 @@ export function ThaiAddressSelector({
         <>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">จังหวัด</label>
+                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                        จังหวัด <span className="text-text-danger">*</span>
+                    </label>
                     <div className="relative">
                         <select
                             value={province}
                             onChange={handleProvinceChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs  outline-none min-h-11 font-semibold appearance-none cursor-pointer"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer"
                             disabled={!tree}
                         >
                             <option value="">-- เลือกจังหวัด --</option>
@@ -113,12 +115,14 @@ export function ThaiAddressSelector({
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">อำเภอ/เขต</label>
+                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                        อำเภอ/เขต <span className="text-text-danger">*</span>
+                    </label>
                     <div className="relative">
                         <select
                             value={district}
                             onChange={handleDistrictChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
                             disabled={!province || districts.length === 0}
                         >
                             <option value="">-- เลือกอำเภอ --</option>
@@ -130,12 +134,14 @@ export function ThaiAddressSelector({
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">ตำบล/แขวง</label>
+                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                        ตำบล/แขวง <span className="text-text-danger">*</span>
+                    </label>
                     <div className="relative">
                         <select
                             value={subdistrict}
                             onChange={handleSubdistrictChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
                             disabled={!district || subdistricts.length === 0}
                         >
                             <option value="">-- เลือกตำบล --</option>
@@ -145,7 +151,9 @@ export function ThaiAddressSelector({
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">รหัสไปรษณีย์</label>
+                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                        รหัสไปรษณีย์ <span className="text-text-danger">*</span>
+                    </label>
                     <input 
                         type="text" 
                         value={zipcode} 
