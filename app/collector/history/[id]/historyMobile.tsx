@@ -180,13 +180,13 @@ export default function CollectorHistoryDetailMobile(props: any) {
                 </div>
                 {sample?.reviewStatus === "PENDING" ? (
                     <div className="flex flex-col items-end text-center shrink-0">
-                        <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center w-30 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
                             รอตรวจสอบ
                         </span>
                     </div>
                 ) : sample?.reviewStatus === "REJECTED" ? (
                     <div className="flex flex-col items-end text-center shrink-0">
-                        <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center w-30 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
                             ถูกปฏิเสธ
                         </span>
                     </div>

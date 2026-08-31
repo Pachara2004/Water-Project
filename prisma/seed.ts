@@ -199,21 +199,32 @@ async function main() {
 
     // ─── 7. LOCATIONS STATIONS ───
     console.log("📍 Creating coastal monitoring stations...");
+    // ที่อยู่ (จังหวัด/อำเภอ/ตำบล/รหัสไปรษณีย์) อ้างอิงพิกัดของแต่ละสถานี
+    // และตรวจสอบชื่อกับ public/data/thai_address.json ซึ่งเป็นแหล่งเดียวกับที่ ThaiAddressSelector ใช้
     const locationsPayload = [
-        { stationName: "ปากแม่น้ำบางปะกง", governingAgency: "กรมประมง", latitude: 13.4543, longitude: 100.9823 },
-        { stationName: "อ่าวศรีราชา", governingAgency: "กรมประมง", latitude: 13.1676, longitude: 100.9267 },
-        { stationName: "ท่าเรือแหลมฉบัง", governingAgency: "กรมควบคุมมลพิษ", latitude: 13.0833, longitude: 100.8833 },
-        { stationName: "หาดบางแสน", governingAgency: "กรมทรัพยากรทางทะเลและชายฝั่ง", latitude: 13.2833, longitude: 100.9333 },
-        { stationName: "เกาะสีชัง", governingAgency: "กรมเจ้าท่า", latitude: 13.1531, longitude: 100.8058 },
-        { stationName: "ปากแม่น้ำระยอง", governingAgency: "กรมประมง", latitude: 12.6833, longitude: 101.2667 },
-        { stationName: "อ่าวมาบตาพุด", governingAgency: "กรมควบคุมมลพิษ", latitude: 12.6833, longitude: 101.15 },
-        { stationName: "หาดจอมเทียน", governingAgency: "กรมทรัพยากรทางทะเลและชายฝั่ง", latitude: 12.8833, longitude: 100.9 },
+        { stationName: "ปากแม่น้ำบางปะกง", governingAgency: "กรมประมง", latitude: 13.4543, longitude: 100.9823, province: "ฉะเชิงเทรา", district: "บางปะกง", subdistrict: "ท่าข้าม", zipcode: "24130" },
+        { stationName: "อ่าวศรีราชา", governingAgency: "กรมประมง", latitude: 13.1676, longitude: 100.9267, province: "ชลบุรี", district: "ศรีราชา", subdistrict: "ศรีราชา", zipcode: "20110" },
+        { stationName: "ท่าเรือแหลมฉบัง", governingAgency: "กรมควบคุมมลพิษ", latitude: 13.0833, longitude: 100.8833, province: "ชลบุรี", district: "ศรีราชา", subdistrict: "ทุ่งสุขลา", zipcode: "20230" },
+        { stationName: "หาดบางแสน", governingAgency: "กรมทรัพยากรทางทะเลและชายฝั่ง", latitude: 13.2833, longitude: 100.9333, province: "ชลบุรี", district: "เมืองชลบุรี", subdistrict: "แสนสุข", zipcode: "20130" },
+        { stationName: "เกาะสีชัง", governingAgency: "กรมเจ้าท่า", latitude: 13.1531, longitude: 100.8058, province: "ชลบุรี", district: "เกาะสีชัง", subdistrict: "ท่าเทววงษ์", zipcode: "20120" },
+        { stationName: "ปากแม่น้ำระยอง", governingAgency: "กรมประมง", latitude: 12.6833, longitude: 101.2667, province: "ระยอง", district: "เมืองระยอง", subdistrict: "ปากน้ำ", zipcode: "21000" },
+        { stationName: "อ่าวมาบตาพุด", governingAgency: "กรมควบคุมมลพิษ", latitude: 12.6833, longitude: 101.15, province: "ระยอง", district: "เมืองระยอง", subdistrict: "มาบตาพุด", zipcode: "21150" },
+        { stationName: "หาดจอมเทียน", governingAgency: "กรมทรัพยากรทางทะเลและชายฝั่ง", latitude: 12.8833, longitude: 100.9, province: "ชลบุรี", district: "บางละมุง", subdistrict: "หนองปรือ", zipcode: "20150" },
     ];
 
     const insertedLocations = [];
     for (const loc of locationsPayload) {
         const createdLoc = await prisma.location.create({
-            data: { stationName: loc.stationName, governingAgency: loc.governingAgency, latitude: loc.latitude, longitude: loc.longitude },
+            data: {
+                stationName: loc.stationName,
+                governingAgency: loc.governingAgency,
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                province: loc.province,
+                district: loc.district,
+                subdistrict: loc.subdistrict,
+                zipcode: loc.zipcode,
+            },
         });
         insertedLocations.push(createdLoc);
     }
