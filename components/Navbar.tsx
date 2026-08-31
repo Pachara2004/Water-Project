@@ -211,20 +211,7 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* Bottom Section: User Profile & Actions */}
-                {currentUser && (
-                    <div className="border-t border-border/60 pt-3 w-full">
-                        <div className="flex items-center bg-secondary/10 rounded-md px-3 h-12 w-full overflow-hidden">
-                            <div className="w-8 h-8 rounded-lg bg-secondary/20 flex items-center justify-center text-primary shrink-0">
-                                <User size={16} strokeWidth={2.5} />
-                            </div>
-                            <div className="flex flex-col min-w-0 ml-3 leading-tight">
-                                <span className="text-xs font-semibold text-text-primary truncate">{currentUser.firstName || currentUser.lineProfileName}</span>
-                                <span className="text-xs text-text-muted font-semibold uppercase tracking-wider mt-0.5 truncate">{userRole}</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                
             </nav>
         </>
     );

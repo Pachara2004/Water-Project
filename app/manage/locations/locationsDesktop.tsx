@@ -143,7 +143,9 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-text-primary block uppercase tracking-wide">ชื่อจุดเก็บตัวอย่าง</label>
+                                <label className="text-xs font-medium text-text-primary block uppercase tracking-wide">
+                                    ชื่อจุดเก็บตัวอย่าง <span className="text-text-danger">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     value={name}
@@ -155,7 +157,9 @@ export default function LocationsDesktop(props: LocationsPageProps) {
 
                             {/* Dropdown หน่วยงาน */}
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-text-primary block uppercase tracking-wide">หน่วยงานที่รับผิดชอบ</label>
+                                <label className="text-xs font-medium text-text-primary block uppercase tracking-wide">
+                                    หน่วยงานที่รับผิดชอบ <span className="text-text-danger">*</span>
+                                </label>
                                 <div className="relative org-dropdown-container" onClick={(e) => e.stopPropagation()}>
                                     <input
                                         type="text"
@@ -223,13 +227,13 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                 onGeocode={(lat, lng) => props.setPickedPosition({ lat, lng })}
                             />
 
-                                <p className="text-xs text-text-muted italic">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
-                
+                            
+                                <p className="text-xs text-text-danger italic">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
 
                             {/* ปุ่มบันทึกสถานี */}
                             <button
                                 onClick={handleSubmit}
-                                disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim())}
+                                disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim()) || !props.province || !props.district || !props.subdistrict || !props.zipcode}
                                 className="w-full mt-auto py-3 min-h-11 bg-primary hover:bg-primary/95 text-white font-medium rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed shrink-0"
                             >
                                 {saving ? (
@@ -298,6 +302,14 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                     setEditName={setEditName}
                     editOrg={editOrg}
                     setEditOrg={setEditOrg}
+                    editProvince={props.editProvince}
+                    setEditProvince={props.setEditProvince}
+                    editDistrict={props.editDistrict}
+                    setEditDistrict={props.setEditDistrict}
+                    editSubdistrict={props.editSubdistrict}
+                    setEditSubdistrict={props.setEditSubdistrict}
+                    editZipcode={props.editZipcode}
+                    setEditZipcode={props.setEditZipcode}
                     editSaving={editSaving}
                     uniqueOrgs={uniqueOrgs}
                     onClose={() => setEditingLoc(null)}

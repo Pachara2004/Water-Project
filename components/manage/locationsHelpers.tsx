@@ -65,15 +65,14 @@ export function StationListRow({ loc, deletingId, onEdit, onDelete }: { loc: Loc
     return (
         <div className="bg-card-general rounded-xl border-2 border-border  flex items-stretch transition-all hover:scale-[1.005] duration-150 min-w-0 overflow-hidden">
             <MapThumbnail lat={loc.lat} lng={loc.lng} />
-            
+
             <div className="flex items-center justify-between gap-4 p-4 min-w-0 flex-1">
                 <div className="flex-1 min-w-0 text-left">
                     <div className="gap-2 flex items-center">
                         <h4 className="font-semibold text-sm text-text-primary truncate">{loc.name}</h4>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-text-secondary font-medium">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1  text-xs text-text-secondary font-medium">
                         <div className="flex items-center gap-2 min-w-0 max-w-35 sm:max-w-none">
-                            <Building2 size={16} className="text-secondary shrink-0" />
                             <span className="truncate font-semibold text-secondary">{loc.organization}</span>
                         </div>
                         {loc.province && (
@@ -89,23 +88,25 @@ export function StationListRow({ loc, deletingId, onEdit, onDelete }: { loc: Loc
 
                 {/* กลุ่มปุ่มจัดการด้านขวามือสไตล์ Rounded-xl กระชับ */}
                 <div className="flex gap-2 shrink-0">
-                <button
-                    onClick={() => onEdit(loc)}
-                    className="w-9 h-9 bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
-                >
-                    <Pencil size={16} className="text-text-muted group-hover:text-primary" />
-                </button>
-                <button
-                    onClick={() => onDelete(loc)}
-                    disabled={deletingId === loc.id}
-                    className="w-9 h-9 bg-surface-subtle hover:bg-red-500/10 border border-border hover:border-red-500/30 rounded-xl flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {deletingId === loc.id ? (
-                        <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-xl animate-spin" />
-                    ) : (
-                        <Trash2 size={16} className="text-text-muted group-hover:text-red-500" />
-                    )}
-                </button>
+                    <button
+                        onClick={() => onEdit(loc)}
+                        className="w-10 h-9 gap-1 bg-surface-subtle hover:bg-primary-light border border-border hover:border-primary/20 rounded-lg flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95]"
+                    >
+                        <Pencil size={14} className="text-text-muted group-hover:text-primary" />
+                    </button>
+                    <button
+                        onClick={() => onDelete(loc)}
+                        disabled={deletingId === loc.id}
+                        className="w-10 h-9 gap-1 bg-bg-danger hover:bg-red-500/10 border border-border-danger hover:border-red-500/30 rounded-lg flex items-center justify-center transition-all cursor-pointer group active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {deletingId === loc.id ? (
+                            <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-lg animate-spin" />
+                        ) : (
+                            <div className="flex items-center">
+                                <Trash2 size={14} className="text-text-danger group-hover:text-red-500 gap-1" />
+                            </div>
+                        )}
+                    </button>
                 </div>
             </div>
         </div>

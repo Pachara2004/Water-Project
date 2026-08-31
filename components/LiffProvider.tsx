@@ -325,6 +325,25 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                                     <div className="space-y-3 mt-2">
                                         <div
+                                            onClick={() => setSelectedRole("guest")}
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-white/70 ${
+                                                selectedRole === "guest" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-border-hover"
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${selectedRole === "guest" ? "border-primary" : "border-text-muted"}`}
+                                                >
+                                                    {selectedRole === "guest" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-text">ผู้ใช้งานทั่วไป (General User)</p>
+                                                    <p className="text-xs text-secondary mt-1">สิทธิ์สำหรับประชาชนทั่วไปที่ต้องการดูข้อมูลแผนที่ และสถานะคุณภาพน้ำเบื้องต้น</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div
                                             onClick={() => setSelectedRole("collector")}
                                             className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-white/70 ${
                                                 selectedRole === "collector" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-border-hover"
