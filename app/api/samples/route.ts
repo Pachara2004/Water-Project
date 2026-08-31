@@ -230,7 +230,7 @@ export async function GET(request: NextRequest) {
                 analyzedPlotUrl: true,
                 isDeleted: true,
                 status: true,
-                location: { select: { id: true, stationName: true } },
+                location: { select: { id: true, stationName: true, province: true, district: true, subdistrict: true, zipcode: true } },
                 collector: { select: { id: true, lineProfileName: true } },
                 measurements: { select: { parameterId: true, value: true, parameter: { select: { name: true } } } },
             },
@@ -267,6 +267,10 @@ export async function GET(request: NextRequest) {
                     location: record.location ? {
                         id: record.location.id,
                         name: record.location.stationName,
+                        province: record.location.province,
+                        district: record.location.district,
+                        subdistrict: record.location.subdistrict,
+                        zipcode: record.location.zipcode,
                     } : null,
                     collector: record.collector ? {
                         id: record.collector.id,

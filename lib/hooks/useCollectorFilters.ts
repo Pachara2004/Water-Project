@@ -22,6 +22,10 @@ export interface CollectorSample {
         id: number;
         name: string;
         organization: string;
+        province?: string | null;
+        district?: string | null;
+        subdistrict?: string | null;
+        zipcode?: string | null;
     } | null;
     // รองรับคุณสมบัติค่าวัดเคมีจากหลังบ้านแบบ Dynamic ทุกคีย์สารใน DB
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,6 +147,10 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
                               id: s.locationId,
                               name: s.location.name,
                               organization: s.location.organization,
+                              province: s.location.province,
+                              district: s.location.district,
+                              subdistrict: s.location.subdistrict,
+                              zipcode: s.location.zipcode,
                           }
                         : null,
                 }));

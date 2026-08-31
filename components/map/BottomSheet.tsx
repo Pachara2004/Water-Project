@@ -18,6 +18,10 @@ export interface BottomSheetLocation {
     type?: string;
     lat: number;
     lng: number;
+    province?: string | null;
+    district?: string | null;
+    subdistrict?: string | null;
+    zipcode?: string | null;
     latestByParameter?: Array<{ parameterId: number; parameterName: string; value: number; collectedAt: string }>;
     latestSample: {
         id: string;
@@ -375,8 +379,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-primary text-base truncate">{location.name}</h3>
-                            <div className="flex items-center gap-2 text-secondary text-xs truncate">
-                                <span className="font-semibold truncate">{location.organization}</span>
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs mt-0.5">
+                                <span className="font-semibold text-secondary whitespace-nowrap">{location.organization}</span>
+                                {location.province && <span className="text-text-muted font-medium whitespace-nowrap">จ.{location.province}</span>}
+                                {location.district && <span className="text-text-muted font-medium whitespace-nowrap">อ.{location.district}</span>}
+                                {location.subdistrict && <span className="text-text-muted font-medium whitespace-nowrap">ต.{location.subdistrict}</span>}
+                                {location.zipcode && <span className="text-text-muted font-medium whitespace-nowrap">{location.zipcode}</span>}
                             </div>
                         </div>
                     </div>
@@ -582,7 +590,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                 <div className="w-14 h-14 bg-bg border border-border rounded-2xl flex items-center justify-center mx-auto mb-3">
                                     <FlaskConical size={14} className="text-text" />
                                 </div>
-                                <p className="text-xs font-bold text-text">ยังไม่พบประวัติผลการวิเคราะห์ในพิกัดนี้</p>
+                                <p className="text-xs font-semibold text-text">ยังไม่พบประวัติผลการวิเคราะห์ในพิกัดนี้</p>
                             </div>
                         )}
 
@@ -596,7 +604,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             <div className="mt-4 mb-4">
                                 <button
                                     onClick={() => router.push(`/submit?locationId=${location.id}`)}
-                                    className="w-full py-4 h-full bg-primary hover:bg-navy-dark active:scale-[0.97] text-white font-bold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                                    className="w-full py-4 h-full bg-primary hover:bg-navy-dark active:scale-[0.97] text-white font-semibold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                                 >
                                     <FlaskConical size={16} />
                                     ส่งผลตรวจคุณภาพน้ำจุดนี้
