@@ -162,6 +162,10 @@ export async function GET(request: NextRequest) {
                 organization: loc.governingAgency,
                 lat: loc.latitude,
                 lng: loc.longitude,
+                province: loc.province,
+                district: loc.district,
+                subdistrict: loc.subdistrict,
+                zipcode: loc.zipcode,
                 // สถานะของสถานที่ = ตัวกำหนดสีหมุด (คนละอย่างกับ latestSample.status ซึ่งเป็นของตัวอย่างใบเดียว)
                 // null = ยังไม่เคยมีผลตรวจ
                 locationStatus,
@@ -194,7 +198,7 @@ export async function POST(request: NextRequest) {
         if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
 
         const body = await request.json();
-        const { name, organization, lat, lng } = body;
+        const { name, organization, lat, lng, province, district, subdistrict, zipcode } = body;
 
         if (!name || !organization || lat === undefined || lng === undefined) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลจำเพาะสถานีให้ครบถ้วน" }, { status: 400 });
@@ -206,6 +210,10 @@ export async function POST(request: NextRequest) {
                 governingAgency: organization,
                 latitude: parseFloat(lat),
                 longitude: parseFloat(lng),
+                province: province || null,
+                district: district || null,
+                subdistrict: subdistrict || null,
+                zipcode: zipcode || null,
             },
         });
 
@@ -235,7 +243,7 @@ export async function PUT(request: NextRequest) {
         if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
 
         const body = await request.json();
-        const { id, name, organization, lat, lng } = body;
+        const { id, name, organization, lat, lng, province, district, subdistrict, zipcode } = body;
 
         if (!id) return NextResponse.json({ error: "กรุณาระบุรหัส ID สถานีที่ต้องการแก้ไข" }, { status: 400 });
 
@@ -244,6 +252,10 @@ export async function PUT(request: NextRequest) {
         if (organization !== undefined) updateData.governingAgency = organization;
         if (lat !== undefined) updateData.latitude = parseFloat(lat);
         if (lng !== undefined) updateData.longitude = parseFloat(lng);
+        if (province !== undefined) updateData.province = province || null;
+        if (district !== undefined) updateData.district = district || null;
+        if (subdistrict !== undefined) updateData.subdistrict = subdistrict || null;
+        if (zipcode !== undefined) updateData.zipcode = zipcode || null;
 
         const location = await prisma.location.update({
             where: { id: Number(id) },

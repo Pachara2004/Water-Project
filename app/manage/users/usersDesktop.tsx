@@ -42,7 +42,7 @@ export default function UsersDesktop(props: UsersPageProps) {
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
             <PageHeader title="จัดการผู้ใช้งาน" onBack={() => router.back()} />
 
-            <div className="w-full max-w-400 mx-auto px-8 pt-8 space-y-5">
+            <div className="w-full max-w-400 mx-auto p-4 space-y-5">
                 {/* ─── 1. Header Welcome Card ── */}
                 <div className="relative w-full rounded-2xl bg-surface p-6 border border-border flex items-center justify-between gap-6">
                     <div>

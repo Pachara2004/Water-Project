@@ -320,6 +320,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 }
             }
 
+            let liveLocation = null;
+            if (sampleRecord.locationNameCurrentId) {
+                liveLocation = await prisma.location.findUnique({
+                    where: { id: sampleRecord.locationNameCurrentId },
+                    select: { province: true, district: true, subdistrict: true, zipcode: true }
+                });
+            }
+
             const responseGetData = {
                 id: sampleRecord.id,
                 code: sampleRecord.code,
@@ -354,6 +362,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     governingAgency: sampleRecord.governingAgencyFrom || "-",
                     latitude: 0,
                     longitude: 0,
+                    province: liveLocation?.province || null,
+                    district: liveLocation?.district || null,
+                    subdistrict: liveLocation?.subdistrict || null,
+                    zipcode: liveLocation?.zipcode || null,
                 },
                 collector: {
                     id: sampleRecord.collectorNameCurrentId,
@@ -528,6 +540,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       governingAgency: mainSample.location.governingAgency,
                       latitude: mainSample.location.latitude,
                       longitude: mainSample.location.longitude,
+                      province: mainSample.location.province,
+                      district: mainSample.location.district,
+                      subdistrict: mainSample.location.subdistrict,
+                      zipcode: mainSample.location.zipcode,
                   }
                 : null,
             collector: mainSample.collector,

@@ -62,8 +62,8 @@ export function StatusTabs({ tab, setTab }: { tab: ReviewStatusFilter; setTab: (
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id)}
-                            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
-                                tab === t.id ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary"
+                            className={`flex items-center border border-primary/30 justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                                tab === t.id ? "bg-primary text-white shadow-xs" : "bg-card-general text-text-secondary hover:text-text-primary"
                             }`}
                         >
                             <Icon size={12} />
@@ -178,7 +178,7 @@ export function RequestDetailPopup({
                 {/* หัวเรื่อง: สถานที่ + สถานะน้ำ + สถานะคำร้อง */}
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <h4 className="text-sm font-bold text-text break-words">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
+                        <h4 className="text-sm font-semibold text-text wrap-break-word">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
                         <p className="text-xs text-text-muted font-medium mt-0.5">{item.location?.organization || "ไม่ระบุหน่วยงาน"}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
@@ -516,11 +516,11 @@ export function RequestCard({
             )}
 
             {/* ── แถบปุ่ม Actions จัดการ ── */}
-            <div className="flex flex-col gap-2 pt-3 border-t border-border">
+            <div className="flex flex-col gap-2 pt-3 border-t border-border ">
                 <button
                     type="button"
                     onClick={() => setIsDetailOpen(true)}
-                    className="w-full min-h-9 px-3 rounded-xl border border-primary/30 text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full min-h-9 px-3 rounded-xl bg-card-general border border-primary/30 text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                     <Info size={14} />
                     <span>ดูรายละเอียด</span>

@@ -5,6 +5,7 @@ import type { useRouter } from "next/navigation";
 import { MapPin, MapPinPlus, MapPinned, Building2, Save, Plus, Search, FileText } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { type LocationItem, StationListRow, LocationEditDrawer } from "@/components/manage/locationsHelpers";
+import { ThaiAddressSelector } from "@/components/manage/ThaiAddressSelector";
 
 type PickedPosition = { lat: number; lng: number } | null;
 
@@ -20,6 +21,14 @@ export interface LocationsPageProps {
     setCustomOrg: (v: string) => void;
     pickedPosition: PickedPosition;
     setPickedPosition: (v: PickedPosition) => void;
+    province: string;
+    setProvince: (v: string) => void;
+    district: string;
+    setDistrict: (v: string) => void;
+    subdistrict: string;
+    setSubdistrict: (v: string) => void;
+    zipcode: string;
+    setZipcode: (v: string) => void;
     saving: boolean;
     orgSearch: string;
     setOrgSearch: (v: string) => void;
@@ -54,6 +63,14 @@ export interface LocationsPageProps {
     setEditName: (v: string) => void;
     editOrg: string;
     setEditOrg: (v: string) => void;
+    editProvince: string;
+    setEditProvince: (v: string) => void;
+    editDistrict: string;
+    setEditDistrict: (v: string) => void;
+    editSubdistrict: string;
+    setEditSubdistrict: (v: string) => void;
+    editZipcode: string;
+    setEditZipcode: (v: string) => void;
     editSaving: boolean;
     handleEdit: () => void;
 }
@@ -132,7 +149,7 @@ export default function LocationsMobile(props: LocationsPageProps) {
                                     <Search size={13} className="text-primary" />
                                     ค้นหาสถานที่ใกล้เคียง
                                 </label>
-                                <div className="relative">
+                                <div className="relative place-dropdown-container">
                                     <input
                                         type="text"
                                         value={placeSearch}
@@ -262,6 +279,14 @@ export default function LocationsMobile(props: LocationsPageProps) {
                                 />
                             )}
                         </div>
+
+                        <ThaiAddressSelector 
+                            province={props.province} setProvince={props.setProvince}
+                            district={props.district} setDistrict={props.setDistrict}
+                            subdistrict={props.subdistrict} setSubdistrict={props.setSubdistrict}
+                            zipcode={props.zipcode} setZipcode={props.setZipcode}
+                            onGeocode={(lat, lng) => props.setPickedPosition({ lat, lng })}
+                        />
 
                         {/* แผนที่ปักหมุด */}
                         <div className="space-y-2">

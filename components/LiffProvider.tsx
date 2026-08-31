@@ -204,8 +204,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 <LiffBackground />
                 <div className="rounded-2xl bg-white/90 backdrop-blur-md border border-border/60 p-6 text-center shadow-lg max-w-sm w-full z-10">
                     <ShieldAlert className="w-12 h-12 text-text-danger mx-auto mb-4" />
-                    <p className="font-black text-text-primary text-sm">เกิดข้อผิดพลาดในการโหลดระบบ</p>
-                    <p className="mt-1.5 text-xs text-text-secondary leading-relaxed">{liffError}</p>
+                    <p className="font-semibold text-text-primary text-sm">เกิดข้อผิดพลาดในการโหลดระบบ</p>
+                    <p className="mt-1.5 font-semibold text-xs text-text-secondary leading-relaxed">{liffError}</p>
                 </div>
             </div>
         );
@@ -366,8 +366,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                                 <div className="h-5 flex items-center justify-center">
                                     {globalError && (
-                                        <div className="text-xs text-red-500 font-extrabold flex items-center gap-2">
-                                            <ShieldAlert size={12} className="shrink-0" />
+                                        <div className="text-xs text-text-danger font-medium flex items-center gap-2">
+                                            <ShieldAlert size={15} className="shrink-0" />
                                             <span>{globalError}</span>
                                         </div>
                                     )}

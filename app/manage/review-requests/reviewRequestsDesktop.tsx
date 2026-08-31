@@ -140,9 +140,9 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
             <PageHeader title="คุณภาพน้ำที่ต้องการยืนยัน" onBack={() => router.back()} />
 
-            <div className="w-full max-w-400 mx-auto px-8 pt-8 space-y-6">
+            <div className="w-full max-w-400 mx-auto p-4 pt-4 space-y-4">
                 {/* Header Welcome Card */}
-                <div className="bg-card-general rounded-2xl border border-border p-6 transition-colors duration-300">
+                <div className="bg-card-general rounded-2xl border border-border p-5 transition-colors duration-300">
                     <h1 className="font-display text-lg font-bold text-text-primary">
                         ตรวจสอบผลที่มี <span className="font-display text-primary">ค่าความมั่นใจ ต่ำ</span>
                     </h1>

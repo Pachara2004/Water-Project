@@ -73,7 +73,13 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                         <MapPin size={24} className="text-text-safe mt-0.5 shrink-0" />
                         <div>
                             <p className="font-medium text-text text-sm">{sample.location.stationName}</p>
-                            <p className="text-xs text-text-muted mt-0.5">{sample.location.governingAgency}</p>
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[11px] text-text-muted">
+                                <span className="whitespace-nowrap">{sample.location.governingAgency}</span>
+                                {sample.location.province && <span className="whitespace-nowrap">จ.{sample.location.province}</span>}
+                                {sample.location.district && <span className="whitespace-nowrap">อ.{sample.location.district}</span>}
+                                {sample.location.subdistrict && <span className="whitespace-nowrap">ต.{sample.location.subdistrict}</span>}
+                                {sample.location.zipcode && <span className="whitespace-nowrap">{sample.location.zipcode}</span>}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -222,12 +228,12 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                     <StatusBadge status={sample.status} size="sm" />
                                     <div className="flex flex-col items-end text-center mt-0.5 shrink-0">
                                         {sample.reviewStatus === "PENDING" && (
-                                            <span className="inline-flex items-center w-20 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                                            <span className="inline-flex items-center w-30 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
                                                 รอตรวจสอบ
                                             </span>
                                         )}
                                         {sample.reviewStatus === "REJECTED" && (
-                                            <span className="inline-flex items-center w-20 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                                            <span className="inline-flex items-center w-30 text-xs font-semibold text-red-600 bg-red-100 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
                                                 ถูกปฏิเสธ
                                             </span>
                                         )}
@@ -261,9 +267,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                                 <>
                                                     <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
                                                         <span>ค่าที่ส่ง:</span>
-                                                        <span className="line-through decoration-red-400">
-                                                            {measurement.originalValue.toFixed(2)} mg/L
-                                                        </span>
+                                                        <span className="line-through decoration-red-400">{measurement.originalValue.toFixed(2)} mg/L</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-[11px]">
                                                         <span className="text-teal-700 font-medium">แก้ไขเป็น:</span>
@@ -282,8 +286,6 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                 ))}
                             </div>
                         </div>
-
-
 
                         {/* Location & Context Detail Component */}
                         <HistoryMetaBlocks />

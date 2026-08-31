@@ -36,6 +36,10 @@ export default function AdminLocationsPage() {
         lat: number;
         lng: number;
     } | null>(null);
+    const [province, setProvince] = useState("");
+    const [district, setDistrict] = useState("");
+    const [subdistrict, setSubdistrict] = useState("");
+    const [zipcode, setZipcode] = useState("");
     const [saving, setSaving] = useState(false);
 
     // Organization combobox
@@ -52,11 +56,40 @@ export default function AdminLocationsPage() {
     const [isSearchingPlace, setIsSearchingPlace] = useState(false);
     const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
 
-    // 🌟 3. Sync พิกัดเมื่อผู้ใช้แตะปักหมุดบนแผนที่ ➔ อัปเดตลงช่อง Input
+    // 🌟 3. Sync พิกัดเมื่อผู้ใช้แตะปักหมุดบนแผนที่ ➔ อัปเดตลงช่อง Input และดึงที่อยู่อัตโนมัติ
     useEffect(() => {
         if (pickedPosition) {
             setInputLat(pickedPosition.lat.toFixed(6));
             setInputLng(pickedPosition.lng.toFixed(6));
+
+            // เรียก OSM Nominatim Reverse Geocoding
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pickedPosition.lat}&lon=${pickedPosition.lng}&zoom=18&addressdetails=1`, { headers: { "Accept-Language": "th,en" } })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        let pProv = "", pDist = "", pSub = "";
+                        const parts = data.display_name.split(",").map((p: string) => p.trim());
+                        for (const part of parts) {
+                            if (part.includes("จังหวัด")) pProv = part.replace(/.*จังหวัด/, "").trim();
+                            else if (part === "กรุงเทพมหานคร") pProv = "กรุงเทพมหานคร";
+
+                            if (part.includes("อำเภอ")) pDist = part.replace(/.*อำเภอ/, "").trim();
+                            else if (part.includes("เขต")) pDist = part.replace(/.*เขต/, "").trim();
+
+                            if (part.includes("ตำบล")) pSub = part.replace(/.*ตำบล/, "").trim();
+                            else if (part.includes("แขวง")) pSub = part.replace(/.*แขวง/, "").trim();
+                        }
+                        
+                        if (pProv) setProvince(pProv);
+                        if (pDist) setDistrict(pDist);
+                        if (pSub) setSubdistrict(pSub);
+                        
+                        if (data.address && data.address.postcode) {
+                            setZipcode(data.address.postcode);
+                        }
+                    }
+                })
+                .catch(err => console.error("Reverse geocoding failed:", err));
         }
     }, [pickedPosition]);
 
@@ -130,6 +163,10 @@ export default function AdminLocationsPage() {
     const [editingLoc, setEditingLoc] = useState<LocationItem | null>(null);
     const [editName, setEditName] = useState("");
     const [editOrg, setEditOrg] = useState("");
+    const [editProvince, setEditProvince] = useState("");
+    const [editDistrict, setEditDistrict] = useState("");
+    const [editSubdistrict, setEditSubdistrict] = useState("");
+    const [editZipcode, setEditZipcode] = useState("");
     const [editSaving, setEditSaving] = useState(false);
 
     // Delete loading state
@@ -147,6 +184,10 @@ export default function AdminLocationsPage() {
                     organization: l.organization,
                     lat: l.lat,
                     lng: l.lng,
+                    province: l.province,
+                    district: l.district,
+                    subdistrict: l.subdistrict,
+                    zipcode: l.zipcode,
                 }));
                 setLocations(mapped);
             } else {
@@ -193,6 +234,10 @@ export default function AdminLocationsPage() {
                     organization: orgVal,
                     lat: pickedPosition.lat,
                     lng: pickedPosition.lng,
+                    province: province.trim(),
+                    district: district.trim(),
+                    subdistrict: subdistrict.trim(),
+                    zipcode: zipcode.trim(),
                 }),
             });
 
@@ -202,6 +247,10 @@ export default function AdminLocationsPage() {
                 setOrganization("");
                 setCustomOrg("");
                 setOrgSearch("");
+                setProvince("");
+                setDistrict("");
+                setSubdistrict("");
+                setZipcode("");
                 fetchLocations(true);
                 showToast(`เพิ่มสถานี "${stationName}" เรียบร้อยแล้ว`, "success");
             }
@@ -236,6 +285,10 @@ export default function AdminLocationsPage() {
                     id: editingLoc.id,
                     name: editedName,
                     organization: editOrg.trim(),
+                    province: editProvince.trim(),
+                    district: editDistrict.trim(),
+                    subdistrict: editSubdistrict.trim(),
+                    zipcode: editZipcode.trim(),
                 }),
             });
             if (res.ok) {
@@ -284,6 +337,10 @@ export default function AdminLocationsPage() {
         setEditingLoc(loc);
         setEditName(loc.name);
         setEditOrg(loc.organization);
+        setEditProvince(loc.province || "");
+        setEditDistrict(loc.district || "");
+        setEditSubdistrict(loc.subdistrict || "");
+        setEditZipcode(loc.zipcode || "");
     };
 
     if (!currentUser || currentUser.role !== "admin") {
@@ -323,6 +380,10 @@ export default function AdminLocationsPage() {
         setCustomOrg,
         pickedPosition,
         setPickedPosition,
+        province, setProvince,
+        district, setDistrict,
+        subdistrict, setSubdistrict,
+        zipcode, setZipcode,
         saving,
         orgSearch,
         setOrgSearch,
@@ -354,6 +415,10 @@ export default function AdminLocationsPage() {
         setEditName,
         editOrg,
         setEditOrg,
+        editProvince, setEditProvince,
+        editDistrict, setEditDistrict,
+        editSubdistrict, setEditSubdistrict,
+        editZipcode, setEditZipcode,
         editSaving,
         handleEdit,
     };

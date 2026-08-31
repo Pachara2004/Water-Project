@@ -136,7 +136,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
 
     // ดึงพิกัดอัตโนมัติตอนเข้าหน้า เฉพาะเมื่อผู้ใช้เปิดสวิตช์ "GPS อัตโนมัติ" ไว้ที่หน้าจัดการ
     useEffect(() => {
-        if (!isMounted) return;
+        if (!isMounted || mode === "picker") return;
         let cancelled = false;
 
         (async () => {
@@ -261,15 +261,13 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 <MapController centerPos={userPos} selectedLocation={selectedLocation} pickedPosition={pickedPosition} />{" "}
             </MapContainer>
 
-            {mode === "explorer" && (
-                <button
-                    title="Locate Me"
-                    onClick={() => handleLocateMe()}
-                    className="absolute bottom-8 right-4 z-600 bg-card-general p-3.5 rounded-full border border-border text-primary transition-all duration-75 active:scale-95 will-change-transform cursor-pointer"
-                >
-                    <Navigation size={18} className="fill-primary" />
-                </button>
-            )}
+            <button
+                title="Locate Me"
+                onClick={() => handleLocateMe()}
+                className={`absolute bottom-8 right-4 z-600 bg-card-general p-3.5 rounded-full border border-border text-primary transition-all duration-75 active:scale-95 will-change-transform cursor-pointer ${mode === "picker" ? "bottom-8" : ""}`}
+            >
+                <Navigation size={18} className="fill-primary" />
+            </button>
 
             {mode === "explorer" && <BottomSheet location={selectedLocation} onClose={() => setSelectedLocation(null)} />}
         </div>

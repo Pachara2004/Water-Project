@@ -102,6 +102,11 @@ model Location {
   latitude        Float         @map("latitude")
   longitude       Float         @map("longitude")
 
+  province        String?       @map("province")
+  district        String?       @map("district")
+  subdistrict     String?       @map("subdistrict")
+  zipcode         String?       @map("zipcode")
+
   samples         WaterSample[]
   weatherData     WeatherData[]
 
