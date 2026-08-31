@@ -99,7 +99,7 @@ export default function UsersDesktop(props: UsersPageProps) {
                             />
                         </div>
 
-                        <div className="inline-flex items-center gap-1 p-1 bg-surface-subtle border border-border rounded-xl shrink-0">
+                        <div className="inline-flex items-center gap-1 p-1 bg-primary/10 border border-primary/30 rounded-xl shrink-0">
                             {(["all", "staff", "queue"] as const).map((t) => {
                                 const meta = TAB_META[t];
                                 const Icon = meta.icon;
@@ -108,7 +108,7 @@ export default function UsersDesktop(props: UsersPageProps) {
                                         key={t}
                                         onClick={() => setTab(t)}
                                         className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
-                                            tab === t ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary"
+                                            tab === t ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-card-general"
                                         }`}
                                     >
                                         <Icon size={12} />

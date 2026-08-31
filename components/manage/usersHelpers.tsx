@@ -18,26 +18,22 @@ export interface UserItem {
 
 export const ROLE_OPTIONS: Role[] = ["guest", "collector", "officer", "admin"];
 
-export const ROLE_CONFIG: Record<Role, { label: string; color: string; dot: string }> = {
+export const ROLE_CONFIG: Record<Role, { label: string; color: string;}> = {
     guest: {
-        label: "General",
+        label: "ผู้ใช้ทั่วไป",
         color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
-        dot: "bg-emerald-500",
     },
     collector: {
-        label: "Collector",
+        label: "เจ้าหน้าที่ภาคสนาม",
         color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
-        dot: "bg-violet-500",
     },
     officer: {
-        label: "Officer",
+        label: "เจ้าหน้าที่ส่วนกลาง",
         color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
-        dot: "bg-amber-500",
     },
     admin: {
-        label: "Admin",
+        label: "เจ้าหน้าที่ดูแลระบบ",
         color: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
-        dot: "bg-red-500",
     },
 };
 
@@ -91,7 +87,7 @@ export function UserListRow({
             <div className="grid grid-cols-2 gap-2 text-xs text-text-muted bg-surface-subtle p-2.5 rounded-xl border border-border/60">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
                     <SquareChevronUp size={13} className="text-primary shrink-0" />
-                    <span>สิทธิ์: {roleCfg.label}</span>
+                    <span className="truncate">สิทธิ์: {roleCfg.label}</span>
                 </div>
 
                 {user.phoneNumber ? (
@@ -113,7 +109,7 @@ export function UserListRow({
 
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
                     <Layers size={13} className="text-primary shrink-0" />
-                    <span>{user.samplesCount > 0 ? `${user.samplesCount} ตัวอย่าง` : "ไม่มีประวัติส่งน้ำ"}</span>
+                    <span>{user.samplesCount > 0 ? `${user.samplesCount} ตัวอย่าง` : "ไม่มีประวัติ"}</span>
                 </div>
             </div>
 
@@ -125,7 +121,7 @@ export function UserListRow({
                             <RefreshCw size={14} className="animate-spin text-primary" />
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-1.5 w-full">
+                        <div className="flex flex-col gap-1.5 w-full relative">
                             <button
                                 onClick={onToggleDropdown}
                                 className="flex items-center justify-center gap-1.5 w-full py-2 bg-surface-subtle hover:bg-surface-hover border border-border rounded-xl text-xs font-bold text-text-primary transition-all cursor-pointer min-h-9.5 active:scale-[0.99]"
@@ -135,19 +131,23 @@ export function UserListRow({
                             </button>
 
                             {isOpen && (
-                                <div className="w-full bg-surface border border-border rounded-xl p-1 shadow-md flex flex-col gap-1">
+                                <div className="absolute top-[calc(100%+6px)] left-0 w-full z-50 bg-surface border border-border rounded-xl p-1.5 shadow-xl flex flex-col gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
                                     {ROLE_OPTIONS.map((r) => {
                                         const rc = ROLE_CONFIG[r];
                                         const isCurrent = user.role === r;
                                         return (
                                             <button
                                                 key={r}
-                                                onClick={() => !isCurrent && onRoleChange(user.id, r)}
+                                                onClick={() => {
+                                                    if (!isCurrent) {
+                                                        onRoleChange(user.id, r);
+                                                        onToggleDropdown();
+                                                    }
+                                                }}
                                                 disabled={isCurrent}
                                                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors text-left cursor-pointer
-                                    ${isCurrent ? "text-text-muted bg-surface-subtle cursor-not-allowed opacity-40" : "text-text-primary hover:bg-surface-subtle"}`}
+                                    ${isCurrent ? "text-text-muted bg-surface-subtle cursor-not-allowed opacity-50" : "text-text-primary hover:bg-surface-subtle"}`}
                                             >
-                                                <span className={`w-2 h-2 rounded-full shrink-0 ${rc.dot}`} />
                                                 <span>{rc.label}</span>
                                                 {isCurrent && <CheckCircle2 size={12} className="ml-auto text-emerald-500" />}
                                             </button>
