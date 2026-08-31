@@ -62,30 +62,33 @@ export default function AdminLocationsPage() {
             setInputLat(pickedPosition.lat.toFixed(6));
             setInputLng(pickedPosition.lng.toFixed(6));
 
-            // เรียก OSM Nominatim Reverse Geocoding
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pickedPosition.lat}&lon=${pickedPosition.lng}&zoom=18&addressdetails=1`, { headers: { "Accept-Language": "th,en" } })
+            // เรียก BigDataCloud Reverse Geocoding (ไม่ต้องใช้ API Key, รองรับภาษาไทย, ไม่ติด Rate Limit หนัก)
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pickedPosition.lat}&longitude=${pickedPosition.lng}&localityLanguage=th`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data && data.display_name) {
+                    if (data && data.localityInfo && data.localityInfo.administrative) {
                         let pProv = "", pDist = "", pSub = "";
-                        const parts = data.display_name.split(",").map((p: string) => p.trim());
-                        for (const part of parts) {
-                            if (part.includes("จังหวัด")) pProv = part.replace(/.*จังหวัด/, "").trim();
-                            else if (part === "กรุงเทพมหานคร") pProv = "กรุงเทพมหานคร";
+                        const admin = data.localityInfo.administrative;
+                        
+                        // หาชิ้นส่วนที่มีคำระบุระดับการปกครอง
+                        for (const part of admin) {
+                            const name = part.name;
+                            if (name.includes("จังหวัด")) pProv = name.replace(/.*จังหวัด/, "").trim();
+                            else if (name === "กรุงเทพมหานคร") pProv = "กรุงเทพมหานคร";
 
-                            if (part.includes("อำเภอ")) pDist = part.replace(/.*อำเภอ/, "").trim();
-                            else if (part.includes("เขต")) pDist = part.replace(/.*เขต/, "").trim();
+                            if (name.includes("อำเภอ")) pDist = name.replace(/.*อำเภอ/, "").trim();
+                            else if (name.includes("เขต")) pDist = name.replace(/.*เขต/, "").trim();
 
-                            if (part.includes("ตำบล")) pSub = part.replace(/.*ตำบล/, "").trim();
-                            else if (part.includes("แขวง")) pSub = part.replace(/.*แขวง/, "").trim();
+                            if (name.includes("ตำบล")) pSub = name.replace(/.*ตำบล/, "").trim();
+                            else if (name.includes("แขวง")) pSub = name.replace(/.*แขวง/, "").trim();
                         }
                         
                         if (pProv) setProvince(pProv);
                         if (pDist) setDistrict(pDist);
                         if (pSub) setSubdistrict(pSub);
                         
-                        if (data.address && data.address.postcode) {
-                            setZipcode(data.address.postcode);
+                        if (data.postcode) {
+                            setZipcode(data.postcode);
                         }
                     }
                 })
@@ -105,7 +108,7 @@ export default function AdminLocationsPage() {
         setShowPlaceDropdown(true);
 
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=th&limit=5`, { headers: { "Accept-Language": "th,en" } });
+            const res = await fetch(`/api/nominatim?type=search&q=${encodeURIComponent(query)}`);
             const data = await res.json();
             if (Array.isArray(data)) setPlaceResults(data);
         } catch (err) {

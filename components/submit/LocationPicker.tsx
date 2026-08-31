@@ -40,7 +40,7 @@ export function LocationPicker({
     activeSource,
     onSelectSource,
 }: LocationPickerProps) {
-    const activeCoords = activeSource === "exif" ? exifCoords : gpsCoords;
+    const activeCoords = activeSource === "exif" ? exifCoords : activeSource === "gps" ? gpsCoords : null;
     const hasGps = !!gpsCoords;
     const hasExif = !!exifCoords;
 
@@ -61,11 +61,12 @@ export function LocationPicker({
     }, [activeCoords, allLocations]);
 
     // 🟢 AUTO-SELECT: เมื่อเปลี่ยนพิกัด/แหล่งพิกัด ให้เลือกอันที่ใกล้ที่สุดให้อัตโนมัติทันที
+    // เพิ่ม flag ref เพื่อป้องกันไม่ให้ auto-select ทับค่าที่มีอยู่เดิมถ้าเป็นการโหลดครั้งแรก
     useEffect(() => {
-        if (nearestLocations.length > 0) {
+        if (activeSource !== "manual" && nearestLocations.length > 0) {
             setCurrentLocationId(nearestLocations[0].id.toString());
         }
-    }, [nearestLocations, setCurrentLocationId]);
+    }, [nearestLocations, setCurrentLocationId, activeSource]);
 
     return (
         <section className="rounded-xl bg-surface overflow-hidden border border-border">

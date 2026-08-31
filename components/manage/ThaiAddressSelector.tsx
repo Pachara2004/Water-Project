@@ -58,7 +58,7 @@ export function ThaiAddressSelector({
         
         if (p && onGeocode) {
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(p + " จังหวัด")}&countrycodes=th&limit=1`, { headers: { "Accept-Language": "th,en" } });
+                const res = await fetch(`/api/nominatim?type=search&q=${encodeURIComponent(p + " จังหวัด")}`);
                 const data = await res.json();
                 if (data && data[0]) onGeocode(parseFloat(data[0].lat), parseFloat(data[0].lon));
             } catch(e){}
@@ -73,7 +73,7 @@ export function ThaiAddressSelector({
         
         if (d && province && onGeocode) {
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(d + " " + province)}&countrycodes=th&limit=1`, { headers: { "Accept-Language": "th,en" } });
+                const res = await fetch(`/api/nominatim?type=search&q=${encodeURIComponent(d + " " + province)}`);
                 const data = await res.json();
                 if (data && data[0]) onGeocode(parseFloat(data[0].lat), parseFloat(data[0].lon));
             } catch(e){}
@@ -83,12 +83,16 @@ export function ThaiAddressSelector({
     const handleSubdistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const s = e.target.value;
         setSubdistrict(s);
-        if (tree && province && district && tree[province][district][s]) {
-            setZipcode(tree[province][district][s]);
-        } else {
+    };
+
+    // Auto-fill zipcode if province, district, subdistrict change
+    useEffect(() => {
+        if (tree && province && district && subdistrict && tree[province]?.[district]?.[subdistrict]) {
+            setZipcode(tree[province][district][subdistrict]);
+        } else if (!subdistrict) {
             setZipcode("");
         }
-    };
+    }, [tree, province, district, subdistrict, setZipcode]);
 
     return (
         <>
@@ -99,7 +103,7 @@ export function ThaiAddressSelector({
                         <select
                             value={province}
                             onChange={handleProvinceChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs  outline-none min-h-11 font-semibold appearance-none cursor-pointer"
                             disabled={!tree}
                         >
                             <option value="">-- เลือกจังหวัด --</option>
@@ -114,7 +118,7 @@ export function ThaiAddressSelector({
                         <select
                             value={district}
                             onChange={handleDistrictChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
                             disabled={!province || districts.length === 0}
                         >
                             <option value="">-- เลือกอำเภอ --</option>
@@ -131,7 +135,7 @@ export function ThaiAddressSelector({
                         <select
                             value={subdistrict}
                             onChange={handleSubdistrictChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
                             disabled={!district || subdistricts.length === 0}
                         >
                             <option value="">-- เลือกตำบล --</option>
@@ -146,7 +150,7 @@ export function ThaiAddressSelector({
                         type="text" 
                         value={zipcode} 
                         onChange={(e) => setZipcode(e.target.value)} 
-                        className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold" 
+                        className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold" 
                         placeholder="กรอกอัตโนมัติ" 
                     />
                 </div>

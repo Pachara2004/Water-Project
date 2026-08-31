@@ -78,7 +78,7 @@ export function MetadataFields(props: MetadataFieldsProps) {
                         max={maxNow} // 🟢 ล็อคห้ามเลือกอนาคต
                         required
                         onChange={handleTimeChange}
-                        className="w-full px-3 py-2 bg-surface-subtle border border-border text-text rounded-lg text-xs focus:border-primary focus:outline-hidden transition-colors min-h-10 cursor-pointer font-medium"
+                        className="w-full px-3 py-2 bg-surface-subtle border border-border text-text rounded-lg text-xs focus:outline-hidden transition-colors min-h-10 cursor-pointer font-medium"
                     />
                 </div>
 

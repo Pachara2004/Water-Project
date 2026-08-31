@@ -156,7 +156,7 @@ export function LocationEditDrawer({
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold"
                         />
                     </div>
 
@@ -172,7 +172,7 @@ export function LocationEditDrawer({
                                         setEditOrg("");
                                     }
                                 }}
-                                className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 appearance-none cursor-pointer font-semibold"
+                                className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 appearance-none cursor-pointer font-semibold"
                             >
                                 {uniqueOrgs.map((org) => (
                                     <option key={org} value={org}>
@@ -190,7 +190,7 @@ export function LocationEditDrawer({
                                 value={editOrg}
                                 onChange={(e) => setEditOrg(e.target.value)}
                                 placeholder="พิมพ์ชื่อหน่วยงานใหม่..."
-                                className="w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 focus:border-primary transition-all outline-none min-h-11 font-semibold animate-fade-in"
+                                className="w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 transition-all outline-none min-h-11 font-semibold animate-fade-in"
                             />
                         )}
                     </div>
