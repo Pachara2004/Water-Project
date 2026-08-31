@@ -268,7 +268,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                                                     type="date"
                                                     value={startDate}
                                                     onChange={(e) => setStartDate(e.target.value)}
-                                                    className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-hidden focus:border-primary"
+                                                    className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-hidden"
                                                 />
                                             </div>
                                             <div>
@@ -279,7 +279,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                                                     value={endDate}
                                                     min={startDate}
                                                     onChange={(e) => setEndDate(e.target.value)}
-                                                    className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-hidden focus:border-primary"
+                                                    className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-hidden"
                                                 />
                                             </div>
                                             <div className="flex justify-end gap-2 pt-1">

@@ -207,7 +207,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                                                 type="date"
                                                 value={startDate}
                                                 onChange={(e) => setStartDate(e.target.value)}
-                                                className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-none focus:border-primary"
+                                                className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-none"
                                             />
                                         </div>
                                         <div>
@@ -218,7 +218,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                                                 value={endDate}
                                                 min={startDate}
                                                 onChange={(e) => setEndDate(e.target.value)}
-                                                className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-none focus:border-primary"
+                                                className="w-full text-xs border border-border rounded-lg p-2 bg-surface-subtle focus:outline-none"
                                             />
                                         </div>
                                         <div className="flex justify-end gap-2 pt-1">

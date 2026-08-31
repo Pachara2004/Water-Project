@@ -214,7 +214,7 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
                                 required
                                 aria-invalid={!!(touched.firstName && errors.firstName)}
                                 className={`w-full h-9 pl-3.5 pr-4 border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold outline-hidden transition-all ${
-                                    touched.firstName && errors.firstName ? "border-text-danger focus:border-text-danger" : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                    touched.firstName && errors.firstName ? "border-text-danger focus:border-text-danger" : "border-border focus:ring-1 focus:ring-primary/30"
                                 }`}
                             />
                         </div>
@@ -253,7 +253,7 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
                                 required
                                 aria-invalid={!!(touched.lastName && errors.lastName)}
                                 className={`w-full h-9 pl-3.5 pr-4 border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold outline-hidden transition-all ${
-                                    touched.lastName && errors.lastName ? "border-text-danger focus:border-text-danger" : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                    touched.lastName && errors.lastName ? "border-text-danger focus:border-text-danger" : "border-border focus:ring-1 focus:ring-primary/30"
                                 }`}
                             />
                         </div>
@@ -293,7 +293,7 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
                                 required
                                 aria-invalid={!!(touched.phone && errors.phone)}
                                 className={`w-full h-9 pl-3.5 pr-4 border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold outline-hidden transition-all ${
-                                    touched.phone && errors.phone ? "border-text-danger focus:border-text-danger" : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                    touched.phone && errors.phone ? "border-text-danger focus:border-text-danger" : "border-border focus:ring-1 focus:ring-primary/30"
                                 }`}
                             />
                         </div>

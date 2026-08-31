@@ -778,7 +778,7 @@ export function EditApproveDrawer({
                                                                 const val = parseInt(e.target.value);
                                                                 setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }));
                                                             }}
-                                                            className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-2 py-1.5 text-xs font-semibold text-text uppercase outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+                                                            className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-2 py-1.5 text-xs font-semibold text-text uppercase outline-none disabled:cursor-not-allowed disabled:opacity-70"
                                                         >
                                                             {systemParameters.map(p => (
                                                                 <option 
@@ -800,7 +800,7 @@ export function EditApproveDrawer({
                                                                     const val = e.target.value;
                                                                     setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
                                                                 }}
-                                                                className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
+                                                                className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
                                                             />
                                                             {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
                                                         </div>
