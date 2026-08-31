@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         const samples = await prisma.waterSample.findMany({
             where: { sessionGroup: { in: sessionGroups }, ...(status === "rejected" ? {} : { isDeleted: false }) },
             include: {
-                location: { select: { id: true, stationName: true, governingAgency: true } },
+                location: { select: { id: true, stationName: true, governingAgency: true, province: true, district: true, subdistrict: true } },
                 collector: { select: { id: true, lineProfileName: true, firstName: true, lastName: true } },
                 measurements: { include: { parameter: { select: { id: true, name: true, unit: true } } } },
             },
@@ -95,7 +95,14 @@ export async function GET(request: NextRequest) {
 
                 collectionTime: first?.collectionTime ? first.collectionTime.toISOString().replace("Z", "") : null,
                 location: first?.location
-                    ? { id: first.location.id, name: first.location.stationName, organization: first.location.governingAgency }
+                    ? {
+                          id: first.location.id,
+                          name: first.location.stationName,
+                          organization: first.location.governingAgency,
+                          province: first.location.province,
+                          district: first.location.district,
+                          subdistrict: first.location.subdistrict,
+                      }
                     : null,
                 collector: first?.collector
                     ? { id: first.collector.id, name: `${first.collector.firstName || ""} ${first.collector.lastName || ""}`.trim() || first.collector.lineProfileName }

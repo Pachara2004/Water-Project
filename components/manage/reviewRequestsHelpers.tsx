@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
 import { readChemMeasurements } from "@/lib/chemLabels";
-import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2 } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
@@ -41,7 +41,7 @@ export interface ReviewRequestItem {
     reviewNote: string | null;
     reviewedBy: { id: number; name: string } | null;
     collectionTime: string | null;
-    location: { id: number; name: string; organization: string } | null;
+    location: { id: number; name: string; organization: string; province?: string | null; district?: string | null; subdistrict?: string | null } | null;
     collector: { id: number; name: string } | null;
     samples: ReviewSample[];
 }
@@ -111,7 +111,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof MapPin; label: str
         <div className="flex items-start gap-2.5 min-w-0">
             <Icon size={14} className="text-text-muted shrink-0 mt-0.5" />
             <div className="min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-text-muted">{label}</div>
                 <div className="text-xs font-semibold text-text break-words [overflow-wrap:anywhere]">{value}</div>
             </div>
         </div>
@@ -129,7 +129,7 @@ function DetailThumb({ url, label, onOpen }: { url: string; label: string; onOpe
         return (
             <div className="flex-1 aspect-4/3 rounded-xl border border-dashed border-border bg-surface-subtle flex flex-col items-center justify-center gap-1 text-text-muted">
                 <ImageOff size={16} />
-                <span className="text-[10px] font-semibold text-center px-1">{label} — โหลดไม่ได้</span>
+                <span className="text-xs font-semibold text-center px-1">{label} — โหลดไม่ได้</span>
             </div>
         );
     }
@@ -137,7 +137,7 @@ function DetailThumb({ url, label, onOpen }: { url: string; label: string; onOpe
     return (
         <button type="button" onClick={onOpen} className="flex-1 group relative aspect-4/3 rounded-xl overflow-hidden border border-border cursor-pointer">
             <img src={url} alt={label} onError={() => setIsBroken(true)} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" />
-            <span className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[10px] font-semibold py-1 text-center">{label}</span>
+            <span className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs font-semibold py-1 text-center">{label}</span>
         </button>
     );
 }
@@ -180,10 +180,18 @@ export function RequestDetailPopup({
                     <div className="min-w-0">
                         <h4 className="text-sm font-semibold text-text wrap-break-word">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
                         <p className="text-xs text-text-muted font-medium mt-0.5">{item.location?.organization || "ไม่ระบุหน่วยงาน"}</p>
+                        {/* ที่ตั้งของสถานี — ใช้คำนำหน้า จ./อ./ต. ตามรูปแบบเดียวกับหน้าประวัติ */}
+                        {(item.location?.province || item.location?.district || item.location?.subdistrict) && (
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-xs text-text-muted">
+                                {item.location?.province && <span className="whitespace-nowrap">จ.{item.location.province}</span>}
+                                {item.location?.district && <span className="whitespace-nowrap">อ.{item.location.district}</span>}
+                                {item.location?.subdistrict && <span className="whitespace-nowrap">ต.{item.location.subdistrict}</span>}
+                            </div>
+                        )}
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                         <StatusBadge status={waterStatus} size="sm" />
-                        <span className={`inline-flex items-center w-20 text-xs font-semibold border p-1 justify-center rounded-md whitespace-nowrap ${requestStatusStyle}`}>{requestStatusLabel}</span>
+                        <span className={`inline-flex items-center w-30 text-xs font-semibold border p-1 justify-center rounded-md whitespace-nowrap ${requestStatusStyle}`}>{requestStatusLabel}</span>
                     </div>
                 </div>
 
@@ -239,7 +247,7 @@ export function RequestDetailPopup({
                                                 {m.unit ? <span className="text-text-muted font-medium"> {m.unit}</span> : null}
                                             </span>
                                             <span
-                                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                                className={`font-mono text-xs px-1.5 py-0.5 rounded font-bold border ${
                                                     isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
                                                 }`}
                                                 title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
@@ -276,7 +284,7 @@ export function RequestDetailPopup({
                                         .join(", ") || "ไม่ระบุสาร";
                                 return (
                                     <div key={s.id} className="space-y-1.5">
-                                        <span className="text-[11px] font-bold text-text-secondary">{sampleLabel}</span>
+                                        <span className="text-xs font-bold text-text-secondary">{sampleLabel}</span>
                                         <div className="flex gap-2">
                                             {s.rawImageUrl && (
                                                 <DetailThumb url={s.rawImageUrl} label="ภาพถ่าย" onOpen={() => onPreviewImage({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })} />
@@ -407,12 +415,12 @@ export function RequestCard({
                             {item.statusRequest === "pending" && (
                                 <div className="mt-2 flex items-center gap-2">
                                     {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-[10px] font-bold border border-teal-200">
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-xs font-bold border border-teal-200">
                                             <CheckCircle2 size={12} />
                                             <span>ผู้แจ้งอนุญาตให้สลับสารได้</span>
                                         </div>
                                     ) : (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-200">
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-xs font-bold border border-red-200">
                                             <XCircle size={12} />
                                             <span>ไม่อนุญาตให้สลับสาร</span>
                                         </div>
@@ -470,7 +478,7 @@ export function RequestCard({
                                 {s.measurements.map((m) => (
                                     <span
                                         key={m.parameterId}
-                                        className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                        className={`font-mono text-xs px-1.5 py-0.5 rounded font-bold border ${
                                             isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
                                         }`}
                                         title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
@@ -493,7 +501,7 @@ export function RequestCard({
                             <div key={m.parameterId} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2">
                                 <span className="font-bold text-text">{m.parameterName || "ไม่ระบุสาร"}</span>
                                 <span
-                                    className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                    className={`font-mono text-xs px-1.5 py-0.5 rounded font-bold border ${
                                         isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
                                     }`}
                                     title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
@@ -592,7 +600,7 @@ export function RejectDrawer({
                 {/* Image Context */}
                 {rejectTarget.samples.some((s) => s.rawImageUrl || s.analyzedPlotUrl) && (
                     <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
-                        <span className="text-[10px] font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
+                        <span className="text-xs font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
                         <div className="flex items-center gap-2">
                             {rejectTarget.samples
                                 .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
@@ -623,7 +631,7 @@ export function RejectDrawer({
                 <div className="space-y-2.5">
                     <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
-                        <span className={`text-[10px] font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                        <span className={`text-xs font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
                             {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
                         </span>
                     </div>
@@ -634,7 +642,7 @@ export function RejectDrawer({
                                 key={text}
                                 type="button"
                                 onClick={() => setRejectNote(rejectNote ? `${rejectNote} ${text}` : text)}
-                                className="text-[10px] font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
+                                className="text-xs font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
                             >
                                 {text}
                             </button>
@@ -649,7 +657,7 @@ export function RejectDrawer({
                         maxLength={REVIEW_NOTE_MAX_LENGTH}
                         className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-red-400 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
                     />
-                    <p className="text-[10px] text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
+                    <p className="text-xs text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
                 </div>
 
                 <button
@@ -657,11 +665,103 @@ export function RejectDrawer({
                     disabled={rejectSaving || !rejectNote.trim()}
                     className="w-full py-4 min-h-13 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                 >
-                    {rejectSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <X size={14} />}
+                    {rejectSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     ยืนยันปฏิเสธคำร้อง
                 </button>
             </div>
         </Popup>
+    );
+}
+
+/**
+ * ดรอปดาวน์เลือกชนิดสาร — ใช้ปุ่ม + เมนูเองแทน <select> เพราะ <option> ของ native
+ * สไตล์ไม่ได้ ทำให้รายการที่กางออกมาไม่เข้ากับธีมของระบบ (โดยเฉพาะโหมดมืด)
+ *
+ * ข้อจำกัด: เมนูวางแบบ absolute อยู่ในกล่องเนื้อหาของ Popup ที่ overflow-y-auto
+ * ถ้าฟิลด์อยู่ชิดขอบล่างของ sheet เมนูจะถูกตัดและต้องเลื่อนดู
+ */
+function ParameterSelect({
+    value,
+    options,
+    originalId,
+    disabledIds,
+    disabled,
+    title,
+    onChange,
+}: {
+    value: number;
+    options: { id: number; name: string }[];
+    originalId: number;
+    disabledIds: number[];
+    disabled: boolean;
+    title: string;
+    onChange: (id: number) => void;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const selected = options.find((p) => p.id === value);
+    const selectedLabel = selected ? `${selected.name}${selected.id === originalId ? " (เดิม)" : ""}` : "ไม่ระบุสาร";
+
+    return (
+        <div className="relative flex-1 min-w-0" ref={menuRef}>
+            <button
+                type="button"
+                disabled={disabled}
+                title={title}
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full flex items-center justify-between gap-2 bg-surface border rounded-lg px-2.5 py-2 text-xs font-semibold text-text uppercase transition-all cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-70 ${
+                    isOpen ? "border-primary ring-1 ring-primary" : "border-border hover:bg-surface-subtle"
+                }`}
+            >
+                <span className="truncate">{selectedLabel}</span>
+                <ChevronDown size={13} className={`text-text-muted shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {isOpen && !disabled && (
+                <div className="absolute top-[calc(100%+6px)] left-0 w-full min-w-40 max-h-52 overflow-y-auto bg-card-general border border-border rounded-2xl p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 shadow-xl">
+                    {options.map((p) => {
+                        const isTaken = disabledIds.includes(p.id);
+                        const isActive = p.id === value;
+                        return (
+                            <button
+                                key={p.id}
+                                type="button"
+                                disabled={isTaken}
+                                onClick={() => {
+                                    onChange(p.id);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all uppercase ${
+                                    isTaken
+                                        ? "text-text-muted opacity-50 cursor-not-allowed"
+                                        : isActive
+                                          ? "bg-surface-subtle text-text cursor-pointer"
+                                          : "text-text-secondary hover:bg-surface cursor-pointer"
+                                }`}
+                            >
+                                <span className="truncate text-left">
+                                    {p.name}
+                                    {p.id === originalId && <span className="text-text-muted normal-case"> (เดิม)</span>}
+                                    {isTaken && <span className="text-text-muted normal-case"> (เลือกแล้ว)</span>}
+                                </span>
+                                {isActive && <Check size={12} strokeWidth={4} className="text-primary shrink-0" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -711,7 +811,7 @@ export function EditApproveDrawer({
                 {/* Image Context */}
                 {editTarget.samples.some((s) => s.rawImageUrl || s.analyzedPlotUrl) && (
                     <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
-                        <span className="text-[10px] font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
+                        <span className="text-xs font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
                         <div className="flex items-center gap-2">
                             {editTarget.samples
                                 .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
@@ -742,7 +842,7 @@ export function EditApproveDrawer({
                 <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
                         <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
-                        {isMultiSample && <span className="text-[10px] font-medium text-text-muted">เลือกเฉพาะสารที่จะอนุมัติ</span>}
+                        {isMultiSample && <span className="text-xs font-medium text-text-muted">เลือกเฉพาะสารที่จะอนุมัติ</span>}
                     </div>
                     <div className="bg-surface-subtle border border-border rounded-xl p-3 space-y-3">
                         {editTarget.samples.map((s) => {
@@ -770,26 +870,15 @@ export function EditApproveDrawer({
                                             return (
                                                 <div key={m.parameterId} className="flex flex-col gap-2">
                                                     <div className="flex items-center justify-between gap-3">
-                                                        <select
+                                                        <ParameterSelect
+                                                            value={editParameters[m.parameterId] ?? m.parameterId}
+                                                            options={systemParameters}
+                                                            originalId={m.parameterId}
+                                                            disabledIds={otherSelectedParams}
                                                             disabled={!isSelected || !userRequestedChange}
                                                             title={!userRequestedChange ? "ผู้ใช้ไม่ได้เปิดสิทธิ์ให้แอดมินเปลี่ยนสาร (หากผิดกรุณากดปฏิเสธ)" : ""}
-                                                            value={editParameters[m.parameterId] ?? m.parameterId}
-                                                            onChange={(e) => {
-                                                                const val = parseInt(e.target.value);
-                                                                setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }));
-                                                            }}
-                                                            className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-2 py-1.5 text-xs font-semibold text-text uppercase outline-none disabled:cursor-not-allowed disabled:opacity-70"
-                                                        >
-                                                            {systemParameters.map(p => (
-                                                                <option 
-                                                                    key={p.id} 
-                                                                    value={p.id}
-                                                                    disabled={otherSelectedParams.includes(p.id)}
-                                                                >
-                                                                    {p.name} {p.id === m.parameterId ? "(เดิม)" : ""} {otherSelectedParams.includes(p.id) ? "(เลือกแล้ว)" : ""}
-                                                                </option>
-                                                            ))}
-                                                        </select>
+                                                            onChange={(val) => setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }))}
+                                                        />
                                                         <div className="flex items-center gap-2">
                                                             <input
                                                                 type="number"
@@ -814,7 +903,7 @@ export function EditApproveDrawer({
                         })}
                     </div>
                     {isMultiSample && editSelectedSampleIds.length < editTarget.samples.length && (
-                        <p className="text-[10px] font-medium text-text-danger bg-red-500/5 px-2.5 py-1.5 rounded-lg border border-red-500/10">
+                        <p className="text-xs font-medium text-text-danger bg-red-500/5 px-2.5 py-1.5 rounded-lg border border-red-500/10">
                             สารที่ไม่ได้เลือกจะถูกปฏิเสธ
                         </p>
                     )}
@@ -823,7 +912,7 @@ export function EditApproveDrawer({
                 <div className="space-y-2.5">
                     <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">หมายเหตุการแก้ไข *</label>
-                        <span className={`text-[10px] font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                        <span className={`text-xs font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
                             {editNote.length}/{REVIEW_NOTE_MAX_LENGTH}
                         </span>
                     </div>
@@ -834,7 +923,7 @@ export function EditApproveDrawer({
                                 key={text}
                                 type="button"
                                 onClick={() => setEditNote(editNote ? `${editNote} ${text}` : text)}
-                                className="text-[10px] font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
+                                className="text-xs font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
                             >
                                 {text}
                             </button>
@@ -849,7 +938,7 @@ export function EditApproveDrawer({
                         maxLength={REVIEW_NOTE_MAX_LENGTH}
                         className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all resize-none"
                     />
-                    <p className="text-[10px] text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
+                    <p className="text-xs text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
                 </div>
 
                 <button
@@ -857,7 +946,7 @@ export function EditApproveDrawer({
                     disabled={editSaving || !editNote.trim() || noneSelected}
                     className="w-full py-4 min-h-13 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                 >
-                    {editSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
+                    {editSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     บันทึกและอนุมัติ
                 </button>
             </div>
