@@ -164,10 +164,11 @@ export function useSubmitSample() {
                 const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                 setGpsCoords(coords);
 
-                // ตั้ง activeSource เป็น gps ทันทีถ้าเพิ่งเข้ามา และยังไม่มีการเลือก EXIF
+                // ถ้ามี locationId ส่งมาจาก URL (BottomSheet) ให้คงสถานะ manual ไว้ ไม่สลับไป gps
+                const hasPreselected = !!searchParams.get("locationId");
+
                 setActiveSource((prev) => {
-                    if (prev === "manual" || prev === "gps") {
-                        updateNearestByCoords(coords);
+                    if (prev === "manual" && !hasPreselected) {
                         return "gps";
                     }
                     return prev;
@@ -179,7 +180,7 @@ export function useSubmitSample() {
             },
             { enableHighAccuracy: true, timeout: 10000 },
         );
-    }, [allLocations, updateNearestByCoords]);
+    }, [searchParams]);
 
     const [weatherData, setWeatherData] = useState<{
         airTemperature: number | null;
