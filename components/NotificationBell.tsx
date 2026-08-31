@@ -20,7 +20,8 @@ interface NotificationItem {
 
 function formatDateTime(value: string | null) {
     if (!value) return "-";
-    return new Date(value).toLocaleDateString("th-TH", {
+    const cleanValue = value.replace(/(Z|\+\d{2}:\d{2})$/, "");
+    return new Date(cleanValue).toLocaleDateString("th-TH", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -221,7 +222,7 @@ export default function NotificationBell() {
     const displayedItems = !isDesktop && sheetHeight === "collapsed" ? items.slice(0, 1) : items;
 
     return (
-        <>
+        <div className="relative shrink-0">
             {/* ปุ่มกระดิ่ง */}
             <button
                 type="button"
@@ -241,21 +242,21 @@ export default function NotificationBell() {
             {open && (
                 <>
                     {/* Backdrop สำหรับปิดเมื่อคลิกด้านนอก */}
-                    <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={() => setOpen(false)} />
+                    <div className="fixed inset-0 bg-black/40 md:bg-transparent z-1000 backdrop-blur-xs md:backdrop-blur-none transition-opacity" onClick={() => setOpen(false)} />
 
                     {/*
                        - Mobile (default): Bottom Sheet ยืดหดได้ลอยจากขอบล่าง
-                       - Desktop (md:): Modal กลางจอ (Centered Modal)
+                       - Desktop (md:): Dropdown ขวาล่าง
                     */}
                     <div
                         ref={sheetRef}
                         className={`
-                            fixed z-1001 bg-bg shadow-2xl border border-border flex flex-col overflow-hidden
+                            fixed z-1001 bg-bg shadow-sm border border-border flex flex-col overflow-hidden
                             /* Mobile Style */
                             bottom-0 left-0 right-0 rounded-t-3xl max-w-lg mx-auto will-change-[height]
                             /* Desktop Style (md ขึ้นไป) */
-                            md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto md:right-auto
-                            md:w-full md:max-w-md md:max-h-[85vh] md:rounded-3xl
+                            md:absolute md:top-[calc(100%+8px)] md:right-0 md:left-auto md:bottom-auto
+                            md:w-95 md:max-h-[80vh] md:rounded-2xl
                         `}
                         style={
                             !isDesktop
@@ -408,6 +409,6 @@ export default function NotificationBell() {
                     </div>
                 </>
             )}
-        </>
+        </div>
     );
 }
