@@ -1,10 +1,130 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Search, X, Check } from "lucide-react";
+import { useThaiAddressTree } from "@/lib/hooks/useThaiAddressTree";
+import { useAnchoredMenu } from "@/lib/hooks/useAnchoredMenu";
 
-// Structure: { [province]: { [district]: { [subdistrict]: "zipcode" } } }
-type AddressTree = Record<string, Record<string, Record<string, string>>>;
+// จำนวนตัวเลือกขั้นต่ำที่จะโชว์ช่องค้นหาในเมนู — ลิสต์สั้น ๆ (เช่นอำเภอไม่กี่อัน) ไม่ต้องมีก็หาเจอ
+const SEARCH_THRESHOLD = 8;
+
+// ความสูงสูงสุดโดยประมาณของเมนู ใช้ตัดสินว่าจะกางขึ้นหรือลง
+const MENU_MAX_HEIGHT = 260;
+
+/**
+ * ดรอปดาวน์เลือกที่อยู่ — ใช้ปุ่ม + เมนูเองแทน <select> เพราะ <option> ของ native
+ * สไตล์ไม่ได้ ทำให้รายการที่กางออกมาไม่เข้ากับธีมของระบบ (โดยเฉพาะโหมดมืด)
+ *
+ * มีช่องค้นหาเมื่อรายการยาวเกิน SEARCH_THRESHOLD เพื่อทดแทน type-ahead ที่เสียไปจาก native select
+ * (จังหวัดมี 77 รายการ)
+ *
+ * เมนูถูกส่งไป render ที่ document.body ผ่าน portal และวางตำแหน่งแบบ fixed
+ * เพราะคอมโพเนนต์นี้ถูกใช้ในฟอร์มแก้ไขสถานีซึ่งอยู่ใน Popup ที่เป็น overflow-y-auto
+ * ถ้าวางแบบ absolute ตามปกติเมนูจะโดนขอบกล่องตัด
+ */
+function SearchableSelect({
+    value,
+    options,
+    placeholder,
+    disabled,
+    onChange,
+}: {
+    value: string;
+    options: string[];
+    placeholder: string;
+    disabled: boolean;
+    onChange: (value: string) => void;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const closeMenu = useCallback(() => setIsOpen(false), []);
+    const { anchorRef, menuRef, pos: menuPos } = useAnchoredMenu(isOpen, closeMenu, MENU_MAX_HEIGHT);
+
+    const filteredOptions = useMemo(() => {
+        if (!searchQuery.trim()) return options;
+        return options.filter((o) => o.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [options, searchQuery]);
+
+    // รีเซ็ตคำค้นหาเวลาปิดเมนู เพื่อให้ครั้งถัดไปเปิดมาเห็นรายการเต็ม
+    useEffect(() => {
+        if (!isOpen) setSearchQuery("");
+    }, [isOpen]);
+
+    // ปิดเมนูเองเมื่อถูก disable ระหว่างเปิดอยู่ (เช่นผู้ใช้เปลี่ยนจังหวัด ทำให้อำเภอถูกรีเซ็ต)
+    useEffect(() => {
+        if (disabled) setIsOpen(false);
+    }, [disabled]);
+
+    const menu = isOpen && !disabled && menuPos && (
+        <div
+            ref={menuRef}
+            style={{ position: "fixed", left: menuPos.left, width: menuPos.width, top: menuPos.top, bottom: menuPos.bottom }}
+            className="bg-card-general rounded-2xl border border-border/80 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-900"
+        >
+            {options.length >= SEARCH_THRESHOLD && (
+                <div className="p-2.5 border-b border-border bg-bg flex items-center gap-2">
+                    <Search size={14} className="text-text shrink-0 ml-1" />
+                    <input
+                        type="text"
+                        autoFocus
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="พิมพ์เพื่อค้นหา..."
+                        className="no-focus-ring w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
+                    />
+                    {searchQuery && (
+                        <button type="button" onClick={() => setSearchQuery("")} className="no-focus-ring text-text p-1 rounded-lg hover:bg-bg transition-colors cursor-pointer">
+                            <X size={13} />
+                        </button>
+                    )}
+                </div>
+            )}
+
+            <div className="p-1 flex flex-col gap-0.5 max-h-56 overflow-y-auto overscroll-contain scrollbar-thin">
+                {filteredOptions.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-text font-medium">ไม่พบรายการที่ค้นหา</div>
+                ) : (
+                    filteredOptions.map((option) => {
+                        const isSelected = option === value;
+                        return (
+                            <button
+                                key={option}
+                                type="button"
+                                onClick={() => {
+                                    onChange(option);
+                                    setIsOpen(false);
+                                }}
+                                className={`no-focus-ring w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all duration-100 cursor-pointer ${
+                                    isSelected ? "bg-surface-subtle text-text" : "text-text-secondary hover:bg-surface"
+                                }`}
+                            >
+                                <span className="truncate text-left">{option}</span>
+                                {isSelected && <Check size={12} strokeWidth={4} className="text-primary shrink-0" />}
+                            </button>
+                        );
+                    })
+                )}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="relative" ref={anchorRef}>
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setIsOpen(!isOpen)}
+                className="no-focus-ring w-full flex items-center justify-between gap-2 px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs min-h-11 font-semibold transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <span className={`truncate text-left ${value ? "text-text-primary" : "text-text-muted"}`}>{value || placeholder}</span>
+                <ChevronDown size={14} className={`text-text-muted shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {menu && typeof document !== "undefined" && createPortal(menu, document.body)}
+        </div>
+    );
+}
 
 interface ThaiAddressSelectorProps {
     province: string;
@@ -25,14 +145,7 @@ export function ThaiAddressSelector({
     zipcode, setZipcode,
     onGeocode,
 }: ThaiAddressSelectorProps) {
-    const [tree, setTree] = useState<AddressTree | null>(null);
-
-    useEffect(() => {
-        fetch("/data/thai_address.json")
-            .then(res => res.json())
-            .then(data => setTree(data))
-            .catch(err => console.error("Failed to load thai address data", err));
-    }, []);
+    const tree = useThaiAddressTree();
 
     const provinces = useMemo(() => {
         if (!tree) return [];
@@ -45,12 +158,11 @@ export function ThaiAddressSelector({
     }, [tree, province]);
 
     const subdistricts = useMemo(() => {
-        if (!tree || !province || !district || !tree[province][district]) return [];
+        if (!tree || !province || !district || !tree[province]?.[district]) return [];
         return Object.keys(tree[province][district]).sort();
     }, [tree, province, district]);
 
-    const handleProvinceChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const p = e.target.value;
+    const handleProvinceChange = async (p: string) => {
         setProvince(p);
         setDistrict("");
         setSubdistrict("");
@@ -65,8 +177,7 @@ export function ThaiAddressSelector({
         }
     };
 
-    const handleDistrictChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const d = e.target.value;
+    const handleDistrictChange = async (d: string) => {
         setDistrict(d);
         setSubdistrict("");
         setZipcode("");
@@ -80,8 +191,7 @@ export function ThaiAddressSelector({
         }
     };
 
-    const handleSubdistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const s = e.target.value;
+    const handleSubdistrictChange = (s: string) => {
         setSubdistrict(s);
     };
 
@@ -101,35 +211,25 @@ export function ThaiAddressSelector({
                     <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
                         จังหวัด <span className="text-text-danger">*</span>
                     </label>
-                    <div className="relative">
-                        <select
-                            value={province}
-                            onChange={handleProvinceChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer"
-                            disabled={!tree}
-                        >
-                            <option value="">-- เลือกจังหวัด --</option>
-                            {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                    </div>
+                    <SearchableSelect
+                        value={province}
+                        options={provinces}
+                        placeholder="-- เลือกจังหวัด --"
+                        disabled={!tree}
+                        onChange={handleProvinceChange}
+                    />
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
                         อำเภอ/เขต <span className="text-text-danger">*</span>
                     </label>
-                    <div className="relative">
-                        <select
-                            value={district}
-                            onChange={handleDistrictChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
-                            disabled={!province || districts.length === 0}
-                        >
-                            <option value="">-- เลือกอำเภอ --</option>
-                            {districts.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                    </div>
+                    <SearchableSelect
+                        value={district}
+                        options={districts}
+                        placeholder="-- เลือกอำเภอ --"
+                        disabled={!province || districts.length === 0}
+                        onChange={handleDistrictChange}
+                    />
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -137,18 +237,13 @@ export function ThaiAddressSelector({
                     <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
                         ตำบล/แขวง <span className="text-text-danger">*</span>
                     </label>
-                    <div className="relative">
-                        <select
-                            value={subdistrict}
-                            onChange={handleSubdistrictChange}
-                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs focus:border-primary outline-none min-h-11 font-semibold appearance-none cursor-pointer disabled:opacity-50"
-                            disabled={!district || subdistricts.length === 0}
-                        >
-                            <option value="">-- เลือกตำบล --</option>
-                            {subdistricts.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                    </div>
+                    <SearchableSelect
+                        value={subdistrict}
+                        options={subdistricts}
+                        placeholder="-- เลือกตำบล --"
+                        disabled={!district || subdistricts.length === 0}
+                        onChange={handleSubdistrictChange}
+                    />
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
@@ -158,8 +253,8 @@ export function ThaiAddressSelector({
                         type="text" 
                         value={zipcode} 
                         onChange={(e) => setZipcode(e.target.value)} 
-                        className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold" 
-                        placeholder="กรอกอัตโนมัติ" 
+                        className="no-focus-ring w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold"
+                        placeholder="กรอกอัตโนมัติ"
                     />
                 </div>
             </div>

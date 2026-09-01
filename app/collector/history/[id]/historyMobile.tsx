@@ -47,7 +47,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                                 setEditData((p: any) => ({ ...p, locationId: "" }));
                             }}
                             onFocus={() => setLocationDropdownOpen(true)}
-                            className={`w-full text-xs bg-surface-subtle border rounded-lg px-3 py-2.5 outline-none ${locationSearch && !isLocationValid ? "border-red-400" : "border-border focus:border-teal-500"}`}
+                            className={`w-full text-xs bg-surface-subtle border rounded-lg px-3 py-2.5 outline-none ${locationSearch && !isLocationValid ? "border-red-400" : "border-border"}`}
                         />
                         {locationDropdownOpen && filteredLocations.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-lg z-50 max-h-40 overflow-y-auto">

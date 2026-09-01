@@ -46,12 +46,39 @@ function MapController({
     centerPos,
     selectedLocation,
     pickedPosition,
+    panInside,
 }: {
     centerPos: [number, number] | null;
     selectedLocation: BottomSheetLocation | null;
     pickedPosition?: { lat: number; lng: number } | null;
+    panInside?: { bounds: [[number, number], [number, number]]; nonce: number } | null;
 }) {
     const map = useMap();
+
+    // เลื่อนจอให้พื้นที่ที่มองเห็นกลับเข้ามาอยู่ในกรอบที่กำหนด โดยไม่ปักหมุดและไม่เปลี่ยนระดับซูม
+    // ใช้ panInsideBounds ไม่ใช่ setView เพราะต้องการให้ "ทั้งจอ" อยู่ในกรอบ
+    // ถ้าหนีบแค่จุดกึ่งกลางไปไว้ที่เส้นขอบ ครึ่งจอจะยังเป็นนอกกรอบอยู่ และเมื่อกล้องจอดที่ขอบแล้ว
+    // การสั่งครั้งถัดไปจะไม่ขยับอีกเลย
+    //
+    // invalidateSize ก่อนเสมอ เพราะแผนที่อยู่ในฟอร์มที่เลื่อน/ยืดหดได้ ถ้า Leaflet ถือขนาดเดิมค้างไว้
+    // การคำนวณว่าต้องเลื่อนเท่าไหร่จะผิด
+    //
+    // ผูกกับ nonce เพื่อให้สั่งซ้ำได้ ถ้าผู้ใช้แตะนอกกรอบหลายครั้งติดกัน
+    useEffect(() => {
+        if (!panInside) return;
+        map.invalidateSize();
+
+        // ซูมออกให้เห็นขอบเขตทั้งหมดที่เลือกได้ ไม่ใช่แค่ดึงขอบจอให้แตะกรอบ
+        //
+        // เหตุผล: กรอบที่ส่งมาเป็นสี่เหลี่ยมครอบประเทศ ไม่ใช่รูปร่างประเทศจริง การเลื่อนน้อยที่สุด
+        // ให้พอแตะกรอบจึงไปจบที่ประเทศเพื่อนบ้านได้ (เช่นที่ละติจูด 12.6 ขอบกรอบด้านตะวันออก
+        // อยู่กลางกัมพูชา ห่างชายแดนไทยราว 300 กม.) และยิ่งซูมลึกจอยิ่งเล็ก ระยะที่ขยับยิ่งน้อย
+        //
+        // flyToBounds พาไปเห็นภาพรวมทั้งประเทศเสมอ ผู้ใช้จึงเห็นชัดว่าเลือกได้ในขอบเขตไหน
+        // แล้วซูมเข้าไปยังจุดที่ต้องการเอง
+        map.flyToBounds(L.latLngBounds(panInside.bounds[0], panInside.bounds[1]), { duration: 1 });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [panInside?.nonce, map]);
 
     // ย้ายกล้องไปที่ตำแหน่งปักหมุด/เลือกสถานที่ (pickedPosition)
     useEffect(() => {
@@ -90,9 +117,11 @@ interface MapViewProps {
     mode?: "explorer" | "picker";
     onLocationPick?: (lat: number, lng: number) => void;
     pickedPosition?: { lat: number; lng: number } | null;
+    /** เลื่อนจอให้พื้นที่ที่เห็นกลับเข้ากรอบนี้ โดยไม่ปักหมุด — เปลี่ยน nonce ทุกครั้งที่ต้องการให้เลื่อนอีกรอบ */
+    panInside?: { bounds: [[number, number], [number, number]]; nonce: number } | null;
 }
 
-export default function MapView({ mode = "explorer", onLocationPick, pickedPosition }: MapViewProps) {
+export default function MapView({ mode = "explorer", onLocationPick, pickedPosition, panInside }: MapViewProps) {
     const [locations, setLocations] = useState<LocationData[]>([]);
     const [agencyFilter, setAgencyFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL");
@@ -258,7 +287,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                         })}
                     />
                 )}
-                <MapController centerPos={userPos} selectedLocation={selectedLocation} pickedPosition={pickedPosition} />{" "}
+                <MapController centerPos={userPos} selectedLocation={selectedLocation} pickedPosition={pickedPosition} panInside={panInside} />{" "}
             </MapContainer>
 
             <button

@@ -108,7 +108,7 @@ export function LocationPicker({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={locationName || "ค้นหาสถานี..."}
-                        className="w-full pl-8 pr-3 py-2 text-xs bg-surface-subtle border border-border rounded-lg text-text-primary focus:outline-hidden focus:border-teal-500 transition-colors min-h-10"
+                        className="w-full pl-8 pr-3 py-2 text-xs bg-surface-subtle border border-border rounded-lg text-text-primary focus:outline-hidden transition-colors min-h-10"
                     />
                 </div>
 
