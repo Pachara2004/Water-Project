@@ -149,7 +149,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                         {/* Desktop Search & Filters Toolbar */}
                         <div className="grid grid-cols-12 gap-3 items-center">
                             {/* 1. Search Box */}
-                            <div className="col-span-12 md:col-span-6 lg:col-span-3 relative flex items-center bg-surface-subtle border border-primary/30 rounded-lg px-4 transition-all focus-within:border-primary">
+                            <div className="col-span-12 md:col-span-6 lg:col-span-3 relative flex items-center bg-surface-subtle border border-primary/30 rounded-lg px-4 transition-all">
                                 <input
                                     type="text"
                                     placeholder="ค้นหาชื่อสถานที่ หรือข้อมูล..."

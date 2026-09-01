@@ -567,18 +567,21 @@ textarea {
     font-family: var(--font-sans);
 }
 
-/* กฎนี้อยู่นอก @layer ทำให้ชนะ utility class ของ Tailwind v4 ทุกตัวไม่ว่า specificity เท่าไหร่
-   ช่องที่ไม่ต้องการกรอบโฟกัสจึงต้องใส่ class .no-focus-ring แทนการเขียน focus:outline-* ทับ */
-input:focus:not(.no-focus-ring),
-select:focus,
-textarea:focus,
-button:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+/* ไม่แสดงกรอบโฟกัสทั้งระบบตามการออกแบบ ครอบทั้งกฎของ UA stylesheet และของ Leaflet
+   กฎนี้อยู่นอก @layer ทำให้ชนะ utility class ของ Tailwind v4 ทุกตัวไม่ว่า specificity เท่าไหร่
+
+   ข้อแลกเปลี่ยน: ผู้ใช้ที่ใช้คีย์บอร์ดอย่างเดียวจะไม่เห็นว่าโฟกัสอยู่ที่องค์ประกอบไหน
+   ถ้าจะคืนกรอบให้เฉพาะบางจุด ให้เขียนกฎที่เจาะจงกว่านี้ทับเป็นราย ๆ ไป */
+:focus,
+:focus-visible {
+    outline: none;
+    /* ปิดเฉพาะวงแหวนของ Tailwind (focus:ring-*) ไม่ใช่ box-shadow ทั้งก้อน
+       ไม่งั้นเงาปกติของปุ่ม (shadow-sm ฯลฯ) จะหายไปด้วยระหว่างที่ถูกโฟกัส */
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-ring-offset-shadow: 0 0 #0000;
 }
 
-/* ปิดกรอบโฟกัสทั้งของกฎด้านบนและของ UA stylesheet ให้ช่องที่ออกแบบมาให้ไร้กรอบ
-   ต้องอยู่นอก @layer เช่นกัน เพราะ utility ของ Tailwind ไม่มีทางชนะ CSS ที่ไม่อยู่ใน layer */
+/* class เดิมที่กระจายอยู่ตามคอมโพเนนต์ ปล่อยไว้ให้ยังทำงานได้แม้กฎด้านบนครอบไปแล้ว */
 .no-focus-ring:focus,
 .no-focus-ring:focus-visible {
     outline: none;

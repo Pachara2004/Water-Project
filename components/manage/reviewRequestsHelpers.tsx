@@ -655,7 +655,7 @@ export function RejectDrawer({
                         placeholder="เช่น ภาพเบลอ มองไม่เห็นสีของเหลวชัดเจน กรุณาถ่ายใหม่"
                         rows={3}
                         maxLength={REVIEW_NOTE_MAX_LENGTH}
-                        className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-red-400 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
+                        className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
                     />
                     <p className="text-xs text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
                 </div>
@@ -936,7 +936,7 @@ export function EditApproveDrawer({
                         placeholder="เช่น ปรับค่า pH ตามรูปถ่ายที่เห็นจริง"
                         rows={3}
                         maxLength={REVIEW_NOTE_MAX_LENGTH}
-                        className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all resize-none"
+                        className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all resize-none"
                     />
                     <p className="text-xs text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
                 </div>
