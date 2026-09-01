@@ -83,6 +83,12 @@ export function ImageZone({
 
     const [viewMode, setViewMode] = useState<"raw" | "analyzed">("analyzed");
     const [showExampleModal, setShowExampleModal] = useState(false);
+    
+    // Detection States
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [detectionResult, setDetectionResult] = useState<{ passed: boolean; message: string; detected_items: any[]; isOverridden?: boolean } | null>(null);
+    const [failedPreview, setFailedPreview] = useState<string | null>(null);
+    const [rejectedFile, setRejectedFile] = useState<File | null>(null);
 
     const paramKey = matchParamKey(param.name, PARAM_EXAMPLE_IMAGE);
     const exampleImage = paramKey ? PARAM_EXAMPLE_IMAGE[paramKey] : null;
@@ -105,11 +111,81 @@ export function ImageZone({
             return;
         }
 
-        onImageFilesChange(file);
-        setIsRecommending(true);
+        // --- 1. Object Detection (Local Inference) ---
+        setDetectionResult(null);
+        setFailedPreview(null);
+        setRejectedFile(null);
+        setIsDetecting(true);
+
+        // แสดงภาพชั่วคราวระหว่างตรวจจับ
+        const tempUrl = URL.createObjectURL(file);
+        setFailedPreview(tempUrl);
+
         try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch("/api/detect", { method: "POST", body: fd });
+            
+            if (!res.ok) {
+                // ถ้า API error (เช่นโหลดโมเดลไม่ขึ้น) ยอมให้ผ่านไปก่อนเพื่อให้งานไม่สะดุด
+                onImageFilesChange(file);
+                setFailedPreview(null);
+                setRejectedFile(null);
+                return;
+            }
+
+            const data = await res.json();
+            setDetectionResult(data);
+
+            if (data.passed) {
+                // ตรวจผ่าน -> ส่งรูปต่อให้ parent และเริ่มกระบวนการ EXIF
+                setFailedPreview(null);
+                setRejectedFile(null);
+                onImageFilesChange(file);
+                
+                setIsRecommending(true);
+                const { getExifLocation, calculateDistance } = await import("@/lib/exif");
+                const coords = await getExifLocation(file);
+                if (coords && allLocations.length) {
+                    const sorted = [...allLocations].sort(
+                        (a, b) => calculateDistance(coords.latitude, coords.longitude, a.lat, a.lng) - calculateDistance(coords.latitude, coords.longitude, b.lat, b.lng),
+                    );
+                    onNearestLocationsUpdate(sorted.slice(0, 5));
+                }
+                setIsRecommending(false);
+            } else {
+                // ตรวจไม่ผ่าน -> หยุดกระบวนการ (parent จะไม่ได้ไฟล์ = กดวิเคราะห์/Submit ไม่ได้)
+                // ภาพจะยังถูกแสดงจาก failedPreview พร้อมแสดง Alert Badge สีแดง
+                setRejectedFile(file);
+            }
+        } catch (err) {
+            console.error("Detection error:", err);
+            errorToast("ระบบตรวจจับขัดข้อง", "ไม่สามารถตรวจสอบรูปภาพได้ กรุณาลองใหม่อีกครั้ง");
+            setFailedPreview(null);
+        } finally {
+            setIsDetecting(false);
+            // เคลียร์ input เพื่อให้เลือกรูปเดิมซ้ำได้ถ้าต้องการ (กรณีต้องการลองใหม่)
+            if (e.target) e.target.value = '';
+        }
+    };
+
+    const handleOverride = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!rejectedFile) return;
+
+        // เปลี่ยนสถานะเป็นผ่านแบบถูกบังคับ
+        setDetectionResult((prev) => (prev ? { ...prev, passed: true, message: "ยืนยันการใช้รูปภาพโดยผู้ใช้งาน (ข้ามการตรวจสอบ)", isOverridden: true } : null));
+
+        // ส่งไฟล์ให้ระบบนำไปใช้
+        onImageFilesChange(rejectedFile);
+        setFailedPreview(null);
+        setRejectedFile(null);
+
+        // ดำเนินการดึงพิกัด EXIF ตามปกติ
+        try {
+            setIsRecommending(true);
             const { getExifLocation, calculateDistance } = await import("@/lib/exif");
-            const coords = await getExifLocation(file);
+            const coords = await getExifLocation(rejectedFile);
             if (coords && allLocations.length) {
                 const sorted = [...allLocations].sort(
                     (a, b) => calculateDistance(coords.latitude, coords.longitude, a.lat, a.lng) - calculateDistance(coords.latitude, coords.longitude, b.lat, b.lng),
@@ -117,7 +193,7 @@ export function ImageZone({
                 onNearestLocationsUpdate(sorted.slice(0, 5));
             }
         } catch (err) {
-            console.error("EXIF Error:", err);
+            console.error("EXIF error on override:", err);
         } finally {
             setIsRecommending(false);
         }
@@ -128,6 +204,7 @@ export function ImageZone({
     // components/submit/ImageZone.tsx
 
     const getDisplayedImage = () => {
+        if (failedPreview) return failedPreview;
         // 1. ผลวิเคราะห์สด (มี plotFile)
         if (step === "results" && viewMode === "analyzed" && hasPlotImg) {
             return plotFile instanceof Blob ? URL.createObjectURL(plotFile) : plotFile;
@@ -253,6 +330,48 @@ export function ImageZone({
                         </div>
                     )}
 
+                    {/* Detection Badge */}
+                    {detectionResult && !isSaved && (
+                        <div className={`mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg border animate-fade-in ${
+                            detectionResult.passed 
+                                ? detectionResult.isOverridden 
+                                    ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900" 
+                                    : "bg-teal-50 border-teal-200 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200 dark:border-teal-900" 
+                                : "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900"
+                            }`}>
+                            {detectionResult.passed 
+                                ? <CheckCircle2 size={15} className="shrink-0 mt-0.5" /> 
+                                : <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                            }
+                            <div className="text-xs leading-relaxed font-medium w-full">
+                                <p className="font-semibold mb-0.5">
+                                    {detectionResult.passed 
+                                        ? detectionResult.isOverridden ? "ข้ามการตรวจสอบโดยผู้ใช้งาน" : "ภาพผ่านเกณฑ์วัตถุประสงค์" 
+                                        : "ภาพไม่ผ่านเกณฑ์"
+                                    }
+                                </p>
+                                <p>{detectionResult.message}</p>
+                                {detectionResult.detected_items && detectionResult.detected_items.length > 0 && (
+                                    <p className="mt-1 opacity-90 text-[11px] font-mono">
+                                        ตรวจพบ: {detectionResult.detected_items.map((item: any) => `${item.object} (${(item.confidence * 100).toFixed(0)}%)`).join(', ')}
+                                    </p>
+                                )}
+                                
+                                {/* ปุ่ม Override กรณีที่โดน AI Block */}
+                                {!detectionResult.passed && rejectedFile && (
+                                    <button
+                                        type="button"
+                                        onClick={handleOverride}
+                                        className="mt-2.5 px-3 py-1.5 w-full sm:w-auto bg-red-100/50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                                    >
+                                        <AlertTriangle size={13} />
+                                        <span>ยืนยันว่ามีหลอดทดลอง (ใช้รูปนี้)</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Responsive Image Container: ปรับ Aspect Ratio ตาม Device */}
                     <div
                         onClick={() => step === "upload" && galleryInputRef.current?.click()}
@@ -266,10 +385,16 @@ export function ImageZone({
                         }
 ${!isHistoryView && isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                     >
-                        {step === "analyzing" ? (
+                        {step === "analyzing" || isDetecting ? (
                             <>
-                                {preview && <img src={preview} alt={param.name} className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
+                                {(preview || failedPreview) && <img src={preview || failedPreview || ""} alt={param.name} className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
                                 <div className="animate-laser" />
+                                {isDetecting && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white drop-shadow-md z-10 bg-black/40 backdrop-blur-xs gap-2">
+                                        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        <span className="text-sm font-bold">กำลังตรวจจับภาชนะ...</span>
+                                    </div>
+                                )}
                             </>
                         ) : displayImgSrc ? (
                             <>

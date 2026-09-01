@@ -1,0 +1,14 @@
+path: C:\ESP\Water Project\Code\Water Project\public\models\water-tube
+train: train/images
+val: train/images
+test: train/images
+
+nc: 1
+names: ['tube']
+
+roboflow:
+  workspace: pachara000004-gmail-com
+  project: water-tube-se-buu
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/pachara000004-gmail-com/water-tube-se-buu/dataset/1

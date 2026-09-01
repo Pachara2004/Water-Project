@@ -44,3 +44,6 @@ next.config.ts
 .continue
 
 certificates
+
+weights/
+*.pt
