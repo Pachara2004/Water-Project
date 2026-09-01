@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Building2, Pencil, Trash2, Check, Plus } from "lucide-react";
 import Popup from "@/components/Popup";
+import { useAnchoredMenu } from "@/lib/hooks/useAnchoredMenu";
 
 import { ThaiAddressSelector } from "./ThaiAddressSelector";
+
+// ความสูงสูงสุดโดยประมาณของเมนูหน่วยงาน ใช้ตัดสินว่าจะกางขึ้นหรือลง
+const ORG_MENU_MAX_HEIGHT = 220;
 
 export interface LocationItem {
     id: number;
@@ -153,7 +158,8 @@ export function LocationEditDrawer({
     const [isCustomOrg, setIsCustomOrg] = useState(() => !uniqueOrgs.includes(editOrg));
     const [orgSearch, setOrgSearch] = useState(() => (uniqueOrgs.includes(editOrg) ? editOrg : ""));
     const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
-    const orgDropdownRef = useRef<HTMLDivElement>(null);
+    const closeOrgDropdown = useCallback(() => setOrgDropdownOpen(false), []);
+    const { anchorRef: orgAnchorRef, menuRef: orgMenuRef, pos: orgMenuPos } = useAnchoredMenu(orgDropdownOpen, closeOrgDropdown, ORG_MENU_MAX_HEIGHT);
 
     const orgOptions = useMemo(() => {
         const q = orgSearch.trim();
@@ -163,15 +169,45 @@ export function LocationEditDrawer({
         return uniqueOrgs.filter((o) => o.toLowerCase().includes(q.toLowerCase()));
     }, [uniqueOrgs, orgSearch, editOrg]);
 
-    useEffect(() => {
-        function handleClickOutside(event: PointerEvent) {
-            if (orgDropdownRef.current && !orgDropdownRef.current.contains(event.target as Node)) {
-                setOrgDropdownOpen(false);
-            }
-        }
-        document.addEventListener("pointerdown", handleClickOutside);
-        return () => document.removeEventListener("pointerdown", handleClickOutside);
-    }, []);
+    // เมนูถูก portal ออกไปที่ body ด้วยเหตุผลเดียวกับดรอปดาวน์ที่อยู่ (ดู useAnchoredMenu)
+    const orgMenu = orgDropdownOpen && orgMenuPos && (
+        <div
+            ref={orgMenuRef}
+            style={{ position: "fixed", left: orgMenuPos.left, width: orgMenuPos.width, top: orgMenuPos.top, bottom: orgMenuPos.bottom }}
+            className="z-900 bg-surface border border-border rounded-xl shadow-xl py-1.5 max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150"
+        >
+            {orgOptions.map((org) => (
+                <button
+                    key={org}
+                    type="button"
+                    onClick={() => {
+                        setEditOrg(org);
+                        setOrgSearch(org);
+                        setIsCustomOrg(false);
+                        setOrgDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
+                >
+                    <Building2 size={13} className="text-text-muted shrink-0" />
+                    {org}
+                </button>
+            ))}
+            {orgOptions.length === 0 && <p className="px-4 py-2 text-xs text-text-muted">ไม่พบหน่วยงานที่ค้นหา</p>}
+            <button
+                type="button"
+                onClick={() => {
+                    setEditOrg("");
+                    setOrgSearch("");
+                    setIsCustomOrg(true);
+                    setOrgDropdownOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1"
+            >
+                <Plus size={13} className="shrink-0" />
+                เพิ่มหน่วยงานใหม่...
+            </button>
+        </div>
+    );
 
     return (
         <Popup title="แก้ไขข้อมูลสถานีตรวจ" onClose={onClose}>
@@ -189,7 +225,7 @@ export function LocationEditDrawer({
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-text-primary uppercase tracking-wide block">หน่วยงานหลัก</label>
                         {/* คอมโบบ็อกซ์แบบเดียวกับฟอร์มเพิ่มสถานี — พิมพ์กรองได้ และมีปุ่มเพิ่มหน่วยงานใหม่ท้ายรายการ */}
-                        <div className="relative" ref={orgDropdownRef}>
+                        <div className="relative" ref={orgAnchorRef}>
                             <input
                                 type="text"
                                 value={orgSearch}
@@ -205,40 +241,7 @@ export function LocationEditDrawer({
                                 className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 transition-all outline-none min-h-11 font-semibold"
                             />
 
-                            {orgDropdownOpen && (
-                                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 bg-surface border border-border rounded-xl shadow-xl py-1.5 max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
-                                    {orgOptions.map((org) => (
-                                        <button
-                                            key={org}
-                                            type="button"
-                                            onClick={() => {
-                                                setEditOrg(org);
-                                                setOrgSearch(org);
-                                                setIsCustomOrg(false);
-                                                setOrgDropdownOpen(false);
-                                            }}
-                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
-                                        >
-                                            <Building2 size={13} className="text-text-muted shrink-0" />
-                                            {org}
-                                        </button>
-                                    ))}
-                                    {orgOptions.length === 0 && <p className="px-4 py-2 text-xs text-text-muted">ไม่พบหน่วยงานที่ค้นหา</p>}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setEditOrg("");
-                                            setOrgSearch("");
-                                            setIsCustomOrg(true);
-                                            setOrgDropdownOpen(false);
-                                        }}
-                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1"
-                                    >
-                                        <Plus size={13} className="shrink-0" />
-                                        เพิ่มหน่วยงานใหม่...
-                                    </button>
-                                </div>
-                            )}
+                            {orgMenu && typeof document !== "undefined" && createPortal(orgMenu, document.body)}
                         </div>
 
                         {isCustomOrg && (

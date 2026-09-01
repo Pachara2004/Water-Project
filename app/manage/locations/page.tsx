@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { confirmDialog } from "@/lib/swal";
+import { confirmDialog, alertError } from "@/lib/swal";
 import { useToast } from "@/components/useToast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ShieldAlert } from "lucide-react";
@@ -335,23 +335,24 @@ export default function AdminLocationsPage() {
                 }),
             });
 
-            if (res.ok) {
-                setName("");
-                setPickedPosition(null);
-                // ล้างตำแหน่งอ้างอิงด้วย ไม่งั้นการเพิ่มสถานีถัดไปจะถอยหมุดกลับไปที่สถานีก่อนหน้า
-                lastValidPositionRef.current = null;
-                setOrganization("");
-                setCustomOrg("");
-                setOrgSearch("");
-                setProvince("");
-                setDistrict("");
-                setSubdistrict("");
-                setZipcode("");
-                fetchLocations(true);
-                showToast(`เพิ่มสถานี "${stationName}" เรียบร้อยแล้ว`, "success");
-            }
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการเพิ่มสถานี");
+
+            setName("");
+            setPickedPosition(null);
+            // ล้างตำแหน่งอ้างอิงด้วย ไม่งั้นการเพิ่มสถานีถัดไปจะถอยหมุดกลับไปที่สถานีก่อนหน้า
+            lastValidPositionRef.current = null;
+            setOrganization("");
+            setCustomOrg("");
+            setOrgSearch("");
+            setProvince("");
+            setDistrict("");
+            setSubdistrict("");
+            setZipcode("");
+            fetchLocations(true);
+            showToast(`เพิ่มสถานี "${stationName}" เรียบร้อยแล้ว`, "success");
         } catch (err) {
-            console.error("Failed to create location:", err);
+            alertError("เพิ่มสถานีไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
         } finally {
             setSaving(false);
         }
@@ -387,13 +388,15 @@ export default function AdminLocationsPage() {
                     zipcode: editZipcode.trim(),
                 }),
             });
-            if (res.ok) {
-                setEditingLoc(null);
-                fetchLocations(true);
-                showToast(`อัปเดตข้อมูลสถานี "${editedName}" แล้ว`, "success");
-            }
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการแก้ไขสถานี");
+
+            setEditingLoc(null);
+            fetchLocations(true);
+            showToast(`อัปเดตข้อมูลสถานี "${editedName}" แล้ว`, "success");
         } catch (err) {
-            console.error("Failed to update location:", err);
+            // ไม่ปิดป็อปอัพเมื่อพลาด ผู้ใช้จะได้แก้ค่าที่ผิดต่อได้ทันที
+            alertError("แก้ไขสถานีไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
         } finally {
             setEditSaving(false);
         }
@@ -418,12 +421,13 @@ export default function AdminLocationsPage() {
                     Authorization: `Bearer ${liff.getAccessToken()}`,
                 },
             });
-            if (res.ok) {
-                fetchLocations(true);
-                showToast(`ลบสถานี "${loc.name}" ออกจากระบบแล้ว`, "danger");
-            }
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการลบสถานี");
+
+            fetchLocations(true);
+            showToast(`ลบสถานี "${loc.name}" ออกจากระบบแล้ว`, "danger");
         } catch (err) {
-            console.error("Failed to delete location:", err);
+            alertError("ลบสถานีไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
         } finally {
             setDeletingId(null);
         }

@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Search, X, Check } from "lucide-react";
 import { useThaiAddressTree } from "@/lib/hooks/useThaiAddressTree";
+import { useAnchoredMenu } from "@/lib/hooks/useAnchoredMenu";
 
 // จำนวนตัวเลือกขั้นต่ำที่จะโชว์ช่องค้นหาในเมนู — ลิสต์สั้น ๆ (เช่นอำเภอไม่กี่อัน) ไม่ต้องมีก็หาเจอ
 const SEARCH_THRESHOLD = 8;
+
+// ความสูงสูงสุดโดยประมาณของเมนู ใช้ตัดสินว่าจะกางขึ้นหรือลง
+const MENU_MAX_HEIGHT = 260;
 
 /**
  * ดรอปดาวน์เลือกที่อยู่ — ใช้ปุ่ม + เมนูเองแทน <select> เพราะ <option> ของ native
@@ -14,8 +19,9 @@ const SEARCH_THRESHOLD = 8;
  * มีช่องค้นหาเมื่อรายการยาวเกิน SEARCH_THRESHOLD เพื่อทดแทน type-ahead ที่เสียไปจาก native select
  * (จังหวัดมี 77 รายการ)
  *
- * ข้อจำกัด: เมนูวางแบบ absolute ถ้าคอมโพเนนต์ถูกใช้ในกล่องที่ overflow ซ่อน
- * (เช่นฟอร์มแก้ไขสถานีที่อยู่ใน Popup) เมนูจะถูกตัดและต้องเลื่อนดู
+ * เมนูถูกส่งไป render ที่ document.body ผ่าน portal และวางตำแหน่งแบบ fixed
+ * เพราะคอมโพเนนต์นี้ถูกใช้ในฟอร์มแก้ไขสถานีซึ่งอยู่ใน Popup ที่เป็น overflow-y-auto
+ * ถ้าวางแบบ absolute ตามปกติเมนูจะโดนขอบกล่องตัด
  */
 function SearchableSelect({
     value,
@@ -32,7 +38,8 @@ function SearchableSelect({
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const closeMenu = useCallback(() => setIsOpen(false), []);
+    const { anchorRef, menuRef, pos: menuPos } = useAnchoredMenu(isOpen, closeMenu, MENU_MAX_HEIGHT);
 
     const filteredOptions = useMemo(() => {
         if (!searchQuery.trim()) return options;
@@ -44,23 +51,66 @@ function SearchableSelect({
         if (!isOpen) setSearchQuery("");
     }, [isOpen]);
 
-    useEffect(() => {
-        function handleClickOutside(event: PointerEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        }
-        document.addEventListener("pointerdown", handleClickOutside);
-        return () => document.removeEventListener("pointerdown", handleClickOutside);
-    }, []);
-
     // ปิดเมนูเองเมื่อถูก disable ระหว่างเปิดอยู่ (เช่นผู้ใช้เปลี่ยนจังหวัด ทำให้อำเภอถูกรีเซ็ต)
     useEffect(() => {
         if (disabled) setIsOpen(false);
     }, [disabled]);
 
+    const menu = isOpen && !disabled && menuPos && (
+        <div
+            ref={menuRef}
+            style={{ position: "fixed", left: menuPos.left, width: menuPos.width, top: menuPos.top, bottom: menuPos.bottom }}
+            className="bg-card-general rounded-2xl shadow-2xl border border-border/80 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-900"
+        >
+            {options.length >= SEARCH_THRESHOLD && (
+                <div className="p-2.5 border-b border-border bg-bg flex items-center gap-2">
+                    <Search size={14} className="text-text shrink-0 ml-1" />
+                    <input
+                        type="text"
+                        autoFocus
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="พิมพ์เพื่อค้นหา..."
+                        className="no-focus-ring w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
+                    />
+                    {searchQuery && (
+                        <button type="button" onClick={() => setSearchQuery("")} className="text-text p-1 rounded-lg hover:bg-bg transition-colors cursor-pointer">
+                            <X size={13} />
+                        </button>
+                    )}
+                </div>
+            )}
+
+            <div className="p-1 flex flex-col gap-0.5 max-h-56 overflow-y-auto overscroll-contain scrollbar-thin">
+                {filteredOptions.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-text font-medium">ไม่พบรายการที่ค้นหา</div>
+                ) : (
+                    filteredOptions.map((option) => {
+                        const isSelected = option === value;
+                        return (
+                            <button
+                                key={option}
+                                type="button"
+                                onClick={() => {
+                                    onChange(option);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all duration-100 cursor-pointer ${
+                                    isSelected ? "bg-surface-subtle text-text" : "text-text-secondary hover:bg-surface"
+                                }`}
+                            >
+                                <span className="truncate text-left">{option}</span>
+                                {isSelected && <Check size={12} strokeWidth={4} className="text-primary shrink-0" />}
+                            </button>
+                        );
+                    })
+                )}
+            </div>
+        </div>
+    );
+
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative" ref={anchorRef}>
             <button
                 type="button"
                 disabled={disabled}
@@ -73,54 +123,7 @@ function SearchableSelect({
                 <ChevronDown size={14} className={`text-text-muted shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
             </button>
 
-            {isOpen && !disabled && (
-                <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-card-general rounded-2xl shadow-2xl border border-border/80 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-700">
-                    {options.length >= SEARCH_THRESHOLD && (
-                        <div className="p-2.5 border-b border-border bg-bg flex items-center gap-2">
-                            <Search size={14} className="text-text shrink-0 ml-1" />
-                            <input
-                                type="text"
-                                autoFocus
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="พิมพ์เพื่อค้นหา..."
-                                className="no-focus-ring w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
-                            />
-                            {searchQuery && (
-                                <button type="button" onClick={() => setSearchQuery("")} className="text-text p-1 rounded-lg hover:bg-bg transition-colors cursor-pointer">
-                                    <X size={13} />
-                                </button>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="p-1 flex flex-col gap-0.5 max-h-56 overflow-y-auto overscroll-contain scrollbar-thin">
-                        {filteredOptions.length === 0 ? (
-                            <div className="text-center py-6 text-xs text-text font-medium">ไม่พบรายการที่ค้นหา</div>
-                        ) : (
-                            filteredOptions.map((option) => {
-                                const isSelected = option === value;
-                                return (
-                                    <button
-                                        key={option}
-                                        type="button"
-                                        onClick={() => {
-                                            onChange(option);
-                                            setIsOpen(false);
-                                        }}
-                                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all duration-100 cursor-pointer ${
-                                            isSelected ? "bg-surface-subtle text-text" : "text-text-secondary hover:bg-surface"
-                                        }`}
-                                    >
-                                        <span className="truncate text-left">{option}</span>
-                                        {isSelected && <Check size={12} strokeWidth={4} className="text-primary shrink-0" />}
-                                    </button>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-            )}
+            {menu && typeof document !== "undefined" && createPortal(menu, document.body)}
         </div>
     );
 }
