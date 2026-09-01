@@ -224,7 +224,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                                 placeholder="ค้นหา..."
                                 value={globalFilter}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
-                                className="no-focus-ring w-full py-3 bg-surface-subtle text-xs text-text outline-hidden placeholder:text-secondary"
+                                className="w-full py-3 bg-surface-subtle text-xs text-text outline-hidden placeholder:text-secondary"
                             />
                             <Search size={18} className="text-secondary ml-2" />
                         </div>

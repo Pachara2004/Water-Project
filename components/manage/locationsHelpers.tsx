@@ -186,7 +186,7 @@ export function LocationEditDrawer({
                         setIsCustomOrg(false);
                         setOrgDropdownOpen(false);
                     }}
-                    className="no-focus-ring w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
                 >
                     <Building2 size={13} className="text-text-muted shrink-0" />
                     {org}
@@ -201,7 +201,7 @@ export function LocationEditDrawer({
                     setIsCustomOrg(true);
                     setOrgDropdownOpen(false);
                 }}
-                className="no-focus-ring w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1"
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-primary hover:bg-primary-light transition-colors text-left cursor-pointer border-t border-border mt-1"
             >
                 <Plus size={13} className="shrink-0" />
                 เพิ่มหน่วยงานใหม่...
@@ -218,7 +218,7 @@ export function LocationEditDrawer({
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="no-focus-ring w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold"
+                            className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold"
                         />
                     </div>
 
@@ -238,7 +238,7 @@ export function LocationEditDrawer({
                                     e.target.select();
                                 }}
                                 placeholder="ค้นหาหรือเลือกหน่วยงาน"
-                                className="no-focus-ring w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 transition-all outline-none min-h-11 font-semibold"
+                                className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 transition-all outline-none min-h-11 font-semibold"
                             />
 
                             {orgMenu && typeof document !== "undefined" && createPortal(orgMenu, document.body)}
@@ -250,7 +250,7 @@ export function LocationEditDrawer({
                                 value={editOrg}
                                 onChange={(e) => setEditOrg(e.target.value)}
                                 placeholder="พิมพ์ชื่อหน่วยงานใหม่..."
-                                className="no-focus-ring w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 transition-all outline-none min-h-11 font-semibold animate-fade-in"
+                                className="w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 transition-all outline-none min-h-11 font-semibold animate-fade-in"
                             />
                         )}
                     </div>

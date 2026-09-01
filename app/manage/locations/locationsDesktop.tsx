@@ -90,7 +90,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                         value={placeSearch}
                                         onChange={(e) => handleSearchPlace(e.target.value)}
                                         placeholder="พิมพ์ชื่อชายหาด, วัด, หรือสถานที่..."
-                                        className="no-focus-ring w-full pl-9 pr-8 py-2.5 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none font-semibold"
+                                        className="w-full pl-9 pr-8 py-2.5 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none font-semibold"
                                     />
                                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                                     {isSearchingPlace && (
@@ -126,7 +126,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                         value={inputLat}
                                         onChange={(e) => handleManualCoordsChange(e.target.value, inputLng)}
                                         placeholder="เช่น 12.8791"
-                                        className="no-focus-ring w-full px-3 py-2 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs font-mono font-semibold  outline-none"
+                                        className="w-full px-3 py-2 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs font-mono font-semibold  outline-none"
                                     />
                                 </div>
                                 <div>
@@ -137,7 +137,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                         value={inputLng}
                                         onChange={(e) => handleManualCoordsChange(inputLat, e.target.value)}
                                         placeholder="เช่น 100.8872"
-                                        className="no-focus-ring w-full px-3 py-2 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs font-mono font-semibold outline-none"
+                                        className="w-full px-3 py-2 bg-surface-subtle border border-border text-text-primary rounded-lg text-xs font-mono font-semibold outline-none"
                                     />
                                 </div>
                             </div>
@@ -151,7 +151,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="เช่น หาดจอมเทียน ชลบุรี"
-                                    className="no-focus-ring w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:ring-primary/20 transition-all outline-none min-h-11 font-semibold"
+                                    className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:ring-primary/20 transition-all outline-none min-h-11 font-semibold"
                                 />
                             </div>
 
@@ -170,7 +170,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                         }}
                                         onFocus={() => setOrgDropdownOpen(true)}
                                         placeholder="ค้นหาหรือเลือกหน่วยงาน"
-                                        className="no-focus-ring w-full pl-4 pr-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-11 font-semibold"
+                                        className="w-full pl-4 pr-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-11 font-semibold"
                                     />
 
                                     {orgDropdownOpen && (
@@ -214,7 +214,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                         value={customOrg}
                                         onChange={(e) => setCustomOrg(e.target.value)}
                                         placeholder="พิมพ์ชื่อหน่วยงานใหม่..."
-                                        className="no-focus-ring w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 transition-all outline-none min-h-11 font-semibold"
+                                        className="w-full mt-2 px-4 py-3 bg-primary-light border border-primary/10 text-text-primary rounded-xl text-xs placeholder:text-text-muted/30 transition-all outline-none min-h-11 font-semibold"
                                     />
                                 )}
                             </div>
@@ -281,7 +281,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                             value={stationSearch}
                             onChange={(e) => setStationSearch(e.target.value)}
                             placeholder="ค้นหาสถานีหรือหน่วยงาน..."
-                            className="no-focus-ring w-full py-3 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted font-semibold"
+                            className="w-full py-3 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted font-semibold"
                         />
                         <Search size={16} className="text-text-muted ml-2" />
                     </div>

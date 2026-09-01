@@ -580,10 +580,3 @@ textarea {
     --tw-ring-shadow: 0 0 #0000;
     --tw-ring-offset-shadow: 0 0 #0000;
 }
-
-/* class เดิมที่กระจายอยู่ตามคอมโพเนนต์ ปล่อยไว้ให้ยังทำงานได้แม้กฎด้านบนครอบไปแล้ว */
-.no-focus-ring:focus,
-.no-focus-ring:focus-visible {
-    outline: none;
-    box-shadow: none;
-}
