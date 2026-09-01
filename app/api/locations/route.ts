@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getThaiAddressTree } from "@/lib/thaiAddress.server";
+import { validateAddressParts, lookupZipcode } from "@/lib/thaiAddress";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
@@ -7,6 +9,52 @@ import { evaluateSample, computeLatestValueByParameter } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
 
 // ==========================================
+/**
+ * ตรวจที่อยู่ที่ client ส่งมากับฐานข้อมูลที่อยู่ไทย — คืนข้อความ error หรือ null เมื่อผ่าน
+ *
+ * ที่อยู่ว่าง (null/"") ยังยอมรับได้ เพราะคอลัมน์เป็น nullable และสถานีกลางทะเลหลายจุด
+ * ไม่มีตำบลกำกับจริง ๆ กฎที่บังคับคือ "ถ้าส่งมา ต้องมีอยู่จริงและผูกถูกระดับ"
+ * ไม่ใช่ "ต้องส่งมาครบ" เพื่อไม่ให้สัญญาเดิมของ API เปลี่ยน
+ *
+ * ฝั่งฟอร์มกรองให้ชั้นหนึ่งแล้ว ด่านนี้กันการยิง API ตรงและการแก้ไขผ่านช่องทางอื่น
+ */
+async function validateAddressPayload(
+    province: unknown,
+    district: unknown,
+    subdistrict: unknown,
+    zipcode: unknown,
+): Promise<string | null> {
+    const p = typeof province === "string" ? province.trim() : "";
+    const d = typeof district === "string" ? district.trim() : "";
+    const s = typeof subdistrict === "string" ? subdistrict.trim() : "";
+    const z = typeof zipcode === "string" ? zipcode.trim() : "";
+
+    if (!p && !d && !s && !z) return null;
+
+    // อ่านฐานข้อมูลที่อยู่พลาด = ตรวจไม่ได้ ไม่ปล่อยผ่านเพื่อไม่ให้เกิดช่องโหว่เงียบ ๆ
+    let tree;
+    try {
+        tree = await getThaiAddressTree();
+    } catch (err) {
+        console.error("Failed to load thai address data:", err);
+        return "ระบบตรวจสอบข้อมูลที่อยู่ไม่พร้อมใช้งาน กรุณาลองใหม่อีกครั้ง";
+    }
+
+    const valid = validateAddressParts(tree, p, d, s);
+
+    if (p && !valid.province) return `ไม่พบจังหวัด "${p}" ในระบบ`;
+    if (d && !valid.district) return `ไม่พบอำเภอ/เขต "${d}" ในจังหวัด${p}`;
+    if (s && !valid.subdistrict) return `ไม่พบตำบล/แขวง "${s}" ในอำเภอ${d}`;
+
+    // รหัสไปรษณีย์ผูกกับตำบล ตรวจได้ต่อเมื่อที่อยู่ครบสามระดับ
+    if (z && valid.subdistrict) {
+        const expected = lookupZipcode(tree, valid.province, valid.district, valid.subdistrict);
+        if (expected && z !== expected) return `รหัสไปรษณีย์ของตำบล${s} คือ ${expected} ไม่ใช่ ${z}`;
+    }
+
+    return null;
+}
+
 // GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
 // ==========================================
 export async function GET(request: NextRequest) {
@@ -204,6 +252,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "กรุณากรอกข้อมูลจำเพาะสถานีให้ครบถ้วน" }, { status: 400 });
         }
 
+        const addressError = await validateAddressPayload(province, district, subdistrict, zipcode);
+        if (addressError) return NextResponse.json({ error: addressError }, { status: 400 });
+
         const location = await prisma.location.create({
             data: {
                 stationName: name,
@@ -246,6 +297,24 @@ export async function PUT(request: NextRequest) {
         const { id, name, organization, lat, lng, province, district, subdistrict, zipcode } = body;
 
         if (!id) return NextResponse.json({ error: "กรุณาระบุรหัส ID สถานีที่ต้องการแก้ไข" }, { status: 400 });
+
+        // PUT อัปเดตเฉพาะฟิลด์ที่ส่งมา จึงต้องตรวจกับค่าที่ "จะเป็นหลังอัปเดต" ไม่ใช่เฉพาะที่ส่งมา
+        // ไม่งั้นการแก้จังหวัดอย่างเดียวจะทำให้จับคู่กับอำเภอเดิมที่ค้างอยู่แบบผิด ๆ ได้
+        if (province !== undefined || district !== undefined || subdistrict !== undefined || zipcode !== undefined) {
+            const current = await prisma.location.findUnique({
+                where: { id: Number(id) },
+                select: { province: true, district: true, subdistrict: true, zipcode: true },
+            });
+            if (!current) return NextResponse.json({ error: "ไม่พบสถานีที่ต้องการแก้ไข" }, { status: 404 });
+
+            const addressError = await validateAddressPayload(
+                province !== undefined ? province : current.province,
+                district !== undefined ? district : current.district,
+                subdistrict !== undefined ? subdistrict : current.subdistrict,
+                zipcode !== undefined ? zipcode : current.zipcode,
+            );
+            if (addressError) return NextResponse.json({ error: addressError }, { status: 400 });
+        }
 
         const updateData: any = {};
         if (name !== undefined) updateData.stationName = name;

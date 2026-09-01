@@ -257,7 +257,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                 ปักหมุดภูมิศาสตร์บนแผนที่
                             </label>
                             <div className="w-full flex-1 min-h-100 rounded-xl overflow-hidden border border-border bg-surface-subtle relative z-0">
-                                <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} />
+                                <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} panInside={props.panInside} />
                             </div>
                         </div>
                     </div>

@@ -11,7 +11,7 @@ type PickedPosition = { lat: number; lng: number } | null;
 
 export interface LocationsPageProps {
     router: ReturnType<typeof useRouter>;
-    MapView: ComponentType<{ mode?: "explorer" | "picker"; onLocationPick?: (lat: number, lng: number) => void; pickedPosition?: PickedPosition }>;
+    MapView: ComponentType<{ mode?: "explorer" | "picker"; onLocationPick?: (lat: number, lng: number) => void; pickedPosition?: PickedPosition; panInside?: { bounds: [[number, number], [number, number]]; nonce: number } | null }>;
     toastElement: React.ReactNode;
     // create form
     name: string;
@@ -21,6 +21,8 @@ export interface LocationsPageProps {
     setCustomOrg: (v: string) => void;
     pickedPosition: PickedPosition;
     setPickedPosition: (v: PickedPosition) => void;
+    /** เลื่อนจอแผนที่ให้กลับเข้ากรอบไทยโดยไม่ปักหมุด (ใช้ตอนผู้ใช้แตะนอกประเทศ) */
+    panInside: { bounds: [[number, number], [number, number]]; nonce: number } | null;
     province: string;
     setProvince: (v: string) => void;
     district: string;
@@ -299,7 +301,7 @@ export default function LocationsMobile(props: LocationsPageProps) {
                                 ปักหมุดภูมิศาสตร์บนแผนที่ <span className="text-text-danger">*</span>
                             </label>
                             <div className="w-full h-104 rounded-xl overflow-hidden border border-border bg-surface-subtle relative z-0">
-                                <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} />
+                                <MapView mode="picker" onLocationPick={(lat, lng) => setPickedPosition({ lat, lng })} pickedPosition={pickedPosition} panInside={props.panInside} />
                             </div>
 
                          

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import liff from "@line/liff";
@@ -10,8 +10,50 @@ import { useToast } from "@/components/useToast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ShieldAlert } from "lucide-react";
 import { type LocationItem } from "@/components/manage/locationsHelpers";
+import { useThaiAddressTree, validateAddressParts, type AddressTree } from "@/lib/hooks/useThaiAddressTree";
 import LocationsMobile from "./locationsMobile";
 import LocationsDesktop from "./locationsDesktop";
+
+// กรอบพิกัดคร่าว ๆ ของประเทศไทย ใช้คัดกรองเบื้องต้นแบบไม่ต้องยิงเน็ต
+// กรอบสี่เหลี่ยมย่อมกินพื้นที่ประเทศเพื่อนบ้านบ้าง จึงเป็นแค่ด่านแรก
+// ด่านชี้ขาดคือ countryCode จากผล reverse geocode (ดู useEffect ของ pickedPosition)
+const TH_BOUNDS = { minLat: 5.5, maxLat: 20.5, minLng: 97.3, maxLng: 105.7 };
+
+function isWithinThaiBounds(lat: number, lng: number): boolean {
+    return lat >= TH_BOUNDS.minLat && lat <= TH_BOUNDS.maxLat && lng >= TH_BOUNDS.minLng && lng <= TH_BOUNDS.maxLng;
+}
+
+/**
+ * แยกจังหวัด/อำเภอ/ตำบล จากรายการเขตการปกครองที่ reverse geocode คืนมา
+ *
+ * ยึด adminLevel เป็นหลัก (4=จังหวัด, 6=อำเภอ/เขต, 8=ตำบล/แขวง) ควบกับคำนำหน้าราชการ
+ * เพราะสองอย่างนี้อย่างเดียวไม่พอ:
+ * - adminLevel เดียวกันมีได้หลายรายการ เช่น level 6 มีทั้ง "เทศบาลเมืองชลบุรี" และ "อำเภอเมืองชลบุรี"
+ * - การค้นคำแบบ includes ทำให้ชื่อองค์กรปกครองท้องถิ่นถูกเข้าใจผิดเป็นตำบล
+ *   เคสจริง: จุดที่บางปู สมุทรปราการ มี "เทศบาลตำบลบางปู" (level 7) ทำให้ได้ตำบล "บางปู"
+ *   ทั้งที่จุดนั้นอยู่ตำบล "บางปูใหม่" — ทั้งสองชื่อมีจริงในอำเภอเดียวกัน ตัวตรวจที่อยู่จึงจับไม่ได้
+ *
+ * ใช้ startsWith ไม่ใช่ includes และเลือกรายการที่เจาะจงที่สุด (order สูงสุด) เมื่อมีหลายตัวในระดับเดียวกัน
+ * ชื่อที่ไม่เข้าเกณฑ์ (เช่น ชื่อภาษาอังกฤษ) จะถูกข้าม ปล่อยให้ผู้ใช้เลือกเองดีกว่าเดาผิด
+ */
+function parseAdministrative(admin: any[]): { province: string; district: string; subdistrict: string } {
+    const pick = (level: number, prefixes: string[]): string => {
+        const matches = admin.filter((part) => part?.adminLevel === level && typeof part.name === "string" && prefixes.some((p) => part.name.startsWith(p)));
+        if (matches.length === 0) return "";
+        const best = matches.reduce((a, b) => ((b.order ?? 0) >= (a.order ?? 0) ? b : a));
+        const prefix = prefixes.find((p) => best.name.startsWith(p))!;
+        return best.name.slice(prefix.length).trim();
+    };
+
+    // กรุงเทพฯ ไม่มีคำนำหน้า "จังหวัด" จึงต้องรับเป็นกรณีเฉพาะ
+    const bangkok = admin.some((part) => part?.adminLevel === 4 && part.name === "กรุงเทพมหานคร");
+
+    return {
+        province: bangkok ? "กรุงเทพมหานคร" : pick(4, ["จังหวัด"]),
+        district: pick(6, ["อำเภอ", "เขต"]),
+        subdistrict: pick(8, ["ตำบล", "แขวง"]),
+    };
+}
 
 const MapView = dynamic(() => import("@/components/map/MapView"), {
     ssr: false,
@@ -32,10 +74,23 @@ export default function AdminLocationsPage() {
     const [name, setName] = useState("");
     const [organization, setOrganization] = useState("");
     const [customOrg, setCustomOrg] = useState("");
-    const [pickedPosition, setPickedPosition] = useState<{
+    const [pickedPosition, setPickedPositionRaw] = useState<{
         lat: number;
         lng: number;
     } | null>(null);
+    // ตำแหน่งที่ผ่านการยืนยันว่าอยู่ในไทยล่าสุด ใช้ถอยกลับเมื่อผู้ใช้ปักนอกประเทศ
+    const lastValidPositionRef = useRef<{ lat: number; lng: number } | null>(null);
+
+    // คำสั่งเลื่อนจอแผนที่กลับเข้ากรอบไทยโดยไม่ปักหมุด (nonce ทำให้สั่งซ้ำได้)
+    const [panInside, setPanInside] = useState<{ bounds: [[number, number], [number, number]]; nonce: number } | null>(null);
+
+    // เก็บไว้ใน ref เพื่อให้ effect ของ reverse geocode อ่านค่าล่าสุดได้
+    // โดยไม่ต้องใส่ใน dependency ซึ่งจะทำให้ยิง geocode ซ้ำตอนข้อมูลที่อยู่โหลดเสร็จ
+    const addressTree = useThaiAddressTree();
+    const treeRef = useRef<AddressTree | null>(null);
+    useEffect(() => {
+        treeRef.current = addressTree;
+    }, [addressTree]);
     const [province, setProvince] = useState("");
     const [district, setDistrict] = useState("");
     const [subdistrict, setSubdistrict] = useState("");
@@ -56,6 +111,33 @@ export default function AdminLocationsPage() {
     const [isSearchingPlace, setIsSearchingPlace] = useState(false);
     const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
 
+    // ตัวตั้งพิกัดที่ทุกทาง (แตะแผนที่ / ค้นหาสถานที่ / พิมพ์พิกัดเอง / เลือกจังหวัด) เรียกผ่าน
+    // ด่านแรกกันด้วยกรอบพิกัด ส่วนจุดที่อยู่ในกรอบแต่เป็นประเทศเพื่อนบ้านจะถูกปฏิเสธ
+    // อีกทีใน useEffect ด้านล่างเมื่อรู้ countryCode
+    const setPickedPosition = useCallback(
+        (pos: { lat: number; lng: number } | null) => {
+            if (pos && !isWithinThaiBounds(pos.lat, pos.lng)) {
+                showToast("จุดนี้อยู่นอกประเทศไทย กรุณาเลือกตำแหน่งภายในประเทศ", "danger");
+                // ยังไม่มีหมุดอยู่บนแผนที่ = ไม่มีตำแหน่งให้ถอยกลับ จอจะค้างอยู่นอกประเทศ
+                // จึงเลื่อนจอให้พื้นที่ที่มองเห็นกลับเข้ากรอบไทย (ไม่ปักหมุดให้ และไม่เปลี่ยนระดับซูม)
+                // ต้องดูจาก pickedPosition ปัจจุบัน ไม่ใช่ lastValidPositionRef ซึ่งค้างค่าเดิมไว้
+                // แม้หมุดถูกล้างไปแล้ว (เช่นหลังบันทึกสถานีเสร็จ) จะทำให้เงื่อนไขนี้ไม่มีวันเป็นจริง
+                if (!pickedPosition) {
+                    setPanInside({
+                        bounds: [
+                            [TH_BOUNDS.minLat, TH_BOUNDS.minLng],
+                            [TH_BOUNDS.maxLat, TH_BOUNDS.maxLng],
+                        ],
+                        nonce: Date.now(),
+                    });
+                }
+                return;
+            }
+            setPickedPositionRaw(pos);
+        },
+        [showToast, pickedPosition],
+    );
+
     // 🌟 3. Sync พิกัดเมื่อผู้ใช้แตะปักหมุดบนแผนที่ ➔ อัปเดตลงช่อง Input และดึงที่อยู่อัตโนมัติ
     useEffect(() => {
         if (pickedPosition) {
@@ -66,30 +148,39 @@ export default function AdminLocationsPage() {
             fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pickedPosition.lat}&longitude=${pickedPosition.lng}&localityLanguage=th`)
                 .then(res => res.json())
                 .then(data => {
+                    // ด่านชี้ขาด: จุดที่อยู่ในกรอบพิกัดแต่เป็นประเทศเพื่อนบ้าน จะถูกถอยกลับตรงนี้
+                    // ต้องกันไว้ก่อนนำชื่อเขตการปกครองมาใส่ฟอร์ม ไม่งั้นจะได้ชื่อต่างประเทศ
+                    // ที่ไม่มีอยู่ใน thai_address.json ปนเข้ามา
+                    if (data && data.countryCode && data.countryCode !== "TH") {
+                        showToast("จุดนี้อยู่นอกประเทศไทย กรุณาเลือกตำแหน่งภายในประเทศ", "danger");
+                        setProvince("");
+                        setDistrict("");
+                        setSubdistrict("");
+                        setZipcode("");
+                        setPickedPositionRaw(lastValidPositionRef.current);
+                        return;
+                    }
+                    lastValidPositionRef.current = pickedPosition;
+
                     if (data && data.localityInfo && data.localityInfo.administrative) {
-                        let pProv = "", pDist = "", pSub = "";
                         const admin = data.localityInfo.administrative;
-                        
-                        // หาชิ้นส่วนที่มีคำระบุระดับการปกครอง
-                        for (const part of admin) {
-                            const name = part.name;
-                            if (name.includes("จังหวัด")) pProv = name.replace(/.*จังหวัด/, "").trim();
-                            else if (name === "กรุงเทพมหานคร") pProv = "กรุงเทพมหานคร";
+                        const { province: pProv, district: pDist, subdistrict: pSub } = parseAdministrative(admin);
 
-                            if (name.includes("อำเภอ")) pDist = name.replace(/.*อำเภอ/, "").trim();
-                            else if (name.includes("เขต")) pDist = name.replace(/.*เขต/, "").trim();
+                        // ข้อมูลที่อยู่ยังโหลดไม่เสร็จ ตรวจสอบไม่ได้ จึงข้ามการเติมอัตโนมัติรอบนี้
+                        // ปล่อยให้ผู้ใช้เลือกเอง ดีกว่าเติมค่าที่ยังไม่ได้ตรวจหรือล้างของเดิมทิ้ง
+                        if (!treeRef.current) return;
 
-                            if (name.includes("ตำบล")) pSub = name.replace(/.*ตำบล/, "").trim();
-                            else if (name.includes("แขวง")) pSub = name.replace(/.*แขวง/, "").trim();
-                        }
-                        
-                        if (pProv) setProvince(pProv);
-                        if (pDist) setDistrict(pDist);
-                        if (pSub) setSubdistrict(pSub);
-                        
-                        if (data.postcode) {
-                            setZipcode(data.postcode);
-                        }
+                        // รับเฉพาะค่าที่มีอยู่จริงในฐานข้อมูลที่อยู่ไทย ส่วนที่ไม่ผ่านจะถูกตัดทิ้ง
+                        // ให้ผู้ใช้เลือกเองจากดรอปดาวน์ ดีกว่าโชว์ค่าที่เลือกซ้ำไม่ได้และบันทึกผิด
+                        const valid = validateAddressParts(treeRef.current, pProv, pDist, pSub);
+
+                        setProvince(valid.province);
+                        setDistrict(valid.district);
+                        setSubdistrict(valid.subdistrict);
+
+                        // ไม่ใช้ postcode จาก geocoder — รหัสไปรษณีย์ที่ถูกต้องผูกกับตำบล
+                        // ThaiAddressSelector จะเติมให้เองจากฐานข้อมูลเมื่อที่อยู่ครบทั้งสามระดับ
+                        if (!valid.subdistrict) setZipcode("");
                     }
                 })
                 .catch(err => console.error("Reverse geocoding failed:", err));
@@ -247,6 +338,8 @@ export default function AdminLocationsPage() {
             if (res.ok) {
                 setName("");
                 setPickedPosition(null);
+                // ล้างตำแหน่งอ้างอิงด้วย ไม่งั้นการเพิ่มสถานีถัดไปจะถอยหมุดกลับไปที่สถานีก่อนหน้า
+                lastValidPositionRef.current = null;
                 setOrganization("");
                 setCustomOrg("");
                 setOrgSearch("");
@@ -383,6 +476,7 @@ export default function AdminLocationsPage() {
         setCustomOrg,
         pickedPosition,
         setPickedPosition,
+        panInside,
         province, setProvince,
         district, setDistrict,
         subdistrict, setSubdistrict,
