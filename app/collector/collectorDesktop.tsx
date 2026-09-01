@@ -166,7 +166,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                     type="button"
                                     onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
                                     className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
-                                        isDateActive ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                        isDateActive ? "border-primary text-text" : "border-primary/30 text-text hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
@@ -231,7 +231,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                     type="button"
                                     onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
                                     className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
-                                        selectedStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                        selectedStatuses.length > 0 ? "border-primary text-text" : "border-primary/30 text-text hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <span className="truncate">{currentStatusLabel}</span>
@@ -274,7 +274,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                     type="button"
                                     onClick={() => setIsReviewMenuOpen(!isReviewMenuOpen)}
                                     className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
-                                        selectedReviewStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                        selectedReviewStatuses.length > 0 ? "border-primary text-text" : "border-primary/30 text-text hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <span className="truncate">{currentReviewLabel}</span>

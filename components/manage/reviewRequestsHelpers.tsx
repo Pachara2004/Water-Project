@@ -720,9 +720,7 @@ function ParameterSelect({
                 disabled={disabled}
                 title={title}
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between gap-2 bg-surface border rounded-lg px-2.5 py-2 text-xs font-semibold text-text uppercase transition-all cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-70 ${
-                    isOpen ? "border-primary ring-1 ring-primary" : "border-border hover:bg-surface-subtle"
-                }`}
+                className="w-full flex items-center justify-between gap-2 bg-surface border border-border rounded-lg px-2.5 py-2 text-xs font-semibold text-text uppercase transition-all cursor-pointer select-none hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
             >
                 <span className="truncate">{selectedLabel}</span>
                 <ChevronDown size={13} className={`text-text-muted shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
