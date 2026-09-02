@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import ExportButtons from "@/components/dashboard/ExportButtons";
 import { LucideShieldAlert, LucideSearch, LucideX, LucideRepeat2 } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
@@ -39,23 +40,16 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
     } = props;
     const chartTone = chartTokens(theme === "dark");
 
+    const hasAccess = currentUser && userRole !== "guest";
+    useEffect(() => {
+        if (!hasAccess) {
+            router.replace("/map");
+        }
+    }, [hasAccess, router]);
+
     // หมายเหตุ: การบังคับจริงอยู่ที่ backend (verifyAuth ที่ route.ts ไม่รับ role guest อยู่แล้ว) นี่คือแค่ UX กันไม่ให้เห็นหน้าเปล่าๆ ตอนถูก 401 กลับมา
-    if (!currentUser || userRole === "guest") {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto bg-surface-muted border-x border-border">
-                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
-                    <LucideShieldAlert size={28} className="animate-pulse" />
-                </div>
-                <h1 className="font-display text-base font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
-                <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้านี้สำหรับเจ้าหน้าที่ปฏิบัติการ, ผู้บริหาร และผู้ดูแลระบบเท่านั้น</p>
-                <button
-                    onClick={() => router.push("/map")}
-                    className="w-full max-w-50 py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
-                >
-                    กลับไปหน้าแผนที่
-                </button>
-            </div>
-        );
+    if (!hasAccess) {
+        return null;
     }
 
     return (
