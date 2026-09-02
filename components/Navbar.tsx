@@ -193,7 +193,7 @@ export default function Navbar() {
                                     href={item.href}
                                     prefetch={true}
                                     className={`group flex items-center h-11 rounded-xl font-semibold text-xs transition-all duration-150 active:scale-[0.98] will-change-transform overflow-hidden w-full px-4 gap-3.5 relative ${
-                                        isActive ? "bg-primary text-white" : "hover:bg-secondary hover:text-text-primary"
+                                        isActive ? "bg-secondary text-white" : "hover:bg-primary hover:text-text-primary"
                                     }`}
                                 >
                                     {currentUser?.role === "admin" && (

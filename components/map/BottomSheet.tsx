@@ -183,7 +183,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             let pVal = 0;
             let aVal = 0;
 
-            // 🟢 STEP 1: ดึงค่าวัดจาก measurements array หากมีข้อมูล
+            // STEP 1: ดึงค่าวัดจาก measurements array หากมีข้อมูล
             if (Array.isArray(sample.measurements) && sample.measurements.length > 0) {
                 sample.measurements.forEach((m: any) => {
                     const paramName = (m.parameter?.name || "").toLowerCase();
@@ -301,12 +301,12 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         if (role === "admin") {
             return (
                 <div className="bg-card-general border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
-                    <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกข้อมูล</span>
-                    <p className="text-md font-semibold text-text">
+                    <span className="text-xs font-semibold sm:font-medium text-primary mb-1">ผู้บันทึกข้อมูล</span>
+                    <p className="text-md font-semibold sm:font-medium text-text">
                         <span className="text-primary">ชื่อ: </span>
                         {colName}
                     </p>
-                    <p className="text-sm font-semibold text-text">
+                    <p className="text-sm font-semibold sm:font-medium text-text">
                         <span className="text-primary">เบอร์: </span>
                         {colPhone || "ไม่มีเบอร์โทรศัพท์"}
                     </p>
@@ -318,7 +318,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             const anonymizedName = colName && colName.length > 0 ? `${colName.slice(0, 5)}***` : "***";
             return (
                 <div className="bg-card-general border border-border rounded-xl p-4 sm:p-5 flex flex-col mt-4">
-                    <span className="text-xs font-semibold text-primary mb-1">ผู้บันทึกล่าสุด</span>
+                    <span className="text-xs font-semibold sm:font-medium text-primary mb-1">ผู้บันทึกล่าสุด</span>
                     <p className="text-sm font-bold text-text mt-0.5">{anonymizedName}</p>
                 </div>
             );
@@ -374,17 +374,17 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 {/* Header Section */}
                 <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="p-2 bg-primary text-white border border-primary/10 rounded-2xl shrink-0">
+                        <div className="p-2 bg-secondary text-white border border-primary/10 rounded-xl shrink-0">
                             <MapPin size={22} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-primary text-base truncate">{location.name}</h3>
+                            <h3 className="font-bold sm:font-semibold text-primary text-base truncate">{location.name}</h3>
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs mt-0.5">
-                                <span className="font-semibold text-secondary whitespace-nowrap">{location.organization}</span>
-                                {location.province && <span className="text-text-muted font-medium whitespace-nowrap">จ.{location.province}</span>}
-                                {location.district && <span className="text-text-muted font-medium whitespace-nowrap">อ.{location.district}</span>}
-                                {location.subdistrict && <span className="text-text-muted font-medium whitespace-nowrap">ต.{location.subdistrict}</span>}
-                                {location.zipcode && <span className="text-text-muted font-medium whitespace-nowrap">{location.zipcode}</span>}
+                                <span className="font-semibold sm:font-medium text-secondary whitespace-nowrap">{location.organization}</span>
+                                {location.province && <span className="text-text-muted font-semibold sm:font-medium whitespace-nowrap">จ.{location.province}</span>}
+                                {location.district && <span className="text-text-muted font-semibold sm:font-medium whitespace-nowrap">อ.{location.district}</span>}
+                                {location.subdistrict && <span className="text-text-muted font-semibold sm:font-medium whitespace-nowrap">ต.{location.subdistrict}</span>}
+                                {location.zipcode && <span className="text-text-muted font-semibold sm:font-medium whitespace-nowrap">{location.zipcode}</span>}
                             </div>
                         </div>
                     </div>
@@ -402,7 +402,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             <div className="space-y-5 mt-4">
                                 <div className="bg-card-general border border-border rounded-xl p-4">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-primary">ผลการวิเคราะห์ล่าสุด</span>
+                                        <span className="text-xs font-semibold sm:font-medium text-primary">ผลการวิเคราะห์ล่าสุด</span>
                                         <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-text">
@@ -466,7 +466,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                         latest.rainVolume !== null ||
                                         latest.weatherCondition !== null) && (
                                         <div className="bg-card-general border border-border rounded-2xl p-6">
-                                            <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">ข้อมูลสภาพอากาศขณะเก็บตัวอย่าง</h4>
+                                            <h4 className="text-sm font-semibold sm:font-medium justify-center flex text-primary mb-4">ข้อมูลสภาพอากาศขณะเก็บตัวอย่าง</h4>
                                             <div className="grid grid-cols-1 gap-3">
                                                 {((latest.airTemperature !== null && latest.airTemperature !== undefined) || latest.temperature !== null) && (
                                                     <div className="bg-surface-subtle p-3 rounded-xl border border-border flex items-center gap-3">
@@ -474,8 +474,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                             <Thermometer size={24} />
                                                         </div>
                                                         <div className="flex flex-col text-left min-w-0 flex-1">
-                                                            <span className="text-xs font-semibold text-secondary uppercase">อุณหภูมิ</span>
-                                                            <span className="text-lg font-semibold text-text">{Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C</span>
+                                                            <span className="text-xs font-semibold sm:font-medium text-secondary uppercase">อุณหภูมิ</span>
+                                                            <span className="text-lg font-semibold sm:font-medium text-text">
+                                                                {Number(latest.airTemperature ?? latest.temperature ?? 0).toFixed(1)}°C
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 )}
@@ -486,8 +488,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                             <CloudRain size={24} />
                                                         </div>
                                                         <div className="flex flex-col text-left min-w-0 flex-1">
-                                                            <span className="text-xs font-semibold text-secondary uppercase">ปริมาณฝน</span>
-                                                            <span className="text-lg font-semibold text-text">{Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm</span>
+                                                            <span className="text-xs font-semibold sm:font-medium text-secondary uppercase">ปริมาณฝน</span>
+                                                            <span className="text-lg font-semibold sm:font-medium text-text">
+                                                                {Number(latest.rainAccumulation ?? latest.rainVolume ?? 0).toFixed(1)} mm
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 )}
@@ -498,8 +502,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                             <Waves size={24} />
                                                         </div>
                                                         <div className="flex flex-col text-left min-w-0 flex-1">
-                                                            <span className="text-xs font-semibold text-secondary uppercase">สภาพอากาศ</span>
-                                                            <span className="text-lg font-semibold text-text truncate">{getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}</span>
+                                                            <span className="text-xs font-semibold sm:font-medium text-secondary uppercase">สภาพอากาศ</span>
+                                                            <span className="text-lg font-semibold sm:font-medium text-text truncate">
+                                                                {getWeatherConditionLabel(latest.weatherCondCode ?? latest.weatherCondition)}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 )}
@@ -513,13 +519,13 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                     <div className="bg-card-general border border-border rounded-2xl p-4">
                                         <div className="flex items-center justify-center gap-1 mb-2 text-xs text-text">
                                             <Minus size={12} className="text-border" />
-                                            <span className="text-sm font-semibold text-text">สถานะที่พบสูงสุด:</span>
+                                            <span className="text-sm font-semibold sm:font-medium text-text">สถานะที่พบสูงสุด:</span>
                                             <StatusBadge status={(modeStatus ?? "").toLowerCase() as any} size="md" />
                                             <Minus size={12} className="text-border" />
                                         </div>
 
                                         {/* ส่วนประวัติผลการตรวจวิเคราะห์แบบ Responsive */}
-                                        <h4 className="text-xs font-semibold text-primary mb-2">ประวัติผลการตรวจวิเคราะห์</h4>
+                                        <h4 className="text-xs font-semibold sm:font-medium text-primary mb-2">ประวัติผลการตรวจวิเคราะห์</h4>
                                         <div className="space-y-2.5">
                                             {[...samplesArr]
                                                 .reverse()
@@ -547,7 +553,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                             className="flex justify-between items-center text-xs bg-bg border border-border px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-xl gap-2 sm:gap-3"
                                                         >
                                                             {/* ฝั่งซ้าย: วันที่ */}
-                                                            <span className="text-text font-semibold shrink-0 text-xs">
+                                                            <span className="text-text font-semibold sm:font-medium shrink-0 text-xs">
                                                                 {new Date(s.collectedAt).toLocaleDateString("th-TH", {
                                                                     day: "numeric",
                                                                     month: "short",
@@ -562,10 +568,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                                         paramValues.map((p, pIdx) => (
                                                                             <div
                                                                                 key={pIdx}
-                                                                                className="bg-card-general border border-border px-2 py-1 rounded-md text-[11px] sm:text-xs font-semibold text-text flex items-center justify-between w-full max-w-[150px] sm:max-w-[180px] shadow-2xs gap-1"
+                                                                                className="bg-card-general border border-border px-2 py-1 rounded-md text-[11px] sm:text-xs font-semibold sm:font-medium text-text flex items-center justify-between w-full max-w-[150px] sm:max-w-[180px] shadow-2xs gap-1"
                                                                             >
-                                                                                <span className="text-text font-semibold truncate min-w-0">{p.name}:</span>
-                                                                                <span className="font-semibold shrink-0">{p.val.toFixed(2)}</span>
+                                                                                <span className="text-text font-semibold sm:font-medium truncate min-w-0">{p.name}:</span>
+                                                                                <span className="font-semibold sm:font-medium shrink-0">{p.val.toFixed(2)}</span>
                                                                             </div>
                                                                         ))
                                                                     ) : (
@@ -576,7 +582,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                                                             {/* ฝั่งขวา: StatusBadge */}
                                                             <div className="shrink-0">
-                                                                <StatusBadge status={s.status.toLowerCase() as any} size="md" />
+                                                                <StatusBadge status={s.status.toLowerCase() as any} size="xs" />
                                                             </div>
                                                         </div>
                                                     );
@@ -590,7 +596,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                 <div className="w-14 h-14 bg-bg border border-border rounded-2xl flex items-center justify-center mx-auto mb-3">
                                     <FlaskConical size={14} className="text-text" />
                                 </div>
-                                <p className="text-xs font-semibold text-text">ยังไม่พบประวัติผลการวิเคราะห์ในพิกัดนี้</p>
+                                <p className="text-xs font-semibold sm:font-medium text-text">ยังไม่พบประวัติผลการวิเคราะห์ในพิกัดนี้</p>
                             </div>
                         )}
 
@@ -604,7 +610,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             <div className="mt-4 mb-4">
                                 <button
                                     onClick={() => router.push(`/submit?locationId=${location.id}`)}
-                                    className="w-full py-4 h-full bg-primary hover:bg-navy-dark active:scale-[0.97] text-white font-semibold rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                                    className="w-full py-4 h-full bg-secondary hover:bg-navy-dark active:scale-[0.97] text-white font-semibold sm:font-medium rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition-transform duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                                 >
                                     <FlaskConical size={16} />
                                     ส่งผลตรวจคุณภาพน้ำจุดนี้
@@ -665,7 +671,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
             >
                 <div className="flex items-center justify-between px-6 pt-4 pb-4 shrink-0 border-b border-border">
-                    <span className="text-sm font-semibold text-text">ข้อมูลสถานี</span>
+                    <span className="text-sm font-semibold sm:font-medium text-text">ข้อมูลสถานี</span>
                     <button
                         title="Close Panel"
                         onClick={onClose}

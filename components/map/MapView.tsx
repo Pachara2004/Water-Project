@@ -230,9 +230,9 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
     return (
         <div className="relative w-full h-full">
             {mode === "explorer" && (
-                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 lg:left-6 lg:right-auto z-600 flex flex-wrap items-center gap-2">
-                    {/* ช่อง Search ค้นหา */}
-                    <div className="w-full sm:w-auto flex-1 min-w-60">
+                <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 sm:right-auto z-600 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    {/* ช่อง Search: Mobile เต็มแถว, Desktop ล็อคความกว้างคงที่ (280px) */}
+                    <div className="w-full sm:w-72 sm:shrink-0">
                         <MapSearchBar
                             locations={locations}
                             onSelectLocation={(loc) => {
@@ -241,12 +241,12 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                         />
                     </div>
 
-                    {/* กลุ่มปุ่ม Filter ทั้งสองตัว: จะอยู่บรรทัดเดียวกัน หรือขยายเต็มเมื่อตกบรรทัด */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto flex-1 min-w-70">
-                        <div className="flex-1 min-w-0">
+                    {/* ฟิลเตอร์: Mobile แบ่งครึ่ง 50/50, Desktop ฟิกขนาดไม่ให้เบียดกัน */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="flex-1 sm:w-44 sm:flex-none sm:shrink-0">
                             <FilterBar value={agencyFilter} onChange={setAgencyFilter} />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 sm:w-36 sm:flex-none sm:shrink-0">
                             <StatusFilterBar value={statusFilter} onChange={setStatusFilter} />
                         </div>
                     </div>

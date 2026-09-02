@@ -118,7 +118,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                             {currentUser?.role !== "officer" && <NotificationBell />}
                             <button
                                 onClick={() => router.push("/submit")}
-                                className="p-3.5 bg-primary hover:bg-primary/95 text-card-general font-medium rounded-xl flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer text-xs shadow-xs"
+                                className="p-3.5 bg-secondary hover:bg-primary/95 text-white font-medium rounded-xl flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer text-xs shadow-xs"
                             >
                                 <Camera size={18} strokeWidth={2.5} />
                                 <span>ตรวจคุณภาพน้ำ</span>
@@ -313,7 +313,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                         </div>
 
                         {/* Status Summary & Sort Order */}
-                        <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-primary">
+                        <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-secondary">
                             <div className="text-text font-medium">พบทั้งหมด {total} รายการ</div>
 
                             <button onClick={toggleSortDirection} className="flex items-center gap-1.5 cursor-pointer hover:text-text text-text transition-colors py-0.5 select-none font-medium">
@@ -348,7 +348,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                     className="bg-card-general shadow-xs rounded-xl border border-primary active:scale-[0.99] transition-all flex flex-col cursor-pointer group min-w-0 overflow-hidden"
                                                 >
                                                     {/* Header: Session ID & Review Status */}
-                                                    <div className="flex items-center justify-between p-2.5 px-4 bg-primary border-b border-border">
+                                                    <div className="flex items-center justify-between p-2.5 px-4 bg-secondary border-b border-border">
                                                         {/* ฝั่งซ้าย */}
                                                         <div className="flex items-center gap-2 text-xs font-medium text-white">
                                                             <FileScan size={16} className="text-white shrink-0" />
