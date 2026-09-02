@@ -8,7 +8,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { verifyAuth } from "@/lib/auth-guard";
-import { isLowConfidence, evaluateSample } from "@/lib/standards";
+import { isLowConfidence, evaluateSample, toMeasuredNumber } from "@/lib/standards";
 import { loadStandardsForParameters } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 import { generateSessionGroup } from "@/lib/sessionGroup";
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
 
         // ยุบหลาย (sessionGroup, status) ให้เหลือ 1 สรุปต่อกลุ่ม — สถานะ = แย่สุดของกลุ่ม (worseStatus)
         // เวลา = ล่าสุดของกลุ่ม ใช้แค่เป็นคีย์เรียงลำดับ/ตัดหน้าเท่านั้น ไม่ใช่ค่าที่ส่งกลับให้ client
-        const groupSummary = new Map<string, { status: WaterStatus; collectionTime: Date }>();
+        const groupSummary = new Map<string, { status: WaterStatus | null; collectionTime: Date }>();
         for (const g of statusGroups) {
             if (!g.sessionGroup) continue;
             const maxTime = g._max.collectionTime ?? new Date(0);
@@ -152,7 +152,11 @@ export async function GET(request: NextRequest) {
             if (!existing) {
                 groupSummary.set(g.sessionGroup, { status: g.status, collectionTime: maxTime });
             } else {
-                existing.status = worseStatus(existing.status, g.status);
+                // สารที่ประเมินไม่ได้ (null) ไม่ถ่วงสถานะของกลุ่ม — กลุ่มที่มีสารหนึ่งอ่านไม่ออกแต่อีกสารเกินเกณฑ์
+                // ต้องขึ้นว่าอันตราย ไม่ใช่ประเมินไม่ได้ | กลุ่มจะเป็น null ก็ต่อเมื่อไม่มีสารไหนประเมินได้เลย
+                if (g.status !== null) {
+                    existing.status = existing.status === null ? g.status : worseStatus(existing.status, g.status);
+                }
                 if (maxTime > existing.collectionTime) existing.collectionTime = maxTime;
             }
         }
@@ -191,7 +195,11 @@ export async function GET(request: NextRequest) {
         });
 
         if (selectedStatuses.size > 0) {
-            filteredGroups = filteredGroups.filter((g) => selectedStatuses.has(g.status.toLowerCase()));
+            // ตัวกรองต้องตรงกับป้ายที่ผู้ใช้เห็นบนการ์ด ไม่ใช่ค่าดิบในคอลัมน์ status
+            // รายการที่ยังไม่ผ่านการตรวจสอบไม่ได้ประกาศคุณภาพน้ำ (การ์ดขึ้น "รอตรวจสอบ" / "ประเมินไม่ได้")
+            // จึงต้องไม่ตรงกับตัวกรอง safe/warning/danger — ผู้ใช้กรองด้วยสถานะการตรวจสอบแยกอยู่แล้ว
+            const isConfirmed = (rs: string) => rs === "APPROVED" || rs === "EDITED_APPROVED";
+            filteredGroups = filteredGroups.filter((g) => g.status !== null && isConfirmed(g.reviewStatus) && selectedStatuses.has(g.status.toLowerCase()));
         }
         if (selectedReviewStatuses.size > 0) {
             filteredGroups = filteredGroups.filter((g) => selectedReviewStatuses.has(g.reviewStatus));
@@ -232,7 +240,7 @@ export async function GET(request: NextRequest) {
                 status: true,
                 location: { select: { id: true, stationName: true, province: true, district: true, subdistrict: true, zipcode: true } },
                 collector: { select: { id: true, lineProfileName: true } },
-                measurements: { select: { parameterId: true, value: true, parameter: { select: { name: true } } } },
+                measurements: { select: { parameterId: true, value: true, message: true, parameter: { select: { name: true } } } },
             },
         });
 
@@ -297,7 +305,10 @@ export async function GET(request: NextRequest) {
                 existing.isDeleted = record.isDeleted;
 
                 // Dynamically update the overall status to the worst one
-                existing.status = worseStatus(existing.status as WaterStatus, record.status as WaterStatus);
+                // เช่นเดียวกับ groupSummary — แถวที่ประเมินไม่ได้ไม่ถ่วงสถานะรวมของกลุ่ม
+                if (record.status !== null) {
+                    existing.status = existing.status === null ? record.status : worseStatus(existing.status as WaterStatus, record.status);
+                }
 
                 // If earlier batch didn't have images, take them from later batches
                 if (!existing.rawImageUrl && record.rawImageUrl) existing.rawImageUrl = record.rawImageUrl;
@@ -309,9 +320,11 @@ export async function GET(request: NextRequest) {
         for (const grp of sessionMap.values()) {
             grp.measurements = Array.from(grp.measMap.values());
             grp.measurements.forEach((m: any) => {
-                if (m.parameter?.name) {
-                    grp.dynamicMeasurements[`${m.parameter.name.toLowerCase()}Val`] = m.value;
-                }
+                if (!m.parameter?.name) return;
+                // ค่าจากภาพที่ AI ไม่พบหลอดทดลองยังยืนยันไม่ได้ระหว่างรอตรวจสอบ — ไม่ส่งออกไปให้การ์ดของผู้ส่งแสดง
+                // ผูกเงื่อนไขกับ reviewStatus ด้วย ไม่ใช่ดู marker อย่างเดียว เพราะ marker ยังคาอยู่ใน message หลังอนุมัติแล้ว
+                if (grp.reviewStatus === "PENDING" && m.message?.includes("[NO_TEST_TUBE]")) return;
+                grp.dynamicMeasurements[`${m.parameter.name.toLowerCase()}Val`] = m.value;
             });
             Object.assign(grp, grp.dynamicMeasurements);
             delete grp.measMap;
@@ -526,18 +539,27 @@ export async function POST(request: NextRequest) {
             console.error("❌ Weather resolution error:", weatherErr);
         }
 
-        let createMeasurementsData: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: any; message?: string | null }> = [];
+        let createMeasurementsData: Array<{ parameterId: number; value: number | null; confidence: number | null; boundingBox?: any; message?: string | null }> = [];
 
         if (measurementsRaw) {
             const parsedMeasurements = JSON.parse(measurementsRaw);
             if (Array.isArray(parsedMeasurements)) {
-                createMeasurementsData = parsedMeasurements.map((m: any) => ({
-                    parameterId: Number(m.parameterId),
-                    value: parseFloat(m.value || "0"),
-                    confidence: parseFloat(m.confidence || "0.90"),
-                    boundingBox: typeof m.boundingBox === "string" ? (m.boundingBox ? JSON.parse(m.boundingBox) : null) : m.boundingBox || null,
-                    message: m.message || null,
-                }));
+                createMeasurementsData = parsedMeasurements.map((m: any) => {
+                    // AI ไม่พบหลอดทดลอง → โมเดลยังคืนเลขมาให้อยู่ดี (สังเกตจริง: value 0, confidence 0)
+                    // แต่มันไม่ใช่ผลวัด ต้องบังคับเป็น null ที่นี่ ไม่งั้น 0 จะถูกนำไปเทียบเกณฑ์แล้วรายงานว่า "ปกติ"
+                    // และ isLowConfidence(0) ก็บังเอิญถูกโดยไม่ได้ตั้งใจ — พึ่งความบังเอิญนั้นไม่ได้
+                    const noTestTube = typeof m.message === "string" && m.message.includes("[NO_TEST_TUBE]");
+
+                    return {
+                        parameterId: Number(m.parameterId),
+                        // ไม่มีค่าที่วัดได้ → เก็บ null ไม่ใช่ 0
+                        // ความมั่นใจที่เป็น null ถูก isLowConfidence ตีความว่าต้องให้ผู้ดูแลระบบตรวจสอบ
+                        value: noTestTube ? null : toMeasuredNumber(m.value),
+                        confidence: noTestTube ? null : toMeasuredNumber(m.confidence),
+                        boundingBox: typeof m.boundingBox === "string" ? (m.boundingBox ? JSON.parse(m.boundingBox) : null) : m.boundingBox || null,
+                        message: m.message || null,
+                    };
+                });
             }
         }
 
@@ -574,7 +596,11 @@ export async function POST(request: NextRequest) {
             }
 
             const generatedCode = await generateSampleCode(tx, Number(locationId), parsedCollectionTime);
-            const needsReview = forceReview || createMeasurementsData.some((m) => isLowConfidence(m.confidence));
+            // forceReview มาจาก client จึงเชื่อเดี่ยว ๆ ไม่ได้ — marker [NO_TEST_TUBE] ใน message คือหลักฐานว่า
+            // AI ไม่พบหลอดทดลองในภาพ ค่าที่วัดได้จึงยังยืนยันไม่ได้ ต้องเข้าคิวให้ผู้ดูแลระบบตัดสินเสมอ
+            // ไม่งั้นคำขอที่ไม่ได้แนบ forceReview จะวิ่งเข้า auto-approve แล้วโผล่บนแผนที่ทันที
+            const hasNoTestTube = createMeasurementsData.some((m) => m.message?.includes("[NO_TEST_TUBE]"));
+            const needsReview = forceReview || hasNoTestTube || createMeasurementsData.some((m) => isLowConfidence(m.confidence));
 
             const created = await tx.waterSample.create({
                 data: {
@@ -587,7 +613,8 @@ export async function POST(request: NextRequest) {
                     airTemperature: finalWeather.airTemperature,
                     rainAccumulation: finalWeather.rainAccumulation,
                     weatherCondCode: finalWeather.weatherCondCode,
-                    status: computedStatus as WaterStatus,
+                    // null = ไม่มีค่าที่ประเมินได้เลย ต้องเก็บ null ไม่ใช่ safe (คอลัมน์รองรับ null แล้ว)
+                    status: computedStatus,
                     rawImageUrl: mainRawImageUrl,
                     analyzedPlotUrl: mainAnalyzedPlotUrl,
                     isDeleted: false,

@@ -115,6 +115,9 @@ export default function CollectorHistoryDetailPage() {
                 confidence: m.confidence,
                 status: sample.status,
                 parameterId: paramId,
+                // ซ่อนค่าจากภาพที่ AI ไม่พบหลอดทดลอง เฉพาะช่วงที่ยังรอผู้ดูแลระบบตรวจสอบเท่านั้น
+                // marker [NO_TEST_TUBE] ไม่เคยถูกลบออกจาก message หลังอนุมัติ ถ้าดูแค่ marker ค่าจะถูกซ่อนค้างตลอดไป
+                isTestTube: !(sample.reviewStatus === "PENDING" && typeof m.message === "string" && m.message.includes("[NO_TEST_TUBE]")),
                 isDuplicateSubstance: (countByParam.get(paramId) || 0) > 1,
                 originalValue: m.originalValue,
             };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
+import { toMeasuredNumber } from "@/lib/standards";
 import { evaluateSample, computeValueByParameterAsOf } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
@@ -92,16 +93,29 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }
         }
 
-        let finalMeasurementsPayload: Array<{ parameterId: number; value: number; confidence: number; boundingBox?: any; message?: string | null }> = [];
+        let finalMeasurementsPayload: Array<{ parameterId: number; value: number | null; confidence: number | null; boundingBox?: any; message?: string | null }> = [];
 
         if (measurements && Array.isArray(measurements)) {
-            finalMeasurementsPayload = measurements.map((m: any) => ({
-                parameterId: Number(m.parameterId),
-                value: parseFloat(m.value || "0"),
-                confidence: oldSample.measurements[0]?.confidence ?? 0.90,
-                boundingBox: oldSample.measurements[0]?.boundingBox || null,
-                message: oldSample.measurements[0]?.message || null,
-            }));
+            // จับคู่ข้อมูลเดิมด้วย parameterId — เดิมอ่านจาก measurements[0] ทำให้ทุกสารในคำขอเดียวกัน
+            // ได้ confidence / boundingBox / message ของสารตัวแรกเหมือนกันหมด ตั้งแต่สารตัวที่ 2 เป็นต้นไปจึงผิดสาร
+            // (marker อย่าง [NO_TEST_TUBE] ก็ถูกคัดลอกข้ามไปติดสารที่ไม่ได้มีปัญหาด้วย)
+            const oldByParameterId = new Map(oldSample.measurements.map((m) => [m.parameterId, m]));
+
+            finalMeasurementsPayload = measurements.map((m: any) => {
+                const parameterId = Number(m.parameterId);
+                // ไม่เจอของเดิม = ผู้ดูแลระบบเปลี่ยนชนิดสาร ค่าเดิมของสารอื่นใช้อ้างอิงไม่ได้ จึงไม่สืบทอดอะไรต่อ
+                const previous = oldByParameterId.get(parameterId);
+
+                return {
+                    parameterId,
+                    value: toMeasuredNumber(m.value),
+                    // ไม่เจอของเดิม = ไม่รู้ความมั่นใจ ต้องเป็น null ไม่ใช่ 0.90 หรือ 0
+                    // (0.90 เดิมทำให้แถวที่ไม่มีที่มากลายเป็น "ผ่านเกณฑ์" ของ isLowConfidence โดยไม่มีใครยืนยัน)
+                    confidence: previous?.confidence ?? null,
+                    boundingBox: previous?.boundingBox ?? null,
+                    message: previous?.message ?? null,
+                };
+            });
         } else {
             finalMeasurementsPayload = oldSample.measurements.map((m) => ({
                 parameterId: m.parameterId,
@@ -248,8 +262,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         sampleId: paramId,
                         parameterId: paramId,
                         parameter: { id: paramId, name: m.parameterName || "unknown" },
-                        value: m.value,
-                        confidence: m.confidence || 0.9,
+                        // parameterData เก็บค่าจริงไว้ครบตั้งแต่ตอน snapshot — ปล่อย null ผ่านตามเดิม
+                        // ห้ามใช้ || หรือแปลงเป็น 0 เพราะจะทำให้ "ไม่มีค่า" กลายเป็นค่าที่วัดได้จริง
+                        value: toMeasuredNumber(m.value),
+                        confidence: toMeasuredNumber(m.confidence),
                     });
                 });
             }

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
-import { readChemMeasurements } from "@/lib/chemLabels";
+import { readChemMeasurements, formatMeasuredValue } from "@/lib/chemLabels";
 import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
@@ -14,8 +14,8 @@ export interface ReviewMeasurement {
     parameterId: number;
     parameterName: string | null;
     unit: string | null;
-    value: number;
-    confidence: number;
+    value: number | null;
+    confidence: number | null;
     message: string | null;
 }
 
@@ -44,6 +44,55 @@ export interface ReviewRequestItem {
     location: { id: number; name: string; organization: string; province?: string | null; district?: string | null; subdistrict?: string | null } | null;
     collector: { id: number; name: string } | null;
     samples: ReviewSample[];
+}
+
+/**
+ * ป้ายค่าความมั่นใจของ AI ต่อหนึ่งสาร
+ *
+ * ภาพที่ AI ไม่พบหลอดทดลอง (marker [NO_TEST_TUBE]) ไม่มีค่าความมั่นใจที่มีความหมาย —
+ * ตัวเลขที่เห็นเป็นค่า default ของ API ตอนบันทึก ไม่ใช่ผลจากโมเดล จึงแทนด้วยป้ายบอกให้ผู้ดูแลระบบ
+ * ตรวจเอง ไม่งั้นตัวเลขปลอมจะดูน่าเชื่อถือกว่าความเป็นจริงและชี้นำการตัดสินผิดทาง
+ *
+ * variant "solid" = ป้ายมีกรอบ/พื้นหลัง (การ์ดผลวิเคราะห์) | "plain" = ข้อความสีล้วน (แถวเลือกสาร)
+ */
+export function ConfidenceChip({ measurement, variant = "solid" }: { measurement: ReviewMeasurement; variant?: "solid" | "plain" }) {
+    if (measurement.message?.includes("[NO_TEST_TUBE]")) {
+        return (
+            <span
+                className={
+                    variant === "solid"
+                        ? "text-xs px-1.5 py-0.5 rounded font-bold border text-amber-700 bg-amber-50 border-amber-200"
+                        : "text-xs px-1.5 py-0.5 rounded font-medium text-amber-700"
+                }
+                title="AI ไม่พบหลอดทดลองในภาพ จึงไม่ได้ให้ค่าความมั่นใจมา — ต้องเทียบกับภาพดิบเอง"
+            >
+                ไม่มีค่าความมั่นใจ
+            </span>
+        );
+    }
+
+    const low = isLowConfidence(measurement.confidence);
+    return (
+        <span
+            className={
+                variant === "solid"
+                    ? `font-mono text-xs px-1.5 py-0.5 rounded font-bold border ${low ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"}`
+                    : `text-xs px-1.5 py-0.5 rounded font-medium ${low ? "text-text-danger" : "text-text-safe"}`
+            }
+            title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
+        >
+            {variant === "solid" ? `conf. ${formatMeasuredValue(measurement.confidence)}` : `ค่าความมั่นใจ ${formatMeasuredValue(measurement.confidence)}`}
+        </span>
+    );
+}
+
+/**
+ * คำร้องนี้มีภาพที่ AI ไม่พบหลอดทดลองอยู่ไหม (marker [NO_TEST_TUBE])
+ * ถ้ามี = อนุมัติตามค่าเดิมไม่ได้ ค่าที่อ่านจากภาพเชื่อไม่ได้ ต้องแก้ไขค่าก่อนหรือปฏิเสธ
+ * (server บังคับเรื่องนี้อีกชั้นใน PATCH /api/review-requests/[id] — ฝั่งนี้แค่กันไม่ให้กดเสียเที่ยว)
+ */
+export function hasNoTestTubeSample(samples: ReviewSample[]): boolean {
+    return samples.some((s) => s.measurements.some((m) => m.message?.includes("[NO_TEST_TUBE]")));
 }
 
 export const TAB_CONFIG: { id: ReviewStatusFilter; label: string; icon: typeof Check }[] = [
@@ -88,8 +137,16 @@ export function formatDateTime(value: string | null) {
 /**
  * คำนวณประเมินสถานะคุณภาพน้ำ (safe/warning/danger) ของคำร้อง
  */
-export function getSampleWaterStatus(item: ReviewRequestItem, standards: StandardRow[]): "safe" | "warning" | "danger" {
+/**
+ * สถานะคุณภาพน้ำของคำร้อง — คืน null เมื่อ "ประเมินไม่ได้"
+ *
+ * evaluateSample เริ่มนับจาก "safe" แล้วไล่ทำให้แย่ลงตามค่าที่เจอ ดังนั้นถ้าไม่มีค่าให้ประเมินเลย
+ * (ทุกสารเป็น null เพราะ AI อ่านไม่ออก) มันจะคืน "safe" ซึ่งอ่านว่า "ปลอดภัย" ทั้งที่ไม่เคยประเมิน
+ * จึงต้องเช็คก่อนว่ามีค่าที่ใช้ตัดสินได้จริงอย่างน้อยหนึ่งตัว
+ */
+export function getSampleWaterStatus(item: ReviewRequestItem, standards: StandardRow[]): "safe" | "warning" | "danger" | null {
     const values: MeasuredValue[] = item.samples.flatMap((s) => s.measurements).map((m) => ({ parameterId: m.parameterId, value: m.value }));
+    if (!values.some((v) => v.value !== null && v.value !== undefined)) return null;
     return evaluateSample(values, standards);
 }
 
@@ -217,6 +274,14 @@ export function RequestDetailPopup({
                                 <span>ไม่อนุญาตให้ผู้เชี่ยวชาญสลับสาร</span>
                             </div>
                         )}
+
+                        {/* ค่าในคำร้องนี้อ่านมาจากภาพที่ AI ไม่พบหลอดทดลอง — ต้องเทียบกับภาพดิบก่อนยืนยัน */}
+                        {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
+                                <ImageOff size={14} />
+                                <span>AI ไม่พบหลอดทดลองในภาพ ตรวจสอบภาพดิบก่อนยืนยันค่า</span>
+                            </div>
+                        )}
                         {item.reviewNote && (
                             <div className="text-sm bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-3 rounded-lg break-words [overflow-wrap:anywhere]">
                                 <span className="font-semibold">หมายเหตุจากผู้แจ้ง: </span>
@@ -241,19 +306,22 @@ export function RequestDetailPopup({
                                 s.measurements.map((m) => (
                                     <div key={`${s.id}-${m.parameterId}`} className="flex items-center justify-between gap-3 bg-surface-subtle border border-border rounded-xl px-3 py-2.5">
                                         <span className="text-xs font-semibold text-text truncate">{m.parameterName || "ไม่ระบุสาร"}</span>
+                                        {/* ไม่มีค่าที่วัดได้ → บอกตรง ๆ ว่า AI ทำนายไม่ได้ ห้ามใช้ Number(m.value) เพราะ Number(null) = 0
+                                            จะกลายเป็น "0.00 mg/L" ที่อ่านเหมือนวัดได้จริง
+                                            กรณีนี้ไม่แสดง ConfidenceChip ด้วย เพราะป้าย "ไม่มีค่าความมั่นใจ" สื่อเรื่องเดียวกัน
+                                            และแถวบนจอมือถือแคบเกินกว่าจะใส่ทั้งสองอย่าง */}
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <span className="text-xs font-bold text-text tabular-nums">
-                                                {Number(m.value).toFixed(2)}
-                                                {m.unit ? <span className="text-text-muted font-medium"> {m.unit}</span> : null}
-                                            </span>
-                                            <span
-                                                className={`font-mono text-xs px-1.5 py-0.5 rounded font-bold border ${
-                                                    isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
-                                                }`}
-                                                title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
-                                            >
-                                                conf. {m.confidence.toFixed(2)}
-                                            </span>
+                                            {m.value === null || m.value === undefined ? (
+                                                <span className="text-xs font-semibold text-amber-700">AI ไม่สามารถทำนายได้</span>
+                                            ) : (
+                                                <>
+                                                    <span className="text-xs font-bold text-text tabular-nums">
+                                                        {m.value.toFixed(2)}
+                                                        {m.unit ? <span className="text-text-muted font-medium"> {m.unit}</span> : null}
+                                                    </span>
+                                                    <ConfidenceChip measurement={m} />
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 )),
@@ -359,6 +427,11 @@ export function RequestCard({
 
     const noneSelected = showSampleSelect && selectedSampleIds.length === 0;
 
+    // ดูเฉพาะสารที่กำลังจะอนุมัติจริง — ถ้าผู้ดูแลระบบเอาตัวที่ AI ไม่พบหลอดออกจากรายการที่เลือกแล้ว
+    // ที่เหลือก็อนุมัติได้ตามปกติ ไม่ต้องบล็อกทั้งคำร้อง
+    const samplesToApprove = showSampleSelect ? item.samples.filter((s) => selectedSampleIds.includes(s.id)) : item.samples;
+    const mustEditBeforeApprove = item.statusRequest === "pending" && hasNoTestTubeSample(samplesToApprove);
+
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     // ค่าสารเคมีของคำร้องนี้ — dynamic ตามสารที่มีอยู่จริง ไม่ผูกชื่อสารไว้ตายตัว
@@ -425,6 +498,14 @@ export function RequestCard({
                                             <span>ไม่อนุญาตให้สลับสาร</span>
                                         </div>
                                     )}
+
+                                    {/* ค่าในคำร้องนี้อ่านมาจากภาพที่ AI ไม่พบหลอดทดลอง — ต้องเทียบกับภาพดิบก่อนยืนยัน */}
+                                    {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
+                                            <ImageOff size={12} />
+                                            <span>AI ไม่พบหลอดทดลองในภาพ</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -476,15 +557,7 @@ export function RequestCard({
                             </div>
                             <div className="flex items-center gap-1">
                                 {s.measurements.map((m) => (
-                                    <span
-                                        key={m.parameterId}
-                                        className={`font-mono text-xs px-1.5 py-0.5 rounded font-bold border ${
-                                            isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
-                                        }`}
-                                        title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
-                                    >
-                                        conf. {m.confidence.toFixed(2)}
-                                    </span>
+                                    <ConfidenceChip key={m.parameterId} measurement={m} />
                                 ))}
                             </div>
                         </label>
@@ -500,14 +573,7 @@ export function RequestCard({
                         .map((m) => (
                             <div key={m.parameterId} className="flex items-center justify-between text-xs bg-card-general border border-border/50 rounded-lg p-2">
                                 <span className="font-bold text-text">{m.parameterName || "ไม่ระบุสาร"}</span>
-                                <span
-                                    className={`font-mono text-xs px-1.5 py-0.5 rounded font-bold border ${
-                                        isLowConfidence(m.confidence) ? "text-text-danger bg-bg-danger border-border-danger" : "text-text-safe bg-bg-safe border-border-safe"
-                                    }`}
-                                    title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
-                                >
-                                    conf. {m.confidence.toFixed(2)}
-                                </span>
+                                <ConfidenceChip measurement={m} />
                             </div>
                         ))}
                 </div>
@@ -535,7 +601,13 @@ export function RequestCard({
                 </button>
 
                 {item.statusRequest === "pending" && (
-                    <div className="flex items-stretch gap-2 w-full">
+                    <>
+                        {mustEditBeforeApprove && (
+                            <p className="text-[11px] leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                                AI ไม่พบหลอดทดลองในภาพ จึงอนุมัติตามค่าเดิมไม่ได้ — กดแก้ไขเพื่อกรอกค่าที่ถูกต้อง หรือปฏิเสธคำร้อง
+                            </p>
+                        )}
+                        <div className="flex items-stretch gap-2 w-full">
                         <button
                             type="button"
                             disabled={actingId === item.id}
@@ -556,14 +628,16 @@ export function RequestCard({
                         </button>
                         <button
                             type="button"
-                            disabled={actingId === item.id || noneSelected}
+                            disabled={actingId === item.id || noneSelected || mustEditBeforeApprove}
                             onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            title={mustEditBeforeApprove ? "AI ไม่พบหลอดทดลองในภาพ ต้องแก้ไขค่าก่อนอนุมัติ" : undefined}
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
                             <span>อนุมัติ</span>
                         </button>
-                    </div>
+                        </div>
+                    </>
                 )}
             </div>
 
@@ -806,6 +880,16 @@ export function EditApproveDrawer({
                     คุณสามารถแก้ไขค่าสารที่ระบบ AI วิเคราะห์ผิดพลาดได้ที่นี่ และเมื่อยืนยัน ข้อมูลจะถูกบันทึกเป็นค่าที่ถูกต้องและได้รับการอนุมัติ
                 </p>
 
+                {/* ค่าที่แสดงอยู่มาจากภาพที่ AI ไม่พบหลอดทดลอง ผู้ส่งจึงยังไม่เห็นค่าเหล่านี้ */}
+                {editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
+                    <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                        <ImageOff size={15} className="shrink-0 mt-0.5" />
+                        <p className="text-xs leading-relaxed font-medium">
+                            AI ไม่พบหลอดทดลองในภาพของคำร้องนี้ ค่าด้านล่างจึงยังยืนยันไม่ได้และผู้ส่งยังไม่เห็นค่า กรุณาเทียบกับภาพดิบก่อนกรอกค่าที่ถูกต้อง
+                        </p>
+                    </div>
+                )}
+
                 {/* Image Context */}
                 {editTarget.samples.some((s) => s.rawImageUrl || s.analyzedPlotUrl) && (
                     <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
@@ -882,7 +966,7 @@ export function EditApproveDrawer({
                                                                 type="number"
                                                                 step="0.01"
                                                                 disabled={!isSelected}
-                                                                value={editMeasurements[m.parameterId] ?? m.value}
+                                                                value={editMeasurements[m.parameterId] ?? m.value ?? ""}
                                                                 onChange={(e) => {
                                                                     const val = e.target.value;
                                                                     setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
@@ -1020,6 +1104,11 @@ export function RequestCardMobile({
     const toggleSample = (id: number) => setSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
     const noneSelected = showSampleSelect && selectedSampleIds.length === 0;
+
+    // ดูเฉพาะสารที่กำลังจะอนุมัติจริง — ถ้าผู้ดูแลระบบเอาตัวที่ AI ไม่พบหลอดออกจากรายการที่เลือกแล้ว
+    // ที่เหลือก็อนุมัติได้ตามปกติ ไม่ต้องบล็อกทั้งคำร้อง
+    const samplesToApprove = showSampleSelect ? item.samples.filter((s) => selectedSampleIds.includes(s.id)) : item.samples;
+    const mustEditBeforeApprove = item.statusRequest === "pending" && hasNoTestTubeSample(samplesToApprove);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const chemReadings = readChemMeasurements(item.samples.flatMap((s) => s.measurements));
@@ -1134,15 +1223,7 @@ export function RequestCardMobile({
                                     </div>
                                     <div className="flex items-center gap-1">
                                         {s.measurements.map((m) => (
-                                            <span
-                                                key={m.parameterId}
-                                                className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                                                    isLowConfidence(m.confidence) ? "text-text-danger" : "text-text-safe"
-                                                }`}
-                                                title={`ค่าความมั่นใจของ AI (เกณฑ์ขั้นต่ำ ${CONFIDENCE_THRESHOLD.toFixed(2)})`}
-                                            >
-                                                ค่าความมั่นใจ {m.confidence.toFixed(2)}
-                                            </span>
+                                            <ConfidenceChip key={m.parameterId} measurement={m} variant="plain" />
                                         ))}
                                     </div>
                                 </label>
@@ -1158,13 +1239,7 @@ export function RequestCardMobile({
                                 .map((m) => (
                                     <div key={m.parameterId} className="flex-1 min-w-50 flex items-center justify-between gap-2 bg-card-general border border-primary/30 rounded-sm px-3 py-2">
                                         <span className="font-medium text-text text-sm">{m.parameterName || "ไม่ระบุสาร"}</span>
-                                        <span
-                                            className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                                                isLowConfidence(m.confidence) ? "text-text-danger" : "text-text-safe"
-                                            }`}
-                                        >
-                                            ค่าความมั่นใจ {m.confidence.toFixed(2)}
-                                        </span>
+                                        <ConfidenceChip measurement={m} variant="plain" />
                                     </div>
                                 ))}
                         </div>
@@ -1194,7 +1269,13 @@ export function RequestCardMobile({
                 </button>
 
                 {item.statusRequest === "pending" && (
-                    <div className="flex items-stretch gap-2 w-full mt-1">
+                    <>
+                        {mustEditBeforeApprove && (
+                            <p className="text-[11px] leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mt-1">
+                                AI ไม่พบหลอดทดลองในภาพ จึงอนุมัติตามค่าเดิมไม่ได้ — กดแก้ไขเพื่อกรอกค่าที่ถูกต้อง หรือปฏิเสธคำร้อง
+                            </p>
+                        )}
+                        <div className="flex items-stretch gap-2 w-full mt-1">
                         <button
                             type="button"
                             disabled={actingId === item.id}
@@ -1215,14 +1296,16 @@ export function RequestCardMobile({
                         </button>
                         <button
                             type="button"
-                            disabled={actingId === item.id || noneSelected}
+                            disabled={actingId === item.id || noneSelected || mustEditBeforeApprove}
                             onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-10 px-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            title={mustEditBeforeApprove ? "AI ไม่พบหลอดทดลองในภาพ ต้องแก้ไขค่าก่อนอนุมัติ" : undefined}
+                            className="flex-1 min-h-10 px-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
                             <span>อนุมัติ</span>
                         </button>
-                    </div>
+                        </div>
+                    </>
                 )}
             </div>
 

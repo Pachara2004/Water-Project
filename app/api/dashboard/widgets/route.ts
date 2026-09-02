@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
         });
         const statusCountMap: Record<string, number> = {};
         statusGroups.forEach((g) => {
+            // status = null คือ "ประเมินไม่ได้" ไม่เข้าช่อง safe/warning/danger ช่องไหนเลย
+            // แต่ยังถูกนับใน totalSamples อยู่ อัตราความปลอดภัยจึงไม่พองขึ้นจากตัวอย่างที่ไม่เคยถูกประเมิน
+            if (!g.status) return;
             statusCountMap[g.status] = g._count._all;
         });
 
@@ -59,8 +62,10 @@ export async function GET(request: NextRequest) {
             const map: Record<string, number> = { safe: 0, warning: 0, danger: 0 };
             let total = 0;
             groups.forEach((g) => {
-                map[g.status] = g._count._all;
                 total += g._count._all;
+                // ประเมินไม่ได้ → นับรวมใน total แต่ไม่เข้าช่องสถานะใด
+                if (!g.status) return;
+                map[g.status] = g._count._all;
             });
             return { total, safe: map.safe, warning: map.warning, danger: map.danger };
         };

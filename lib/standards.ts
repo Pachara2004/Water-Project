@@ -29,8 +29,15 @@ export type StatusType = "safe" | "warning" | "danger";
  */
 export const CONFIDENCE_THRESHOLD = 0.6;
 
+/**
+ * "ความมั่นใจต่ำ" รวมถึงกรณี "ไม่มีค่าความมั่นใจ" (null/undefined) ด้วย
+ *
+ * ไม่รู้ว่า AI มั่นใจแค่ไหน = ยืนยันเองไม่ได้ ต้องให้ผู้ดูแลระบบตรวจสอบ — ปลอดภัยกว่าปล่อยผ่าน
+ * เดิมคืน false ให้ค่า null ซึ่งแปลว่า "ผ่านเกณฑ์" ทำให้ผลที่ไม่มีที่มาหลุดเข้า auto-approve
+ */
 export function isLowConfidence(confidence: number | null | undefined): boolean {
-    return confidence !== null && confidence !== undefined && confidence < CONFIDENCE_THRESHOLD;
+    if (confidence === null || confidence === undefined || !Number.isFinite(confidence)) return true;
+    return confidence < CONFIDENCE_THRESHOLD;
 }
 
 /**
@@ -43,6 +50,18 @@ export function getParameterStatus(value: number | null | undefined, max: number
     if (value > max) return "danger";
     if (value >= max * 0.7) return "warning";
     return "safe";
+}
+
+/**
+ * แปลงค่าจาก payload/JSON เป็นตัวเลขที่วัดได้ — คืน null เมื่อไม่มีค่าหรือแปลงเป็นตัวเลขไม่ได้
+ *
+ * ห้ามใช้ `raw || 0` แทน เพราะ 0 เป็น falsy ค่า 0 ที่วัดได้จริงจะถูกกลืนกลายเป็น "ไม่มีค่า"
+ * และห้ามคืน 0 แทน null เพราะ 0 จะถูกนำไปเทียบเกณฑ์แล้วรายงานว่า "ปกติ"
+ */
+export function toMeasuredNumber(raw: unknown): number | null {
+    if (raw === null || raw === undefined || raw === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
 }
 
 /** ค่าที่วัดได้ 1 ตัว — ผูกสารด้วย parameterId ไม่ใช่ชื่อ */
@@ -71,6 +90,10 @@ export function worseStatus(a: StatusType, b: StatusType): StatusType {
  * ("ไม่มีเกณฑ์" = ตัดสินไม่ได้ ส่วน "safe" = ตัดสินแล้วว่าผ่าน) ผู้เรียกต้องแยกสองกรณีนี้เอง
  */
 export function evaluateValueAgainstStandards(value: number | null | undefined, maxValues: number[]): StatusType | null {
+    // ไม่มีค่าที่วัดได้ = ตัดสินไม่ได้ อยู่ในหมวดเดียวกับ "ไม่มีเกณฑ์" จึงคืน null เหมือนกัน
+    // ห้ามปล่อยให้ตกไปถึง getParameterStatus ซึ่งคืน "safe" ให้ค่า null — ผลที่ AI อ่านไม่ได้
+    // จะถูกรายงานว่า "ปกติ" ทั้งที่ไม่เคยมีค่าให้เทียบ
+    if (value === null || value === undefined || !Number.isFinite(value)) return null;
     if (maxValues.length === 0) return null;
     return maxValues.reduce<StatusType>((acc, max) => worseStatus(acc, getParameterStatus(value, max)), "safe");
 }
@@ -90,16 +113,19 @@ export function groupStandardsByParameter(standards: StandardRow[]): Map<number,
  * สถานะรวมของตัวอย่าง 1 ใบ = แย่สุดของ (ทุกสารในใบ × ทุกเกณฑ์ของสารนั้น)
  *
  * ไม่มีการ "เลือกประเภทการใช้ประโยชน์" — ผลตรวจถูกเทียบกับเกณฑ์ทุกชุดที่มีเสมอ
- * สารที่ไม่มีเกณฑ์กำหนดจะถูกข้าม (ตัดสินไม่ได้ ไม่ใช่ผ่าน)
+ * สารที่ไม่มีเกณฑ์กำหนด หรือไม่มีค่าที่วัดได้ จะถูกข้าม (ตัดสินไม่ได้ ไม่ใช่ผ่าน)
+ *
+ * คืน null เมื่อไม่มีสารตัวไหนตัดสินได้เลย — เดิมเริ่มนับจาก "safe" แล้วคืนค่านั้นออกไป
+ * ทำให้ตัวอย่างที่ไม่เคยถูกประเมินถูกรายงานว่า "ปลอดภัย" ผู้เรียกต้องแยก null ออกจาก safe เอง
  */
-export function evaluateSample(values: MeasuredValue[], standards: StandardRow[]): StatusType {
+export function evaluateSample(values: MeasuredValue[], standards: StandardRow[]): StatusType | null {
     const maxesByParameter = groupStandardsByParameter(standards);
 
-    let overallStatus: StatusType = "safe";
+    let overallStatus: StatusType | null = null;
     for (const measured of values) {
         const status = evaluateValueAgainstStandards(measured.value, maxesByParameter.get(measured.parameterId) ?? []);
         if (status === null) continue;
-        overallStatus = worseStatus(overallStatus, status);
+        overallStatus = overallStatus === null ? status : worseStatus(overallStatus, status);
     }
 
     return overallStatus;
@@ -139,7 +165,7 @@ export function evaluateAgainstLocationType(values: MeasuredValue[], type: Locat
 /** 1 แถว sample แบบย่อ — พอสำหรับหาค่าล่าสุดต่อสารของสถานที่ (ไม่แตะ prisma ไฟล์นี้ import จาก client ได้) */
 export interface SampleForLatestValue {
     collectionTime: Date | string;
-    measurements: { parameterId: number; value: number; parameter?: { name: string } | null }[];
+    measurements: { parameterId: number; value: number | null; parameter?: { name: string } | null }[];
 }
 
 /** ค่าล่าสุด 1 สาร ของสถานที่หนึ่ง พร้อมเวลาที่วัด (สารแต่ละตัวอาจมาจากคนละรอบเก็บ) */
@@ -161,6 +187,9 @@ export function computeLatestValueByParameter(samples: SampleForLatestValue[]): 
         const collectedAt = typeof s.collectionTime === "string" ? s.collectionTime.replace(/(Z|\+\d{2}:\d{2})$/, "") : s.collectionTime.toISOString().replace("Z", "");
         for (const m of s.measurements) {
             if (latestByParameter.has(m.parameterId)) continue;
+            // แถวที่ไม่มีค่า (AI อ่านไม่ออก) ไม่นับเป็นการวัดสารตัวนั้น — ข้ามไปหาค่าจริงที่ใหม่ที่สุดแทน
+            // ถ้านับด้วย สถานะสถานีจะกลายเป็น "ตัดสินไม่ได้" ทั้งที่มีผลตรวจจริงของรอบก่อนหน้าอยู่
+            if (m.value === null || m.value === undefined) continue;
             latestByParameter.set(m.parameterId, {
                 parameterId: m.parameterId,
                 parameterName: m.parameter?.name ?? "",

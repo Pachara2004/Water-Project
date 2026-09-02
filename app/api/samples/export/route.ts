@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
                 oxygen: sample.dissolvedOxygen ?? "N/A",
                 temp: sample.airTemperature ?? "N/A",
                 rain: sample.rainAccumulation ?? "N/A",
-                status: sample.status,
+                status: sample.status ?? "N/A",
                 collector: [sample.collector?.firstName, sample.collector?.lastName].filter(Boolean).join(" ") || sample.collector?.lineProfileName || "N/A",
                 image: sample.rawImageUrl ? "" : "N/A",
                 imagePlot: sample.analyzedPlotUrl ? "" : "N/A",
@@ -123,7 +123,9 @@ export async function GET(request: NextRequest) {
             // ดึงค่าวัดสารเคมีมาผูกเข้าตามคีย์ของพารามิเตอร์แต่ละตัวแบบ Dynamic
             activeParameters.forEach((param) => {
                 const match = sample.measurements.find((m) => m.parameterId === param.id);
-                rowData[`param_${param.id}`] = match !== undefined ? match.value : "N/A";
+                // match?.value เป็น null ได้แล้ว (AI อ่านค่าไม่ออก) — ต้องลงเอยที่ "N/A" เหมือนคอลัมน์อื่น
+                // ไม่ใช่ช่องว่างที่อ่านไม่ออกว่าไม่มีค่า หรือวัดได้ 0
+                rowData[`param_${param.id}`] = match?.value ?? "N/A";
             });
 
             const row = worksheet.addRow(rowData);

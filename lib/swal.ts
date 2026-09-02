@@ -92,10 +92,21 @@ export interface ReviewConfirmDialogOptions {
     text?: string;
     reasons?: string[];
     requireNote?: boolean;
+    /**
+     * ล็อกสิทธิ์ให้ผู้ดูแลระบบแก้ไขชนิดสารได้เสมอ โดยผู้ส่งเลือกเป็นอย่างอื่นไม่ได้
+     * ใช้เมื่อ AI ไม่พบหลอดทดลองในภาพ — ยืนยันไม่ได้ทั้งค่าและชนิดสาร
+     */
+    forceAllowAdminChange?: boolean;
 }
 
 /** Dialog ยืนยันก่อนส่งเพื่อรอตรวจสอบ (สำหรับเคสที่ต้องให้แอดมินช่วยดู) พร้อมกล่องข้อความระบุสาเหตุ */
-export async function reviewConfirmDialog({ title, text, reasons = [], requireNote = false }: ReviewConfirmDialogOptions): Promise<{ confirmed: boolean; reviewNote?: string; allowAdminChange: boolean }> {
+export async function reviewConfirmDialog({
+    title,
+    text,
+    reasons = [],
+    requireNote = false,
+    forceAllowAdminChange = false,
+}: ReviewConfirmDialogOptions): Promise<{ confirmed: boolean; reviewNote?: string; allowAdminChange: boolean }> {
     const reasonsHtml = reasons.length > 0 ? `
         <div style="text-align: left; font-size: 14px; margin-bottom: 12px; background: #fffbeb; padding: 12px; border-radius: 8px; border: 1px solid #fef3c7;">
             <p style="margin-bottom: 6px; font-weight: 600; color: #b45309;">สาเหตุที่ต้องรอการตรวจสอบ:</p>
@@ -105,20 +116,22 @@ export async function reviewConfirmDialog({ title, text, reasons = [], requireNo
         </div>
     ` : '';
 
-    const result = await baseSwal.fire({
-        title,
-        html: `
-            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">${text}</p>
-            ${reasonsHtml}
-            <div style="text-align: left; margin-top: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-                    <label for="swal-review-note" style="font-size: 13px; font-weight: 600; color: #112A33;">
-                        หมายเหตุถึงผู้ดูแลระบบ ${requireNote ? '<span style="color: red;">*</span>' : '(ไม่บังคับ)'}:
-                    </label>
-                    <span id="swal-char-count" style="font-size: 11px; color: var(--color-text-muted);">0 / 200</span>
+    // ปกติผู้ส่งเลือกเองว่าจะให้ผู้ดูแลระบบแก้ชนิดสารได้ไหม
+    // แต่เมื่อ AI ไม่พบหลอดทดลอง ยืนยันไม่ได้ทั้งค่าและชนิดสาร จึงล็อกเป็น "อนุญาต" ไม่ให้เลือก
+    // ถ้าปล่อยให้เลือก "ไม่อนุญาต" คำร้องจะเข้าคิวโดยที่ผู้ดูแลระบบแก้อะไรไม่ได้เลย กลายเป็นทางตัน
+    const permissionHtml = forceAllowAdminChange
+        ? `
+                <div class="mt-6 flex flex-col gap-2">
+                    <label style="font-size: 13px; font-weight: 600; color: #112A33;">การอนุญาตให้แก้ไขชนิดสาร</label>
+                    <div class="flex items-start gap-2.5 p-3 rounded-lg border border-warning bg-warning/5">
+                        <div class="flex flex-col text-xs text-left">
+                            <span class="font-semibold text-slate-800 leading-tight">อนุญาตให้แก้ไขได้ (บังคับสำหรับกรณีนี้)</span>
+                            <span class="text-[10px] text-slate-500 leading-snug mt-0.5">AI ไม่พบหลอดทดลองในภาพ จึงยืนยันทั้งค่าและชนิดสารไม่ได้ ผู้ดูแลระบบต้องแก้ไขให้ได้จึงจะตรวจสอบคำร้องนี้ต่อได้</span>
+                        </div>
+                    </div>
                 </div>
-                <textarea id="swal-review-note" maxlength="200" placeholder="${requireNote ? 'กรุณาระบุเหตุผลที่ต้องการให้ตรวจสอบเพิ่มเติม' : 'ระบุสาเหตุที่ต้องการให้ตรวจสอบเพิ่มเติม หรือบอกสิ่งที่ต้องการให้แอดมินช่วยดู...'}" class="w-full min-h-[100px] resize-none p-3 border border-border rounded-xl text-sm bg-surface-subtle focus:bg-surface focus:border-warning focus:ring-4 focus:ring-warning/20 outline-none transition-all placeholder:text-text-muted mt-1 text-text"></textarea>
-                
+        `
+        : `
                 <div class="mt-6 flex flex-col gap-2">
                     <label style="font-size: 13px; font-weight: 600; color: #112A33;">
                         การอนุญาตให้แก้ไขชนิดสาร <span style="color: red;">*</span>
@@ -144,6 +157,23 @@ export async function reviewConfirmDialog({ title, text, reasons = [], requireNo
                         </label>
                     </div>
                 </div>
+        `;
+
+    const result = await baseSwal.fire({
+        title,
+        html: `
+            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">${text}</p>
+            ${reasonsHtml}
+            <div style="text-align: left; margin-top: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+                    <label for="swal-review-note" style="font-size: 13px; font-weight: 600; color: #112A33;">
+                        หมายเหตุถึงผู้ดูแลระบบ ${requireNote ? '<span style="color: red;">*</span>' : '(ไม่บังคับ)'}:
+                    </label>
+                    <span id="swal-char-count" style="font-size: 11px; color: var(--color-text-muted);">0 / 200</span>
+                </div>
+                <textarea id="swal-review-note" maxlength="200" placeholder="${requireNote ? 'กรุณาระบุเหตุผลที่ต้องการให้ตรวจสอบเพิ่มเติม' : 'ระบุสาเหตุที่ต้องการให้ตรวจสอบเพิ่มเติม หรือบอกสิ่งที่ต้องการให้แอดมินช่วยดู...'}" class="w-full min-h-[100px] resize-none p-3 border border-border rounded-xl text-sm bg-surface-subtle focus:bg-surface focus:border-warning focus:ring-4 focus:ring-warning/20 outline-none transition-all placeholder:text-text-muted mt-1 text-text"></textarea>
+                
+                ${permissionHtml}
             </div>
         `,
         iconHtml: ICON_SVG.info,
@@ -163,8 +193,9 @@ export async function reviewConfirmDialog({ title, text, reasons = [], requireNo
                 const isNoteEmpty = textarea ? textarea.value.trim().length === 0 : false;
                 const noteInvalid = requireNote && isNoteEmpty;
                 
+                // โหมดบังคับไม่มี radio ให้เลือก จึงถือว่าผ่านเงื่อนไขนี้ไปเลย
                 const radios = document.querySelectorAll('input[name="swal-allow-admin-change"]');
-                let radioSelected = false;
+                let radioSelected = forceAllowAdminChange;
                 radios.forEach((r) => { if ((r as HTMLInputElement).checked) radioSelected = true; });
 
                 const isInvalid = noteInvalid || !radioSelected;
@@ -236,7 +267,7 @@ export async function reviewConfirmDialog({ title, text, reasons = [], requireNo
             
             // Check radio required (actually UI prevents click if invalid, but good to have fallback)
             const radios = document.querySelectorAll('input[name="swal-allow-admin-change"]');
-            let radioSelected = false;
+            let radioSelected = forceAllowAdminChange;
             radios.forEach((r) => { if ((r as HTMLInputElement).checked) radioSelected = true; });
 
             if (!radioSelected) {
@@ -250,7 +281,7 @@ export async function reviewConfirmDialog({ title, text, reasons = [], requireNo
             }
             return {
                 reviewNote: val,
-                allowAdminChange: radioTrue ? radioTrue.checked : false
+                allowAdminChange: forceAllowAdminChange || (radioTrue ? radioTrue.checked : false)
             };
         }
     });

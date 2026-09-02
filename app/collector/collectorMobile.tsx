@@ -434,7 +434,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                                         </div>
                                                     </div>
                                                     <div className="shrink-0 flex flex-col items-end gap-1 mt-0.5">
-                                                        <StatusBadge status={sample.status} size="sm" />
+                                                        <StatusBadge status={sample.status} reviewStatus={sample.reviewStatus} size="sm" />
                                                     </div>
                                                 </div>
                                             </div>

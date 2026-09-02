@@ -179,7 +179,8 @@ export default function AdminReviewRequestsPage() {
         const initialParameters: Record<number, number> = {};
         item.samples.forEach(s => {
             s.measurements.forEach(m => {
-                initialMeasurements[m.parameterId] = m.value;
+                // ค่าที่เป็น null (AI ทำนายไม่ได้) ไม่ต้องใส่คีย์ ปล่อยให้ช่องกรอกว่างไว้ให้ผู้ดูแลระบบพิมพ์เอง
+                if (m.value !== null && m.value !== undefined) initialMeasurements[m.parameterId] = m.value;
                 initialParameters[m.parameterId] = m.parameterId;
             });
         });

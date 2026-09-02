@@ -182,7 +182,8 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                 // 3. กรองตามสถานะความปลอดภัยน้ำ (safe / warning / danger)
                 if (selectedStatuses.length > 0) {
                     const itemWaterStatus = getSampleWaterStatus(item, standards);
-                    if (!selectedStatuses.includes(itemWaterStatus)) return false;
+                    // null = ประเมินไม่ได้ (ทุกค่าเป็น null) ไม่ตรงกับตัวกรอง safe/warning/danger ตัวไหนเลย
+                    if (itemWaterStatus === null || !selectedStatuses.includes(itemWaterStatus)) return false;
                 }
 
                 return true;

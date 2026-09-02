@@ -6,7 +6,7 @@ import { MetadataFields } from "@/components/submit/MetadataFields";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
 import { AnalyzeButton } from "@/components/submit/NavWorkflow";
 import { SubmitSteps } from "@/components/submit/SubmitSteps";
-import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy } from "lucide-react";
+import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy, Send } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 
 export default function SubmitDesktop(props: any) {
@@ -29,6 +29,8 @@ export default function SubmitDesktop(props: any) {
         hasDuplicateSubstance,
         hasLowConfidence,
         needsAdminReview,
+        hasBlockedPending,
+        onConfirmBlockedSubmit,
         onConfirmSave,
         onResetClick,
         saved,
@@ -73,8 +75,22 @@ export default function SubmitDesktop(props: any) {
 
                             <div className="space-y-3 pt-1">
                                 {step === "upload" && (
-                                    <div className="w-full">
+                                    <div className="w-full space-y-2.5">
                                         <AnalyzeButton {...hook} />
+
+                                        {/* AI ไม่พบหลอดทดลองในบางภาพ — ให้ทางเลือกที่สองแทนการบังคับถ่ายใหม่อย่างเดียว */}
+                                        {hasBlockedPending && (
+                                            <>
+                                                <button
+                                                    onClick={onConfirmBlockedSubmit}
+                                                    className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white bg-text-warning hover:bg-text-warning/80 shadow-sm transition-all cursor-pointer"
+                                                >
+                                                    <Send size={15} />
+                                                    <span>ยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ</span>
+                                                </button>
+                                                <p className="text-[11px] leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้งก็ได้ หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่าให้</p>
+                                            </>
+                                        )}
                                     </div>
                                 )}
 

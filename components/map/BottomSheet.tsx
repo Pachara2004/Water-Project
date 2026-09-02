@@ -25,7 +25,8 @@ export interface BottomSheetLocation {
     latestByParameter?: Array<{ parameterId: number; parameterName: string; value: number; collectedAt: string }>;
     latestSample: {
         id: string;
-        status: "SAFE" | "WARNING" | "DANGER";
+        /** null = ประเมินไม่ได้ (ไม่มีค่าที่วัดได้เลย) — ต่างจาก SAFE ที่แปลว่าตัดสินแล้วว่าผ่าน */
+        status: "SAFE" | "WARNING" | "DANGER" | null;
         phosphateVal: number | null;
         ammoniaVal: number | null;
         collectedAt: string;
@@ -224,6 +225,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                 sample.measurements.forEach((m: any) => {
                     const paramName = m.parameter?.name?.toLowerCase();
                     if (!paramName) return;
+                    // ไม่มีค่าที่วัดได้ → ข้ามไปเลย Number(null) เป็น 0 ซึ่งจะถูกวาดเป็นผลตรวจจริงบนการ์ด
+                    if (m.value === null || m.value === undefined) return;
                     const key = `${paramName}Val`;
                     const val = Number(m.value);
 
@@ -391,7 +394,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                     {isCollapsed && latest && (
                         <div className="shrink-0 sm:hidden">
-                            <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
+                            <StatusBadge status={latest.status?.toLowerCase() as any} size="md" />
                         </div>
                     )}
                 </div>
@@ -403,7 +406,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                 <div className="bg-card-general border border-border rounded-xl p-4">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-xs font-semibold text-primary">ผลการวิเคราะห์ล่าสุด</span>
-                                        <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
+                                        <StatusBadge status={latest.status?.toLowerCase() as any} size="md" />
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-text">
                                         <Calendar size={16} />
@@ -576,7 +579,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                                                             {/* ฝั่งขวา: StatusBadge */}
                                                             <div className="shrink-0">
-                                                                <StatusBadge status={s.status.toLowerCase() as any} size="md" />
+                                                                <StatusBadge status={s.status?.toLowerCase() as any} size="md" />
                                                             </div>
                                                         </div>
                                                     );

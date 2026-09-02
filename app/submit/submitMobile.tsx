@@ -29,6 +29,8 @@ export default function SubmitMobile(props: any) {
         hasDuplicateSubstance,
         hasLowConfidence,
         needsAdminReview,
+        hasBlockedPending,
+        onConfirmBlockedSubmit,
         onConfirmSave,
         onResetClick,
         saved,
@@ -102,6 +104,20 @@ export default function SubmitMobile(props: any) {
                         <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
                         <MetadataFields {...hook} weatherData={hook.weatherData} />
                         <AnalyzeButton {...hook} />
+
+                        {/* AI ไม่พบหลอดทดลองในบางภาพ — ให้ทางเลือกที่สองแทนการบังคับถ่ายใหม่อย่างเดียว */}
+                        {hasBlockedPending && (
+                            <div className="space-y-2">
+                                <button
+                                    onClick={onConfirmBlockedSubmit}
+                                    className="w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-[#FE9A00] hover:bg-bg-warning shadow-sm transition-all duration-200"
+                                >
+                                    <Send size={15} />
+                                    ยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ
+                                </button>
+                                <p className="text-[11px] leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้งก็ได้ หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่าให้</p>
+                            </div>
+                        )}
                     </>
                 )}
                 {step === "results" && (

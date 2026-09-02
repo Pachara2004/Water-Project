@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, MapPin, User, FlaskConical, Thermometer, CloudRain
 import StatusBadge from "@/components/map/StatusBadge";
 import { ImageZone } from "@/components/submit/ImageZone";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
+import { formatMeasuredValue } from "@/lib/chemLabels";
 import { StandardsComparison } from "@/components/StandardsComparison";
 import { getWeatherConditionLabel } from "@/lib/weather";
 
@@ -33,7 +34,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
             <section className="rounded-xl bg-card-general border border-border p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-border pb-2">
                     <span className="text-xs text-primary font-medium">ข้อมูลจุดตรวจวัด</span>
-                    <StatusBadge status={sample.status} size="md" />
+                    <StatusBadge status={sample.status} reviewStatus={sample.reviewStatus} size="md" />
                 </div>
                 {isEditing ? (
                     <div ref={locationDropdownRef} className="relative mt-2">
@@ -172,7 +173,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                             <div key={m.parameterId} className="flex items-center justify-between text-xs bg-surface-subtle border border-border rounded-md p-3">
                                 <span className="font-medium text-text uppercase">{m.parameterName || "-"}</span>
                                 <div className="flex items-center gap-3">
-                                    <span className="font-medium text-text">{m.value.toFixed(2)} mg/L</span>
+                                    <span className="font-medium text-text">{formatMeasuredValue(m.value)} mg/L</span>
                                     <span className="text-xs text-text-muted">{formatDateTime(m.collectedAt)}</span>
                                 </div>
                             </div>
@@ -225,7 +226,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                 </div>
                                 <div className="flex flex-col items-end">
                                     <span className="text-xs text-text-muted uppercase mb-0.5 ">ผลประเมิน</span>
-                                    <StatusBadge status={sample.status} size="sm" />
+                                    <StatusBadge status={sample.status} reviewStatus={sample.reviewStatus} size="sm" />
                                     <div className="flex flex-col items-end text-center mt-0.5 shrink-0">
                                         {sample.reviewStatus === "PENDING" && (
                                             <span className="inline-flex items-center w-30 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
@@ -263,7 +264,9 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                             {measurement.isDuplicateSubstance && <span className="ml-1 text-amber-600">•ซ้ำ</span>}
                                         </span>
                                         <div className="flex flex-col items-end gap-1">
-                                            {measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
+                                            {measurement.isTestTube === false ? (
+                                                <span className="font-semibold text-amber-600 dark:text-amber-400 text-xs">รอตรวจสอบ</span>
+                                            ) : measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
                                                 <>
                                                     <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
                                                         <span>ค่าที่ส่ง:</span>
@@ -272,13 +275,13 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                                     <div className="flex items-center gap-1.5 text-[11px]">
                                                         <span className="text-teal-700 font-medium">แก้ไขเป็น:</span>
                                                         <span className="font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md">
-                                                            {measurement.concentrated.toFixed(2)} mg/L
+                                                            {formatMeasuredValue(measurement.concentrated)} mg/L
                                                         </span>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <span className="font-medium text-text text-sm">
-                                                    {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted font-mediuml">mg/L</span>
+                                                    {formatMeasuredValue(measurement.concentrated)} <span className="text-xs text-text-muted font-mediuml">mg/L</span>
                                                 </span>
                                             )}
                                         </div>
