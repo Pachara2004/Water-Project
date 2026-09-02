@@ -1,7 +1,8 @@
 // components/submit/ResultsPanel.tsx
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Check, ArrowLeft, FlaskConical } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, ArrowLeft, FlaskConical, Clock } from "lucide-react";
 import { evaluateValueAgainstStandards, groupStandardsByParameter } from "@/lib/standards";
+import { formatMeasuredValue } from "@/lib/chemLabels";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
 import { DbParameter, MeasurementResult } from "./types";
@@ -71,6 +72,10 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                         const isDuplicate = measurement.isDuplicateSubstance === true;
                         const isChosen = isDuplicate && duplicateChoice[measurement.parameterId] === entryKey;
 
+                        // AI ไม่พบหลอดทดลองในภาพ → ค่าที่อ่านได้เชื่อไม่ได้ ซ่อนค่า/ความมั่นใจ/การเทียบเกณฑ์
+                        // จนกว่าผู้ดูแลระบบจะตรวจสอบ (ค่าจริงถูกบันทึกลงฐานข้อมูลไว้แล้ว)
+                        const isPendingAdminValue = measurement.isTestTube === false;
+
                         return (
                             <div
                                 key={entryKey}
@@ -104,15 +109,22 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                 <div className="flex justify-between items-baseline">
                                     <div className="flex flex-col gap-0.5">
                                         <span className="text-base uppercase font-medium text-text-primary">{param.name}</span>
-                                        {measurement.confidence !== undefined && (
-                                            <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">
-                                                ค่าความมั่นใจ: {measurement.confidence !== null && measurement.confidence !== undefined ? `${(measurement.confidence * 100).toFixed(0)}%` : "-"}
-                                            </span>
-                                        )}
+                                        {!isPendingAdminValue &&
+                                            (measurement.confidence === null || measurement.confidence === undefined ? (
+                                                // ไม่มีค่าความมั่นใจจากโมเดล = ค่านี้ผ่านมือผู้ดูแลระบบมาแล้ว ไม่ใช่ผลที่ AI อ่านเอง
+                                                // แสดง "-" ไม่ได้ เพราะอ่านเหมือนข้อมูลขาดหาย ทั้งที่ค่าถูกยืนยันโดยคนแล้ว
+                                                <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400 font-medium">ยืนยันโดยผู้ดูแลระบบ</span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">
+                                                    ค่าความมั่นใจ: {`${(measurement.confidence * 100).toFixed(0)}%`}
+                                                </span>
+                                            ))}
                                     </div>
                                     <div className="flex flex-col items-end">
                                         <div className="flex flex-col items-end gap-1">
-                                            {measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
+                                            {isPendingAdminValue ? (
+                                                <div className="text-sm font-semibold text-amber-600 dark:text-amber-400 text-right">รอตรวจสอบ</div>
+                                            ) : measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
                                                 <>
                                                     <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
                                                         <span>ค่าที่ส่ง:</span>
@@ -123,20 +135,20 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                                     <div className="flex items-center gap-1.5 text-[11px]">
                                                         <span className="text-teal-700 font-medium">แก้ไขเป็น:</span>
                                                         <span className="font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md">
-                                                            {measurement.concentrated.toFixed(2)} mg/L
+                                                            {formatMeasuredValue(measurement.concentrated)} mg/L
                                                         </span>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <div className="text-xl font-semibold text-text text-right">
-                                                    {measurement.concentrated.toFixed(2)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
+                                                    {formatMeasuredValue(measurement.concentrated)} <span className="text-xs text-text-muted ml-0.5">{param.unit ?? "mg/L"}</span>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                 </div>
                                 {/* สารที่ไม่มีเกณฑ์กำหนด: ไม่มีสเกลให้วาดแถบ — ซ่อนดีกว่าวาดด้วยเกณฑ์ที่กุขึ้นมา */}
-                                {strictestMax !== null && paramStatus !== null && <ThresholdBar value={measurement.concentrated} max={strictestMax} status={paramStatus} />}
+                                {!isPendingAdminValue && strictestMax !== null && paramStatus !== null && <ThresholdBar value={measurement.concentrated} max={strictestMax} status={paramStatus} />}
 
                                 {/* แบนเนอร์เปลี่ยนชนิดสารอัตโนมัติ */}
                                 {!saved && measurement.autoSwitchedFrom && (
@@ -163,6 +175,12 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
 
 
 
+                                {isPendingAdminValue ? (
+                                    <div className="mt-1.5 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+                                        <Clock size={14} className="shrink-0 mt-0.5" />
+                                        <p className="text-xs leading-relaxed font-medium">รอการตรวจสอบจากผู้ดูแลระบบ — AI ไม่พบหลอดทดลองในภาพนี้ จึงยังไม่แสดงค่าที่วัดได้</p>
+                                    </div>
+                                ) : (
                                 <div className="w-full mt-1.5">
                                     <button
                                         type="button"
@@ -204,6 +222,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                         </div>
                                     )}
                                 </div>
+                                )}
                             </div>
                         );
                     })}

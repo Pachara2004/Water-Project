@@ -138,7 +138,8 @@ model WaterSample {
   rainAccumulation Float?                   @map("rain_accumulation")
   weatherCondCode  Int?                     @map("weather_cond_code")
   
-  status           WaterStatus
+  // null = ประเมินไม่ได้ (ไม่มีค่าที่วัดได้เลย เช่น AI อ่านภาพไม่ออก) — ต่างจาก safe ที่แปลว่าตัดสินแล้วว่าผ่าน
+  status           WaterStatus?
   sessionGroup     String?                  @map("session_group")
   
   rawImageUrl      String?                  @map("raw_image_url") @db.Text
@@ -178,8 +179,10 @@ model WaterSampleMeasurement {
   id          Int         @id @default(autoincrement())
   sampleId    Int         @map("sample_id")
   parameterId Int         @map("parameter_id")
-  value       Float       @map("value")      
-  confidence  Float       @map("confidence")  
+  // null = ยังไม่มีค่าที่วัดได้ (เช่น AI อ่านภาพไม่ออก) — ต่างจาก 0 ที่แปลว่าวัดได้ 0 จริง
+  value       Float?      @map("value")      
+  // null = ไม่มีค่าความมั่นใจจากโมเดล — isLowConfidence ถือว่าต้องให้ผู้ดูแลระบบตรวจสอบ
+  confidence  Float?      @map("confidence")  
   boundingBox Json?       @map("bounding_box") 
   message     String?     @db.Text
 
@@ -234,7 +237,8 @@ model SampleRecord {
   airTemperature           Float?      @map("air_temperature")
   rainAccumulation         Float?      @map("rain_accumulation")
   weatherCondCode          Int?        @map("weather_cond_code")
-  status                   WaterStatus @map("status")
+  // null = ประเมินไม่ได้ ณ เวลาที่ snapshot — ต่างจาก safe ที่แปลว่าตัดสินแล้วว่าผ่าน
+  status                   WaterStatus? @map("status")
   
   imageUrl                 Json?       @map("image_url") // รวม { rawImageUrl, plotImageUrl }
   imageExpiresAt           DateTime?   @map("image_expires_at")

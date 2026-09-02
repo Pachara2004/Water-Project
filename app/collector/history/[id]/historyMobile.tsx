@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, MapPin, User, Thermometer, CloudRain, Waves } from
 import StatusBadge from "@/components/map/StatusBadge";
 import { ImageZone } from "@/components/submit/ImageZone";
 import { ResultsPanel } from "@/components/submit/ResultsPanel";
+import { formatMeasuredValue } from "@/lib/chemLabels";
 import { StandardsComparison } from "@/components/StandardsComparison";
 import { getWeatherConditionLabel } from "@/lib/weather";
 
@@ -33,7 +34,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
             <section className="rounded-xl bg-card-general overflow-hidden border border-border p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-border pb-2">
                     <span className="text-xs text-primary font-bold">ข้อมูลจุดตรวจวัด</span>
-                    <StatusBadge status={sample.status} size="md" />
+                    <StatusBadge status={sample.status} reviewStatus={sample.reviewStatus} size="md" />
                 </div>
                 {isEditing ? (
                     <div ref={locationDropdownRef} className="relative mt-2">
@@ -150,7 +151,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                             <div key={m.parameterId} className="flex items-center justify-between text-xs bg-surface-subtle border border-border rounded-xl px-4 py-2.5">
                                 <span className="font-bold text-text uppercase">{m.parameterName || "-"}</span>
                                 <div className="flex items-center gap-3">
-                                    <span className="font-bold text-text">{m.value.toFixed(2)} mg/L</span>
+                                    <span className="font-bold text-text">{formatMeasuredValue(m.value)} mg/L</span>
                                     <span className="text-xs text-text-muted">{formatDateTime(m.collectedAt)}</span>
                                 </div>
                             </div>

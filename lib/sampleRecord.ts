@@ -45,13 +45,16 @@ export async function createSampleRecordSnapshot(
     plotImageUrls: Array.from(new Set(plotImageUrls)),
   };
 
-  // Determine the overall status
-  // If any sample is danger -> danger, else if any warning -> warning, else safe
-  let overallStatus: WaterStatus = 'safe';
+  // สถานะรวมของ snapshot = แย่สุดของทุก sample ในกลุ่ม
+  // null = ไม่มี sample ไหนประเมินได้เลย (ทุกตัวไม่มีค่าที่วัดได้)
+  // ห้าม default เป็น 'safe' เหมือนเดิม ไม่งั้นกลุ่มที่ไม่เคยถูกประเมินจะถูกบันทึกว่าปลอดภัยถาวร
+  let overallStatus: WaterStatus | null = null;
   if (samples.some((s) => s.status === 'danger')) {
     overallStatus = 'danger';
   } else if (samples.some((s) => s.status === 'warning')) {
     overallStatus = 'warning';
+  } else if (samples.some((s) => s.status === 'safe')) {
+    overallStatus = 'safe';
   }
 
   // Create the record

@@ -64,6 +64,10 @@ function SubmitContent() {
     const handleImageSelect = async (paramId: number, file: File) => {
         setImageFiles((prev) => ({ ...prev, [paramId]: file }));
 
+        // เปลี่ยนรูปแล้ว ผลวิเคราะห์ที่พักไว้ทั้งชุดใช้ไม่ได้อีก — ต้องกดวิเคราะห์ใหม่ก่อนจึงจะยืนยันส่งได้
+        // ถ้าไม่ล้าง ปุ่มยืนยันจะส่งผลของรูปเก่าขึ้นไปแทนรูปที่เพิ่งเลือก
+        hook.setPendingAnalyzedItems([]);
+
         hook.processImageExif(file);
         processImageExif(file);
 
@@ -89,11 +93,26 @@ function SubmitContent() {
         })
         .filter((e): e is { key: number; param: DbParameter; measurement: (typeof results)[number] } => e !== null);
 
-    const hasLowConfidence = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && isLowConfidence(r.confidence));
+    // "ความมั่นใจต่ำ" ต้องหมายถึง "วัดค่าได้ แล้วความมั่นใจต่ำกว่าเกณฑ์" เท่านั้น
+    //
+    // ต้องคัดรายการที่ AI ไม่พบหลอดทดลองออกด้วย ไม่ใช่แค่เช็ค null — เพราะโมเดลคืน confidence
+    // เป็นเลข 0 มาให้ในกรณีนั้น (ไม่ได้ปล่อยว่าง) ค่า 0 จึงผ่านการเช็ค null แล้วไปเข้าเกณฑ์ "ต่ำกว่า 0.6"
+    // ทำให้ผู้ใช้เห็นข้อความว่าความมั่นใจต่ำ ทั้งที่ไม่เคยมีการวัดเกิดขึ้นเลย
+    //
+    // เคสไม่พบหลอดทดลองมีคำอธิบายของตัวเองอยู่ในการ์ดของสารนั้นแล้ว จึงไม่ต้องมีแบนเนอร์ซ้ำอีก
+    // (isLowConfidence เองยังตีความ null/0 ว่า "ต้องตรวจสอบ" ตามเดิม — ใช้ตัดสินคิวรีวิว ไม่ใช่ข้อความบนจอ)
+    const hasLowConfidence = Object.entries(results).some(
+        ([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.isTestTube !== false && r.confidence !== null && r.confidence !== undefined && isLowConfidence(r.confidence),
+    );
     const hasDuplicateSubstance = Object.values(results).some((r) => r.isDuplicateSubstance);
     const hasUserInsistedOriginal = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.userInsistedOriginal);
     const hasSystemUnknown = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.isSystemUnknown);
-    const needsAdminReview = hasLowConfidence || hasUserInsistedOriginal || hasSystemUnknown || hasDuplicateSubstance;
+    // AI ไม่พบหลอดทดลองในภาพ — ค่าที่อ่านได้เชื่อไม่ได้ ต้องให้ผู้ดูแลระบบตัดสินเสมอ
+    const hasNotTestTube = Object.entries(results).some(([keyStr, r]) => savedEntryKeys.has(Number(keyStr)) && r.isTestTube === false);
+    const needsAdminReview = hasLowConfidence || hasUserInsistedOriginal || hasSystemUnknown || hasDuplicateSubstance || hasNotTestTube;
+
+    // มีผลวิเคราะห์ค้างอยู่จากรอบที่ AI ไม่พบหลอดทดลอง — ผู้ใช้ยังไม่ได้ตัดสินใจว่าจะถ่ายใหม่หรือยืนยันส่ง
+    const hasBlockedPending = hook.pendingAnalyzedItems.length > 0;
 
     const onConfirmSave = async (forceReview: boolean) => {
         const isReviewSubmit = needsAdminReview || forceReview;
@@ -102,6 +121,7 @@ function SubmitContent() {
             const reasons: string[] = [];
             if (hasLowConfidence) reasons.push("ความมั่นใจของ AI ต่ำกว่า 60%");
             if (hasSystemUnknown) reasons.push("พบสารเคมีที่ไม่รู้จักในระบบ");
+            if (hasNotTestTube) reasons.push("AI ไม่พบหลอดทดลองในภาพ ค่าที่อ่านได้จึงยังยืนยันไม่ได้");
             if (hasDuplicateSubstance) reasons.push("มีภาพสารเคมีชนิดเดียวกันซ้ำกัน");
             if (hasUserInsistedOriginal) reasons.push("ผู้ใช้ยกเลิกการสลับสารอัตโนมัติของ AI");
             
@@ -112,6 +132,8 @@ function SubmitContent() {
                 text: 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน',
                 reasons,
                 requireNote: !needsAdminReview && forceReview,
+                // AI ไม่พบหลอดทดลอง = ยืนยันไม่ได้ทั้งค่าและชนิดสาร ต้องให้ผู้ดูแลระบบแก้ไขได้เสมอ
+                forceAllowAdminChange: hasNotTestTube,
             });
 
             if (!result.confirmed) return;
@@ -171,6 +193,8 @@ function SubmitContent() {
         hasDuplicateSubstance,
         hasLowConfidence,
         needsAdminReview,
+        hasBlockedPending,
+        onConfirmBlockedSubmit: hook.confirmSubmitBlocked,
         onConfirmSave,
         onResetClick,
         saved,

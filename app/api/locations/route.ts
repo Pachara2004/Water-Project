@@ -150,7 +150,9 @@ export async function GET(request: NextRequest) {
                 // แงะค่าวัดเคมีของสารทั้งหมดประจำแถวนี้ออกมาจัดรูปแบบแบน (Flat Flattening)
                 const currentMeasurements: Record<string, number> = {};
                 s.measurements.forEach((m) => {
-                    if (m.parameter?.name) {
+                    // ไม่มีค่าที่วัดได้ → ไม่ต้องสร้างคีย์ `${สาร}Val` เลย ให้ฝั่งแสดงผลถือว่าไม่มีข้อมูลสารนี้
+                    // แบนเป็น 0 ไม่ได้ เพราะการ์ด/BottomSheet จะโชว์ "0.00" เหมือนวัดได้จริง
+                    if (m.parameter?.name && m.value !== null) {
                         const keyName = `${m.parameter.name.toLowerCase()}Val`;
                         currentMeasurements[keyName] = m.value;
                     }
@@ -160,7 +162,9 @@ export async function GET(request: NextRequest) {
                 if (!sessionGroupMap.has(groupKey)) {
                     sessionGroupMap.set(groupKey, {
                         id: s.id,
-                        status: s.status ? s.status.toUpperCase() : "SAFE",
+                        // null = ประเมินไม่ได้ ห้าม fallback เป็น "SAFE" เพราะจะประกาศว่าปลอดภัยบนแผนที่
+                        // ทั้งที่ไม่เคยมีค่าให้ประเมิน (กติกาเดียวกับ groupSummary ใน /api/samples)
+                        status: s.status ? s.status.toUpperCase() : null,
 
                         // เริ่มต้นกางค่าวัดเคมีที่ดึงออกมาได้ในรอบแรก
                         ...currentMeasurements,
@@ -192,11 +196,17 @@ export async function GET(request: NextRequest) {
                     if (currentMeasurements["ammoniaVal"] !== undefined) existing.ammoniaVal = currentMeasurements["ammoniaVal"];
 
                     // คุมสถานะความปลอดภัยสูงสุดประจำกลุ่มชุดขวดตรวจ (ยึดหลักแย่สุดทับอันดีสุด)
-                    const incomingStatus = s.status ? s.status.toUpperCase() : "SAFE";
-                    if (incomingStatus === "DANGER") {
-                        existing.status = "DANGER";
-                    } else if (incomingStatus === "WARNING" && existing.status !== "DANGER") {
-                        existing.status = "WARNING";
+                    // สารที่ประเมินไม่ได้ (null) ข้ามไปเลย ไม่ถ่วงกลุ่มทั้งขึ้นและลง — กลุ่มจะเป็น null
+                    // ก็ต่อเมื่อไม่มีสารไหนประเมินได้เลยสักตัว
+                    if (s.status) {
+                        const incomingStatus = s.status.toUpperCase();
+                        if (existing.status === null) {
+                            existing.status = incomingStatus;
+                        } else if (incomingStatus === "DANGER") {
+                            existing.status = "DANGER";
+                        } else if (incomingStatus === "WARNING" && existing.status !== "DANGER") {
+                            existing.status = "WARNING";
+                        }
                     }
                 }
             });

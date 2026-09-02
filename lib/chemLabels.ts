@@ -28,6 +28,16 @@ export function chemIconColor(name: string): string {
     return CHEM_ICON_COLORS[hash % CHEM_ICON_COLORS.length];
 }
 
+/**
+ * ค่าที่วัดได้ในรูปข้อความ — null/undefined/NaN คือ "ยังไม่มีค่า" ไม่ใช่ 0
+ *
+ * แสดงขีดแทนตัวเลข เพื่อไม่ให้ผลที่ AI อ่านไม่ได้ดูเหมือนวัดได้ 0.00 จริง
+ * (ค่า 0 จริงยังแสดงเป็น "0.00" ตามปกติ — สองกรณีนี้ต้องแยกออกจากกันบนหน้าจอ)
+ */
+export function formatMeasuredValue(value: number | null | undefined, digits = 2): string {
+    return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
+}
+
 export interface ChemReading {
     key: string; // คีย์/ชื่อเดิมที่ใช้เป็น React key
     name: string; // ชื่อสารเต็มจาก DB เช่น "ammonia"
@@ -58,14 +68,15 @@ export function readChemValues(source: Record<string, unknown> | null | undefine
 
 // อ่านค่าสารจาก array measurements ที่มีชื่อสารมาตรงๆ (หน้าอนุมัติคำร้อง)
 // สารซ้ำเอาตัวแรกที่เจอ คงพฤติกรรมเดิมที่ใช้ .find()
-export function readChemMeasurements(measurements: Array<{ parameterName?: string | null; value: number }> | null | undefined): ChemReading[] {
+export function readChemMeasurements(measurements: Array<{ parameterName?: string | null; value: number | null }> | null | undefined): ChemReading[] {
     if (!measurements) return [];
     const readings: ChemReading[] = [];
     const seen = new Set<string>();
     for (const m of measurements) {
         const name = (m.parameterName || "").trim();
         if (!name || seen.has(name.toLowerCase())) continue;
-        if (!Number.isFinite(m.value)) continue;
+        // เช็ค null/undefined แยกด้วย — Number.isFinite ไม่ใช่ type predicate จึงไม่ narrow ชนิดให้ TS
+        if (m.value === null || m.value === undefined || !Number.isFinite(m.value)) continue;
         seen.add(name.toLowerCase());
         readings.push({ key: name, name, abbrev: chemAbbrev(name), color: chemIconColor(name), value: m.value });
     }

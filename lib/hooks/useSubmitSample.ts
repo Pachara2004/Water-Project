@@ -3,6 +3,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { alertError } from "@/lib/swal";
+import { formatMeasuredValue } from "@/lib/chemLabels";
 import { DbParameter, LocationItem, MeasurementResult, VerifyError } from "@/components/submit/types";
 
 // ผลวิเคราะห์ดิบต่อภาพหนึ่งใบ ก่อนกระทบยอด (reconcile) กับสารอื่น ๆ ในชุดเดียวกัน
@@ -16,6 +17,7 @@ interface AnalyzedItem {
     aiData: any; // response ดิบจาก /api/analyze
     isMismatch: boolean; // targetParam ตรงกับช่องเดิมหรือไม่
     isSystemUnknown: boolean; // AI ทำนายสารที่ระบบไม่รู้จัก (ไม่มีใน DB)
+    notTestTube: boolean; // AI ไม่พบหลอดทดลองในภาพ — ค่าที่อ่านได้เชื่อไม่ได้ ต้องให้ผู้ดูแลระบบตัดสิน
 }
 
 const getNowLocalDateTimeString = () => {
@@ -37,6 +39,9 @@ export function useSubmitSample() {
     const [enabledParamIds, setEnabledParamIds] = useState<Set<number>>(new Set());
     // เหตุผลที่ผลวิเคราะห์ของแต่ละสารถูกบล็อก (ไม่ใช่หลอดทดลอง / สารผิดชนิดที่ระบบไม่รู้จัก)
     const [verifyErrors, setVerifyErrors] = useState<Record<number, VerifyError>>({});
+    // ผลวิเคราะห์ทั้งชุดที่พักไว้เมื่อมีภาพที่ AI ไม่พบหลอดทดลอง — ยังไม่ commit เข้าหน้าผลลัพธ์
+    // ผู้ใช้เลือกได้ระหว่างถ่ายภาพใหม่ (ล้างทิ้ง) หรือกดยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ (confirmSubmitBlocked)
+    const [pendingAnalyzedItems, setPendingAnalyzedItems] = useState<AnalyzedItem[]>([]);
     const [imageFiles, setImageFiles] = useState<Record<number, File>>({});
     const [imagePreviews, setImagePreviews] = useState<Record<number, string>>({});
     const [imagePlotFiles, setImagePlotFiles] = useState<Record<number, File>>({});
@@ -300,7 +305,7 @@ export function useSubmitSample() {
                     const confPct = aiData.confidence;
                     const labelSource = aiData.verifiedParameterName || aiData.parameterName;
                     const paramLabel = labelSource ? labelSource.charAt(0).toUpperCase() + labelSource.slice(1).toLowerCase() : "Vial";
-                    const label = `${paramLabel} | ${aiData.concentrated.toFixed(2)} mg/L ค่าความมั่นใจ ${confPct}`;
+                    const label = `${paramLabel} | ${formatMeasuredValue(aiData.concentrated)} mg/L ค่าความมั่นใจ ${confPct}`;
                     const fs = Math.max(16, Math.floor(canvas.width * 0.018));
                     ctx.font = `bold ${fs}px Arial`;
                     const tw = ctx.measureText(label).width,
@@ -370,15 +375,21 @@ export function useSubmitSample() {
 
                 // null = สารนี้ยังไม่มีเกณฑ์กำหนด ตัดสินไม่ได้ — ต้องส่ง null ต่อ ห้าม ?? "safe"
                 // เพราะจะกลายเป็นบอกผู้ใช้ว่า "ปลอดภัย" ทั้งที่ไม่เคยมีเกณฑ์ให้เทียบ
-                const currentStatus = (it.aiData.status?.toLowerCase() ?? null) as "safe" | "warning" | "danger" | null;
+                // ภาพที่ไม่พบหลอดทดลอง: ค่าที่อ่านได้เชื่อไม่ได้ จึงตัดสินสถานะไม่ได้ → null เสมอ
+                // ค่า concentrated/confidence ที่โมเดลคืนมาในกรณีนี้เป็น 0 เปล่า ๆ ไม่ใช่ผลวัด
+                // จึงคงไว้ใน state แค่ให้ UI มีอะไรอ้างอิง แต่ตอนบันทึกจะถูกแทนด้วย null (ดู handleSave)
+                const currentStatus = it.notTestTube
+                    ? null
+                    : ((it.aiData.status?.toLowerCase() ?? null) as "safe" | "warning" | "danger" | null);
                 newResults[key] = {
                     concentrated: it.aiData.concentrated,
                     status: currentStatus,
                     message: it.aiData.message || "",
                     confidence: it.aiData.confidence,
                     boundingBox: it.aiData["bounding box"],
-                    isTestTube: it.aiData.isTestTube ?? true,
-                    verifiedParameterName: it.aiData.verifiedParameterName || it.targetParam.name,
+                    isTestTube: !it.notTestTube,
+                    // ไม่พบหลอด → ชนิดสารที่ AI ทำนายเชื่อไม่ได้ ใช้ชื่อช่องที่ผู้ใช้เลือกไว้เดิม
+                    verifiedParameterName: it.notTestTube ? it.targetParam.name : it.aiData.verifiedParameterName || it.targetParam.name,
                     autoSwitchedFrom: it.isMismatch && !it.isSystemUnknown ? it.originalParamName : undefined,
                     parameterId: paramId,
                     isDuplicateSubstance,
@@ -439,11 +450,25 @@ export function useSubmitSample() {
                 const isMismatch = verifiedName.toLowerCase() !== param.name.toLowerCase();
 
                 if (!isTestTube) {
-                    // ด่าน 1: ไม่พบหลอดทดลองในภาพ → บังคับถ่ายใหม่
+                    // ด่าน 1: ไม่พบหลอดทดลองในภาพ — ค่าที่ AI อ่านได้เชื่อไม่ได้ แต่ไม่ทิ้งผล
+                    // เก็บ item ไว้ให้ผู้ใช้เลือก: ถ่ายภาพใหม่ หรือยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ
+                    // คงสารไว้ที่ช่องเดิมเสมอ (ไม่ auto-switch) เพราะเมื่อไม่พบหลอด ชนิดสารที่ AI ทำนายก็เชื่อไม่ได้
+                    // ไม่สร้างภาพ plot เพราะ bounding box ไม่มีความหมายเมื่อไม่พบหลอด
                     newErrors[param.id] = {
                         reason: "not_test_tube",
-                        detail: "ไม่พบหลอดทดลองในภาพ หรือภาพอาจเบลอเกินไป กรุณาถ่ายรูปที่มีขวดบรรจุสารให้ชัดเจน ไม่เบลอ แล้ววิเคราะห์ใหม่",
+                        detail: "ไม่พบหลอดทดลองในภาพ หรือภาพอาจเบลอเกินไป กรุณาถ่ายรูปที่มีขวดบรรจุสารให้ชัดเจน ไม่เบลอ แล้ววิเคราะห์ใหม่ หรือกดยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ",
                     };
+                    items.push({
+                        originalParamId: param.id,
+                        originalParamName: param.name,
+                        targetParam: param,
+                        file,
+                        plottedFile: null,
+                        aiData: data,
+                        isMismatch: false,
+                        isSystemUnknown: false,
+                        notTestTube: true,
+                    });
                     continue;
                 }
 
@@ -473,34 +498,16 @@ export function useSubmitSample() {
                     aiData: data,
                     isMismatch,
                     isSystemUnknown,
+                    notTestTube: false,
                 });
             }
 
-            // ถ้ามีสารตัวใดไม่ผ่านด่าน → บล็อกทั้ง batch: ไม่เข้าหน้าผลลัพธ์ กลับไปหน้ากรอกข้อมูล
+            // ถ้ามีสารตัวใดไม่ผ่านด่าน → ยังไม่เข้าหน้าผลลัพธ์ กลับไปหน้ากรอกข้อมูลพร้อมแบนเนอร์เตือน
+            // คงรูปทุกใบไว้ตามเดิม ไม่ล้างทิ้ง — ผู้ใช้ถ่ายทับเองได้ หรือกดยืนยันส่งชุดนี้ทั้งอย่างนั้น
+            // ผลวิเคราะห์ทั้งชุดถูกพักไว้ใน pendingAnalyzedItems รอ confirmSubmitBlocked มา commit
             if (Object.keys(newErrors).length > 0) {
                 setVerifyErrors(newErrors);
-                // เคลียร์รูปเฉพาะตัวที่ไม่ใช่หลอดทดลอง (ภาพใช้ไม่ได้ ต้องถ่ายใหม่)
-                // ส่วน wrong_solution คงรูปไว้ เพราะผู้ใช้อาจแค่เลือกชนิดสารผิด
-                const toClear = Object.entries(newErrors)
-                    .filter(([, e]) => e.reason === "not_test_tube")
-                    .map(([id]) => Number(id));
-                if (toClear.length > 0) {
-                    setImageFiles((prev) => {
-                        const next = { ...prev };
-                        toClear.forEach((id) => delete next[id]);
-                        return next;
-                    });
-                    setImagePreviews((prev) => {
-                        const next = { ...prev };
-                        toClear.forEach((id) => delete next[id]);
-                        return next;
-                    });
-                    setImagePlotFiles((prev) => {
-                        const next = { ...prev };
-                        toClear.forEach((id) => delete next[id]);
-                        return next;
-                    });
-                }
+                setPendingAnalyzedItems(items);
                 setStep("upload");
                 return;
             }
@@ -549,11 +556,20 @@ export function useSubmitSample() {
                     finalMessage = finalMessage ? `[USER_REQUEST_CHANGE] ${finalMessage}` : "[USER_REQUEST_CHANGE]";
                 }
 
+                // marker บอกทั้ง server และหน้าแสดงผลว่าค่านี้มาจากภาพที่ AI ไม่พบหลอดทดลอง
+                // server ใช้บังคับเข้าคิวรอตรวจสอบ โดยไม่ต้องเชื่อ forceReview จาก client เพียงอย่างเดียว
+                if (resData.isTestTube === false) {
+                    finalMessage = finalMessage ? `[NO_TEST_TUBE] ${finalMessage}` : "[NO_TEST_TUBE]";
+                }
+
                 const singleMeasurementPayload = [
                     {
                         parameterId: resData.parameterId,
-                        value: resData.concentrated || 0,
-                        confidence: resData.confidence || 0,
+                        // AI ไม่พบหลอดทดลอง → โมเดลคืนเลข 0 มาให้ แต่ไม่ใช่ผลวัด ส่ง null ไปตรง ๆ
+                        // (server บังคับซ้ำอีกชั้นจาก marker ใน message — ฝั่งนี้แค่ให้ payload ตรงกับที่จะถูกเก็บจริง)
+                        // ?? ไม่ใช่ || — ค่า 0 ที่วัดได้จริงจากภาพที่มีหลอดทดลองต้องคงไว้
+                        value: resData.isTestTube === false ? null : resData.concentrated ?? null,
+                        confidence: resData.isTestTube === false ? null : resData.confidence ?? null,
                         boundingBox: resData.boundingBox ? JSON.stringify(resData.boundingBox) : null,
                         message: finalMessage,
                     },
@@ -590,6 +606,15 @@ export function useSubmitSample() {
         }
     };
 
+    // ผู้ใช้ยืนยันส่งชุดที่มีภาพซึ่ง AI ไม่พบหลอดทดลอง → commit ผลที่พักไว้เข้าหน้าผลลัพธ์ตามปกติ
+    // รายการที่ไม่พบหลอดจะไม่มีสถานะ (status = null) และถูกบังคับเข้าคิวรอตรวจสอบตอนบันทึก
+    const confirmSubmitBlocked = () => {
+        if (pendingAnalyzedItems.length === 0) return;
+        setVerifyErrors({});
+        finalizeAnalysis(pendingAnalyzedItems);
+        setPendingAnalyzedItems([]);
+    };
+
     // เคลียร์ผลวิเคราะห์/รูป/ข้อผิดพลาดทั้งหมด กลับไปเริ่มถ่ายภาพใหม่ — ใช้เมื่อผลลัพธ์ไม่ใช่สิ่งที่ต้องการบันทึก
     // คงค่าสถานี/เวลา/toggle สารไว้ตามเดิม (ไม่ต้องกรอกซ้ำ) แต่ออก sessionGroup ใหม่เพราะเป็นการเก็บตัวอย่างรอบใหม่จริง ๆ
     const resetToUpload = () => {
@@ -599,6 +624,7 @@ export function useSubmitSample() {
         setImagePreviews({});
         setImagePlotFiles({});
         setVerifyErrors({});
+        setPendingAnalyzedItems([]);
         setSaved(false);
         setSavedSampleId(null);
         setSubmittedForReview(false);
@@ -656,6 +682,9 @@ export function useSubmitSample() {
         toggleParam,
         verifyErrors,
         setVerifyErrors,
+        pendingAnalyzedItems,
+        setPendingAnalyzedItems,
+        confirmSubmitBlocked,
         isLoadingParams,
         imageFiles,
         setImageFiles,

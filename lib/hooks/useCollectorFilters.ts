@@ -8,7 +8,8 @@ import type { CurrentUser } from "@/lib/store";
 export interface CollectorSample {
     id: number;
     locationId: number;
-    status: "safe" | "warning" | "danger";
+    /** null = ประเมินไม่ได้ (ไม่มีค่าที่วัดได้เลย) — ต่างจาก safe ที่แปลว่าตัดสินแล้วว่าผ่าน */
+    status: "safe" | "warning" | "danger" | null;
     collectedAt: string | Date;
     collectedBy: number;
     imageUrl?: string | null;

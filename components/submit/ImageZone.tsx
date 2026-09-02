@@ -88,6 +88,10 @@ export function ImageZone({
     const exampleImage = paramKey ? PARAM_EXAMPLE_IMAGE[paramKey] : null;
     const colorSwatches = paramKey ? PARAM_COLOR_SWATCHES[paramKey] : null;
 
+    // AI ไม่พบหลอดทดลอง → ค่าและความมั่นใจเชื่อไม่ได้ ไม่แสดงให้ผู้ส่งเห็นจนกว่าผู้ดูแลระบบจะตรวจสอบ
+    // (ค่าจริงยังถูกบันทึกลงฐานข้อมูลครบเพื่อให้ผู้ดูแลระบบใช้ประกอบการตัดสิน)
+    const isPendingAdminValue = measurement?.isTestTube === false;
+
     const hasConf = measurement?.confidence !== undefined;
     const isLowConf = hasConf && measurement.confidence < 0.6;
     const confDisplay = hasConf ? `${measurement.confidence}` : "N/A";
@@ -231,13 +235,13 @@ export function ImageZone({
                         <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">
                             {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}
                             <div className="text-xs leading-relaxed font-medium">
-                                <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "ต้องถ่ายภาพใหม่" : "สารไม่ตรงชนิด"}</p>
+                                <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "AI ไม่พบหลอดทดลองในภาพ" : "สารไม่ตรงชนิด"}</p>
                                 <p>{verifyError.detail}</p>
                             </div>
                         </div>
                     )}
 
-                    {!isHistoryView && hasConf && (
+                    {!isHistoryView && hasConf && !isPendingAdminValue && (
                         <div
                             className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${
                                 isLowConf

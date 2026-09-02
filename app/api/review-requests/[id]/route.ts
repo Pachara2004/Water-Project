@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { REVIEW_NOTE_MAX_LENGTH, PARTIAL_REJECT_NOTE } from "@/lib/reviewConstants";
 import { generateSessionGroup } from "@/lib/sessionGroup";
-import { ReviewStatus } from "@prisma/client";
+import { ReviewStatus, WaterStatus } from "@prisma/client";
+import { evaluateSample } from "@/lib/standards";
+import { loadAllStandards } from "@/lib/standards-db";
 import { createSampleRecordSnapshot, createSampleRawAuditLog, createNotificationEntry } from "@/lib/sampleRecord";
 
 /**
@@ -86,6 +88,30 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             const groupSampleIds = new Set((await prisma.waterSample.findMany({ where: { sessionGroup: existing.sessionGroup, isDeleted: false }, select: { id: true } })).map((s) => s.id));
             if (approvedSampleIds.some((id) => !groupSampleIds.has(id))) {
                 return NextResponse.json({ error: "รายการสารที่เลือกไม่ตรงกับคำร้องนี้" }, { status: 400 });
+            }
+        }
+
+        // ภาพที่ AI ไม่พบหลอดทดลองยืนยันค่าที่อ่านได้ไม่ได้ — อนุมัติตามค่าเดิมไม่ได้
+        // ต้องแก้ไขค่าก่อน (edited_approve) หรือปฏิเสธเท่านั้น
+        // ตรวจเฉพาะ sample ที่กำลังจะถูกอนุมัติจริง ถ้าผู้ดูแลระบบคัดตัวที่มีปัญหาออกไปแล้ว ที่เหลืออนุมัติได้ตามปกติ
+        if (action === "approve") {
+            const blocked = await prisma.waterSampleMeasurement.findFirst({
+                where: {
+                    message: { contains: "[NO_TEST_TUBE]" },
+                    sample: {
+                        sessionGroup: existing.sessionGroup,
+                        isDeleted: false,
+                        ...(approvedSampleIds ? { id: { in: approvedSampleIds } } : {}),
+                    },
+                },
+                select: { id: true },
+            });
+
+            if (blocked) {
+                return NextResponse.json(
+                    { error: "คำร้องนี้มีภาพที่ AI ไม่พบหลอดทดลอง จึงอนุมัติตามค่าเดิมไม่ได้ กรุณากดแก้ไขเพื่อกรอกค่าที่ถูกต้อง หรือปฏิเสธคำร้อง" },
+                    { status: 400 },
+                );
             }
         }
 
@@ -194,6 +220,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                     where: { id: { in: approvedSampleDbIds }, isDeleted: false },
                     include: { collector: true, location: true, measurements: { include: { parameter: true } } }
                 });
+
+                // ค่าถูกแก้ไปแล้ว สถานะคุณภาพน้ำที่คำนวณไว้ตอนส่งจึงใช้ไม่ได้อีก ต้องคำนวณใหม่จากค่าจริง
+                // ไม่งั้นตัวอย่างที่ถูกแก้เป็นค่าเกินเกณฑ์จะยังติดสถานะเดิมและขึ้นแผนที่เป็นสีปลอดภัย
+                // ต้องทำก่อน createSampleRecordSnapshot เพราะ snapshot อ่าน status จากอ็อบเจกต์ชุดนี้ไปตรง ๆ
+                const standards = await loadAllStandards();
+                for (const sample of updatedGroupSamples) {
+                    const recomputed = evaluateSample(
+                        sample.measurements.map((m) => ({ parameterId: m.parameterId, value: m.value })),
+                        standards,
+                    ) as WaterStatus;
+
+                    if (recomputed !== sample.status) {
+                        await tx.waterSample.update({ where: { id: sample.id }, data: { status: recomputed } });
+                    }
+                    sample.status = recomputed;
+                }
 
                 await createSampleRecordSnapshot(tx as any, updatedGroupSamples, auth.user!.id);
 

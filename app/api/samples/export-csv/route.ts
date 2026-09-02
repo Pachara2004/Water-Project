@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
                         s.dissolvedOxygen ?? "N/A",
                         s.airTemperature ?? "N/A",
                         s.rainAccumulation ?? "N/A",
-                        s.status,
+                        s.status ?? "N/A",
                         [s.collector?.firstName, s.collector?.lastName].filter(Boolean).join(" ") || s.collector?.lineProfileName || "N/A",
                     ]);
                 }
