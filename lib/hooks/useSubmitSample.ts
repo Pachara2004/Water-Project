@@ -547,6 +547,7 @@ export function useSubmitSample() {
                 fd.append("collectionTime", `${collectionTime}:00+07:00`);
                 if (oxygen) fd.append("oxygen", oxygen);
                 if (reviewNote) fd.append("reviewNote", reviewNote);
+                if (sessionId) fd.append("sessionGroup", sessionId);
                 
                 // บังคับส่งให้แอดมินถ้ามีแรงจูงใจ (เช่น มีสารซ้ำ หรือ ความมั่นใจต่ำ หรือ ผู้ใช้บังคับส่งเอง)
                 if (forceReview) fd.append("forceReview", "true");
@@ -587,7 +588,7 @@ export function useSubmitSample() {
 
                 if (!res.ok) {
                     const errData = await res.json();
-                    throw new Error(errData.error || `เกิดข้อผิดพลาดในการบันทึกสาร ${paramMeta.name}`);
+                    throw new Error(errData.details ? `${errData.error} : ${errData.details}` : (errData.error || `เกิดข้อผิดพลาดในการบันทึกสาร ${paramMeta.name}`));
                 }
 
                 // เก็บ id ของ sample ตัวแรกที่บันทึกสำเร็จในชุดนี้ ไว้พาไปหน้ารายละเอียดโดยตรงหลังบันทึกเสร็จ

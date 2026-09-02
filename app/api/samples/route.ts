@@ -33,8 +33,9 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
 
     const ext = originalName.split(".").pop()?.toLowerCase() || "jpg";
     const cleanExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+    const safePrefix = prefix.replace(/[^a-z0-9\-]/gi, '_');
 
-    return `${prefix}-${dateStamp}-${crypto.randomUUID()}.${cleanExt}`;
+    return `${safePrefix}-${dateStamp}-${crypto.randomUUID()}.${cleanExt}`;
 }
 
 /**
