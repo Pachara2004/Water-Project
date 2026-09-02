@@ -89,7 +89,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
                                         setShowAgencyMenu(true);
                                     }}
                                     placeholder="ค้นหาหน่วยงาน/สถานี"
-                                    className="no-focus-ring bg-transparent outline-none text-text-primary font-semibold text-xs w-full min-w-0"
+                                    className="bg-transparent outline-none text-text-primary font-semibold text-xs w-full min-w-0"
                                 />
                                 {(agency !== "all" || locationId) && (
                                     <button

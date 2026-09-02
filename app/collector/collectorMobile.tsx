@@ -165,7 +165,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                 value={globalFilter ?? ""}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
                                 data-focus-outline="off"
-                                className="no-focus-ring w-full py-3 bg-surface-subtle text-xs text-text outline-hidden placeholder:text-secondary"
+                                className="w-full py-3 bg-surface-subtle text-xs text-text outline-hidden placeholder:text-secondary"
                             />
                             <Search size={18} className="text-secondary ml-2" />
                         </div>
@@ -178,7 +178,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                     type="button"
                                     onClick={() => setIsDatePanelOpen(!isDatePanelOpen)}
                                     className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-semibold transition-all cursor-pointer  select-none ${
-                                        isDateActive ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                        isDateActive ? "border-primary text-text" : "border-primary/30 text-text hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
@@ -244,7 +244,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                     type="button"
                                     onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
                                     className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-semibold transition-all cursor-pointer select-none ${
-                                        selectedStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                        selectedStatuses.length > 0 ? "border-primary text-text" : "border-primary/30 text-text hover:bg-surface-subtle"
                                     }`}
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
@@ -293,7 +293,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                 type="button"
                                 onClick={() => setIsReviewMenuOpen(!isReviewMenuOpen)}
                                 className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-card-general border rounded-lg text-xs font-semibold transition-all cursor-pointer select-none ${
-                                    selectedReviewStatuses.length > 0 ? "border-primary text-text ring-1 ring-primary" : "border-primary/30 text-text hover:bg-surface-subtle"
+                                    selectedReviewStatuses.length > 0 ? "border-primary text-text" : "border-primary/30 text-text hover:bg-surface-subtle"
                                 }`}
                             >
                                 <div className="flex items-center gap-2 min-w-0">

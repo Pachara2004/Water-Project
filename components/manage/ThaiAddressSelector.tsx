@@ -71,10 +71,10 @@ function SearchableSelect({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="พิมพ์เพื่อค้นหา..."
-                        className="no-focus-ring w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
+                        className="w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
                     />
                     {searchQuery && (
-                        <button type="button" onClick={() => setSearchQuery("")} className="no-focus-ring text-text p-1 rounded-lg hover:bg-bg transition-colors cursor-pointer">
+                        <button type="button" onClick={() => setSearchQuery("")} className="text-text p-1 rounded-lg hover:bg-bg transition-colors cursor-pointer">
                             <X size={13} />
                         </button>
                     )}
@@ -95,7 +95,7 @@ function SearchableSelect({
                                     onChange(option);
                                     setIsOpen(false);
                                 }}
-                                className={`no-focus-ring w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all duration-100 cursor-pointer ${
+                                className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all duration-100 cursor-pointer ${
                                     isSelected ? "bg-surface-subtle text-text" : "text-text-secondary hover:bg-surface"
                                 }`}
                             >
@@ -115,7 +115,7 @@ function SearchableSelect({
                 type="button"
                 disabled={disabled}
                 onClick={() => setIsOpen(!isOpen)}
-                className="no-focus-ring w-full flex items-center justify-between gap-2 px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs min-h-11 font-semibold transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs min-h-11 font-semibold transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <span className={`truncate text-left ${value ? "text-text-primary" : "text-text-muted"}`}>{value || placeholder}</span>
                 <ChevronDown size={14} className={`text-text-muted shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -253,7 +253,7 @@ export function ThaiAddressSelector({
                         type="text" 
                         value={zipcode} 
                         onChange={(e) => setZipcode(e.target.value)} 
-                        className="no-focus-ring w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold"
+                        className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold"
                         placeholder="กรอกอัตโนมัติ"
                     />
                 </div>
