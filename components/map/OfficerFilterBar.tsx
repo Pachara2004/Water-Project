@@ -17,7 +17,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [options, setOptions] = useState<Option[]>([{ value: "ALL", label: "ทั้งหมด" }]);
-    
+
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
@@ -47,9 +47,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
 
     const filteredOptions = useMemo(() => {
         if (!searchQuery.trim()) return options;
-        return options.filter((option) =>
-            option.label.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        return options.filter((option) => option.label.toLowerCase().includes(searchQuery.toLowerCase()));
     }, [options, searchQuery]);
 
     // รีเซ็ตคำค้นหาเวลาเปิด/ปิดดรอปดาวน์
@@ -78,8 +76,8 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                 </div>
 
                 <div className="flex flex-col items-start leading-none min-w-0 flex-1">
-                    <span className="text-xs text-primary font-semibold">หน่วยงาน</span>
-                    <span className="font-semibold text-text text-xs mt-0.5 truncate w-full text-left">{currentLabel}</span>
+                    <span className="text-xs text-primary font-semibold sm:font-medium">หน่วยงาน</span>
+                    <span className="font-semibold sm:font-medium text-text text-xs mt-0.5 truncate w-full text-left">{currentLabel}</span>
                 </div>
 
                 <ChevronDown size={16} className={`text-primary ml-auto shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -95,7 +93,7 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="พิมพ์ชื่อหน่วยงาน..."
-                            className="w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-medium py-1"
+                            className="w-full bg-transparent text-xs text-text outline-hidden placeholder:text-text-muted font-semibold sm:font-medium py-1"
                             onClick={(e) => e.stopPropagation()}
                         />
                         {searchQuery && (
@@ -124,16 +122,10 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
                                             onChange(option.value);
                                             setIsOpen(false);
                                         }}
-                                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-100 flex items-center relative cursor-pointer group
-                            ${isSelected ? "bg-secondary text-primary" : "text-text hover:bg-card-general active:bg-surface-muted"}`}
+                                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold sm:font-medium transition-all duration-100 flex items-center relative cursor-pointer
+                ${isSelected ? "bg-secondary text-white" : "text-text hover:bg-surface-subtle active:bg-surface-muted"}`}
                                     >
-                                        {/* แถบสี่เหลี่ยมมินิมอลแสดงสถานะด้านหน้าชิปรายการที่เลือก */}
-
-                                        <span
-                                            className={`truncate text-left w-full transition-transform text-text duration-100 ${isSelected ? "text-white bg-secondary" : "text-text hover:bg-surface-subtle"}`}
-                                        >
-                                            {option.label}
-                                        </span>
+                                        <span className="truncate text-left w-full">{option.label}</span>
                                     </button>
                                 );
                             })

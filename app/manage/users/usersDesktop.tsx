@@ -42,7 +42,7 @@ export default function UsersDesktop(props: UsersPageProps) {
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
             <PageHeader title="จัดการผู้ใช้งาน" onBack={() => router.back()} />
 
-            <div className="w-full max-w-400 mx-auto p-4 space-y-5">
+            <div className="w-full mx-auto p-4 space-y-4">
                 {/* ─── 1. Header Welcome Card ── */}
                 <div className="relative w-full rounded-2xl bg-surface p-6 border border-border flex items-center justify-between gap-6">
                     <div>
@@ -95,11 +95,11 @@ export default function UsersDesktop(props: UsersPageProps) {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="ค้นหาชื่อหรือเบอร์โทร..."
-                                className="w-full py-2.5 px-2 bg-transparent text-xs text-text-primary outline-hidden placeholder:text-text-muted"
+                                className="w-full py-2.5 px-2 bg-transparent text-xs text-text-secondary outline-hidden placeholder:text-text-muted"
                             />
                         </div>
 
-                        <div className="inline-flex items-center gap-1 p-1 bg-primary/10 border border-primary/30 rounded-xl shrink-0">
+                        <div className="inline-flex items-center gap-1 p-1 bg-secondary/10 border border-secondary/30 rounded-xl shrink-0">
                             {(["all", "staff", "queue"] as const).map((t) => {
                                 const meta = TAB_META[t];
                                 const Icon = meta.icon;
@@ -108,7 +108,7 @@ export default function UsersDesktop(props: UsersPageProps) {
                                         key={t}
                                         onClick={() => setTab(t)}
                                         className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
-                                            tab === t ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-card-general"
+                                            tab === t ? "bg-secondary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-card-general"
                                         }`}
                                     >
                                         <Icon size={12} />

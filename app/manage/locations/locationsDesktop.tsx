@@ -60,7 +60,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
         <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
             <PageHeader title="จัดการจุดตรวจวัดน้ำ" onBack={() => router.back()} />
 
-            <div className="w-full max-w-400 mx-auto p-4 space-y-5">
+            <div className="w-full mx-auto p-4 space-y-4">
                 {/* ─── ส่วนฟอร์มเพิ่มสถานีใหม่ (Add New Form Card) — ฟิลด์ซ้าย/แผนที่ขวา ─── */}
                 <div className="bg-surface rounded-2xl p-6 border border-border">
                     <div className="flex items-start gap-3">
@@ -219,21 +219,34 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                 )}
                             </div>
 
-                            <ThaiAddressSelector 
-                                province={props.province} setProvince={props.setProvince}
-                                district={props.district} setDistrict={props.setDistrict}
-                                subdistrict={props.subdistrict} setSubdistrict={props.setSubdistrict}
-                                zipcode={props.zipcode} setZipcode={props.setZipcode}
+                            <ThaiAddressSelector
+                                province={props.province}
+                                setProvince={props.setProvince}
+                                district={props.district}
+                                setDistrict={props.setDistrict}
+                                subdistrict={props.subdistrict}
+                                setSubdistrict={props.setSubdistrict}
+                                zipcode={props.zipcode}
+                                setZipcode={props.setZipcode}
                                 onGeocode={(lat, lng) => props.setPickedPosition({ lat, lng })}
                             />
 
-                            
-                                <p className="text-xs text-text-danger italic">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
+                            <p className="text-xs text-text-danger italic">*กรุณาแตะเลือกบนแผนที่เพื่อกําหนดพิกัดภูมิศาสตร์</p>
 
                             {/* ปุ่มบันทึกสถานี */}
                             <button
                                 onClick={handleSubmit}
-                                disabled={!name.trim() || !pickedPosition || !getOrgValue() || saving || (organization === "CUSTOM" && !customOrg.trim()) || !props.province || !props.district || !props.subdistrict || !props.zipcode}
+                                disabled={
+                                    !name.trim() ||
+                                    !pickedPosition ||
+                                    !getOrgValue() ||
+                                    saving ||
+                                    (organization === "CUSTOM" && !customOrg.trim()) ||
+                                    !props.province ||
+                                    !props.district ||
+                                    !props.subdistrict ||
+                                    !props.zipcode
+                                }
                                 className="w-full mt-auto py-3 min-h-11 bg-primary hover:bg-primary/95 text-white font-medium rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer shadow-xs disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed shrink-0"
                             >
                                 {saving ? (

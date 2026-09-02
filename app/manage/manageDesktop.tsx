@@ -96,7 +96,7 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
                                                     </span>
                                                 )}
                                                 {pendingCount > 0 && (
-                                                    <span className="text-xs font-bold text-text-danger bg-bg-danger border border-border-danger px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                                    <span className="text-xs font-medium text-text-danger bg-bg-danger border border-border-danger px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0">
                                                         {pendingCount} รายการ
                                                     </span>
                                                 )}

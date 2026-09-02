@@ -208,51 +208,33 @@ export function ThaiAddressSelector({
         <>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                    <label className="text-xs font-semibold sm:font-medium text-text-primary block uppercase tracking-wide">
                         จังหวัด <span className="text-text-danger">*</span>
                     </label>
-                    <SearchableSelect
-                        value={province}
-                        options={provinces}
-                        placeholder="-- เลือกจังหวัด --"
-                        disabled={!tree}
-                        onChange={handleProvinceChange}
-                    />
+                    <SearchableSelect value={province} options={provinces} placeholder="-- เลือกจังหวัด --" disabled={!tree} onChange={handleProvinceChange} />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                    <label className="text-xs font-semibold sm:font-medium text-text-primary block uppercase tracking-wide">
                         อำเภอ/เขต <span className="text-text-danger">*</span>
                     </label>
-                    <SearchableSelect
-                        value={district}
-                        options={districts}
-                        placeholder="-- เลือกอำเภอ --"
-                        disabled={!province || districts.length === 0}
-                        onChange={handleDistrictChange}
-                    />
+                    <SearchableSelect value={district} options={districts} placeholder="-- เลือกอำเภอ --" disabled={!province || districts.length === 0} onChange={handleDistrictChange} />
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                    <label className="text-xs font-semibold sm:font-medium text-text-primary block uppercase tracking-wide">
                         ตำบล/แขวง <span className="text-text-danger">*</span>
                     </label>
-                    <SearchableSelect
-                        value={subdistrict}
-                        options={subdistricts}
-                        placeholder="-- เลือกตำบล --"
-                        disabled={!district || subdistricts.length === 0}
-                        onChange={handleSubdistrictChange}
-                    />
+                    <SearchableSelect value={subdistrict} options={subdistricts} placeholder="-- เลือกตำบล --" disabled={!district || subdistricts.length === 0} onChange={handleSubdistrictChange} />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-primary block uppercase tracking-wide">
+                    <label className="text-xs font-semibold sm:font-medium text-text-primary block uppercase tracking-wide">
                         รหัสไปรษณีย์ <span className="text-text-danger">*</span>
                     </label>
-                    <input 
-                        type="text" 
-                        value={zipcode} 
-                        onChange={(e) => setZipcode(e.target.value)} 
+                    <input
+                        type="text"
+                        value={zipcode}
+                        onChange={(e) => setZipcode(e.target.value)}
                         className="w-full px-4 py-3 bg-surface-subtle border border-border text-text-primary rounded-xl text-xs outline-none min-h-11 font-semibold"
                         placeholder="กรอกอัตโนมัติ"
                     />

@@ -44,8 +44,8 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
                     <Droplets size={18} strokeWidth={3} className="text-primary" />
                 </div>
                 <div className="flex flex-col items-start leading-none min-w-0 flex-1">
-                    <span className="text-xs text-primary font-semibold">คุณภาพน้ำ</span>
-                    <span className="font-semibold text-text text-xs flex items-center gap-1.5 mt-0.5 w-full">
+                    <span className="text-xs text-primary font-semibold sm:font-medium">คุณภาพน้ำ</span>
+                    <span className="font-semibold sm:font-medium text-text text-xs flex items-center gap-1.5 mt-0.5 w-full">
                         <span className="truncate text-left">{currentOption.label}</span>
                     </span>
                 </div>
@@ -64,11 +64,11 @@ export default function StatusFilterBar({ value, onChange }: StatusFilterBarProp
                                         onChange(option.value);
                                         setIsOpen(false);
                                     }}
-                                    className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center gap-2.5 cursor-pointer
+                                    className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold sm:font-medium transition-all duration-150 flex items-center gap-2.5 cursor-pointer
                                 ${isSelected ? "text-white bg-secondary" : "text-text hover:bg-surface-subtle"}`}
                                 >
                                     <span className={`rounded-full shrink-0 transition-all ${isSelected ? "scale-110 opacity-100" : "scale-90 opacity-60"}`} />
-                                    <span className="font-semibold truncate">{option.label}</span>
+                                    <span className="font-semibold sm:font-medium truncate">{option.label}</span>
                                 </button>
                             );
                         })}
