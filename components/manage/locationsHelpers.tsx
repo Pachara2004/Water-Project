@@ -255,12 +255,7 @@ export function LocationEditDrawer({
                         )}
                     </div>
 
-                    <ThaiAddressSelector 
-                        province={editProvince} setProvince={setEditProvince}
-                        district={editDistrict} setDistrict={setEditDistrict}
-                        subdistrict={editSubdistrict} setSubdistrict={setEditSubdistrict}
-                        zipcode={editZipcode} setZipcode={setEditZipcode}
-                    />
+                   
 
                     <button
                         onClick={onSave}

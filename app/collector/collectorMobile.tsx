@@ -125,7 +125,7 @@ export default function CollectorMobile(props: CollectorProps) {
 
                     <button
                         onClick={() => router.push("/submit")}
-                        className="w-full py-3 bg-primary hover:bg-primary/95 text-card-general font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
+                        className="w-full py-3 bg-secondary hover:bg-primary/95 text-white font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer text-xs shrink-0"
                     >
                         <Camera size={18} strokeWidth={2.5} />
                         <span>ตรวจคุณภาพน้ำ</span>
@@ -333,7 +333,7 @@ export default function CollectorMobile(props: CollectorProps) {
                         </div>
 
                         {/* สรุปข้อมูลผลลัพธ์และระบบสลับ ล่าสุด/เก่าสุด */}
-                        <div className="flex items-center justify-between text-xs text-text-muted  px-0.5 pt-1 border-t border-primary">
+                        <div className="flex items-center justify-between text-xs text-text-muted  px-0.5 pt-1 border-t border-secondary">
                             <div className="text-text">พบ {total} รายการ</div>
 
                             <div onClick={toggleSortDirection} className="flex items-center gap-1 cursor-pointer hover:text-text text-text transition-colors py-0.5 select-none">
@@ -368,7 +368,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                                 className="bg-card-general shadow-xs rounded-xl border border-primary active:scale-[0.99] transition-all flex flex-col cursor-pointer group min-w-0 overflow-hidden"
                                             >
                                                 {/* Header: Session ID & Review Status */}
-                                                <div className="flex items-center justify-between p-2.5 px-4 bg-primary border-b border-border">
+                                                <div className="flex items-center justify-between p-2.5 px-4 bg-secondary border-b border-border">
                                                     {/* ฝั่งซ้าย */}
                                                     <div className="flex items-center gap-2 text-xs font-semibold text-white">
                                                         <FileScan size={16} className="text-white shrink-0" />

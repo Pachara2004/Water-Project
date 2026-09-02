@@ -246,19 +246,15 @@ export default function AdminUsersPage() {
         }
     };
 
-    if (!currentUser || currentUser.role !== "admin") {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto">
-                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
-                    <ShieldAlert size={28} className="animate-pulse" />
-                </div>
-                <h1 className="font-display text-base font-semibold text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
-                <p className="text-xs text-text-secondary mb-6">หน้านี้สำหรับผู้ดูแลระบบสูงสุดสูงสุดเท่านั้น</p>
-                <button onClick={() => router.push("/map")} className="py-3 px-8 bg-primary text-white font-semibold rounded-2xl text-xs cursor-pointer">
-                    กลับหน้าแผนที่
-                </button>
-            </div>
-        );
+    const hasAccess = currentUser && currentUser.role === "admin";
+    useEffect(() => {
+        if (!hasAccess) {
+            router.replace("/map");
+        }
+    }, [hasAccess, router]);
+
+    if (!hasAccess) {
+        return null;
     }
 
     const props = {

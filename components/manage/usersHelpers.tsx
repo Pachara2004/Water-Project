@@ -78,7 +78,7 @@ export function UserListRow({
                     </div>
                     <div className="flex flex-col min-w-0">
                         <h3 className="text-sm font-bold text-text-primary truncate">{displayName}</h3>
-                        <span className="text-[11px] font-medium text-text-muted">ID: #{user.id}</span>
+                        <span className="text-xs font-medium text-text-muted">ID: #{user.id}</span>
                     </div>
                 </div>
             </div>
@@ -177,7 +177,7 @@ export function UserListRow({
                         <div className="flex gap-2 w-full">
                             <button
                                 onClick={() => onApprove(user, displayName)}
-                                className="flex-1 flex items-center rounded-xl justify-center gap-1.5 py-2.5 min-h-9.5 bg-primary hover:bg-navy-dark text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
+                                className="flex-1 flex items-center rounded-xl justify-center gap-1.5 py-2.5 min-h-9.5 bg-secondary hover:bg-navy-dark text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.97] whitespace-nowrap"
                             >
                                 <CheckCircle2 size={13} />
                                 อนุมัติสิทธิ์

@@ -241,22 +241,15 @@ export default function AdminReviewRequestsPage() {
     };
 
     // Role Security Gate
-    if (!currentUser || currentUser.role !== "admin") {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center w-full max-w-lg mx-auto bg-surface-muted border-x border-border">
-                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-4 border border-red-500/20">
-                    <ShieldAlert size={28} className="animate-pulse" />
-                </div>
-                <h1 className="font-display text-base font-normal text-text-primary mb-1">สิทธิ์การเข้าถึงถูกจำกัด</h1>
-                <p className="text-xs text-text-secondary mb-6 max-w-[80%] mx-auto leading-relaxed">หน้าตรวจสอบคำร้องสำหรับผู้ดูแลระบบสูงสุด (System Admin) เท่านั้น</p>
-                <button
-                    onClick={() => router.push("/map")}
-                    className="w-full max-w-[200px] py-3.5 bg-primary hover:bg-navy-dark text-white font-semibold rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
-                >
-                    กลับไปหน้าแผนที่
-                </button>
-            </div>
-        );
+    const hasAccess = currentUser && currentUser.role === "admin";
+    useEffect(() => {
+        if (!hasAccess) {
+            router.replace("/map");
+        }
+    }, [hasAccess, router]);
+
+    if (!hasAccess) {
+        return null;
     }
 
     const props = {

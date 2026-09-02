@@ -111,8 +111,8 @@ export function StatusTabs({ tab, setTab }: { tab: ReviewStatusFilter; setTab: (
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id)}
-                            className={`flex items-center border border-primary/30 justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
-                                tab === t.id ? "bg-primary text-white shadow-xs" : "bg-card-general text-text-secondary hover:text-text-primary"
+                            className={`flex items-center border border-primary/30 justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold sm:font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                                tab === t.id ? "bg-secondary text-white shadow-xs" : "bg-card-general text-text-secondary hover:text-text-primary"
                             }`}
                         >
                             <Icon size={12} />
@@ -168,8 +168,8 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof MapPin; label: str
         <div className="flex items-start gap-2.5 min-w-0">
             <Icon size={14} className="text-text-muted shrink-0 mt-0.5" />
             <div className="min-w-0">
-                <div className="text-xs font-bold uppercase tracking-wider text-text-muted">{label}</div>
-                <div className="text-xs font-semibold text-text break-words [overflow-wrap:anywhere]">{value}</div>
+                <div className="text-xs font-bold sm:font-semibold uppercase tracking-wider text-text-muted">{label}</div>
+                <div className="text-xs font-semibold sm:font-medium text-text wrap-break-word">{value}</div>
             </div>
         </div>
     );
@@ -389,7 +389,7 @@ export function RequestDetailPopup({
                             <InfoRow icon={UserRound} label="ผู้ตัดสิน" value={item.reviewedBy?.name ?? "-"} />
                             <InfoRow icon={Clock} label="ตัดสินเมื่อ" value={formatDateTimeFull(item.reviewedAt)} />
                             {item.reviewNote && (
-                                <p className="text-xs text-text-danger font-semibold bg-red-500/5 p-2 rounded-lg border border-red-500/10 break-words [overflow-wrap:anywhere]">
+                                <p className="text-xs text-text-danger font-semibold sm:font-medium bg-red-500/5 p-2 rounded-lg border border-red-500/10 break-words [overflow-wrap:anywhere]">
                                     เหตุผล: {item.reviewNote}
                                 </p>
                             )}
@@ -450,40 +450,40 @@ export function RequestCard({
 
                         <div className="flex-1 min-w-0">
                             {/* ชื่อสถานที่ */}
-                            <h4 className="font-semibold text-sm text-text truncate">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
+                            <h4 className="font-semibold sm:font-medium text-sm text-text truncate">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
 
                             {/* แถวกลาง: เมทาดาต้า sessionGroup และ วันที่ */}
                             <div className="flex flex-wrap items-center text-xs text-text-muted font-medium mt-0.5 gap-x-2">
                                 <div className="flex items-center gap-1.5 shrink-0">
                                     <FileScan size={13} className="text-text-muted shrink-0" />
-                                    <span>{item.sessionGroup || "ไม่ระบุรหัส"}</span>
+                                    <span className="font-semibold sm:font-medium">{item.sessionGroup || "ไม่ระบุรหัส"}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                     <Calendar size={13} className="text-text-muted shrink-0" />
-                                    <span>{formatDateTime(item.collectionTime || item.createdAt)}</span>
+                                    <span className="font-semibold sm:font-medium">{formatDateTime(item.collectionTime || item.createdAt)}</span>
                                 </div>
                             </div>
 
                             {/* แถวล่าง: แสดงค่าสารเคมีชิปเล็ก — dynamic ตามสารที่มีอยู่จริง */}
                             <div className="flex items-center gap-2 mt-1 w-full">
                                 {chemReadings.map((c) => (
-                                    <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
+                                    <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold sm:font-medium text-text shrink-0">
                                         <Beaker size={10} className={c.color} />
-                                        <span>
+                                        <span className="font-semibold sm:font-medium">
                                             {c.abbrev}: {c.value.toFixed(2)}
                                         </span>
                                     </div>
                                 ))}
                             </div>
-                            
+
                             {/* แสดงหมายเหตุผู้แจ้ง (ถ้ามีและยัง pending อยู่) */}
                             {item.statusRequest === "pending" && item.reviewNote && (
                                 <div className="mt-2 text-xs bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-2 rounded-md wrap-break-word">
-                                    <span className="font-semibold">หมายเหตุ: </span>
+                                    <span className="font-semibold sm:font-medium">หมายเหตุ: </span>
                                     {item.reviewNote}
                                 </div>
                             )}
-                            
+
                             {/* แจ้งเตือนสิทธิ์การแก้ไขชนิดสาร (เฉพาะสถานะ pending) */}
                             {item.statusRequest === "pending" && (
                                 <div className="mt-2 flex items-center gap-2">
@@ -517,22 +517,22 @@ export function RequestCard({
                     <StatusBadge status={waterStatus} size="sm" />
 
                     {item.statusRequest === "pending" && (
-                        <span className="inline-flex items-center w-30 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center w-30 text-xs font-semibold sm:font-medium text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
                             รอตรวจสอบ
                         </span>
                     )}
                     {item.statusRequest === "approved" && (
-                        <span className="inline-flex items-center px-2 text-xs font-semibold text-teal-600 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 text-xs font-semibold sm:font-medium text-teal-600 bg-teal-50 border border-teal-200 p-1 justify-center rounded-md whitespace-nowrap">
                             อนุมัติแล้ว
                         </span>
                     )}
                     {item.statusRequest === "edited_approved" && (
-                        <span className="inline-flex items-center px-2 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 text-xs font-semibold sm:font-medium text-orange-600 bg-orange-50 border border-orange-200 p-1 justify-center rounded-md whitespace-nowrap">
                             แก้ไขแล้วอนุมัติ
                         </span>
                     )}
                     {item.statusRequest === "rejected" && (
-                        <span className="inline-flex items-center px-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 text-xs font-semibold sm:font-medium text-red-600 bg-red-50 border border-red-200 p-1 justify-center rounded-md whitespace-nowrap">
                             ปฏิเสธแล้ว
                         </span>
                     )}
@@ -594,7 +594,7 @@ export function RequestCard({
                 <button
                     type="button"
                     onClick={() => setIsDetailOpen(true)}
-                    className="w-full min-h-9 px-3 rounded-xl bg-card-general border border-primary/30 text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full min-h-9 px-3 rounded-xl bg-card-general border border-primary/30 text-xs font-semibold sm:font-medium text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                     <Info size={14} />
                     <span>ดูรายละเอียด</span>
@@ -612,7 +612,7 @@ export function RequestCard({
                             type="button"
                             disabled={actingId === item.id}
                             onClick={() => onOpenReject(item)}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-danger hover:bg-red-100 text-text-danger border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-danger hover:bg-red-100 text-text-danger border border-border text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <XCircle size={14} />
                             <span>ปฏิเสธ</span>
@@ -621,7 +621,7 @@ export function RequestCard({
                             type="button"
                             disabled={actingId === item.id || noneSelected}
                             onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <Edit2 size={14} />
                             <span>แก้ไข</span>
@@ -704,8 +704,8 @@ export function RejectDrawer({
 
                 <div className="space-y-2.5">
                     <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
-                        <span className={`text-xs font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                        <label className="text-xs font-semibold sm:font-medium text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
+                        <span className={`text-xs font-medium sm:font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
                             {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
                         </span>
                     </div>
@@ -716,7 +716,7 @@ export function RejectDrawer({
                                 key={text}
                                 type="button"
                                 onClick={() => setRejectNote(rejectNote ? `${rejectNote} ${text}` : text)}
-                                className="text-xs font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
+                                className="text-xs font-medium sm:font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
                             >
                                 {text}
                             </button>
@@ -737,7 +737,7 @@ export function RejectDrawer({
                 <button
                     onClick={onSubmit}
                     disabled={rejectSaving || !rejectNote.trim()}
-                    className="w-full py-4 min-h-13 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                    className="w-full py-4 min-h-13 bg-red-600 hover:bg-red-700 text-white font-semibold sm:font-medium rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                 >
                     {rejectSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     ยืนยันปฏิเสธคำร้อง
@@ -794,7 +794,7 @@ function ParameterSelect({
                 disabled={disabled}
                 title={title}
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between gap-2 bg-surface border border-border rounded-lg px-2.5 py-2 text-xs font-semibold text-text uppercase transition-all cursor-pointer select-none hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full flex items-center justify-between gap-2 bg-surface border border-border rounded-lg px-2.5 py-2 text-xs font-semibold sm:font-medium text-text uppercase transition-all cursor-pointer select-none hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
             >
                 <span className="truncate">{selectedLabel}</span>
                 <ChevronDown size={13} className={`text-text-muted shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -814,7 +814,7 @@ function ParameterSelect({
                                     onChange(p.id);
                                     setIsOpen(false);
                                 }}
-                                className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all uppercase ${
+                                className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold sm:font-medium flex items-center justify-between gap-2 transition-all uppercase ${
                                     isTaken
                                         ? "text-text-muted opacity-50 cursor-not-allowed"
                                         : isActive
@@ -923,7 +923,7 @@ export function EditApproveDrawer({
 
                 <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
+                        <label className="text-xs font-semibold sm:font-medium text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
                         {isMultiSample && <span className="text-xs font-medium text-text-muted">เลือกเฉพาะสารที่จะอนุมัติ</span>}
                     </div>
                     <div className="bg-surface-subtle border border-border rounded-xl p-3 space-y-3">
@@ -933,12 +933,7 @@ export function EditApproveDrawer({
                                 <div key={s.id} className={`space-y-2 ${isMultiSample ? "pb-2.5 border-b border-border/60 last:border-b-0 last:pb-0" : ""}`}>
                                     {isMultiSample && (
                                         <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => toggleSample(s.id)}
-                                                className="w-4 h-4 accent-teal-700 cursor-pointer"
-                                            />
+                                            <input type="checkbox" checked={isSelected} onChange={() => toggleSample(s.id)} className="w-4 h-4 accent-teal-700 cursor-pointer" />
                                             <span className="text-xs font-bold text-text">{s.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</span>
                                         </label>
                                     )}
@@ -946,8 +941,8 @@ export function EditApproveDrawer({
                                         {s.measurements.map((m) => {
                                             // หารายชื่อสารที่ถูกเลือกในใบอื่น ๆ ของ session เดียวกัน (ป้องกันการเลือกสารซ้ำ)
                                             const otherSelectedParams = editTarget.samples
-                                                .filter(otherS => otherS.id !== s.id && editSelectedSampleIds.includes(otherS.id))
-                                                .flatMap(otherS => otherS.measurements.map(otherM => editParameters[otherM.parameterId] ?? otherM.parameterId));
+                                                .filter((otherS) => otherS.id !== s.id && editSelectedSampleIds.includes(otherS.id))
+                                                .flatMap((otherS) => otherS.measurements.map((otherM) => editParameters[otherM.parameterId] ?? otherM.parameterId));
 
                                             return (
                                                 <div key={m.parameterId} className="flex flex-col gap-2">
@@ -971,7 +966,7 @@ export function EditApproveDrawer({
                                                                     const val = e.target.value;
                                                                     setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
                                                                 }}
-                                                                className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold text-center outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
+                                                                className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold sm:font-medium text-center outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
                                                             />
                                                             {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
                                                         </div>
@@ -985,15 +980,13 @@ export function EditApproveDrawer({
                         })}
                     </div>
                     {isMultiSample && editSelectedSampleIds.length < editTarget.samples.length && (
-                        <p className="text-xs font-medium text-text-danger bg-red-500/5 px-2.5 py-1.5 rounded-lg border border-red-500/10">
-                            สารที่ไม่ได้เลือกจะถูกปฏิเสธ
-                        </p>
+                        <p className="text-xs font-medium text-text-danger bg-red-500/5 px-2.5 py-1.5 rounded-lg border border-red-500/10">สารที่ไม่ได้เลือกจะถูกปฏิเสธ</p>
                     )}
                 </div>
 
                 <div className="space-y-2.5">
                     <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">หมายเหตุการแก้ไข *</label>
+                        <label className="text-xs font-semibold sm:font-medium text-text-muted uppercase tracking-wider block">หมายเหตุการแก้ไข *</label>
                         <span className={`text-xs font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
                             {editNote.length}/{REVIEW_NOTE_MAX_LENGTH}
                         </span>
@@ -1026,7 +1019,7 @@ export function EditApproveDrawer({
                 <button
                     onClick={onSubmit}
                     disabled={editSaving || !editNote.trim() || noneSelected}
-                    className="w-full py-4 min-h-13 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                    className="w-full py-4 min-h-13 bg-orange-500 hover:bg-orange-600 text-white font-semibold sm:font-medium rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
                 >
                     {editSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     บันทึกและอนุมัติ
@@ -1077,7 +1070,7 @@ export function ImageLightbox({ images, onClose }: { images: PreviewImages; onCl
                     onClick={(e) => e.stopPropagation()}
                 />
             </div>
-            <p className="text-white text-xs font-semibold mt-4 tracking-wide select-none">แตะพื้นที่ว่างเพื่อปิดหน้าต่างขยาย</p>
+            <p className="text-white text-xs font-semibold sm:font-medium mt-4 tracking-wide select-none">แตะพื้นที่ว่างเพื่อปิดหน้าต่างขยาย</p>
         </div>
     );
 }
@@ -1115,10 +1108,10 @@ export function RequestCardMobile({
     const waterStatus = getSampleWaterStatus(item, standards);
 
     return (
-        <div className="bg-card-general shadow-xs rounded-xl border border-primary active:scale-[0.99] transition-all flex flex-col group min-w-0 overflow-hidden h-full justify-between">
+        <div className="bg-card-general shadow-xs rounded-xl border border-secondary active:scale-[0.99] transition-all flex flex-col group min-w-0 overflow-hidden h-full justify-between">
             <div>
                 {/* Header: Session ID & Review Status */}
-                <div className="flex items-center justify-between p-2.5 px-4 bg-primary border-b border-border">
+                <div className="flex items-center justify-between p-2.5 px-4 bg-secondary border-b border-border">
                     <div className="flex items-center gap-2 text-xs font-medium text-white">
                         <FileScan size={16} className="text-white shrink-0" />
                         <span className="leading-none">
@@ -1152,16 +1145,16 @@ export function RequestCardMobile({
                 {/* Section 1: Collector-like Info */}
                 <div className="flex items-start justify-between gap-4 w-full px-4 py-3">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <MapPin size={36} className="text-primary shrink-0 ml-1 mr-1" />
-                        <div className="flex-1 min-w-0 flex flex-col justify-center min-h-[36px]">
-                            <h4 className="font-medium text-xs text-text truncate">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
+                        <MapPin size={36} className="text-secondary shrink-0 ml-1 mr-1" />
+                        <div className="flex-1 min-w-0 flex flex-col justify-center min-h-9">
+                            <h4 className="font-semibold sm:font-medium text-xs text-text truncate">{item.location?.name || "ไม่ทราบสถานที่"}</h4>
                             <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
                                 <Calendar size={13} className="text-text-muted shrink-0" />
                                 <span className="leading-none">{formatDateTime(item.collectionTime || item.createdAt)}</span>
                             </div>
                             <div className="flex items-center gap-2 w-full flex-wrap pt-2.5">
                                 {chemReadings.map((c) => (
-                                    <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-medium text-text shrink-0">
+                                    <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold sm:font-medium text-text shrink-0">
                                         <Beaker size={10} className={c.color} />
                                         <span>
                                             {c.abbrev}: {c.value.toFixed(2)}
@@ -1171,13 +1164,13 @@ export function RequestCardMobile({
                             </div>
                         </div>
                     </div>
-                    <div className="shrink-0 flex flex-col items-end justify-start min-h-[36px] pt-0.5">
+                    <div className="shrink-0 flex flex-col items-end justify-start min-h-9 pt-0.5">
                         <StatusBadge status={waterStatus} size="sm" />
                     </div>
                 </div>
 
                 {/* Section 2: Request specific info (Notes, Permissions, Sample Select) */}
-                <div className="flex flex-col gap-3 px-4 py-3 border-t border-primary bg-surface-subtle/20">
+                <div className="flex flex-col gap-3 px-4 py-3 border-t border-secondary bg-surface-subtle/20">
                     {/* Permissions */}
                     {item.statusRequest === "pending" && (
                         <div className="flex items-center gap-2">
@@ -1187,7 +1180,7 @@ export function RequestCardMobile({
                                     <span>ผู้ส่งตรวจคุณภาพน้ำอนุญาตให้สลับสารได้</span>
                                 </div>
                             ) : (
-                                <div className="inline-flex items-center gap-1.5 w-100 text-red-700 text-xs font-medium">
+                                <div className="inline-flex items-center gap-1.5 w-100 text-text-danger text-xs font-medium">
                                     <XCircle size={12} />
                                     <span>ผู้ส่งตรวจคุณภาพน้ำไม่อนุญาตให้สลับสาร</span>
                                 </div>
@@ -1196,8 +1189,8 @@ export function RequestCardMobile({
                     )}
                     {/* Notes */}
                     {item.statusRequest === "pending" && item.reviewNote && (
-                        <div className="text-xs  text-text border border-dashed border-primary p-2.5 rounded-md wrap-break-word">
-                            <span className="font-semibold">หมายเหตุ: </span>
+                        <div className="text-xs font-medium sm:font-semibold text-text border border-dashed border-secondary p-2.5 rounded-md wrap-break-word">
+                            <span className="font-semibold sm:font-medium">หมายเหตุ: </span>
                             {item.reviewNote}
                         </div>
                     )}
@@ -1251,7 +1244,9 @@ export function RequestCardMobile({
                             <p>
                                 ตัดสินโดย <span className="font-bold text-text-secondary">{item.reviewedBy?.name ?? "-"}</span> เมื่อ {formatDateTime(item.reviewedAt)}
                             </p>
-                            {item.reviewNote && <p className="text-text-danger font-semibold bg-red-500/5 p-2 rounded-lg border border-red-500/10 mt-2 wrap-break-word">เหตุผล: {item.reviewNote}</p>}
+                            {item.reviewNote && (
+                                <p className="text-text-danger font-semibold sm:font-medium bg-red-500/5 p-2 rounded-lg border border-red-500/10 mt-2 wrap-break-word">เหตุผล: {item.reviewNote}</p>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1262,7 +1257,7 @@ export function RequestCardMobile({
                 <button
                     type="button"
                     onClick={() => setIsDetailOpen(true)}
-                    className="w-full min-h-10 px-4 rounded-xl border border-primary/30 text-xs font-semibold text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full min-h-10 px-4 rounded-xl border border-primary/30 text-xs font-semibold sm:font-medium text-text hover:bg-surface-subtle flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                     <Info size={14} />
                     <span>ดูรายละเอียด</span>
@@ -1280,7 +1275,7 @@ export function RequestCardMobile({
                             type="button"
                             disabled={actingId === item.id}
                             onClick={() => onOpenReject(item)}
-                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-danger hover:bg-red-100 text-text-danger  text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-danger hover:bg-border-danger text-text-danger  text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <XCircle size={14} />
                             <span>ปฏิเสธ</span>
@@ -1289,7 +1284,7 @@ export function RequestCardMobile({
                             type="button"
                             disabled={actingId === item.id || noneSelected}
                             onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-warning hover:bg-orange-100 text-text-warning  text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-warning hover:bg-border-warning text-text-warning  text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                             <Edit2 size={14} />
                             <span>แก้ไข</span>
@@ -1301,7 +1296,7 @@ export function RequestCardMobile({
                             title={mustEditBeforeApprove ? "AI ไม่พบหลอดทดลองในภาพ ต้องแก้ไขค่าก่อนอนุมัติ" : undefined}
                             className="flex-1 min-h-10 px-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
+                            {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin bg-secondary" /> : <CheckCircle2 size={14} />}
                             <span>อนุมัติ</span>
                         </button>
                         </div>

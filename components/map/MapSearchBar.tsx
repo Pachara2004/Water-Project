@@ -49,7 +49,7 @@ export default function MapSearchBar({ locations, onSelectLocation }: MapSearchB
                         setIsOpen(true);
                     }}
                     placeholder="ค้นหาจุดเก็บตัวอย่างหรือหน่วยงาน"
-                    className="w-full h-8 bg-transparent text-xs font-semibold text-text  placeholder:text-text-muted "
+                    className="w-full h-8 bg-transparent text-xs font-semibold sm:font-medium text-text  placeholder:text-text-muted "
                 />
                 {keyword && (
                     <button
@@ -77,7 +77,7 @@ export default function MapSearchBar({ locations, onSelectLocation }: MapSearchB
                                 setKeyword(loc.name); // ใส่ชื่อสถานที่ลงใน input
                                 setIsOpen(false); // ปิด dropdown
                             }}
-                            className="w-full flex items-start gap-2.5 px-3 py-2 text-left text-xs text-primary hover:bg-surface-subtle transition-colors border-b last:border-0 border-border/40 cursor-pointer font-semibold"
+                            className="w-full flex items-start gap-2.5 px-3 py-2 text-left text-xs hover:bg-surface-subtle transition-colors border-b last:border-0 border-border/40 cursor-pointer font-semibold sm:font-medium"
                         >
                             <MapPin size={16} className="text-primary shrink-0 mt-0.5" />
                             <div className="min-w-0 flex-1">
