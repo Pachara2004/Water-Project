@@ -14,12 +14,12 @@ export function StepDot({ n, state }: { n: number; state: "done" | "active" | "i
     const base = "w-5 h-5 rounded-full text-xs font-mono font-medium flex items-center justify-center flex-shrink-0";
     if (state === "done")
         return (
-            <div className={`${base} bg-teal-600 text-white`}>
+            <div className={`${base} bg-secondary text-white`}>
                 <CheckCircle2 size={11} />
             </div>
         );
-    if (state === "active") return <div className={`${base} border border-teal-600 text-teal-700 dark:text-teal-400 bg-(--color-background-info,#eff6ff)`}>{n}</div>;
-    return <div className={`${base} border border-border text-text-muted bg-(--color-background-secondary,#f9fafb)`}>{n}</div>;
+    if (state === "active") return <div className={`${base} border border-primary text-primary bg-primary/10`}>{n}</div>;
+    return <div className={`${base} border border-border text-text-muted bg-surface-subtle`}>{n}</div>;
 }
 
 // ใช้ token สีของระบบ (--color-safe/warning/danger ใน globals.css) แทน hex ฝังในโค้ด

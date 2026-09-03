@@ -437,7 +437,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                                                     <div className="flex items-center justify-center gap-1.5 my-1">
                                                         <span className="text-3xl font-black text-text">{item.currentVal.toFixed(2)}</span>
-                                                        <span className="text-[10px] text-text font-bold">mg/L</span>
+                                                        <span className="text-xs text-text font-bold">mg/L</span>
                                                     </div>
 
                                                     <div className="flex items-center justify-center pt-1 mt-1 border-t border-border text-xs">
@@ -571,7 +571,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                                         paramValues.map((p, pIdx) => (
                                                                             <div
                                                                                 key={pIdx}
-                                                                                className="bg-card-general border border-border px-2 py-1 rounded-md text-[11px] sm:text-xs font-semibold sm:font-medium text-text flex items-center justify-between w-full max-w-[150px] sm:max-w-[180px] shadow-2xs gap-1"
+                                                                                className="bg-card-general border border-border px-2 py-1 rounded-md text-xs font-semibold sm:font-medium text-text flex items-center justify-between w-full max-w-[150px] sm:max-w-[180px] shadow-2xs gap-1"
                                                                             >
                                                                                 <span className="text-text font-semibold sm:font-medium truncate min-w-0">{p.name}:</span>
                                                                                 <span className="font-semibold sm:font-medium shrink-0">{p.val.toFixed(2)}</span>

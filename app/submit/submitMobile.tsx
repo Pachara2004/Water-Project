@@ -110,12 +110,12 @@ export default function SubmitMobile(props: any) {
                             <div className="space-y-2">
                                 <button
                                     onClick={onConfirmBlockedSubmit}
-                                    className="w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-[#FE9A00] hover:bg-bg-warning shadow-sm transition-all duration-200"
+                                    className="w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-warning hover:bg-warning/90 shadow-sm transition-all duration-200"
                                 >
                                     <Send size={15} />
                                     ยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ
                                 </button>
-                                <p className="text-[11px] leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้งก็ได้ หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่าให้</p>
+                                <p className="text-xs leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้งก็ได้ หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่าให้</p>
                             </div>
                         )}
                     </>
@@ -142,7 +142,7 @@ export default function SubmitMobile(props: any) {
                                 <button
                                     onClick={() => onConfirmSave(needsAdminReview)}
                                     className={`w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white shadow-sm transition-all duration-200 ${
-                                        needsAdminReview ? "bg-[#FE9A00] hover:bg-bg-warning" : "bg-secondary hover:bg-primary"
+                                        needsAdminReview ? "bg-warning hover:bg-warning/90" : "bg-secondary hover:bg-primary"
                                     }`}
                                 >
                                     {needsAdminReview ? <Send size={15} /> : <Database size={15} />}
@@ -152,7 +152,7 @@ export default function SubmitMobile(props: any) {
                                 {!needsAdminReview && (
                                     <button
                                         onClick={() => onConfirmSave(true)}
-                                        className="w-full py-3 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-[#FE9A00] hover:bg-bg-warning shadow-sm transition-all duration-200"
+                                        className="w-full py-3 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-warning hover:bg-warning/90 shadow-sm transition-all duration-200"
                                     >
                                         <Send size={15} />
                                         ส่งให้ผู้เชี่ยวชาญตรวจสอบ
@@ -182,7 +182,7 @@ export default function SubmitMobile(props: any) {
                                 <button
                                     onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                     className={`mt-2 px-5 py-2.5 min-h-10 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer ${
-                                        needsAdminReview || submittedForReview ? "bg-[#FE9A00] hover:bg-bg-warning " : "bg-secondary hover:bg-bg-safe"
+                                        needsAdminReview || submittedForReview ? "bg-warning hover:bg-warning/90" : "bg-secondary hover:bg-primary"
                                     }`}
                                 >
                                     {savedSampleId ? "ตรวจสอบข้อมูล" : "กลับสู่หน้าประวัติการตรวจสอบน้ำ"}

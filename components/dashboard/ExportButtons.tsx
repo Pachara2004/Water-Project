@@ -150,8 +150,8 @@ export default function ExportButtons({ className = "w-full", filters }: { class
                 <span className="text-xs font-semibold text-text-primary">{title}</span>
                 {scope === value && <Check size={14} className="text-primary shrink-0" />}
             </div>
-            <p className="text-[11px] text-text-secondary mt-1 leading-relaxed">{detail}</p>
-            <p className="text-[11px] text-text-muted mt-1.5">{count === null ? "กำลังนับจำนวน…" : `${count.toLocaleString("th-TH")} แถว`}</p>
+            <p className="text-xs text-text-secondary mt-1 leading-relaxed">{detail}</p>
+            <p className="text-xs text-text-muted mt-1.5">{count === null ? "กำลังนับจำนวน…" : `${count.toLocaleString("th-TH")} แถว`}</p>
         </button>
     );
 
@@ -185,10 +185,10 @@ export default function ExportButtons({ className = "w-full", filters }: { class
                         {scopeOption("filtered", "ตามฟิลเตอร์ปัจจุบัน", counts?.filteredLabel || "ช่วงวันที่และหน่วยงานที่เลือกไว้บนแดชบอร์ด", counts?.filtered ?? null)}
                         {scopeOption("all", "ทั้งหมดในระบบ", "ข้อมูลที่ยืนยันแล้วทุกรายการ ไม่จำกัดช่วงวันที่และหน่วยงาน", counts?.all ?? null)}
 
-                        {countError && <p className="text-[11px] text-amber-600 leading-relaxed">นับจำนวนแถวไม่สำเร็จ — ยังส่งออกได้ตามปกติ แต่จะไม่รู้ขนาดไฟล์ล่วงหน้า</p>}
+                        {countError && <p className="text-xs text-amber-600 leading-relaxed">นับจำนวนแถวไม่สำเร็จ — ยังส่งออกได้ตามปกติ แต่จะไม่รู้ขนาดไฟล์ล่วงหน้า</p>}
 
                         {overXlsxLimit && (
-                            <p className="text-[11px] text-red-500 leading-relaxed">
+                            <p className="text-xs text-red-500 leading-relaxed">
                                 เกินเพดาน {XLSX_ROW_LIMIT.toLocaleString("th-TH")} แถวของไฟล์ Excel (เพราะต้องฝังรูปภาพทุกแถว) — กรุณาแคบช่วงวันที่ลง หรือใช้การส่งออกแบบ CSV ที่ไม่จำกัดจำนวนแถว
                             </p>
                         )}
