@@ -64,12 +64,14 @@ function SubmitContent() {
     const handleImageSelect = async (paramId: number, file: File) => {
         setImageFiles((prev) => ({ ...prev, [paramId]: file }));
 
+        // เริ่มวิเคราะห์ด้วย AI เบื้องหลังทันทีที่เลือกรูปเสร็จ
+        hook.triggerBackgroundAnalysis(paramId, file);
+
         // เปลี่ยนรูปแล้ว ผลวิเคราะห์ที่พักไว้ทั้งชุดใช้ไม่ได้อีก — ต้องกดวิเคราะห์ใหม่ก่อนจึงจะยืนยันส่งได้
         // ถ้าไม่ล้าง ปุ่มยืนยันจะส่งผลของรูปเก่าขึ้นไปแทนรูปที่เพิ่งเลือก
         hook.setPendingAnalyzedItems([]);
 
         hook.processImageExif(file);
-        processImageExif(file);
 
         setVerifyErrors((prev) => {
             if (!prev[paramId]) return prev;
