@@ -21,14 +21,14 @@ function computeStepStates(step: SubmitStepsProps["step"], isSaved = false): ("d
 function StepCircle({ n, state }: { n: number; state: "done" | "active" | "idle" }) {
     if (state === "done") {
         return (
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm animate-in zoom-in-50 duration-200">
+            <div className="w-8 h-8 rounded-full bg-safe text-white flex items-center justify-center shrink-0 shadow-sm animate-in zoom-in-50 duration-200">
                 <Check size={16} strokeWidth={3} />
             </div>
         );
     }
     if (state === "active") {
         return (
-            <div className="w-8 h-8 rounded-full text-white flex items-center justify-center shrink-0 text-xs font-bold shadow-sm" style={{ backgroundColor: "#06647F" }}>
+            <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center shrink-0 text-xs font-bold shadow-sm">
                 {n}
             </div>
         );

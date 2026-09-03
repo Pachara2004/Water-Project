@@ -108,9 +108,9 @@ export async function reviewConfirmDialog({
     forceAllowAdminChange = false,
 }: ReviewConfirmDialogOptions): Promise<{ confirmed: boolean; reviewNote?: string; allowAdminChange: boolean }> {
     const reasonsHtml = reasons.length > 0 ? `
-        <div style="text-align: left; font-size: 14px; margin-bottom: 12px; background: #fffbeb; padding: 12px; border-radius: 8px; border: 1px solid #fef3c7;">
-            <p style="margin-bottom: 6px; font-weight: 600; color: #b45309;">สาเหตุที่ต้องรอการตรวจสอบ:</p>
-            <ul style="padding-left: 20px; color: #b45309; margin-bottom: 0; margin-top: 0;">
+        <div class="bg-bg-warning border border-border-warning text-text-warning" style="text-align: left; font-size: 14px; margin-bottom: 12px; padding: 12px; border-radius: 8px;">
+            <p style="margin-bottom: 6px; font-weight: 600;">สาเหตุที่ต้องรอการตรวจสอบ:</p>
+            <ul style="padding-left: 0; margin-bottom: 0; margin-top: 0;">
                 ${reasons.map(r => `<li>${r}</li>`).join("")}
             </ul>
         </div>
@@ -122,18 +122,18 @@ export async function reviewConfirmDialog({
     const permissionHtml = forceAllowAdminChange
         ? `
                 <div class="mt-6 flex flex-col gap-2">
-                    <label style="font-size: 13px; font-weight: 600; color: #112A33;">การอนุญาตให้แก้ไขชนิดสาร</label>
-                    <div class="flex items-start gap-2.5 p-3 rounded-lg border border-warning bg-warning/5">
+                    <label class="text-text" style="font-size: 13px; font-weight: 600;">การอนุญาตให้แก้ไขชนิดสาร</label>
+                    <div class="flex items-start gap-2.5 p-3 rounded-lg border border-border-warning bg-bg-warning text-text-warning">
                         <div class="flex flex-col text-xs text-left">
-                            <span class="font-semibold text-slate-800 leading-tight">อนุญาตให้แก้ไขได้ (บังคับสำหรับกรณีนี้)</span>
-                            <span class="text-[10px] text-slate-500 leading-snug mt-0.5">AI ไม่พบหลอดทดลองในภาพ จึงยืนยันทั้งค่าและชนิดสารไม่ได้ ผู้ดูแลระบบต้องแก้ไขให้ได้จึงจะตรวจสอบคำร้องนี้ต่อได้</span>
+                            <span class="font-semibold leading-tight">อนุญาตให้แก้ไขได้ (บังคับสำหรับกรณีนี้)</span>
+                            <span class="text-[10px] leading-snug mt-0.5">AI ไม่พบหลอดทดลองในภาพ จึงยืนยันทั้งค่าและชนิดสารไม่ได้ ผู้ดูแลระบบต้องแก้ไขให้ได้จึงจะตรวจสอบคำร้องนี้ต่อได้</span>
                         </div>
                     </div>
                 </div>
         `
         : `
                 <div class="mt-6 flex flex-col gap-2">
-                    <label style="font-size: 13px; font-weight: 600; color: #112A33;">
+                    <label class="text-text" style="font-size: 13px; font-weight: 600;">
                         การอนุญาตให้แก้ไขชนิดสาร <span style="color: red;">*</span>
                     </label>
                     <div class="flex flex-col gap-2">
@@ -142,8 +142,8 @@ export async function reviewConfirmDialog({
                                 <input type="radio" name="swal-allow-admin-change" value="true" class="w-4 h-4 text-warning focus:ring-warning cursor-pointer" />
                             </div>
                             <div class="flex flex-col text-xs text-left">
-                                <span class="font-semibold text-slate-800 leading-tight">อนุญาตให้แก้ไขได้ (แนะนำ)</span>
-                                <span class="text-[10px] text-slate-500 leading-snug mt-0.5">หากผู้เชี่ยวชาญตรวจสอบพบว่า AI ทำนายชนิดสารผิดพลาด</span>
+                                <span class="font-semibold leading-tight">อนุญาตให้แก้ไขได้ (แนะนำ)</span>
+                                <span class="text-[10px] leading-snug mt-0.5">หากผู้เชี่ยวชาญตรวจสอบพบว่า AI ทำนายชนิดสารผิดพลาด</span>
                             </div>
                         </label>
                         <label id="label-allow-false" class="flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors">
@@ -151,8 +151,8 @@ export async function reviewConfirmDialog({
                                 <input type="radio" name="swal-allow-admin-change" value="false" class="w-4 h-4 text-warning focus:ring-warning cursor-pointer" />
                             </div>
                             <div class="flex flex-col text-xs text-left">
-                                <span class="font-semibold text-slate-800 leading-tight">ไม่อนุญาต</span>
-                                <span class="text-[10px] text-slate-500 leading-snug mt-0.5">ยืนยันใช้ชนิดสารตามที่ปรากฏในระบบนี้เท่านั้น</span>
+                                <span class="font-semibold leading-tight">ไม่อนุญาต</span>
+                                <span class="text-[10px] leading-snug mt-0.5">ยืนยันใช้ชนิดสารตามที่ปรากฏในระบบนี้เท่านั้น</span>
                             </div>
                         </label>
                     </div>
@@ -166,7 +166,7 @@ export async function reviewConfirmDialog({
             ${reasonsHtml}
             <div style="text-align: left; margin-top: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-                    <label for="swal-review-note" style="font-size: 13px; font-weight: 600; color: #112A33;">
+                    <label for="swal-review-note" class="text-text" style="font-size: 13px; font-weight: 600;">
                         หมายเหตุถึงผู้ดูแลระบบ ${requireNote ? '<span style="color: red;">*</span>' : '(ไม่บังคับ)'}:
                     </label>
                     <span id="swal-char-count" style="font-size: 11px; color: var(--color-text-muted);">0 / 200</span>
@@ -226,14 +226,14 @@ export async function reviewConfirmDialog({
 
                 if (radioTrue && labelTrue) {
                     if (radioTrue.checked) {
-                        labelTrue.className = "flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors border-warning bg-warning/5";
+                        labelTrue.className = "flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors border-border-warning bg-bg-warning text-text-warning";
                     } else {
                         labelTrue.className = "flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors";
                     }
                 }
                 if (radioFalse && labelFalse) {
                     if (radioFalse.checked) {
-                        labelFalse.className = "flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors border-warning bg-warning/5";
+                        labelFalse.className = "flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors border-border-warning bg-bg-warning text-text-warning";
                     } else {
                         labelFalse.className = "flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors";
                     }

@@ -154,7 +154,7 @@ export function ImageZone({
     return (
         <section
             id={`param-zone-${param.id}`}
-            className={`rounded-xl overflow-visible border transition-all duration-300 bg-surface relative ${verifyError ? "border-red-400 ring-1 ring-red-300" : "border-border"}`}
+            className={`rounded-xl overflow-visible border transition-all duration-300 bg-surface relative ${verifyError ? "border-danger ring-1 ring-danger/40" : "border-border"}`}
         >
             <div className="text-sm font-semibold relative">
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
@@ -164,7 +164,7 @@ export function ImageZone({
                             type="button"
                             onClick={() => setShowExampleModal((v) => !v)}
                             aria-label={`ดูตัวอย่างสี ${param.name}`}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                         >
                             <Info size={15} />
                         </button>
@@ -220,7 +220,7 @@ export function ImageZone({
             {enabled && (
                 <div className="p-4">
                     {!isSaved && measurement?.isSystemUnknown && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200 dark:border-orange-900">
+                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-warning border border-border-warning text-text-warning">
                             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                             <div className="text-xs leading-relaxed font-medium w-full">
                                 <p className="font-semibold mb-0.5">พบสารที่ไม่รู้จักในระบบ</p>
@@ -232,7 +232,7 @@ export function ImageZone({
                     )}
 
                     {verifyError && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">
+                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-danger border border-border-danger text-text-danger">
                             {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}
                             <div className="text-xs leading-relaxed font-medium">
                                 <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "AI ไม่พบหลอดทดลองในภาพ" : "สารไม่ตรงชนิด"}</p>
@@ -245,8 +245,8 @@ export function ImageZone({
                         <div
                             className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${
                                 isLowConf
-                                    ? "border border-border bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200"
-                                    : "border border-border bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
+                                    ? "border border-border-danger bg-bg-danger text-text-danger"
+                                    : "border border-border-safe bg-bg-safe text-text-safe"
                             }`}
                         >
                             {(() => {
@@ -265,10 +265,10 @@ export function ImageZone({
                             step === "analyzing"
                                 ? "aspect-square sm:aspect-4/3 md:aspect-video border-slate-700 bg-slate-950 cursor-default"
                                 : displayImgSrc
-                                  ? "aspect-square sm:aspect-4/3 md:aspect-video border-teal-500/30 bg-surface-subtle cursor-pointer"
-                                  : "aspect-square sm:aspect-4/3 border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"
+                                  ? "aspect-square sm:aspect-4/3 md:aspect-video border-primary/30 bg-surface-subtle cursor-pointer"
+                                  : "aspect-square sm:aspect-4/3 border-border hover:border-primary/50 bg-surface-subtle cursor-pointer"
                         }
-${!isHistoryView && isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
+${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`}
                     >
                         {step === "analyzing" ? (
                             <>
@@ -309,7 +309,7 @@ ${!isHistoryView && isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                                             e.stopPropagation();
                                             cameraInputRef.current?.click();
                                         }}
-                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-primary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-secondary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary transition-all cursor-pointer"
                                     >
                                         <Camera size={15} />
                                         <span>ถ่ายภาพสด</span>

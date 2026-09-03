@@ -83,7 +83,7 @@ export default function SubmitDesktop(props: any) {
                                             <>
                                                 <button
                                                     onClick={onConfirmBlockedSubmit}
-                                                    className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white bg-text-warning hover:bg-text-warning/80 shadow-sm transition-all cursor-pointer"
+                                                    className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white bg-warning hover:bg-warning/90 shadow-sm transition-all cursor-pointer"
                                                 >
                                                     <Send size={15} />
                                                     <span>ยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ</span>
@@ -113,7 +113,7 @@ export default function SubmitDesktop(props: any) {
                                         <button
                                             onClick={() => onConfirmSave(needsAdminReview)}
                                             className={`w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white shadow-sm transition-all cursor-pointer ${
-                                                needsAdminReview ? "bg-text-warning hover:bg-text-warning/80" : "bg-secondary hover:bg-primary"
+                                                needsAdminReview ? "bg-warning hover:bg-warning/90" : "bg-secondary hover:bg-primary"
                                             }`}
                                         >
                                             {needsAdminReview ? <Clock size={15} /> : <Database size={15} />}
@@ -123,7 +123,7 @@ export default function SubmitDesktop(props: any) {
                                         {!needsAdminReview && (
                                             <button
                                                 onClick={() => onConfirmSave(true)}
-                                                className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white bg-text-warning hover:bg-text-warning/80 shadow-sm transition-all cursor-pointer"
+                                                className="w-full py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white bg-warning hover:bg-warning/90 shadow-sm transition-all cursor-pointer"
                                             >
                                                 <Clock size={15} />
                                                 <span>ส่งให้ผู้เชี่ยวชาญตรวจสอบ</span>
@@ -149,7 +149,7 @@ export default function SubmitDesktop(props: any) {
                                         <button
                                             onClick={() => router.push(savedSampleId ? `/collector/history/${savedSampleId}` : "/collector")}
                                             className={`w-full py-2.5 text-white rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                                                needsAdminReview || submittedForReview ? "bg-primary hover:bg-secondary" : "bg-secondary hover:bg-primary"
+                                                needsAdminReview || submittedForReview ? "bg-secondary hover:bg-primary" : "bg-secondary hover:bg-primary"
                                             }`}
                                         >
                                             {savedSampleId ? "ดูผลการตรวจสอบ" : "กลับสู่หน้าประวัติ"}

@@ -43,9 +43,9 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
             {/* ตารางแสดงรายละเอียดแต่ละสารพารามิเตอร์ */}
             <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-1">
                 {reviewNote && (
-                    <div className="mx-2 mt-2 bg-red-50/50 border border-red-100 rounded-lg p-3">
-                        <h3 className="text-[11px] font-semibold text-red-700 mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
-                        <p className="text-xs text-red-600 whitespace-pre-wrap leading-relaxed">{reviewNote}</p>
+                    <div className="mx-2 mt-2 bg-bg-danger border border-border-danger rounded-lg p-3">
+                        <h3 className="text-[11px] font-semibold text-text-danger mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
+                        <p className="text-xs text-text-danger whitespace-pre-wrap leading-relaxed">{reviewNote}</p>
                     </div>
                 )}
                 
@@ -80,7 +80,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                             <div
                                 key={entryKey}
                                 className={`px-5 py-4 flex flex-col gap-2.5 border-l-[3px] transition-all ${
-                                    isDuplicate ? (isChosen ? "border-l-teal-500 bg-teal-500/5" : "border-l-transparent opacity-55 hover:opacity-100") : "border-l-transparent hover:bg-muted/5"
+                                    isDuplicate ? (isChosen ? "border-l-primary bg-primary/5" : "border-l-transparent opacity-55 hover:opacity-100") : "border-l-transparent hover:bg-muted/5"
                                 }`}
                             >
                                 {/* สารซ้ำ: ตัวเลือก radio เต็มแถว เลือกเก็บได้ภาพเดียวต่อสาร */}
@@ -90,13 +90,13 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                         onClick={() => chooseDuplicate?.(measurement.parameterId, entryKey)}
                                         className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                                             isChosen
-                                                ? "bg-teal-500/10 border-teal-500/40 text-[#009689]"
-                                                : "bg-surface-subtle border-border text-text-secondary hover:border-teal-400 hover:text-teal-600"
+                                                ? "bg-primary/10 border-primary/40 text-primary"
+                                                : "bg-surface-subtle border-border text-text-secondary hover:border-primary/50 hover:text-primary"
                                         }`}
                                     >
                                         <span
                                             className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                                                isChosen ? "border-teal-600 bg-teal-600" : "border-text-muted"
+                                                isChosen ? "border-secondary bg-secondary" : "border-text-muted"
                                             }`}
                                         >
                                             {isChosen && <Check size={11} strokeWidth={4} className="text-white" />}
@@ -113,9 +113,9 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                             (measurement.confidence === null || measurement.confidence === undefined ? (
                                                 // ไม่มีค่าความมั่นใจจากโมเดล = ค่านี้ผ่านมือผู้ดูแลระบบมาแล้ว ไม่ใช่ผลที่ AI อ่านเอง
                                                 // แสดง "-" ไม่ได้ เพราะอ่านเหมือนข้อมูลขาดหาย ทั้งที่ค่าถูกยืนยันโดยคนแล้ว
-                                                <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400 font-medium">ยืนยันโดยผู้ดูแลระบบ</span>
+                                                <span className="inline-flex items-center gap-1 text-xs text-text-warning font-medium">ยืนยันโดยผู้ดูแลระบบ</span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">
+                                                <span className="inline-flex items-center gap-1 font-mono text-xs text-text-safe font-medium">
                                                     ค่าความมั่นใจ: {`${(measurement.confidence * 100).toFixed(0)}%`}
                                                 </span>
                                             ))}
@@ -123,18 +123,18 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                     <div className="flex flex-col items-end">
                                         <div className="flex flex-col items-end gap-1">
                                             {isPendingAdminValue ? (
-                                                <div className="text-sm font-semibold text-amber-600 dark:text-amber-400 text-right">รอตรวจสอบ</div>
+                                                <div className="text-sm font-semibold text-text-warning text-right">รอตรวจสอบ</div>
                                             ) : measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
                                                 <>
                                                     <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
                                                         <span>ค่าที่ส่ง:</span>
-                                                        <span className="line-through decoration-red-400">
+                                                        <span className="line-through decoration-danger">
                                                             {measurement.originalValue.toFixed(2)} mg/L
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-[11px]">
-                                                        <span className="text-teal-700 font-medium">แก้ไขเป็น:</span>
-                                                        <span className="font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md">
+                                                        <span className="text-primary font-medium">แก้ไขเป็น:</span>
+                                                        <span className="font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md">
                                                             {formatMeasuredValue(measurement.concentrated)} mg/L
                                                         </span>
                                                     </div>
@@ -152,7 +152,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
 
                                 {/* แบนเนอร์เปลี่ยนชนิดสารอัตโนมัติ */}
                                 {!saved && measurement.autoSwitchedFrom && (
-                                    <div className="mt-2.5 flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-900">
+                                    <div className="mt-2.5 flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-text-primary">
                                         <div className="flex items-start gap-2">
                                             <FlaskConical size={15} className="shrink-0 mt-0.5" />
                                             <div className="text-xs leading-relaxed font-medium">
@@ -165,7 +165,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                         {revertAutoSwitch && (
                                             <button
                                                 onClick={() => revertAutoSwitch(entryKey)}
-                                                className="self-end mt-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+                                                className="self-end mt-1 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 text-primary rounded-md text-xs font-semibold transition-colors cursor-pointer"
                                             >
                                                 ยืนยันส่งเป็น {measurement.autoSwitchedFrom.toUpperCase()} (สารเดิม)
                                             </button>
@@ -176,7 +176,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
 
 
                                 {isPendingAdminValue ? (
-                                    <div className="mt-1.5 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+                                    <div className="mt-1.5 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-warning border border-border-warning text-text-warning">
                                         <Clock size={14} className="shrink-0 mt-0.5" />
                                         <p className="text-xs leading-relaxed font-medium">รอการตรวจสอบจากผู้ดูแลระบบ — AI ไม่พบหลอดทดลองในภาพนี้ จึงยังไม่แสดงค่าที่วัดได้</p>
                                     </div>
@@ -191,10 +191,10 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                                 paramStatus === null
                                                     ? "text-text-muted bg-surface-subtle border-border cursor-default"
                                                     : isExceeded
-                                                      ? "text-[#EA2F0B] bg-red-500/10 border-red-500/20 hover:bg-red-500/15 cursor-pointer"
+                                                      ? "text-text-danger bg-bg-danger border-border-danger hover:bg-danger/15 cursor-pointer"
                                                       : paramStatus === "warning"
-                                                        ? "text-amber-600 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15 cursor-pointer"
-                                                        : "text-teal-600 bg-teal-500/10 border-teal-500/20 hover:bg-teal-500/15 cursor-pointer"
+                                                        ? "text-text-warning bg-bg-warning border-border-warning hover:bg-warning/15 cursor-pointer"
+                                                        : "text-text-safe bg-bg-safe border-border-safe hover:bg-safe/15 cursor-pointer"
                                             }`}
                                     >
                                         <span className="flex-1 text-center pl-4">

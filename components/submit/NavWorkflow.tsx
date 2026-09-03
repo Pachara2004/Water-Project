@@ -56,7 +56,7 @@ export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentL
             type="button"
             onClick={handleAnalyze}
             disabled={!isAllImagesUploaded || !currentLocationId || isRecommending}
-            className="w-full py-3 px-4 min-h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white shadow-xs cursor-pointer"
+            className="w-full py-3 px-4 min-h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-secondary hover:bg-primary text-white shadow-xs cursor-pointer"
         >
             {isRecommending ? (
                 <>

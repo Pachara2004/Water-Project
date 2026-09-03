@@ -81,7 +81,7 @@ export function LocationPicker({
                         type="button"
                         onClick={() => hasGps && onSelectSource("gps")}
                         className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            activeSource === "gps" && hasGps ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-surface/50"
+                            activeSource === "gps" && hasGps ? "bg-secondary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-surface/50"
                         }`}
                     >
                         <Navigation size={13} />
@@ -92,7 +92,7 @@ export function LocationPicker({
                         type="button"
                         onClick={() => hasExif && onSelectSource("exif")}
                         className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            activeSource === "exif" && hasExif ? "bg-primary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-surface/50"
+                            activeSource === "exif" && hasExif ? "bg-secondary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-surface/50"
                         }`}
                     >
                         <ImageIcon size={13} />
@@ -127,10 +127,10 @@ export function LocationPicker({
                                         setSearchQuery("");
                                     }}
                                     className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-colors group min-h-10 cursor-pointer ${
-                                        currentLocationId === loc.id.toString() ? "border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20" : "border-border bg-surface hover:bg-surface-subtle"
+                                        currentLocationId === loc.id.toString() ? "border-primary/40 bg-primary/10" : "border-border bg-surface hover:bg-surface-subtle"
                                     }`}
                                 >
-                                    <MapPin size={13} className="text-text-muted group-hover:text-teal-600 shrink-0" />
+                                    <MapPin size={13} className="text-text-muted group-hover:text-primary shrink-0" />
                                     <span className="text-xs font-medium text-text-primary truncate">{loc.name}</span>
                                     <ChevronRight size={13} className="ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </button>
@@ -150,19 +150,19 @@ export function LocationPicker({
                                         onClick={() => setCurrentLocationId(loc.id.toString())}
                                         className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-left transition-colors min-h-10 cursor-pointer ${
                                             isSelected
-                                                ? "border-teal-500/50 bg-teal-50/60 dark:bg-teal-950/30 text-teal-900 dark:text-teal-100 font-semibold"
+                                                ? "border-primary/50 bg-primary/10 text-primary font-semibold"
                                                 : "border-border bg-surface hover:bg-surface-subtle text-text-primary"
                                         }`}
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isSelected ? "bg-teal-500" : "bg-text-muted"}`} />
+                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : "bg-text-muted"}`} />
                                             <span className="text-xs font-medium truncate">{loc.name}</span>
                                         </div>
 
                                         <span
-                                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-teal-200/50 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200" : "bg-surface-subtle text-text-muted"}`}
+                                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-primary/20 text-primary" : "bg-surface-subtle text-text-muted"}`}
                                         >
-                                            {loc.distanceKm < 1 ? `${(loc.distanceKm * 1000).toFixed(0)}m` : `${loc.distanceKm.toFixed(1)} กม.`}
+                                            {loc.distanceKm < 1 ? `${(loc.distanceKm * 1000).toFixed(0)} ม.` : `${loc.distanceKm.toFixed(1)} กม.`}
                                         </span>
                                     </button>
                                 );
@@ -171,7 +171,7 @@ export function LocationPicker({
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 text-xs text-text-muted py-2">
-                        <Loader2 size={13} className="animate-spin text-teal-600" />
+                        <Loader2 size={13} className="animate-spin text-primary" />
                         <span>กำลังค้นหาสถานีใกล้เคียง…</span>
                     </div>
                 )}
