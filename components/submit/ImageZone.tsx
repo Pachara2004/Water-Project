@@ -1,6 +1,6 @@
 // components/submit/ImageZone.tsx
 import { useRef, useState } from "react";
-import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X } from "lucide-react";
+import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft } from "lucide-react";
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult, VerifyError } from "./types";
 import { SectionHead } from "./SharedAtoms";
@@ -217,6 +217,15 @@ export function ImageZone({
                 )}
             </div>
 
+            {/* สารที่ปิดสวิตช์ไว้จะไม่มีกรอบอัปโหลดให้เห็นเลย จึงต้องบอกว่าเปิดสวิตช์ก่อนถึงจะใส่รูปได้
+                เงื่อนไขตรงกับตอนที่แสดงสวิตช์ (ขั้นอัปโหลด + มี onToggle) ไม่งั้นจะชี้ไปที่ปุ่มที่ไม่มีอยู่ */}
+            {!enabled && step === "upload" && onToggle && (
+                <div className="px-4 py-3 flex items-center gap-2 text-xs text-text-muted">
+                    <ToggleLeft size={15} className="shrink-0" />
+                    <span>เปิดสวิตช์ด้านบนเพื่อถ่ายภาพหรือเลือกรูปของสารนี้</span>
+                </div>
+            )}
+
             {enabled && (
                 <div className="p-4">
                     {!isSaved && measurement?.isSystemUnknown && (
@@ -290,6 +299,15 @@ ${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`
                                         <Eye size={13} strokeWidth={2.5} />
                                         <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
                                     </button>
+                                )}
+
+                                {/* ป้ายบอกว่าแตะที่ภาพแล้วเลือกรูปใหม่ได้ — ขึ้นเฉพาะขั้นอัปโหลด ซึ่งเป็นขั้นเดียวที่กรอบภาพรับคลิก
+                                    pointer-events-none เพื่อให้คลิกทะลุไปที่กรอบภาพซึ่งเป็นตัวเปิดแกลเลอรี */}
+                                {step === "upload" && (
+                                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/75 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-md select-none backdrop-blur-xs pointer-events-none whitespace-nowrap">
+                                        <ImagePlus size={13} />
+                                        <span>แตะที่ภาพเพื่อเปลี่ยนรูป</span>
+                                    </div>
                                 )}
                             </>
                         ) : isHistoryView ? (
