@@ -202,7 +202,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         return (
             <div className="relative flex h-screen w-full items-center justify-center p-4">
                 <LiffBackground />
-                <div className="rounded-2xl bg-white/90 backdrop-blur-md border border-border/60 p-6 text-center shadow-lg max-w-sm w-full z-10">
+                <div className="rounded-2xl bg-surface/90 backdrop-blur-md border border-border/60 p-6 text-center shadow-lg max-w-sm w-full z-10">
                     <ShieldAlert className="w-12 h-12 text-text-danger mx-auto mb-4" />
                     <p className="font-semibold text-text-primary text-sm">เกิดข้อผิดพลาดในการโหลดระบบ</p>
                     <p className="mt-1.5 font-semibold text-xs text-text-secondary leading-relaxed">{liffError}</p>
@@ -249,7 +249,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                         }}
                                         placeholder="กรอกชื่อ"
                                         required
-                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-white"
+                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-surface-subtle"
                                     />
                                     <div className="h-4 flex items-center">{errors.firstName && <p className="text-xs text-text-danger">{errors.firstName}</p>}</div>
                                 </div>
@@ -272,7 +272,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                         }}
                                         placeholder="กรอกนามสกุล"
                                         required
-                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-white"
+                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-surface-subtle"
                                     />
                                     <div className="h-4 flex items-center">{errors.lastName && <p className="text-xs text-text-danger">{errors.lastName}</p>}</div>
                                 </div>
@@ -296,7 +296,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                         }}
                                         placeholder="0XXXXXXXXX"
                                         required
-                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-white"
+                                        className="w-full h-9 pl-3.5 pr-4 border border-border text-text rounded-md text-xs placeholder:text-text-muted/40 font-semibold bg-surface-subtle"
                                     />
                                     <div className="h-4 flex items-center">{errors.phoneNumber && <p className="text-xs text-text-danger">{errors.phoneNumber}</p>}</div>
                                 </div>
@@ -307,7 +307,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                     <button
                                         type="submit"
                                         disabled={isFormInvalid}
-                                        className="w-70 h-11 bg-primary hover:bg-[#054E62] text-white font-black rounded-xl text-xs transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        className="w-70 h-11 bg-secondary hover:bg-primary text-white font-black rounded-xl text-xs transition-all disabled:bg-surface-subtle disabled:text-text-muted disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
                                         <span>ดำเนินการต่อ</span>
                                     </button>
@@ -326,8 +326,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                     <div className="space-y-3 mt-2">
                                         <div
                                             onClick={() => setSelectedRole("guest")}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-white/70 ${
-                                                selectedRole === "guest" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-border-hover"
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-surface-subtle ${
+                                                selectedRole === "guest" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-secondary/60"
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -345,8 +345,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                                         <div
                                             onClick={() => setSelectedRole("collector")}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-white/70 ${
-                                                selectedRole === "collector" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-border-hover"
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-surface-subtle ${
+                                                selectedRole === "collector" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-secondary/60"
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -364,8 +364,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                                         <div
                                             onClick={() => setSelectedRole("officer")}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-white/70 ${
-                                                selectedRole === "officer" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-border-hover"
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all bg-surface-subtle ${
+                                                selectedRole === "officer" ? "bg-secondary/10 border-secondary shadow-xs" : "border-border/80 hover:border-secondary/60"
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -399,14 +399,14 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                                             setStep(1);
                                             setGlobalError(null);
                                         }}
-                                        className="w-full h-11 bg-[#EFF7F9] hover:bg-[#DFF0F0] text-text font-semibold rounded-xl text-xs tracking-widest transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        className="w-full h-11 bg-surface-subtle hover:bg-surface border border-border text-text font-semibold rounded-xl text-xs tracking-widest transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
                                         <ArrowLeft size={14} /> ย้อนกลับ
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={submitting || !selectedRole}
-                                        className="w-full h-11 bg-primary hover:bg-[#054E62] text-white font-semibold rounded-xl text-xs tracking-widest transition-all disabled:bg-[#C8D8DE] disabled:text-[#8CAAB3] disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                        className="w-full h-11 bg-secondary hover:bg-primary text-white font-semibold rounded-xl text-xs tracking-widest transition-all disabled:bg-surface-subtle disabled:text-text-muted disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                                     >
                                         {submitting ? (
                                             <>
