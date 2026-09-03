@@ -35,7 +35,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    command: sh -c "npx prisma db push"
+    command: sh -c "npx prisma db push && npm run seed"
 
   web:
     build:
