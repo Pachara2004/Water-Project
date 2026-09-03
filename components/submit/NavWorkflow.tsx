@@ -13,7 +13,7 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step }: D
     return (
         <aside className="hidden md:flex flex-col border-r border-border bg-card-general min-h-full w-52 shrink-0">
             <div className="px-4 py-4 border-b border-border space-y-2">
-                <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted font-bold">Session Info</p>
+                <p className="font-mono text-xs uppercase tracking-widest text-text-muted font-bold">Session Info</p>
                 {[
                     { key: "Session", val: sessionId ? `#${sessionId}` : "—" },
                     { key: "Station", val: locationName || "—" },
@@ -32,7 +32,7 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step }: D
                 ))}
             </div>
             <div className="px-4 py-4 flex-1">
-                <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted font-bold mb-3">Workflow</p>
+                <p className="font-mono text-xs uppercase tracking-widest text-text-muted font-bold mb-3">Workflow</p>
                 <SubmitSteps step={step} orientation="vertical" />
             </div>
         </aside>

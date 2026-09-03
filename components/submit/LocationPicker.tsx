@@ -80,7 +80,7 @@ export function LocationPicker({
                     <button
                         type="button"
                         onClick={() => hasGps && onSelectSource("gps")}
-                        className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                             activeSource === "gps" && hasGps ? "bg-secondary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-surface/50"
                         }`}
                     >
@@ -91,7 +91,7 @@ export function LocationPicker({
                     <button
                         type="button"
                         onClick={() => hasExif && onSelectSource("exif")}
-                        className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        className={`flex-1 py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                             activeSource === "exif" && hasExif ? "bg-secondary text-white shadow-xs" : "text-text-secondary hover:text-text-primary bg-surface/50"
                         }`}
                     >
@@ -160,7 +160,7 @@ export function LocationPicker({
                                         </div>
 
                                         <span
-                                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-primary/20 text-primary" : "bg-surface-subtle text-text-muted"}`}
+                                            className={`text-xs px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-primary/20 text-primary" : "bg-surface-subtle text-text-muted"}`}
                                         >
                                             {loc.distanceKm < 1 ? `${(loc.distanceKm * 1000).toFixed(0)} ม.` : `${loc.distanceKm.toFixed(1)} กม.`}
                                         </span>

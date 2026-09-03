@@ -44,7 +44,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
             <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-1">
                 {reviewNote && (
                     <div className="mx-2 mt-2 bg-bg-danger border border-border-danger rounded-lg p-3">
-                        <h3 className="text-[11px] font-semibold text-text-danger mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
+                        <h3 className="text-xs font-semibold text-text-danger mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
                         <p className="text-xs text-text-danger whitespace-pre-wrap leading-relaxed">{reviewNote}</p>
                     </div>
                 )}
@@ -102,7 +102,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                             {isChosen && <Check size={11} strokeWidth={4} className="text-white" />}
                                         </span>
                                         <span className="flex-1 text-left">{isChosen ? "เก็บรูปนี้ไว้" : "แตะเพื่อเลือกรูปนี้"}</span>
-                                        {!isChosen && <span className="text-[10px] font-medium text-text-muted normal-case">รูปนี้จะไม่ถูกเก็บ</span>}
+                                        {!isChosen && <span className="text-xs font-medium text-text-muted normal-case">รูปนี้จะไม่ถูกเก็บ</span>}
                                     </button>
                                 )}
 
@@ -126,13 +126,13 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                                 <div className="text-sm font-semibold text-text-warning text-right">รอตรวจสอบ</div>
                                             ) : measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
                                                 <>
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                                                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
                                                         <span>ค่าที่ส่ง:</span>
                                                         <span className="line-through decoration-danger">
                                                             {measurement.originalValue.toFixed(2)} mg/L
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-1.5 text-[11px]">
+                                                    <div className="flex items-center gap-1.5 text-xs">
                                                         <span className="text-primary font-medium">แก้ไขเป็น:</span>
                                                         <span className="font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md">
                                                             {formatMeasuredValue(measurement.concentrated)} mg/L

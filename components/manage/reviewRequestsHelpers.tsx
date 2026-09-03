@@ -603,7 +603,7 @@ export function RequestCard({
                 {item.statusRequest === "pending" && (
                     <>
                         {mustEditBeforeApprove && (
-                            <p className="text-[11px] leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                            <p className="text-xs leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
                                 AI ไม่พบหลอดทดลองในภาพ จึงอนุมัติตามค่าเดิมไม่ได้ — กดแก้ไขเพื่อกรอกค่าที่ถูกต้อง หรือปฏิเสธคำร้อง
                             </p>
                         )}
@@ -1266,7 +1266,7 @@ export function RequestCardMobile({
                 {item.statusRequest === "pending" && (
                     <>
                         {mustEditBeforeApprove && (
-                            <p className="text-[11px] leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mt-1">
+                            <p className="text-xs leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mt-1">
                                 AI ไม่พบหลอดทดลองในภาพ จึงอนุมัติตามค่าเดิมไม่ได้ — กดแก้ไขเพื่อกรอกค่าที่ถูกต้อง หรือปฏิเสธคำร้อง
                             </p>
                         )}

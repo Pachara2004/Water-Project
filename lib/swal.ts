@@ -108,7 +108,7 @@ export async function reviewConfirmDialog({
     forceAllowAdminChange = false,
 }: ReviewConfirmDialogOptions): Promise<{ confirmed: boolean; reviewNote?: string; allowAdminChange: boolean }> {
     const reasonsHtml = reasons.length > 0 ? `
-        <div class="bg-bg-warning border border-border-warning text-text-warning" style="text-align: left; font-size: 14px; margin-bottom: 12px; padding: 12px; border-radius: 8px;">
+        <div class="text-sm bg-bg-warning border border-border-warning text-text-warning" style="text-align: left; margin-bottom: 12px; padding: 12px; border-radius: 8px;">
             <p style="margin-bottom: 6px; font-weight: 600;">สาเหตุที่ต้องรอการตรวจสอบ:</p>
             <ul style="padding-left: 0; margin-bottom: 0; margin-top: 0;">
                 ${reasons.map(r => `<li>${r}</li>`).join("")}
@@ -122,18 +122,18 @@ export async function reviewConfirmDialog({
     const permissionHtml = forceAllowAdminChange
         ? `
                 <div class="mt-6 flex flex-col gap-2">
-                    <label class="text-text" style="font-size: 13px; font-weight: 600;">การอนุญาตให้แก้ไขชนิดสาร</label>
+                    <label class="text-xs font-semibold text-text">การอนุญาตให้แก้ไขชนิดสาร</label>
                     <div class="flex items-start gap-2.5 p-3 rounded-lg border border-border-warning bg-bg-warning text-text-warning">
                         <div class="flex flex-col text-xs text-left">
                             <span class="font-semibold leading-tight">อนุญาตให้แก้ไขได้ (บังคับสำหรับกรณีนี้)</span>
-                            <span class="text-[10px] leading-snug mt-0.5">AI ไม่พบหลอดทดลองในภาพ จึงยืนยันทั้งค่าและชนิดสารไม่ได้ ผู้ดูแลระบบต้องแก้ไขให้ได้จึงจะตรวจสอบคำร้องนี้ต่อได้</span>
+                            <span class="text-xs leading-snug mt-0.5">AI ไม่พบหลอดทดลองในภาพ จึงยืนยันทั้งค่าและชนิดสารไม่ได้ ผู้ดูแลระบบต้องแก้ไขให้ได้จึงจะตรวจสอบคำร้องนี้ต่อได้</span>
                         </div>
                     </div>
                 </div>
         `
         : `
                 <div class="mt-6 flex flex-col gap-2">
-                    <label class="text-text" style="font-size: 13px; font-weight: 600;">
+                    <label class="text-xs font-semibold text-text">
                         การอนุญาตให้แก้ไขชนิดสาร <span style="color: red;">*</span>
                     </label>
                     <div class="flex flex-col gap-2">
@@ -143,7 +143,7 @@ export async function reviewConfirmDialog({
                             </div>
                             <div class="flex flex-col text-xs text-left">
                                 <span class="font-semibold leading-tight">อนุญาตให้แก้ไขได้ (แนะนำ)</span>
-                                <span class="text-[10px] leading-snug mt-0.5">หากผู้เชี่ยวชาญตรวจสอบพบว่า AI ทำนายชนิดสารผิดพลาด</span>
+                                <span class="text-xs leading-snug mt-0.5">หากผู้เชี่ยวชาญตรวจสอบพบว่า AI ทำนายชนิดสารผิดพลาด</span>
                             </div>
                         </label>
                         <label id="label-allow-false" class="flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors">
@@ -152,7 +152,7 @@ export async function reviewConfirmDialog({
                             </div>
                             <div class="flex flex-col text-xs text-left">
                                 <span class="font-semibold leading-tight">ไม่อนุญาต</span>
-                                <span class="text-[10px] leading-snug mt-0.5">ยืนยันใช้ชนิดสารตามที่ปรากฏในระบบนี้เท่านั้น</span>
+                                <span class="text-xs leading-snug mt-0.5">ยืนยันใช้ชนิดสารตามที่ปรากฏในระบบนี้เท่านั้น</span>
                             </div>
                         </label>
                     </div>
@@ -162,14 +162,14 @@ export async function reviewConfirmDialog({
     const result = await baseSwal.fire({
         title,
         html: `
-            <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 16px;">${text}</p>
+            <p class="text-sm" style="color: var(--color-text-secondary); margin-bottom: 16px;">${text}</p>
             ${reasonsHtml}
             <div style="text-align: left; margin-top: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-                    <label for="swal-review-note" class="text-text" style="font-size: 13px; font-weight: 600;">
+                    <label for="swal-review-note" class="text-xs font-semibold text-text">
                         หมายเหตุถึงผู้ดูแลระบบ ${requireNote ? '<span style="color: red;">*</span>' : '(ไม่บังคับ)'}:
                     </label>
-                    <span id="swal-char-count" style="font-size: 11px; color: var(--color-text-muted);">0 / 200</span>
+                    <span id="swal-char-count" class="text-xs" style="color: var(--color-text-muted);">0 / 200</span>
                 </div>
                 <textarea id="swal-review-note" maxlength="200" placeholder="${requireNote ? 'กรุณาระบุเหตุผลที่ต้องการให้ตรวจสอบเพิ่มเติม' : 'ระบุสาเหตุที่ต้องการให้ตรวจสอบเพิ่มเติม หรือบอกสิ่งที่ต้องการให้แอดมินช่วยดู...'}" class="w-full min-h-[100px] resize-none p-3 border border-border rounded-xl text-sm bg-surface-subtle focus:bg-surface focus:border-warning focus:ring-4 focus:ring-warning/20 outline-none transition-all placeholder:text-text-muted mt-1 text-text"></textarea>
                 

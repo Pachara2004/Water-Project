@@ -88,7 +88,7 @@ export default function SubmitDesktop(props: any) {
                                                     <Send size={15} />
                                                     <span>ยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ</span>
                                                 </button>
-                                                <p className="text-[11px] leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้งก็ได้ หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่าให้</p>
+                                                <p className="text-xs leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้งก็ได้ หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่าให้</p>
                                             </>
                                         )}
                                     </div>

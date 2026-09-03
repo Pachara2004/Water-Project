@@ -74,7 +74,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         <MapPin size={24} className="text-text-safe mt-0.5 shrink-0" />
                         <div>
                             <p className="font-bold text-text text-sm">{sample.location.stationName}</p>
-                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[11px] text-text-muted">
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-xs text-text-muted">
                                 <span className="whitespace-nowrap">{sample.location.governingAgency}</span>
                                 {sample.location.province && <span className="whitespace-nowrap">จ.{sample.location.province}</span>}
                                 {sample.location.district && <span className="whitespace-nowrap">อ.{sample.location.district}</span>}

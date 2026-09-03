@@ -202,7 +202,7 @@ export function ImageZone({
                                                 style={{ backgroundColor: item.color }}
                                                 title={`${item.value} mg/L`}
                                             />
-                                            <span className="text-[11px] font-semibold text-text">{item.value}</span>
+                                            <span className="text-xs font-semibold text-text">{item.value}</span>
                                         </div>
                                     ))}
                                 </div>
