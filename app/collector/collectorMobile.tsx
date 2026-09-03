@@ -402,39 +402,46 @@ export default function CollectorMobile(props: CollectorProps) {
                                                     </div>
                                                 </div>
 
-                                                {/* Body: Location, Date, Chems, Water Status */}
-                                                <div className="flex items-start justify-between gap-4 w-full px-4 py-2">
-                                                    <div className="flex items-start gap-3 flex-1">
-                                                        <MapPin size={36} className="text-primary shrink-0" />
-                                                        <div className="flex-1 min-w-0">
-                                                            <h4 className="font-medium text-sm text-text">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
-                                                            <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
-                                                                <Calendar size={13} className="text-text-muted shrink-0" />
-                                                                <span className="leading-none">
-                                                                    {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
-                                                                        day: "numeric",
-                                                                        month: "short",
-                                                                        year: "2-digit",
-                                                                    })}
-                                                                </span>
+                                                {/* Body: items-center หรือ self-center เพื่อให้อยู่กึ่งกลางแนวตั้ง */}
+                                                <div className="flex items-center gap-3.5 w-full px-4 py-3">
+                                                    {/* ไอคอนอยู่กึ่งกลางตลอดแนวซ้าย */}
+                                                    <div className="shrink-0 p-2 bg-primary/10 rounded-xl">
+                                                        <MapPin size={32} className="text-primary" />
+                                                    </div>
+
+                                                    {/* ฝั่งขวา: รายละเอียดทั้งหมด */}
+                                                    <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                                        <div className="flex items-start justify-between gap-2 w-full">
+                                                            <div className="min-w-0 flex-1">
+                                                                <h4 className="font-medium text-sm text-text truncate">{sample.location?.name || "ไม่ทราบสถานที่"}</h4>
+                                                                <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
+                                                                    <Calendar size={13} className="text-text-muted shrink-0" />
+                                                                    <span className="leading-none">
+                                                                        {new Date(sample.collectedAt).toLocaleDateString("th-TH", {
+                                                                            day: "numeric",
+                                                                            month: "short",
+                                                                            year: "2-digit",
+                                                                        })}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-2 w-full flex-wrap">
-                                                                {readChemValues(sample).map((c) => (
-                                                                    <div
-                                                                        key={c.key}
-                                                                        className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0"
-                                                                    >
-                                                                        <Beaker size={10} className={c.color} />
-                                                                        <span>
-                                                                            {c.abbrev}: {c.value.toFixed(2)}
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
+
+                                                            <div className="shrink-0 flex items-center">
+                                                                <StatusBadge status={sample.status} reviewStatus={sample.reviewStatus} size="sm" />
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="shrink-0 flex flex-col items-end gap-1 mt-0.5">
-                                                        <StatusBadge status={sample.status} reviewStatus={sample.reviewStatus} size="sm" />
+
+                                                        {/* แถวสารเคมี */}
+                                                        <div className="flex items-center gap-2 flex-wrap w-full">
+                                                            {readChemValues(sample).map((c) => (
+                                                                <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
+                                                                    <Beaker size={12} className={c.color} />
+                                                                    <span>
+                                                                        {c.abbrev}: {c.value.toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
