@@ -77,6 +77,49 @@ export function useSubmitSample() {
     };
     const [sessionId, setSessionId] = useState<string>(generateSessionId);
 
+    // ── Background Analysis State ──
+    const analysisPromisesRef = useRef<Record<number, Promise<any>>>({});
+    const analysisAbortControllersRef = useRef<Record<number, AbortController>>({});
+
+    const triggerBackgroundAnalysis = useCallback((paramId: number, file: File) => {
+        const param = systemParameters.find(p => p.id === paramId);
+        if (!param) return;
+
+        // ยกเลิกอันเก่าถ้ามี
+        if (analysisAbortControllersRef.current[paramId]) {
+            analysisAbortControllersRef.current[paramId].abort();
+        }
+
+        const controller = new AbortController();
+        analysisAbortControllersRef.current[paramId] = controller;
+
+        const fd = new FormData();
+        fd.append("image", file);
+        fd.append("parameterName", param.name.toLowerCase());
+
+        const promise = fetch("/api/analyze", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
+            body: fd,
+            signal: controller.signal
+        }).then(async res => {
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `วิเคราะห์สาร ${param.name} ไม่สำเร็จ`);
+            }
+            return res.json();
+        });
+
+        // ดัก error ไว้เพื่อไม่ให้ Unhandled Promise Rejection โชว์ใน console
+        promise.catch(e => {
+            if (e.name !== 'AbortError') {
+                console.error(`Background analysis error for ${param.name}:`, e);
+            }
+        });
+
+        analysisPromisesRef.current[paramId] = promise;
+    }, [systemParameters]);
+
     // เพิ่ม State และ Ref สำหรับเก็บค่าพิกัดดิบทั้งสองฝั่ง
     const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [exifCoords, setExifCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -431,18 +474,29 @@ export function useSubmitSample() {
                 fd.append("image", file);
                 fd.append("parameterName", param.name.toLowerCase());
 
-                const res = await fetch("/api/analyze", {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
-                    body: fd,
-                });
+                let data;
+                if (analysisPromisesRef.current[param.id]) {
+                    try {
+                        data = await analysisPromisesRef.current[param.id];
+                    } catch (e: any) {
+                        if (e.name === 'AbortError') {
+                            throw new Error(`การวิเคราะห์สาร ${param.name} ถูกยกเลิก`);
+                        }
+                        throw e;
+                    }
+                } else {
+                    const res = await fetch("/api/analyze", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
+                        body: fd,
+                    });
 
-                if (!res.ok) {
-                    const errData = await res.json();
-                    throw new Error(errData.error || `วิเคราะห์สาร ${param.name} ไม่สำเร็จ`);
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || `วิเคราะห์สาร ${param.name} ไม่สำเร็จ`);
+                    }
+                    data = await res.json();
                 }
-
-                const data = await res.json();
 
                 // ── ด่านตรวจก่อนรับผล (mirror ลำดับฝั่ง AI: เช็คหลอดทดลองก่อน แล้วค่อยเช็คชนิดสาร) ──
                 const isTestTube = data.isTestTube ?? true;
@@ -619,6 +673,9 @@ export function useSubmitSample() {
     // เคลียร์ผลวิเคราะห์/รูป/ข้อผิดพลาดทั้งหมด กลับไปเริ่มถ่ายภาพใหม่ — ใช้เมื่อผลลัพธ์ไม่ใช่สิ่งที่ต้องการบันทึก
     // คงค่าสถานี/เวลา/toggle สารไว้ตามเดิม (ไม่ต้องกรอกซ้ำ) แต่ออก sessionGroup ใหม่เพราะเป็นการเก็บตัวอย่างรอบใหม่จริง ๆ
     const resetToUpload = () => {
+        Object.values(analysisAbortControllersRef.current).forEach(c => c.abort());
+        analysisAbortControllersRef.current = {};
+        analysisPromisesRef.current = {};
         setResults({});
         setDuplicateChoice({});
         setImageFiles({});
@@ -730,6 +787,7 @@ export function useSubmitSample() {
         resetToUpload,
         clearLocation,
         revertAutoSwitch,
+        triggerBackgroundAnalysis,
 
         gpsCoords,
         exifCoords,
