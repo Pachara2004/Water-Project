@@ -74,7 +74,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                         <MapPin size={24} className="text-text-safe mt-0.5 shrink-0" />
                         <div>
                             <p className="font-medium text-text text-sm">{sample.location.stationName}</p>
-                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[11px] text-text-muted">
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-xs text-text-muted">
                                 <span className="whitespace-nowrap">{sample.location.governingAgency}</span>
                                 {sample.location.province && <span className="whitespace-nowrap">จ.{sample.location.province}</span>}
                                 {sample.location.district && <span className="whitespace-nowrap">อ.{sample.location.district}</span>}
@@ -250,7 +250,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
 
                             {sample.reviewNote && (
                                 <div className="bg-red-50/50 border border-red-100 rounded-lg p-3 my-2">
-                                    <h3 className="text-[11px] font-semibold text-red-700 mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
+                                    <h3 className="text-xs font-semibold text-red-700 mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
                                     <p className="text-xs text-red-600 whitespace-pre-wrap leading-relaxed">{sample.reviewNote}</p>
                                 </div>
                             )}
@@ -268,11 +268,11 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                                 <span className="font-semibold text-amber-600 dark:text-amber-400 text-xs">รอตรวจสอบ</span>
                                             ) : measurement.originalValue !== undefined && measurement.originalValue !== null && measurement.originalValue !== measurement.concentrated ? (
                                                 <>
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                                                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
                                                         <span>ค่าที่ส่ง:</span>
                                                         <span className="line-through decoration-red-400">{measurement.originalValue.toFixed(2)} mg/L</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1.5 text-[11px]">
+                                                    <div className="flex items-center gap-1.5 text-xs">
                                                         <span className="text-teal-700 font-medium">แก้ไขเป็น:</span>
                                                         <span className="font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md">
                                                             {formatMeasuredValue(measurement.concentrated)} mg/L

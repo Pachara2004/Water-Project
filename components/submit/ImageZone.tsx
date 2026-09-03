@@ -1,6 +1,6 @@
 // components/submit/ImageZone.tsx
 import { useRef, useState } from "react";
-import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X } from "lucide-react";
+import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft } from "lucide-react";
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult, VerifyError } from "./types";
 import { SectionHead } from "./SharedAtoms";
@@ -154,7 +154,7 @@ export function ImageZone({
     return (
         <section
             id={`param-zone-${param.id}`}
-            className={`rounded-xl overflow-visible border transition-all duration-300 bg-surface relative ${verifyError ? "border-red-400 ring-1 ring-red-300" : "border-border"}`}
+            className={`rounded-xl overflow-visible border transition-all duration-300 bg-surface relative ${verifyError ? "border-danger ring-1 ring-danger/40" : "border-border"}`}
         >
             <div className="text-sm font-semibold relative">
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
@@ -164,7 +164,7 @@ export function ImageZone({
                             type="button"
                             onClick={() => setShowExampleModal((v) => !v)}
                             aria-label={`ดูตัวอย่างสี ${param.name}`}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                         >
                             <Info size={15} />
                         </button>
@@ -202,7 +202,7 @@ export function ImageZone({
                                                 style={{ backgroundColor: item.color }}
                                                 title={`${item.value} mg/L`}
                                             />
-                                            <span className="text-[11px] font-semibold text-text">{item.value}</span>
+                                            <span className="text-xs font-semibold text-text">{item.value}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -217,10 +217,19 @@ export function ImageZone({
                 )}
             </div>
 
+            {/* สารที่ปิดสวิตช์ไว้จะไม่มีกรอบอัปโหลดให้เห็นเลย จึงต้องบอกว่าเปิดสวิตช์ก่อนถึงจะใส่รูปได้
+                เงื่อนไขตรงกับตอนที่แสดงสวิตช์ (ขั้นอัปโหลด + มี onToggle) ไม่งั้นจะชี้ไปที่ปุ่มที่ไม่มีอยู่ */}
+            {!enabled && step === "upload" && onToggle && (
+                <div className="px-4 py-3 flex items-center gap-2 text-xs text-text-muted">
+                    <ToggleLeft size={15} className="shrink-0" />
+                    <span>เปิดสวิตช์ด้านบนเพื่อถ่ายภาพหรือเลือกรูปของสารนี้</span>
+                </div>
+            )}
+
             {enabled && (
                 <div className="p-4">
                     {!isSaved && measurement?.isSystemUnknown && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200 dark:border-orange-900">
+                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-warning border border-border-warning text-text-warning">
                             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                             <div className="text-xs leading-relaxed font-medium w-full">
                                 <p className="font-semibold mb-0.5">พบสารที่ไม่รู้จักในระบบ</p>
@@ -232,7 +241,7 @@ export function ImageZone({
                     )}
 
                     {verifyError && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">
+                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-danger border border-border-danger text-text-danger">
                             {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}
                             <div className="text-xs leading-relaxed font-medium">
                                 <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "AI ไม่พบหลอดทดลองในภาพ" : "สารไม่ตรงชนิด"}</p>
@@ -245,8 +254,8 @@ export function ImageZone({
                         <div
                             className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${
                                 isLowConf
-                                    ? "border border-border bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200"
-                                    : "border border-border bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200"
+                                    ? "border border-border-danger bg-bg-danger text-text-danger"
+                                    : "border border-border-safe bg-bg-safe text-text-safe"
                             }`}
                         >
                             {(() => {
@@ -265,10 +274,10 @@ export function ImageZone({
                             step === "analyzing"
                                 ? "aspect-square sm:aspect-4/3 md:aspect-video border-slate-700 bg-slate-950 cursor-default"
                                 : displayImgSrc
-                                  ? "aspect-square sm:aspect-4/3 md:aspect-video border-teal-500/30 bg-surface-subtle cursor-pointer"
-                                  : "aspect-square sm:aspect-4/3 border-border hover:border-teal-500/50 bg-surface-subtle cursor-pointer"
+                                  ? "aspect-square sm:aspect-4/3 md:aspect-video border-primary/30 bg-surface-subtle cursor-pointer"
+                                  : "aspect-square sm:aspect-4/3 border-border hover:border-primary/50 bg-surface-subtle cursor-pointer"
                         }
-${!isHistoryView && isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
+${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`}
                     >
                         {step === "analyzing" ? (
                             <>
@@ -291,6 +300,15 @@ ${!isHistoryView && isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                                         <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
                                     </button>
                                 )}
+
+                                {/* ป้ายบอกว่าแตะที่ภาพแล้วเลือกรูปใหม่ได้ — ขึ้นเฉพาะขั้นอัปโหลด ซึ่งเป็นขั้นเดียวที่กรอบภาพรับคลิก
+                                    pointer-events-none เพื่อให้คลิกทะลุไปที่กรอบภาพซึ่งเป็นตัวเปิดแกลเลอรี */}
+                                {step === "upload" && (
+                                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/75 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-md select-none backdrop-blur-xs pointer-events-none whitespace-nowrap">
+                                        <ImagePlus size={13} />
+                                        <span>แตะที่ภาพเพื่อเปลี่ยนรูป</span>
+                                    </div>
+                                )}
                             </>
                         ) : isHistoryView ? (
                             <div className="flex flex-col items-center justify-center gap-2 px-4 text-center py-10 text-text-muted">
@@ -309,7 +327,7 @@ ${!isHistoryView && isLowConf ? "border-red-400 hover:border-red-500" : ""}`}
                                             e.stopPropagation();
                                             cameraInputRef.current?.click();
                                         }}
-                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-primary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-secondary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary transition-all cursor-pointer"
                                     >
                                         <Camera size={15} />
                                         <span>ถ่ายภาพสด</span>

@@ -47,6 +47,7 @@
     --color-surface-muted: var(--color-surface-muted);
     --color-surface-subtle: var(--color-surface-subtle);
 
+    --color-text: var(--color-text);
     --color-text-primary: var(--color-text-primary);
     --color-text-secondary: var(--color-text-secondary);
     --color-text-muted: var(--color-text-muted);
@@ -473,14 +474,14 @@ body.popup-shown {
 
 .app-swal .swal2-title {
     font-family: var(--font-sans);
-    font-size: 1.05rem;
+    font-size: 1.125rem;
     font-weight: 700;
     padding: 0.75rem 0 0;
 }
 
 .app-swal .swal2-html-container {
     font-family: var(--font-sans);
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     color: var(--color-text-secondary);
     margin: 0.5rem 1rem 0;
 }
@@ -512,7 +513,7 @@ body.popup-shown {
     padding: 0.7rem 1rem;
     border-radius: 10px;
     font-family: var(--font-sans);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
 }

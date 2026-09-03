@@ -13,7 +13,7 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step }: D
     return (
         <aside className="hidden md:flex flex-col border-r border-border bg-card-general min-h-full w-52 shrink-0">
             <div className="px-4 py-4 border-b border-border space-y-2">
-                <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted font-bold">Session Info</p>
+                <p className="font-mono text-xs uppercase tracking-widest text-text-muted font-bold">Session Info</p>
                 {[
                     { key: "Session", val: sessionId ? `#${sessionId}` : "—" },
                     { key: "Station", val: locationName || "—" },
@@ -32,7 +32,7 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step }: D
                 ))}
             </div>
             <div className="px-4 py-4 flex-1">
-                <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted font-bold mb-3">Workflow</p>
+                <p className="font-mono text-xs uppercase tracking-widest text-text-muted font-bold mb-3">Workflow</p>
                 <SubmitSteps step={step} orientation="vertical" />
             </div>
         </aside>
@@ -56,7 +56,7 @@ export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentL
             type="button"
             onClick={handleAnalyze}
             disabled={!isAllImagesUploaded || !currentLocationId || isRecommending}
-            className="w-full py-3 px-4 min-h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white shadow-xs cursor-pointer"
+            className="w-full py-3 px-4 min-h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-secondary hover:bg-primary text-white shadow-xs cursor-pointer"
         >
             {isRecommending ? (
                 <>
