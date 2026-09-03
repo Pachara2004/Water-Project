@@ -16,7 +16,6 @@ FROM base AS dev
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci
-RUN npx prisma generate
 
 EXPOSE 3000
 
@@ -53,4 +52,4 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["npm", "run", "npx prisma db push && npm run start"]
+CMD ["npm", "run", "start:prod"]
