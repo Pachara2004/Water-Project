@@ -1,5 +1,5 @@
 // components/submit/NavWorkflow.tsx
-import { Loader2, Camera, Sparkles, MapPin, ToggleLeft } from "lucide-react";
+import { Loader2, Camera, Sparkles, MapPin, ToggleLeft, CloudOff, CloudAlert } from "lucide-react";
 import { SubmitSteps } from "./SubmitSteps";
 
 interface DesktopSidebarProps {
@@ -39,23 +39,30 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step }: D
     );
 }
 
+export type WeatherStatus = "idle" | "loading" | "ready" | "unavailable" | "error";
+
 interface AnalyzeButtonProps {
     activeParameters: Array<{ id: string; [key: string]: any }>;
     imageFiles: Record<string, any>;
     currentLocationId: string | null;
     isRecommending?: boolean;
+    /** ต้องเป็น "ready" เท่านั้นจึงกดวิเคราะห์ได้ — ค่าเริ่มต้น "idle" ทำให้ปุ่มปิดไว้ก่อนเมื่อยังไม่มีใครส่งสถานะมา */
+    weatherStatus?: WeatherStatus;
     handleAnalyze: () => void;
 }
 
-export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentLocationId, isRecommending, handleAnalyze }: AnalyzeButtonProps) {
+export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentLocationId, isRecommending, weatherStatus = "idle", handleAnalyze }: AnalyzeButtonProps) {
     const hasEnabledParam = activeParameters.length > 0;
     const isAllImagesUploaded = hasEnabledParam && activeParameters.every((p) => imageFiles[p.id] !== undefined);
+    // สภาพอากาศถูกบันทึกลงใบตรวจตอน save โดยอิงสถานี+เวลาชุดเดียวกับที่ preview ใช้
+    // ถ้าดึงไม่ได้ตอนนี้ ตอน save ก็จะได้ null เหมือนกัน จึงกันไว้ตั้งแต่ต้นทาง
+    const isWeatherReady = weatherStatus === "ready";
 
     return (
         <button
             type="button"
             onClick={handleAnalyze}
-            disabled={!isAllImagesUploaded || !currentLocationId || isRecommending}
+            disabled={!isAllImagesUploaded || !currentLocationId || isRecommending || !isWeatherReady}
             className="w-full py-3 px-4 min-h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-secondary hover:bg-primary text-white shadow-xs cursor-pointer"
         >
             {isRecommending ? (
@@ -77,6 +84,21 @@ export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentL
                 <>
                     <Camera size={15} />
                     <span>ถ่ายภาพให้ครบทุกสารที่เปิด</span>
+                </>
+            ) : weatherStatus === "loading" ? (
+                <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>กำลังดึงข้อมูลสภาพอากาศ…</span>
+                </>
+            ) : weatherStatus === "unavailable" ? (
+                <>
+                    <CloudOff size={15} />
+                    <span>ไม่พบข้อมูลสภาพอากาศของเวลานี้</span>
+                </>
+            ) : !isWeatherReady ? (
+                <>
+                    <CloudAlert size={15} />
+                    <span>ดึงข้อมูลสภาพอากาศไม่สำเร็จ</span>
                 </>
             ) : (
                 <>

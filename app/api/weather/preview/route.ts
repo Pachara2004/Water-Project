@@ -51,13 +51,17 @@ export async function GET(request: NextRequest) {
             });
         }
 
+        // "ไม่มีข้อมูลของชั่วโมงนี้" (unavailable) ต่างจาก "ระบบพัง" (error) ที่ตอบ 502 ด้านล่าง
+        // ฝั่งหน้าส่งตรวจใช้ความต่างนี้เลือกข้อความ ทั้งที่บล็อกปุ่มวิเคราะห์เหมือนกัน
         return NextResponse.json({
+            status: weatherCache ? "ready" : "unavailable",
             airTemperature: weatherCache?.temperature ?? null,
             rainAccumulation: weatherCache?.rainVolume ?? null,
             weatherCondCode: weatherCache?.weatherCondition ?? null,
         });
     } catch (error) {
+        // เดิมกลืน error เป็น 200 พร้อมค่า null ทั้งก้อน ทำให้แยกจากกรณีไม่มีข้อมูลจริงไม่ได้
         console.error("Preview weather error:", error);
-        return NextResponse.json({ airTemperature: null, rainAccumulation: null, weatherCondCode: null });
+        return NextResponse.json({ status: "error", airTemperature: null, rainAccumulation: null, weatherCondCode: null }, { status: 502 });
     }
 }

@@ -236,32 +236,65 @@ export function useSubmitSample() {
         weatherCondCode: number | null;
     } | null>(null);
 
+    /**
+     * สถานะการดึงสภาพอากาศของรอบที่กำลังกรอกอยู่ — ปุ่มวิเคราะห์รอสถานะนี้เป็น "ready" ก่อนจึงกดได้
+     *
+     * "unavailable" = เซิร์ฟเวอร์ตอบแล้วแต่ไม่มีข้อมูลของสถานี/ชั่วโมงนั้น
+     * "error" = ยิงไม่ถึงหรือเซิร์ฟเวอร์พัง
+     * ทั้งคู่บล็อกปุ่มเหมือนกัน แต่แยกไว้เพราะข้อความที่ผู้ใช้ควรเห็นต่างกัน
+     */
+    const [weatherStatus, setWeatherStatus] = useState<"idle" | "loading" | "ready" | "unavailable" | "error">("idle");
+    // นับขึ้นเพื่อสั่งให้ effect ดึงใหม่โดยไม่ต้องแตะสถานี/เวลา (ปุ่ม "ลองใหม่")
+    const [weatherRetryToken, setWeatherRetryToken] = useState(0);
+
+    const retryWeather = useCallback(() => setWeatherRetryToken((n) => n + 1), []);
+
     // 🟢 Effect ดึงสภาพอากาศอิงตามสถานที่และเวลาที่เลือก
+    //
+    // หน่วง 500ms ก่อนยิงจริง เพราะช่อง datetime-local ส่ง onChange ทุกครั้งที่แก้ตัวเลข
+    // และทุก cache miss ฝั่ง API จะไป backfill ย้อนหลัง 60 วัน — ยิงรัวจะทำให้ปุ่มวิเคราะห์กะพริบตามการพิมพ์
     useEffect(() => {
         if (!currentLocationId || !collectionTime) {
             setWeatherData(null);
+            setWeatherStatus("idle");
             return;
         }
 
+        // ล้างค่าเดิมทันทีที่สถานี/เวลาเปลี่ยน ไม่ให้อากาศของรอบก่อนหน้าค้างบนจอ
+        // และไม่ให้ปุ่มวิเคราะห์ปลดล็อกด้วยค่าที่ไม่ใช่ของรอบนี้
+        setWeatherData(null);
+        setWeatherStatus("loading");
+
         const controller = new AbortController();
 
-        fetch(`/api/weather/preview?locationId=${currentLocationId}&collectionTime=${encodeURIComponent(collectionTime)}`, {
-            signal: controller.signal,
-        })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((data) => {
-                if (data) {
-                    setWeatherData(data);
-                }
+        const timer = setTimeout(() => {
+            fetch(`/api/weather/preview?locationId=${currentLocationId}&collectionTime=${encodeURIComponent(collectionTime)}`, {
+                signal: controller.signal,
             })
-            .catch((err) => {
-                if (err.name !== "AbortError") {
+                .then((res) => {
+                    if (!res.ok) throw new Error(`weather preview responded ${res.status}`);
+                    return res.json();
+                })
+                .then((data) => {
+                    // ต้องครบทั้งสามค่าถึงนับว่าใช้ได้ — ขาดตัวใดตัวหนึ่งแปลว่าแถวใน weather_data ไม่สมบูรณ์
+                    // และค่าที่ขาดจะถูกบันทึกเป็น null ตอน save ด้วย
+                    const isComplete = !!data && data.airTemperature !== null && data.rainAccumulation !== null && data.weatherCondCode !== null;
+                    setWeatherData(isComplete ? data : null);
+                    setWeatherStatus(isComplete ? "ready" : "unavailable");
+                })
+                .catch((err) => {
+                    if (err.name === "AbortError") return;
                     console.error("Fetch weather preview error:", err);
-                }
-            });
+                    setWeatherData(null);
+                    setWeatherStatus("error");
+                });
+        }, 500);
 
-        return () => controller.abort();
-    }, [currentLocationId, collectionTime]);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [currentLocationId, collectionTime, weatherRetryToken]);
 
     useEffect(() => {
         if (!currentLocationId || !allLocations.length) return;
@@ -776,6 +809,8 @@ export function useSubmitSample() {
         allLocations,
         searchQuery,
         weatherData,
+        weatherStatus,
+        retryWeather,
         setSearchQuery,
         collectionTime,
         setCollectionTime,
