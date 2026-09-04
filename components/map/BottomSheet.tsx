@@ -11,6 +11,7 @@ import TimeSeriesChart, { type TimeSeriesDataPoint, type TimeSeriesSeries } from
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
 import { chemNameFromValueKey, chemStrokeColor, readChemValues } from "@/lib/chemLabels";
+import { parameterIconClass } from "@/lib/chartColors";
 import { useParameterUnits } from "@/lib/hooks/useParameterUnits";
 
 export interface BottomSheetLocation {
@@ -271,16 +272,13 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             const diff = prevVal !== null ? currentVal - prevVal : 0;
             const cleanLabel = key.replace(/Val(ue)?$/i, "");
 
-            let colorClass = "text-teal-500";
-            if (cleanLabel.toLowerCase().includes("ammonia")) colorClass = "text-purple-500";
-            if (cleanLabel.toLowerCase().includes("nitrate")) colorClass = "text-blue-500";
-
             return {
                 key,
                 currentVal,
                 diff,
                 displayLabel: cleanLabel.toUpperCase(),
-                colorClass,
+                // สีเดียวกับเส้นของสารนี้ในกราฟที่อยู่ใต้การ์ด — ทั้งคู่มาจาก lib/chartColors.ts
+                colorClass: parameterIconClass(cleanLabel),
                 hasPrev: prevVal !== null,
                 collectedAt: data.collectedAt,
             };

@@ -224,7 +224,9 @@ export async function GET(request: NextRequest) {
                     allParameters.forEach((p) => {
                         const pName = p.name.toLowerCase();
                         if (pName.includes(paramName) || paramName.includes(pName)) {
-                            matchedParamName = p.name;
+                            // targetColumn ว่าง = includes("") เป็นจริงกับสารทุกตัว จำชื่อไว้ไม่ได้
+                            // ไม่งั้นสีการ์ดจะกลายเป็นสีของสารตัวสุดท้ายที่วนเจอ ซึ่งไม่ได้เกี่ยวกับการ์ดใบนั้นเลย
+                            if (paramName) matchedParamName = p.name;
                             const g = measurementByParamId.get(p.id);
                             if (g && g._count.value > 0 && g._avg.value !== null) {
                                 sum += g._avg.value * g._count.value;
