@@ -168,7 +168,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
             const resData = await res.json();
             if (resData.success) {
-                showToast("ส่งคำร้องขอเข้าระบบเรียบร้อยแล้ว รอการอนุมัติ", "success");
+                // ขอสิทธิ์ผู้ใช้งานทั่วไป = สิทธิ์ที่ถืออยู่แล้ว ฝั่ง API จึงไม่สร้างคำร้อง ใช้งานได้ทันที
+                showToast(resData.needsApproval ? "ส่งคำร้องขอเข้าระบบเรียบร้อยแล้ว รอการอนุมัติ" : "ลงทะเบียนเรียบร้อยแล้ว เริ่มใช้งานได้ทันที", "success");
                 setUser(resData.user);
             }
         } catch (err: unknown) {
