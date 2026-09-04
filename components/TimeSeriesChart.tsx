@@ -3,18 +3,30 @@
 import React from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
+/** เส้นกราฟ 1 เส้น = สาร 1 ตัว — ผู้เรียกกำหนดเองว่ามีสารอะไรบ้าง กราฟไม่ผูกกับชื่อสารใด ๆ */
+export interface TimeSeriesSeries {
+    /** คีย์ที่ใช้อ่านค่าจากแต่ละจุดข้อมูล */
+    key: string;
+    label: string;
+    color: string;
+}
+
+/**
+ * 1 จุดบนแกนเวลา — นอกจาก `date` แล้วที่เหลือคือค่าของแต่ละสาร
+ * null = รอบนั้นไม่ได้วัดสารตัวนี้ กราฟจะเว้นช่องให้ (ห้ามส่ง 0 แทน เพราะจะกลายเป็นผลตรวจจริง)
+ */
 export interface TimeSeriesDataPoint {
     date: string;
-    phosphate: number;
-    ammonia: number;
+    [seriesKey: string]: string | number | null;
 }
 
 interface TimeSeriesChartProps {
     data: TimeSeriesDataPoint[];
+    series: TimeSeriesSeries[];
 }
 
-export default function TimeSeriesChart({ data }: TimeSeriesChartProps) {
-    if (!data || data.length === 0) {
+export default function TimeSeriesChart({ data, series }: TimeSeriesChartProps) {
+    if (!data || data.length === 0 || series.length === 0) {
         return (
             <div className="flex items-center justify-center h-64 bg-surface-subtle border border-border/40 rounded-2xl text-text-muted text-xs font-bold font-mono uppercase tracking-wider">
                 ไม่มีข้อมูลย้อนหลังในสถานีนี้
@@ -51,6 +63,8 @@ export default function TimeSeriesChart({ data }: TimeSeriesChartProps) {
                                 fontSize: "11px",
                                 fontWeight: "bold",
                             }}
+                            // ค่าสารบางตัวมีเกณฑ์ระดับ 0.015 mg/L จึงต้องโชว์ถึง 3 ตำแหน่ง ไม่งั้นตัวเลขในกล่องจะเท่ากันหมด
+                            formatter={(value) => (typeof value === "number" ? value.toLocaleString("th-TH", { maximumFractionDigits: 3 }) : value)}
                         />
                         <Legend
                             wrapperStyle={{
@@ -59,8 +73,20 @@ export default function TimeSeriesChart({ data }: TimeSeriesChartProps) {
                                 paddingTop: "10px",
                             }}
                         />
-                        <Line type="monotone" name="ฟอสเฟต (mg/L)" dataKey="phosphate" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6", strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                        <Line type="monotone" name="แอมโมเนีย (mg/L)" dataKey="ammonia" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3, fill: "#ef4444", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                        {/* connectNulls={false} เพื่อให้รอบที่ไม่ได้วัดสารตัวนั้นเป็นช่องว่าง ไม่ใช่เส้นลากข้ามเหมือนมีค่าต่อเนื่อง */}
+                        {series.map((s) => (
+                            <Line
+                                key={s.key}
+                                type="monotone"
+                                name={s.label}
+                                dataKey={s.key}
+                                stroke={s.color}
+                                strokeWidth={2.5}
+                                connectNulls={false}
+                                dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
+                                activeDot={{ r: 5 }}
+                            />
+                        ))}
                     </LineChart>
                 </ResponsiveContainer>
             </div>

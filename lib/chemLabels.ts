@@ -22,10 +22,25 @@ export function chemAbbrev(name: string): string {
 // ชุดสีไอคอนของป้าย — เลือกด้วย hash ของชื่อสาร สารเดิมจึงได้สีเดิมทุกครั้งที่เรนเดอร์
 const CHEM_ICON_COLORS = ["text-teal-500", "text-purple-500", "text-amber-500", "text-sky-500", "text-rose-500", "text-lime-600"];
 
-export function chemIconColor(name: string): string {
+// สีเดียวกับ CHEM_ICON_COLORS แต่เป็นค่าสี CSS จริง เรียงดัชนีให้ตรงกันแบบหนึ่งต่อหนึ่ง
+// จำเป็นเพราะ SVG (เส้นกราฟ) รับ Tailwind class ไม่ได้ ต้องการค่าสีตรง ๆ
+const CHEM_STROKE_COLORS = ["#14b8a6", "#a855f7", "#f59e0b", "#0ea5e9", "#f43f5e", "#65a30d"];
+
+// ดัชนีสีประจำสาร — แยกออกมาให้ไอคอนกับเส้นกราฟใช้สูตรเดียวกัน
+// ถ้าคำนวณแยกกัน สารตัวเดียวจะได้คนละสีในสองที่บนจอเดียวกัน
+function chemColorIndex(name: string): number {
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-    return CHEM_ICON_COLORS[hash % CHEM_ICON_COLORS.length];
+    return hash % CHEM_ICON_COLORS.length;
+}
+
+export function chemIconColor(name: string): string {
+    return CHEM_ICON_COLORS[chemColorIndex(name)];
+}
+
+/** สีเส้นกราฟประจำสาร — คู่ขนานกับ `chemIconColor` และให้เฉดเดียวกันเสมอ */
+export function chemStrokeColor(name: string): string {
+    return CHEM_STROKE_COLORS[chemColorIndex(name)];
 }
 
 /**

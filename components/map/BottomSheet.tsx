@@ -7,9 +7,11 @@ import StatusBadge from "./StatusBadge";
 import { evaluateAgainstLocationType } from "@/lib/standards";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
-import TimeSeriesChart from "../TimeSeriesChart";
+import TimeSeriesChart, { type TimeSeriesDataPoint, type TimeSeriesSeries } from "../TimeSeriesChart";
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
+import { chemNameFromValueKey, chemStrokeColor, readChemValues } from "@/lib/chemLabels";
+import { useParameterUnits } from "@/lib/hooks/useParameterUnits";
 
 export interface BottomSheetLocation {
     id: string;
@@ -53,6 +55,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const router = useRouter();
     const { currentUser } = useAppStore();
     const { locationTypes } = useLocationTypes();
+    const { unitByName } = useParameterUnits();
     const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("collapsed");
 
     const isDraggingRef = useRef(false);
@@ -173,44 +176,65 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         }
     }, [getSnapHeight, sheetHeight]);
 
-    const chartData = (() => {
+    /**
+     * ข้อมูลกราฟแนวโน้ม — เส้นกราฟงอกตามสารที่พบจริงในข้อมูล ไม่ผูกกับฟอสเฟต/แอมโมเนีย
+     *
+     * payload ของสถานีแบนค่าสารเป็นคีย์ `${ชื่อสาร}Val` (ดู /api/locations) และ "ไม่สร้างคีย์"
+     * เมื่อรอบนั้นไม่มีค่าที่วัดได้ ที่นี่จึงต้องแปลงคีย์ที่หายไปเป็น null ไม่ใช่ 0
+     * มิฉะนั้นรอบที่ไม่ได้วัดจะถูกวาดเป็นจุด 0.00 เหมือนวัดได้ศูนย์จริง
+     */
+    const { chartSeries, chartData } = ((): { chartSeries: TimeSeriesSeries[]; chartData: TimeSeriesDataPoint[] } => {
         const samplesArr = location?.recentSamples || [];
-        if (samplesArr.length === 0) return [];
+        if (samplesArr.length === 0) return { chartSeries: [], chartData: [] };
 
         // เรียงลำดับจาก "เก่าสุดไปหาล่าสุด" เพื่อให้แกน X ของกราฟวิ่งตามลำดับเวลาถูกต้อง
         const sortedSamples = [...samplesArr].sort((a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime());
 
-        return sortedSamples.map((sample: any) => {
-            let pVal = 0;
-            let aVal = 0;
-
-            // STEP 1: ดึงค่าวัดจาก measurements array หากมีข้อมูล
-            if (Array.isArray(sample.measurements) && sample.measurements.length > 0) {
-                sample.measurements.forEach((m: any) => {
-                    const paramName = (m.parameter?.name || "").toLowerCase();
-                    if (paramName.includes("phosphate") || paramName.includes("p")) {
-                        pVal = Number(m.value || 0);
-                    }
-                    if (paramName.includes("ammonia") || paramName.includes("n")) {
-                        aVal = Number(m.value || 0);
-                    }
-                });
-            } else {
-                // Fallback ดึงจาก Property ก้อนใหญ่
-                pVal = Number(sample.phosphateVal ?? sample.phosphateValue ?? 0);
-                aVal = Number(sample.ammoniaVal ?? sample.ammoniaValue ?? 0);
+        // รวมชื่อสารที่โผล่ในช่วงเวลาที่กราฟครอบคลุม — สารที่เพิ่งเริ่มเก็บกลางทางก็ได้เส้นของตัวเอง
+        const chemNames = new Set<string>();
+        for (const sample of sortedSamples) {
+            for (const [key, raw] of Object.entries(sample as Record<string, unknown>)) {
+                const name = chemNameFromValueKey(key);
+                if (!name) continue;
+                if (raw === null || raw === undefined || raw === "") continue;
+                if (!Number.isFinite(Number(raw))) continue;
+                chemNames.add(name.toLowerCase());
             }
+        }
 
-            return {
+        // เรียงตามชื่อให้ลำดับเส้นและสีคงที่ ไม่สลับไปมาระหว่างการเปิดสถานีแต่ละครั้ง
+        const chartSeries = Array.from(chemNames)
+            .sort()
+            .map((name) => {
+                const unit = unitByName.get(name);
+                return {
+                    key: name,
+                    label: unit ? `${name.toUpperCase()} (${unit})` : name.toUpperCase(),
+                    color: chemStrokeColor(name),
+                };
+            });
+
+        const chartData = sortedSamples.map((sample: any) => {
+            const row: TimeSeriesDataPoint = {
                 date: new Date(sample.collectedAt).toLocaleDateString("th-TH", {
                     day: "numeric",
                     month: "short",
                 }),
-                // STEP 2: บังคับแปลงเป็นทศนิยม 2 ตำแหน่ง
-                phosphate: Number(pVal.toFixed(2)),
-                ammonia: Number(aVal.toFixed(2)),
             };
+
+            for (const name of chemNames) {
+                const raw = sample[`${name}Val`] ?? sample[`${name}Value`];
+                const num = raw === null || raw === undefined || raw === "" ? NaN : Number(raw);
+                // ส่งค่าดิบเข้ากราฟ ไม่ปัดทศนิยมที่ชั้นข้อมูล — เกณฑ์ฟอสเฟตต่ำถึง 0.015 mg/L
+                // การปัดเหลือ 2 ตำแหน่งทำให้ 0.012 กับ 0.015 กลายเป็นค่าเดียวกันบนเส้นกราฟ
+                // การจัดรูปแบบตัวเลขไปทำที่ tooltip แทน
+                row[name] = Number.isFinite(num) ? num : null;
+            }
+
+            return row;
         });
+
+        return { chartSeries, chartData };
     })();
 
     const chemicalItems = (() => {
@@ -221,20 +245,16 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         const jigsawMap = new Map<string, { currentVal: number; prevVal: number | null; collectedAt: string }>();
 
         sortedSamples.forEach((sample) => {
-            if (Array.isArray(sample.measurements) && sample.measurements.length > 0) {
-                sample.measurements.forEach((m: any) => {
-                    const paramName = m.parameter?.name?.toLowerCase();
-                    if (!paramName) return;
-                    // ไม่มีค่าที่วัดได้ → ข้ามไปเลย Number(null) เป็น 0 ซึ่งจะถูกวาดเป็นผลตรวจจริงบนการ์ด
-                    if (m.value === null || m.value === undefined) return;
-                    const key = `${paramName}Val`;
-                    const val = Number(m.value);
+            Object.keys(sample)
+                .filter((key) => (key.endsWith("Val") || key.endsWith("Value")) && sample[key] !== undefined && sample[key] !== null)
+                .forEach((key) => {
+                    const val = Number(sample[key]);
 
                     if (!jigsawMap.has(key)) {
                         jigsawMap.set(key, {
                             currentVal: val,
                             prevVal: null,
-                            collectedAt: sample.collectionTime || sample.collectedAt,
+                            collectedAt: sample.collectedAt,
                         });
                     } else {
                         const existing = jigsawMap.get(key)!;
@@ -243,26 +263,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         }
                     }
                 });
-            } else {
-                Object.keys(sample)
-                    .filter((key) => (key.endsWith("Val") || key.endsWith("Value")) && sample[key] !== undefined && sample[key] !== null)
-                    .forEach((key) => {
-                        const val = Number(sample[key]);
-
-                        if (!jigsawMap.has(key)) {
-                            jigsawMap.set(key, {
-                                currentVal: val,
-                                prevVal: null,
-                                collectedAt: sample.collectedAt,
-                            });
-                        } else {
-                            const existing = jigsawMap.get(key)!;
-                            if (existing.prevVal === null && Math.abs(existing.currentVal - val) > 0.0001) {
-                                existing.prevVal = val;
-                            }
-                        }
-                    });
-            }
         });
 
         return Array.from(jigsawMap.entries()).map(([key, data]) => {
@@ -349,17 +349,10 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     );
     const modeStatus = Object.keys(statusCounts).length > 0 ? Object.keys(statusCounts).reduce((a, b) => (statusCounts[a] > statusCounts[b] ? a : b), "SAFE") : null;
 
-    const latestValues =
-        location.latestByParameter && location.latestByParameter.length > 0
-            ? location.latestByParameter.map((m) => ({ parameterId: m.parameterId, value: m.value }))
-            : chemicalItems.map((item) => {
-                  const paramMeta = (location.recentSamples || []).flatMap((s) => s.measurements || []).find((m) => m.parameter?.name?.toLowerCase() === item.displayLabel.toLowerCase());
-
-                  return {
-                      parameterId: paramMeta?.parameterId ?? 0,
-                      value: item.currentVal,
-                  };
-              });
+    // เกณฑ์ผูกกับสารด้วย parameterId ซึ่งมีมากับ latestByParameter เท่านั้น
+    // payload ที่แบนเป็นคีย์ `${ชื่อสาร}Val` ไม่มี id ติดมา จึงเทียบเกณฑ์จากมันไม่ได้
+    // ไม่มี latestByParameter = เทียบไม่ได้ ให้ซ่อนตารางไปเลย ดีกว่าโชว์ทุกแถวว่า "ตัดสินไม่ได้"
+    const latestValues = (location.latestByParameter || []).map((m) => ({ parameterId: m.parameterId, value: m.value }));
     const comparisonRows: ComparisonRow[] =
         latest && locationTypes.length > 0 && latestValues.length > 0
             ? locationTypes.map((type) => ({
@@ -534,21 +527,11 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                 .reverse()
                                                 .slice(0, 5)
                                                 .map((s, idx) => {
-                                                    let paramValues: Array<{ name: string; val: number }> = [];
-
-                                                    if (Array.isArray(s.measurements) && s.measurements.length > 0) {
-                                                        paramValues = s.measurements
-                                                            .filter((m: any) => m.parameter?.name && m.value !== null && m.value !== undefined)
-                                                            .map((m: any) => ({
-                                                                name: m.parameter.name.toUpperCase(),
-                                                                val: Number(m.value),
-                                                            }));
-                                                    } else {
-                                                        const pVal = s.phosphateVal ?? s.phosphateValue ?? null;
-                                                        const aVal = s.ammoniaVal ?? s.ammoniaValue ?? null;
-                                                        if (pVal !== null) paramValues.push({ name: "PHOSPHATE", val: Number(pVal) });
-                                                        if (aVal !== null) paramValues.push({ name: "AMMONIA", val: Number(aVal) });
-                                                    }
+                                                    // อ่านสารทุกตัวที่มีค่าในรอบนั้นจากคีย์แบน — ตัวที่ไม่มีค่าถูกตัดออกให้แล้ว
+                                                    const paramValues = readChemValues(s).map((reading) => ({
+                                                        name: reading.name.toUpperCase(),
+                                                        val: reading.value,
+                                                    }));
 
                                                     return (
                                                         <div
@@ -605,7 +588,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                         {(currentUser?.role !== "guest" || !currentUser?.role) && chartData.length > 0 && (
                             <div className="bg-card-general rounded-2xl mt-4">
-                                <TimeSeriesChart data={chartData} />
+                                <TimeSeriesChart data={chartData} series={chartSeries} />
                             </div>
                         )}
 
