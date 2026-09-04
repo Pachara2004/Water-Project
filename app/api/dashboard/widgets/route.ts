@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
+import { STATUS_COLOR, parameterColor } from "@/lib/chartColors";
 import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters, toThaiWallClock, fromThaiWallClock, getThaiHour } from "@/lib/sampleFilters";
 
 export async function GET(request: NextRequest) {
@@ -183,13 +184,13 @@ export async function GET(request: NextRequest) {
                         // การ์ดความปลอดภัยแสดงเป็น "อัตราส่วน %" ของตัวอย่างที่ผ่านเกณฑ์ SAFE แทนการนับจำนวนดิบ
                         finalValue = safeRateValue;
                         unit = "%";
-                        color = "#10b981";
+                        color = STATUS_COLOR.safe;
                     } else if (w.filterValue === "danger" || w.targetColumn === "danger" || w.title.includes("วิกฤต") || (w.title.includes("อันตราย") && !w.title.includes("เฝ้าระวัง"))) {
                         finalValue = statusCountMap["danger"] || 0;
-                        color = "#ef4444";
+                        color = STATUS_COLOR.danger;
                     } else if (w.filterValue === "warning" || w.targetColumn === "warning" || w.title.includes("เฝ้าระวัง")) {
                         finalValue = statusCountMap["warning"] || 0;
-                        color = "#f59e0b"; // amber ตาม semantics SAFE/WARNING/DANGER
+                        color = STATUS_COLOR.warning;
                     } else {
                         finalValue = totalSamples;
                     }
@@ -218,9 +219,12 @@ export async function GET(request: NextRequest) {
                     let sum = 0,
                         count = 0;
 
+                    let matchedParamName: string | null = null;
+
                     allParameters.forEach((p) => {
                         const pName = p.name.toLowerCase();
                         if (pName.includes(paramName) || paramName.includes(pName)) {
+                            matchedParamName = p.name;
                             const g = measurementByParamId.get(p.id);
                             if (g && g._count.value > 0 && g._avg.value !== null) {
                                 sum += g._avg.value * g._count.value;
@@ -232,9 +236,11 @@ export async function GET(request: NextRequest) {
                     // ปัด 4 ตำแหน่งเหมือนกราฟ temporal/trend ด้านล่าง — phosphate ค่าปกติ ~0.001-0.02 มก./ล.
                     // ปัดแค่ 2 ตำแหน่งจะกลายเป็น 0.00 เกือบทุกครั้ง (ดูคอมเมนต์ที่ temporalData/trendsData)
                     finalValue = count > 0 ? Number((sum / count).toFixed(4)) : 0;
-                    // สีเดียวกับที่ trendConfig.lines/Correlation ใช้แทนสารนี้ทั้งหน้า (Ammonia=amber, Phosphate=indigo) กันสีไม่ตรงกันข้ามกราฟ
-                    if (w.title.includes("NH3") || w.title.includes("แอมโมเนีย")) color = "#f59e0b";
-                    if (w.title.includes("PO4") || w.title.includes("ฟอสเฟต")) color = "#6366f1";
+                    // สีประจำสารมาจาก lib/chartColors.ts ที่เดียว กันสีไม่ตรงกันข้ามกราฟ
+                    // เลือกจาก parameterId ของ widget ก่อน แล้วตกไปใช้สารที่จับคู่ได้จาก targetColumn
+                    // เดิมอ่านจากชื่อการ์ด (w.title.includes("NH3")) ซึ่งพังทันทีที่แอดมินเปลี่ยนชื่อการ์ด
+                    const colorParamName = (w.parameterId ? allParameters.find((p) => p.id === w.parameterId)?.name : null) ?? matchedParamName;
+                    if (colorParamName) color = parameterColor(colorParamName);
                 }
 
                 return {
@@ -583,8 +589,8 @@ export async function GET(request: NextRequest) {
                     ...(phosphateMax !== null ? [{ value: phosphateMax, color: "#a855f7", label: `Max Phosphate (${phosphateMax})` }] : []),
                 ],
                 lines: [
-                    { key: "ammonia", name: "Ammonia", color: "#f59e0b" },
-                    { key: "phosphate", name: "Phosphate", color: "#6366f1" },
+                    { key: "ammonia", name: "Ammonia", color: parameterColor("ammonia") },
+                    { key: "phosphate", name: "Phosphate", color: parameterColor("phosphate") },
                 ],
             },
             trends: trendsData,

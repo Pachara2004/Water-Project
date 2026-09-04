@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, PieChart, Pie, Cell, ReferenceLine, BarChart } from "recharts";
 import { Activity, Sun, Moon, MapPin, Building2, AlertTriangle, TrendingUp, ShieldCheck, Beaker, CloudRain } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { STATUS_COLOR, parameterColor } from "@/lib/chartColors";
 
 export interface SampleItem {
     id: number;
@@ -516,8 +517,8 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                                         }}
                                     />
                                     <Bar yAxisId="right" dataKey="Rainfall" name="ฝนตกเฉลี่ย (mm)" fill="#38BDF8" opacity={0.4} radius={[4, 4, 0, 0]} barSize={16} />
-                                    <Line yAxisId="left" type="monotone" dataKey="Phosphate" name="Phosphate" stroke="#0052FF" strokeWidth={2} dot={{ r: 1.5 }} />
-                                    <Line yAxisId="left" type="monotone" dataKey="Ammonia" name="Ammonia" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 1.5 }} />
+                                    <Line yAxisId="left" type="monotone" dataKey="Phosphate" name="Phosphate" stroke={parameterColor("phosphate")} strokeWidth={2} dot={{ r: 1.5 }} />
+                                    <Line yAxisId="left" type="monotone" dataKey="Ammonia" name="Ammonia" stroke={parameterColor("ammonia")} strokeWidth={2} dot={{ r: 1.5 }} />
                                 </ComposedChart>
                             </ResponsiveContainer>
                         ) : (
@@ -573,9 +574,9 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                                 }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ fontSize: "11px" }} />
-                            <Bar dataKey="ปลอดภัย" fill="#10B981" radius={[4, 4, 0, 0]} barSize={24} />
-                            <Bar dataKey="เฝ้าระวัง" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={24} />
-                            <Bar dataKey="อันตราย" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={24} />
+                            <Bar dataKey="ปลอดภัย" fill={STATUS_COLOR.safe} radius={[4, 4, 0, 0]} barSize={24} />
+                            <Bar dataKey="เฝ้าระวัง" fill={STATUS_COLOR.warning} radius={[4, 4, 0, 0]} barSize={24} />
+                            <Bar dataKey="อันตราย" fill={STATUS_COLOR.danger} radius={[4, 4, 0, 0]} barSize={24} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -625,8 +626,8 @@ export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) 
                                     }}
                                 />
                                 <Legend iconType="circle" wrapperStyle={{ fontSize: "11px" }} />
-                                <Bar dataKey="PO4 แกว่ง" fill="#0052FF" radius={[4, 4, 0, 0]} barSize={20} />
-                                <Bar dataKey="NH3 แกว่ง" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={20} />
+                                <Bar dataKey="PO4 แกว่ง" fill={parameterColor("phosphate")} radius={[4, 4, 0, 0]} barSize={20} />
+                                <Bar dataKey="NH3 แกว่ง" fill={parameterColor("ammonia")} radius={[4, 4, 0, 0]} barSize={20} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (

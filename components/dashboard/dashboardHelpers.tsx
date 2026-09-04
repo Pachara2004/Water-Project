@@ -4,6 +4,7 @@ import { useRef, useState, useMemo, useDeferredValue } from "react";
 import { useAppStore } from "@/lib/store";
 import { LucideCalendarDays, LucideTrendingUp, LucideTrendingDown, LucideArrowRight } from "lucide-react";
 import { ChartInfoButton } from "@/components/dashboard/chartGuides";
+import { parameterColor } from "@/lib/chartColors";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
 export function toISODate(d: Date): string {
@@ -50,8 +51,9 @@ export function chartTokens(isDark: boolean) {
     };
 }
 
-// สีประจำสารเคมี — ใช้ตัวเดียวกับที่ WaterTrendChart ใช้ (trendConfig.lines) ให้สื่อความหมายตรงกันทั้งหน้า ไม่ใช่คนละสีในแต่ละกราฟ
-export const CHEM_COLOR: Record<"nh3" | "po4", string> = { nh3: "#f59e0b", po4: "#6366f1" };
+// สีประจำสารเคมี — ค่าจริงอยู่ที่ lib/chartColors.ts ที่เดียว ใช้ร่วมกับกราฟบนแผนที่และการ์ด
+// คีย์ nh3/po4 เป็นชื่อที่หน้าแดชบอร์ดใช้เรียกสารสองตัวนี้ ไม่ใช่ชื่อในตาราง `parameters`
+export const CHEM_COLOR: Record<"nh3" | "po4", string> = { nh3: parameterColor("ammonia"), po4: parameterColor("phosphate") };
 
 // 0–1 → คู่ hex ต่อท้ายสี (#RRGGBBAA) สำหรับใช้ใน CSS gradient ที่รับ fill-opacity แยกไม่ได้แบบ SVG
 export function alphaHex(a: number): string {
