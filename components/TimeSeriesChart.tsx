@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 /** เส้นกราฟ 1 เส้น = สาร 1 ตัว — ผู้เรียกกำหนดเองว่ามีสารอะไรบ้าง กราฟไม่ผูกกับชื่อสารใด ๆ */
@@ -26,6 +26,28 @@ interface TimeSeriesChartProps {
 }
 
 export default function TimeSeriesChart({ data, series }: TimeSeriesChartProps) {
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    /**
+     * บนจอสัมผัส recharts ค้าง tooltip ไว้หลังแตะจุดข้อมูล ไม่มีเหตุการณ์ "เอาเมาส์ออก" มาปิดให้
+     * แตะที่อื่นนอกกราฟจึงต้องปิดเอง — `active={false}` คือการสั่งซ่อนถาวรตาม API ของ recharts
+     * ส่วน `undefined` คือคืนสิทธิ์ให้ recharts คุมเองตามปกติ
+     */
+    const [dismissed, setDismissed] = useState(false);
+
+    useEffect(() => {
+        const handlePointerDown = (e: PointerEvent) => {
+            const wrapper = wrapperRef.current;
+            if (!wrapper) return;
+            setDismissed(!wrapper.contains(e.target as Node));
+        };
+
+        // ดักที่ capture phase เพื่อให้ทำงานก่อนตัวจัดการของ recharts และของ bottom sheet
+        // และไม่หลุดถ้าวันหลังมีใครใส่ stopPropagation ระหว่างทาง
+        document.addEventListener("pointerdown", handlePointerDown, true);
+        return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+    }, []);
+
     if (!data || data.length === 0 || series.length === 0) {
         return (
             <div className="flex items-center justify-center h-64 bg-surface-subtle border border-border/40 rounded-2xl text-text-muted text-xs font-bold font-mono uppercase tracking-wider">
@@ -36,7 +58,14 @@ export default function TimeSeriesChart({ data, series }: TimeSeriesChartProps) 
 
     return (
         // ล็อกความสูง h-[280px] ที่ตัวนอกสุดเพื่อเคลียร์บั๊ก ResponsiveContainer หดเหลือ 0px ของ Recharts
-        <div className="w-full h-70 mt-5 p-4 bg-surface border border-border rounded-2xl ">
+        // onPointerMove ปลดล็อกให้เมาส์ที่ลอยกลับเข้ามาเห็น tooltip ได้อีก โดยไม่ต้องกดก่อน
+        <div
+            ref={wrapperRef}
+            onPointerMove={() => {
+                if (dismissed) setDismissed(false);
+            }}
+            className="w-full h-70 mt-5 p-4 bg-surface border border-border rounded-2xl "
+        >
             <h3 className="text-sm font-semibold text-primary mb-4 text-center">แนวโน้มคุณภาพน้ำ</h3>
             <div className="w-full h-52.5">
                 <ResponsiveContainer width="100%" height="100%">
@@ -55,6 +84,7 @@ export default function TimeSeriesChart({ data, series }: TimeSeriesChartProps) 
                         <YAxis tick={{ fontSize: 10, fontWeight: 700 }} stroke="#9ca3af" axisLine={false} tickLine={false} />
                         {/* ปรับแต่งดีไซน์กล่อง Tooltip ให้เข้าเซ็ตคลีน ๆ ทรงพรีเมียม */}
                         <Tooltip
+                            active={dismissed ? false : undefined}
                             contentStyle={{
                                 backgroundColor: "var(--color-surface, #ffffff)",
                                 borderRadius: "12px",
