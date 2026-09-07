@@ -6,6 +6,19 @@ import { STATUS_COLOR, parameterColor } from "@/lib/chartColors";
 import { getWeatherConditionLabel } from "@/lib/weather";
 import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters, toThaiWallClock, fromThaiWallClock, getThaiHour } from "@/lib/sampleFilters";
 
+// วันที่ที่ส่งเข้าฟังก์ชันกลุ่มนี้ต้องเป็นเวลาไทย (wall-clock) แล้ว จึงอ่านด้วย getUTC* เสมอ
+// (ดูหมายเหตุที่ toThaiWallClock ใน sampleFilters.ts)
+const thaiMonthAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const formatThaiDate = (d: Date) => `${d.getUTCDate()} ${thaiMonthAbbr[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+// "1–7 ก.ย." — สั้นกว่าแบบเต็มปีเพราะใช้ในป้ายบรรทัดเดียวที่ต้องวางคู่กันสองช่วง
+const formatThaiDayMonth = (d: Date) => `${d.getUTCDate()} ${thaiMonthAbbr[d.getUTCMonth()]}`;
+// ช่วงที่เริ่มและจบวันเดียวกันเขียนวันเดียว — ต้นสัปดาห์/ต้นเดือนจะเจอเคสนี้ประจำ ("7 ก.ย.–7 ก.ย." อ่านแล้วสะดุด)
+const formatThaiSpan = (a: Date, b: Date) => {
+    const from = formatThaiDayMonth(a);
+    const to = formatThaiDayMonth(b);
+    return from === to ? from : `${from}–${to}`;
+};
+
 export async function GET(request: NextRequest) {
     try {
         // SECURITY GUARD: บังคับต้องมี Token ที่ตรวจสอบผ่าน LINE จริง ก่อนอ่านสถิติใด ๆ
@@ -57,6 +70,7 @@ export async function GET(request: NextRequest) {
         // ขอบเขตสิทธิ์/หน่วยงานยังคงกรองตามเดิม แต่ตัดเงื่อนไขวันที่ของ filter ออก
         const scopeWhere = await buildSampleWhere(filters, { withDateRange: false, pendingGroups });
 
+        // "ตอนนี้" เป็นจุดยึดของทั้งขอบเขต WoW/MoM และขอบท้ายของกราฟเมื่อ filter ไม่ได้ระบุวันสิ้นสุด
         const now = new Date();
 
         const countByStatus = async (where: any) => {
@@ -73,17 +87,27 @@ export async function GET(request: NextRequest) {
         };
 
         type StatusCounts = { total: number; safe: number; warning: number; danger: number };
-        // cur = ค่าปัจจุบันดิบ (ไม่ใช่ % เปลี่ยนแปลง) ไว้ใช้โชว์ตอนฐานก่อนหน้า = 0 ซึ่งคำนวณ % ไม่ได้ (หารด้วยศูนย์)
-        type TrendPair = { value: number | null; kind: "pct" | "pp"; cur: number };
-        const buildTrendMetrics = (curr: StatusCounts, prev: StatusCounts): Record<"total" | "safe" | "danger" | "warning", TrendPair> => {
+        // ป้ายแนวโน้มคิดจากช่วงปฏิทินของตัวเอง ไม่ใช่ช่วงวันที่ที่ผู้ใช้เลือกบน filter (ซึ่งเป็นฐานของตัวเลขใหญ่บนการ์ด)
+        // จึงต้องส่งบริบทไปให้หน้าจอบอกผู้อ่านได้ว่าเลขบนป้ายเทียบอะไรกับอะไร ไม่งั้นจะถูกอ่านรวมกับตัวเลขใหญ่จนได้ค่าที่เป็นไปไม่ได้
+        //   cur/prev   = ค่าดิบสองฝั่ง (เป็น % สำหรับ kind "pp" และเป็นจำนวนรายการสำหรับ "pct")
+        //   nCur/nPrev = จำนวนตัวอย่างทั้งหมดของแต่ละฝั่ง ใช้ตัดสินว่าฐานใหญ่พอจะเชื่อผลต่างได้ไหม
+        type TrendPair = { value: number | null; kind: "pct" | "pp"; cur: number; prev: number | null; nCur: number; nPrev: number; windowLabel: string };
+        const buildTrendMetrics = (curr: StatusCounts, prev: StatusCounts, windowLabel: string): Record<"total" | "safe" | "danger" | "warning", TrendPair> => {
             const relDelta = (cur: number, pv: number): number | null => (pv > 0 ? Number((((cur - pv) / pv) * 100).toFixed(1)) : null);
             const currSafeRate = curr.total > 0 ? (curr.safe / curr.total) * 100 : 0;
             const prevSafeRate = prev.total > 0 ? (prev.safe / prev.total) * 100 : 0;
+            const shared = { nCur: curr.total, nPrev: prev.total, windowLabel };
             return {
-                total: { value: relDelta(curr.total, prev.total), kind: "pct", cur: curr.total },
-                safe: { value: prev.total > 0 ? Number((currSafeRate - prevSafeRate).toFixed(1)) : null, kind: "pp", cur: Number(currSafeRate.toFixed(1)) },
-                danger: { value: relDelta(curr.danger, prev.danger), kind: "pct", cur: curr.danger },
-                warning: { value: relDelta(curr.warning, prev.warning), kind: "pct", cur: curr.warning },
+                total: { value: relDelta(curr.total, prev.total), kind: "pct", cur: curr.total, prev: prev.total, ...shared },
+                safe: {
+                    value: prev.total > 0 ? Number((currSafeRate - prevSafeRate).toFixed(1)) : null,
+                    kind: "pp",
+                    cur: Number(currSafeRate.toFixed(1)),
+                    prev: prev.total > 0 ? Number(prevSafeRate.toFixed(1)) : null,
+                    ...shared,
+                },
+                danger: { value: relDelta(curr.danger, prev.danger), kind: "pct", cur: curr.danger, prev: prev.danger, ...shared },
+                warning: { value: relDelta(curr.warning, prev.warning), kind: "pct", cur: curr.warning, prev: prev.warning, ...shared },
             };
         };
 
@@ -115,8 +139,15 @@ export async function GET(request: NextRequest) {
             countByStatus({ ...scopeWhere, collectionTime: { gte: momPreviousStart, lte: momPreviousEnd } }),
         ]);
 
-        const wowMetrics = buildTrendMetrics(wowCurrent, wowPrevious);
-        const momMetrics = buildTrendMetrics(momCurrent, momPrevious);
+        // ป้ายบนการ์ดโชว์ "ค่าช่วงก่อน → ค่าช่วงนี้" ไม่ใช่ผลต่าง จึงไม่มีตัวเลขให้ผู้อ่านเอาไปบวกลบกับตัวเลขใหญ่
+        // (ตัวเลขใหญ่คิดจากช่วงวันที่ที่เลือก ส่วนป้ายคิดตามปฏิทิน — คนละฐานกัน ถ้าโชว์เป็นผลต่างจะอ่านรวมกันได้ค่าที่เกิน 100)
+        const trendWindows = {
+            wow: `${formatThaiSpan(wowCurrentStartThai, nowThai)} กับ ${formatThaiSpan(wowPreviousStartThai, wowPreviousEndThai)}`,
+            mom: `${formatThaiSpan(momCurrentStartThai, nowThai)} กับ ${formatThaiSpan(momPreviousStartThai, momPreviousEndThai)}`,
+        };
+
+        const wowMetrics = buildTrendMetrics(wowCurrent, wowPrevious, trendWindows.wow);
+        const momMetrics = buildTrendMetrics(momCurrent, momPrevious, trendWindows.mom);
 
         const trendForStatus = (w: { filterValue: string | null; title: string }): { wow: TrendPair; mom: TrendPair } => {
             const isSafe = w.filterValue === "safe" || w.title.includes("ปลอดภัย");
@@ -357,7 +388,6 @@ export async function GET(request: NextRequest) {
         const bucketRangeStartThai = toThaiWallClock(bucketRangeStart);
         const bucketRangeEndThai = toThaiWallClock(bucketRangeEnd);
 
-        const thaiMonthAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
         type Granularity = "day" | "week" | "month" | "quarter" | "year";
 
         // ฟังก์ชันจัด bucket ทั้งชุดนี้อ่าน/เขียนด้วย getUTC*/setUTC* เสมอ — ตัว d ที่รับเข้ามาต้องเป็นเวลาไทย (wall-clock
@@ -518,7 +548,6 @@ export async function GET(request: NextRequest) {
             year: "รายปี",
         };
         // ใช้ getUTC* เพราะรับ bucketRangeStartThai/EndThai ที่เป็น wall-clock เวลาไทยแล้ว (ไม่ใช่ instant จริง)
-        const formatThaiDate = (d: Date) => `${d.getUTCDate()} ${thaiMonthAbbr[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
         const granularityInfo = {
             granularity,
             label: granularityThaiLabel[granularity],
@@ -656,6 +685,8 @@ export async function GET(request: NextRequest) {
                     { key: "phosphate", name: "Phosphate", color: parameterColor("phosphate") },
                 ],
             },
+            // ช่วงเวลาที่ป้ายแนวโน้มบนการ์ด KPI ใช้เทียบ แยกตามโหมดที่ผู้ใช้สลับได้
+            trendWindows,
             trends: trendsData,
             correlation: {
                 title: "สภาพอากาศมีผลต่อค่าสารเคมีในน้ำหรือไม่",
@@ -691,7 +722,8 @@ function startOfISOWeek(d: Date): Date {
     return date;
 }
 
-// วันที่ 1 ของเดือนปฏิทิน เวลา 00:00 — ใช้เป็นจุดเริ่มต้นของ MoM (รับ/คืนค่าเป็นเวลาไทย wall-clock เช่นกัน)
+
+// ต้นเดือนปฏิทินของ d
 function startOfCalendarMonth(d: Date): Date {
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
 }

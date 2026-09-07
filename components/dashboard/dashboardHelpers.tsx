@@ -65,8 +65,26 @@ export function getTrendPolarity(title: string): "up-good" | "down-good" | "neut
     return "neutral";
 }
 
+// จำนวนตัวอย่างขั้นต่ำของ "แต่ละฝั่ง" ที่ยังพอเชื่อผลต่างได้
+// ต่ำกว่านี้ตัวอย่างชิ้นเดียวขยับผลลัพธ์ได้เกิน 10 จุด ป้ายจะกลายเป็นสัญญาณรบกวนมากกว่าข้อมูล
+// (เห็นชัดช่วงต้นสัปดาห์/ต้นเดือนที่เพิ่งเก็บตัวอย่างไปไม่กี่ชิ้น)
+const MIN_TREND_SAMPLES = 10;
+
 export function renderTrend(trend: any, modeLabel: string, polarity: "up-good" | "down-good" | "neutral") {
     if (!trend) return null;
+
+    // ฐานเล็กเกินไป — ไม่โชว์ตัวเลขที่เชื่อไม่ได้ แต่ก็ไม่ซ่อนเงียบ ๆ บอกไปตรง ๆ ว่าทำไมถึงไม่มีให้ดู
+    if (typeof trend.nCur === "number" && typeof trend.nPrev === "number" && (trend.nCur < MIN_TREND_SAMPLES || trend.nPrev < MIN_TREND_SAMPLES)) {
+        return (
+            <span
+                className="inline-flex items-center gap-0.5 text-xs font-semibold px-1 py-0.5 rounded text-text-muted bg-surface-subtle cursor-help"
+                title={`ตัวอย่างน้อยเกินกว่าจะเทียบได้ (${modeLabel}): ${trend.windowLabel ?? ""} มี ${trend.nCur} และ ${trend.nPrev} ตัวอย่าง ต้องมีอย่างน้อยฝั่งละ ${MIN_TREND_SAMPLES} ตัวอย่าง`}
+            >
+                ตัวอย่างน้อย {modeLabel}
+            </span>
+        );
+    }
+
     if (trend.value === null || trend.value === undefined) {
         // ช่วงก่อนหน้าไม่มีตัวอย่างในสถานะนี้เลย (ฐาน = 0) จึงคำนวณ % เปลี่ยนแปลงไม่ได้ — โชว์ป้ายอธิบายแทนการซ่อนเงียบๆ
         return (
@@ -88,16 +106,35 @@ export function renderTrend(trend: any, modeLabel: string, polarity: "up-good" |
         );
     }
     const up = trend.value > 0;
-    const suffix = trend.kind === "pp" ? "pp" : "%";
     const isGood = polarity === "neutral" ? null : polarity === "up-good" ? up : !up;
     const color = isGood === null ? "text-text-secondary bg-surface-subtle" : isGood ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50";
     const Arrow = up ? LucideTrendingUp : LucideTrendingDown;
+
+    // ป้ายโชว์ "ค่าช่วงก่อน → ค่าช่วงนี้" ไม่ใช่ผลต่าง
+    // เพราะป้ายคิดตามปฏิทิน (สัปดาห์/เดือนนี้) ส่วนตัวเลขใหญ่บนการ์ดคิดจากช่วงวันที่ที่เลือกด้านบน — คนละฐานกัน
+    // ถ้าโชว์เป็นผลต่าง ผู้อ่านจะเอาไปบวกลบกับตัวเลขใหญ่แล้วได้ค่าที่เป็นไปไม่ได้ (เช่น 81.8% กับ -21.1pp อ่านได้ว่าช่วงก่อนคือ 102.9%)
+    // ส่วนคู่ค่าเป็นตัวเลขของช่วงตัวเองล้วน ๆ ไม่มีอะไรให้เอาไปประกอบกับตัวเลขใหญ่
+    const valueUnit = trend.kind === "pp" ? "%" : "";
+    const hasPair = typeof trend.cur === "number" && typeof trend.prev === "number";
+    const detail = hasPair ? `${trend.windowLabel ?? modeLabel} · จาก ${trend.nPrev} และ ${trend.nCur} ตัวอย่างตามลำดับ` : undefined;
+
     return (
-        <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1 py-0.5 rounded ${color}`}>
+        <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1 py-0.5 rounded ${color} ${detail ? "cursor-help" : ""}`} title={detail}>
             <Arrow size={8} />
-            {up ? "+" : ""}
-            {formatDisplayNumber(trend.value)}
-            {suffix} {modeLabel}
+            {hasPair ? (
+                <>
+                    {formatDisplayNumber(trend.prev)}
+                    {valueUnit} → {formatDisplayNumber(trend.cur)}
+                    {valueUnit}
+                </>
+            ) : (
+                <>
+                    {up ? "+" : ""}
+                    {formatDisplayNumber(trend.value)}
+                    {trend.kind === "pp" ? "pp" : "%"}
+                </>
+            )}{" "}
+            {modeLabel}
         </span>
     );
 }
