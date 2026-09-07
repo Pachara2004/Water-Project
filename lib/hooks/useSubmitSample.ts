@@ -491,7 +491,8 @@ export function useSubmitSample() {
 
     // ── Handlers ──
     const handleAnalyze = async () => {
-        if (activeParameters.length === 0) return;
+        const paramsToAnalyze = activeParameters.filter(p => imageFiles[p.id]);
+        if (paramsToAnalyze.length === 0) return;
         setStep("analyzing");
         setVerifyErrors({}); // ล้างผลบล็อกรอบก่อนหน้าก่อนเริ่มวิเคราะห์ใหม่
 
@@ -500,9 +501,9 @@ export function useSubmitSample() {
             const newErrors: Record<number, VerifyError> = {};
             const items: AnalyzedItem[] = [];
 
-            for (const param of activeParameters) {
+            for (const param of paramsToAnalyze) {
                 const file = imageFiles[param.id];
-                if (!file) throw new Error(`ไม่พบไฟล์ภาพของสาร ${param.name}`);
+                if (!file) continue;
 
                 const fd = new FormData();
                 fd.append("image", file);

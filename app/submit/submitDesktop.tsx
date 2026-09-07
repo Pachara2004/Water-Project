@@ -65,7 +65,14 @@ export default function SubmitDesktop(props: any) {
                         </div>
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
-                            <h2 className="text-xs font-semibold text-text">การดำเนินการ</h2>
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xs font-semibold text-text">การดำเนินการ</h2>
+                                {step === "upload" && activeParameters.length > 0 && activeParameters.filter((p: any) => hook.imageFiles[p.id]).length < activeParameters.length && (
+                                    <span className="text-xs font-medium text-text">
+                                        คุณเพิ่มรูปแล้ว {activeParameters.filter((p: any) => hook.imageFiles[p.id]).length}/{activeParameters.length} ช่อง
+                                    </span>
+                                )}
+                            </div>
 
                             {step === "results" && (
                                 <div className="pb-3 border-b border-border">

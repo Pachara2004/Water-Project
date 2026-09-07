@@ -150,17 +150,17 @@ export function LocationPicker({
                                         onClick={() => setCurrentLocationId(loc.id.toString())}
                                         className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-left transition-colors min-h-10 cursor-pointer ${
                                             isSelected
-                                                ? "border-primary/50 bg-primary/10 text-primary font-semibold"
+                                                ? "border-border-safe bg-bg-safe text-text-safe font-semibold"
                                                 : "border-border bg-surface hover:bg-surface-subtle text-text-primary"
                                         }`}
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : "bg-text-muted"}`} />
+                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isSelected ? "bg-text-safe" : "bg-text-muted"}`} />
                                             <span className="text-xs font-medium truncate">{loc.name}</span>
                                         </div>
 
                                         <span
-                                            className={`text-xs px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-primary/20 text-primary" : "bg-surface-subtle text-text-muted"}`}
+                                            className={`text-xs px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-bg-safe border border-border-safe text-text-safe" : "bg-surface-subtle text-text-muted"}`}
                                         >
                                             {loc.distanceKm < 1 ? `${(loc.distanceKm * 1000).toFixed(0)} ม.` : `${loc.distanceKm.toFixed(1)} กม.`}
                                         </span>
