@@ -1,5 +1,5 @@
 // components/submit/ImageZone.tsx
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft } from "lucide-react";
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult, VerifyError } from "./types";
@@ -129,12 +129,13 @@ export function ImageZone({
 
     const hasPlotImg = !!plotFile;
 
-    // components/submit/ImageZone.tsx
-
-    const getDisplayedImage = () => {
+    // Memoize the displayed image to avoid re-creating blob URLs on every render.
+    // The previous blob URL is revoked when the value changes or the component unmounts
+    // to prevent unbounded memory growth that stalls the GC mid-animation.
+    const displayImgSrc = useMemo(() => {
         // 1. ผลวิเคราะห์สด (มี plotFile)
         if (step === "results" && viewMode === "analyzed" && hasPlotImg) {
-            return plotFile instanceof Blob ? URL.createObjectURL(plotFile) : plotFile;
+            return plotFile instanceof Blob ? URL.createObjectURL(plotFile) : (plotFile as string);
         }
         // 2. ดึงทุก Field ที่เป็นไปได้จาก DB/State
         return (
@@ -147,14 +148,21 @@ export function ImageZone({
             measurement?.photoUrl ||
             (measurement as any)?.url
         );
-    };
+    }, [step, viewMode, hasPlotImg, plotFile, preview, measurement]);
 
-    const displayImgSrc = getDisplayedImage();
+    // Revoke stale blob URLs when the source changes or the component unmounts.
+    useEffect(() => {
+        return () => {
+            if (typeof displayImgSrc === "string" && displayImgSrc.startsWith("blob:")) {
+                URL.revokeObjectURL(displayImgSrc);
+            }
+        };
+    }, [displayImgSrc]);
 
     return (
         <section
             id={`param-zone-${param.id}`}
-            className={`rounded-xl overflow-visible border transition-all duration-300 bg-surface relative ${verifyError ? "border-danger ring-1 ring-danger/40" : "border-border"}`}
+            className={`rounded-xl overflow-visible border transition-colors duration-300 bg-surface relative ${verifyError ? "border-danger ring-1 ring-danger/40" : "border-border"}`}
         >
             <div className="text-sm font-semibold relative">
                 <SectionHead icon={<Camera size={16} />} label={`ภาพถ่ายผลทดสอบ: ${param.name.toUpperCase()}`} />
