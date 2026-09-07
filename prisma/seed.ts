@@ -244,18 +244,32 @@ async function main() {
         const randomLocation = insertedLocations[i % insertedLocations.length];
 
         const rainVol = Math.random() > 0.6 ? parseFloat((Math.random() * 45).toFixed(2)) : 0;
-        const weatherCode = rainVol > 30 ? 7 : rainVol > 10 ? 5 : 1;
+        // วันที่ฝนไม่ตกแบ่งเป็นฟ้าใส/มีเมฆบางส่วน เพราะทั้งสองหมวดคือวันแห้งเหมือนกัน ต่างกันแค่ปริมาณเมฆ
+        // จำเป็นต่อกราฟความสัมพันธ์ที่ใช้หมวดสภาพอากาศเป็นแกน X — ถ้าไม่มีตัวอย่างของหมวดกลางเลย เส้นจะขาดคาตรงกลางกราฟ
+        const weatherCode = rainVol > 15 ? 7 : rainVol > 0 ? 5 : Math.random() < 0.6 ? 1 : 2;
 
         const severityRoll = Math.random();
         const severityBucket: "danger" | "warning" | "safe" = severityRoll > 0.94 ? "danger" : severityRoll > 0.85 ? "warning" : "safe";
 
         const scaleFor = (bucket: typeof severityBucket) => (bucket === "danger" ? 1.05 + Math.random() * 1.5 : bucket === "warning" ? 0.7 + Math.random() * 0.29 : Math.random() * 0.69);
 
-        const ammoniaValue = parseFloat((strictestAmmonia * scaleFor(severityBucket)).toFixed(3));
+        // แอมโมเนียผูกกับปริมาณฝนโดยตั้งใจ ให้กราฟความสัมพันธ์บนแดชบอร์ดมีตัวอย่างของ "มีความสัมพันธ์จริง" ให้ดู
+        // คู่กับฟอสเฟตที่ยังสุ่มอิสระจากสภาพอากาศ จึงเทียบได้ว่ากราฟแยกสองกรณีนี้ออกจากกันจริงหรือไม่
+        // (ฝนชะไนโตรเจนจากบนบกลงแหล่งน้ำ เป็นความสัมพันธ์ที่พบได้จริงในงานคุณภาพน้ำชายฝั่ง)
+        //
+        // น้ำหนัก 0.6 : 0.8 ให้ Pearson r ออกมาราว +0.7 — ชันพอให้เส้นกราฟชี้ขึ้นชัด
+        // แต่ยังเหลือความสุ่มพอสมควร ไม่ใช่ r = 1.00 ซึ่งไม่มีทางเกิดกับข้อมูลจริง
+        // ค่าเฉลี่ยรวมยังใกล้เคียงสูตรที่ไม่ผูกฝน สัดส่วน safe/warning/danger จึงไม่เพี้ยนไปจนผิดรูป
+        const rainFactor = Math.min(1, rainVol / 45);
+        const ammoniaValue = parseFloat((strictestAmmonia * (scaleFor(severityBucket) * 0.6 + rainFactor * 0.8)).toFixed(3));
         const phosphateValue = parseFloat((strictestPhosphate * scaleFor(severityBucket)).toFixed(4));
 
         const doValue = parseFloat((3.5 + Math.random() * 5).toFixed(1));
-        const tempValue = parseFloat((26 + Math.random() * 5).toFixed(1));
+        // อุณหภูมิน้ำ (ประมาณ) — สุ่มให้เลียนการกระจายจริงของ weather_data ที่ backfill มาจาก Open-Meteo
+        // (สถานีหาดบางแสน ก.ค.–ก.ย. 2569: p25 29.3 / กลาง 30.4 / p75 31.8 / p95 35.4 / สูงสุด 40.2)
+        // รูปทรงเบ้ขวา: ส่วนใหญ่เกาะกลุ่มราว 30°C แล้วมีหางร้อนบาง ๆ ลากไปถึง 40°C
+        // สุ่มแบบกระจายเท่ากันในช่วงแคบจะทำให้ช่วงอุณหภูมิบางช่องบนกราฟความสัมพันธ์ไม่มีตัวอย่างเลย
+        const tempValue = parseFloat((Math.random() < 0.775 ? 27.3 + ((Math.random() + Math.random() + Math.random()) / 3) * 5 : 32.1 + Math.pow(Math.random(), 3.3) * 8.1).toFixed(1));
 
         const bulkSessionGroup = nextSessionGroup(sampleDate);
         const rawImageUrl = Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null;
