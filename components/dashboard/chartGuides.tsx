@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Info, X } from "lucide-react";
 
 export type GuideKey = "kpi" | "hotspots" | "temporal" | "trend" | "correlation";
@@ -18,16 +18,17 @@ export const CHART_GUIDES: Record<GuideKey, { title: string; blocks: GuideBlock[
             {
                 heading: "อ่านยังไง",
                 items: [
-                    "ตัวเลขใหญ่คือค่าของช่วงวันที่ที่เลือก",
-                    "ป้ายเล็กใต้ตัวเลขคือการเปรียบเทียบกับรอบก่อนหน้า เขียว = ดีขึ้น แดง = แย่ลง",
+                    "ตัวเลขใหญ่คือค่าของช่วงวันที่ที่เลือกด้านบน",
+                    'ป้ายเล็กใต้ตัวเลขอ่านว่า "ค่าช่วงก่อน → ค่าช่วงนี้" เขียว = ดีขึ้น แดง = แย่ลง',
                     'กดปุ่ม "เทียบ: รายสัปดาห์ / รายเดือน" มุมขวาบน เพื่อสลับรอบที่ใช้เปรียบเทียบ',
                 ],
             },
             {
                 heading: "ระวัง",
                 items: [
-                    'ขีด "—" แปลว่ารอบก่อนหน้าไม่มีข้อมูลให้เทียบ ไม่ได้แปลว่าไม่มีการเปลี่ยนแปลง',
-                    'อัตราปลอดภัยใช้หน่วย pp เช่น "ลด 5pp" คือจาก 80% เหลือ 75%',
+                    "ตัวเลขบนป้ายเป็นของสัปดาห์/เดือนตามปฏิทิน คนละช่วงกับตัวเลขใหญ่ อย่าเอาไปบวกลบกัน",
+                    'ขีด "—" แปลว่าช่วงก่อนหน้าไม่มีข้อมูลให้เทียบ ไม่ได้แปลว่าไม่มีการเปลี่ยนแปลง',
+                    '"ตัวอย่างน้อย" แปลว่าฝั่งใดฝั่งหนึ่งมีไม่ถึง 10 ตัวอย่าง ผลต่างเหวี่ยงเกินกว่าจะเชื่อได้',
                 ],
             },
         ],
@@ -74,43 +75,79 @@ export const CHART_GUIDES: Record<GuideKey, { title: string; blocks: GuideBlock[
         ],
     },
     correlation: {
-        title: "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ",
+        title: "สภาพอากาศมีผลต่อค่าสารเคมีในน้ำหรือไม่",
         blocks: [
-            { heading: "ดูอะไร", items: ["ฝนตกหรืออากาศร้อน มีส่วนทำให้สารเคมีในน้ำสูงขึ้นหรือไม่"] },
+            { heading: "ดูอะไร", items: ["ฝนตกหรือน้ำอุ่นขึ้น มีส่วนทำให้สารเคมีในน้ำสูงขึ้นหรือไม่"] },
             {
                 heading: "อ่านยังไง",
                 items: [
-                    "กดปุ่มด้านบนเพื่อเลือกว่าจะดูฝนหรืออุณหภูมิ คู่กับสารตัวไหน",
-                    "ช่องสี่เหลี่ยมยิ่งเข้ม แปลว่ามีผลตรวจตกอยู่ตรงนั้นเยอะ",
-                    "เส้นประคือทิศทางโดยรวมของความสัมพันธ์",
+                    "กดปุ่มด้านบนเลือกว่าจะดูฝนหรืออุณหภูมิน้ำ คู่กับสารตัวไหน",
+                    "แต่ละแถวคือสภาพอากาศแบบหนึ่ง เรียงจากฝนน้อยสุด (บน) ลงไปฝนหนักสุด (ล่าง)",
+                    "แท่งยาวขึ้นจากบนลงล่าง = ฝนยิ่งหนักค่ายิ่งสูง แท่งพอ ๆ กัน = สภาพอากาศแทบไม่มีผล",
                 ],
             },
             {
-                heading: "ตัวเลข r บนการ์ด",
+                heading: "ระวัง",
                 items: [
-                    "r มีค่าตั้งแต่ -1 ถึง +1 บอกว่าสองสิ่งนี้ไปด้วยกันแค่ไหน",
-                    "เข้าใกล้ +1 คือไปทิศทางเดียวกัน เช่น ฝนยิ่งตกมาก สารเคมีก็ยิ่งสูงตาม",
-                    "เข้าใกล้ -1 คือไปคนละทิศทาง เช่น ฝนยิ่งตกมาก สารเคมีกลับยิ่งลดลง",
-                    "ใกล้ 0 คือแทบไม่มีความสัมพันธ์กัน",
-                    "n คือจำนวนผลตรวจที่ใช้คำนวณ ยิ่งมากยิ่งเชื่อถือได้ ถ้าน้อยกว่า 5 ระบบจะไม่วาดให้",
+                    "แท่งสีจาง = ตัวอย่างน้อยเกินไป ค่าเฉลี่ยเหวี่ยงง่าย ส่วนแถวที่ไม่มีแท่ง = ไม่มีผลตรวจ ไม่ใช่ค่าเป็นศูนย์",
+                    "แท่งไล่ยาวขึ้นไม่ได้แปลว่าฝนเป็นสาเหตุ อาจมีปัจจัยอื่นที่เกิดพร้อมกับฝน",
+                    "อุณหภูมิน้ำเป็นค่าที่ประมาณจากแบบจำลอง ไม่ได้วัดจากหน้างาน",
+                ],
+            },
+            {
+                heading: "สำหรับคนที่อยากดูตัวเลข",
+                items: [
+                    "บรรทัดเล็กใต้ประโยคสรุปคือค่า r (-1 ถึง +1) ใกล้ +1 = ไปทางเดียวกัน ใกล้ -1 = ไปคนละทาง ใกล้ 0 = แทบไม่สัมพันธ์",
+                    "|r| ต่ำกว่า 0.2 = แทบไม่ต่าง, 0.2–0.5 = มีแนวโน้มบ้าง, เกิน 0.5 = ชัดเจน",
                 ],
             },
         ],
     },
 };
 
-// ปุ่ม (i) ข้างหัวข้อกราฟ กดแล้วเปิด popover อธิบาย — แพทเทิร์นเดียวกับปุ่มดูตัวอย่างสีใน components/submit/ImageZone.tsx
+// ปุ่ม (i) ข้างหัวข้อกราฟ กดแล้วเปิดกล่องอธิบาย — แพทเทิร์นเดียวกับปุ่มดูตัวอย่างสีใน components/submit/ImageZone.tsx
 // กดเท่านั้น ไม่ใช้ hover เพราะจอสัมผัสไม่มี hover ให้เจอ (ดูหมายเหตุเดียวกันใน dashboardHelpers.tsx เรื่อง cursor-help)
-// คืน <span className="relative inline-flex"> ห่อปุ่ม+popover ไว้ในตัวเอง เพื่อไม่ต้องไปเพิ่ม relative ที่ทุกจุดเรียกใช้
+
+// ที่ว่างขั้นต่ำที่กล่องยังอ่านได้ ถ้าด้านที่เลือกเหลือน้อยกว่านี้ กล่องจะเลื่อนอ่านเอาแทนการล้นขอบจอ
+const MIN_PANEL_HEIGHT = 180;
+// ระยะกันชนขอบจอ กันไม่ให้กล่องแตะขอบพอดีเป๊ะ
+const VIEWPORT_GUTTER = 12;
+// Navbar ยึดขอบล่างจอเมื่อแคบกว่า lg (ดู layout.tsx: lg:pl-50 คือจุดที่ Navbar ย้ายไปเป็นแถบข้าง)
+// ที่ว่างด้านล่างจึงต้องหักส่วนนี้ออก ไม่งั้นกล่องจะไปจมอยู่ใต้ Navbar
+const NAVBAR_HEIGHT = 96;
+const NAVBAR_BREAKPOINT = 1024;
+
 export function ChartInfoButton({ guide }: { guide: GuideKey }) {
     const [open, setOpen] = useState(false);
+    // ทิศทางและความสูงคำนวณตอนกดเปิด จากที่ว่างจริงรอบปุ่ม ณ ขณะนั้น
+    const [placement, setPlacement] = useState<{ up: boolean; maxHeight: number }>({ up: false, maxHeight: 0 });
+    const btnRef = useRef<HTMLButtonElement>(null);
     const g = CHART_GUIDES[guide];
+
+    const toggle = () => {
+        if (open) {
+            setOpen(false);
+            return;
+        }
+
+        const rect = btnRef.current?.getBoundingClientRect();
+        if (rect) {
+            const bottomReserved = window.innerWidth < NAVBAR_BREAKPOINT ? NAVBAR_HEIGHT : VIEWPORT_GUTTER;
+            const below = window.innerHeight - rect.bottom - bottomReserved;
+            const above = rect.top - VIEWPORT_GUTTER;
+            // กางขึ้นเมื่อข้างล่างไม่พอ และข้างบนมีที่ว่างมากกว่า — กราฟท้าย ๆ หน้าจะได้ไม่กางทะลุขอบล่าง
+            const up = below < MIN_PANEL_HEIGHT && above > below;
+            setPlacement({ up, maxHeight: Math.max(MIN_PANEL_HEIGHT, up ? above : below) });
+        }
+        setOpen(true);
+    };
 
     return (
         <span className="inline-flex shrink-0">
             <button
+                ref={btnRef}
                 type="button"
-                onClick={() => setOpen((v) => !v)}
+                onClick={toggle}
                 aria-label={`คำอธิบาย: ${g.title}`}
                 className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
             >
@@ -124,11 +161,21 @@ export function ChartInfoButton({ guide }: { guide: GuideKey }) {
                     {/* กล่องยึดกับ "แถวหัวข้อ" ไม่ใช่ตัวปุ่ม — span ครอบปุ่มจึงจงใจไม่ใส่ relative
                         ผู้เรียกต้องใส่ relative ที่แถวหัวข้อ (ซึ่งกว้างเท่าการ์ด) กล่องจะได้กางเต็มความกว้างการ์ดพอดี
                         เหตุผล: ปุ่มทั้ง 5 จุดอยู่คนละตำแหน่งแนวนอน (ต่อท้ายหัวข้อที่ยาวไม่เท่ากัน) ถ้ายึดกับปุ่มจะล้นขอบจอ
-                        ยึดซ้ายก็ล้นขวา ยึดขวาก็ล้นซ้าย ส่วนจอกว้าง (sm ขึ้นไป) หดเป็นการ์ด w-80 ชิดขวาเพราะมีที่ว่างพอ */}
-                    {/* text-xs font-normal ที่กล่อง = ตัดการสืบทอดจากแถวหัวข้อที่ไปวางอยู่
+                        จอกว้าง (sm ขึ้นไป) หดเป็นการ์ด w-80 ชิดขอบซ้ายของแถวหัวข้อ ซึ่งเป็นฝั่งเดียวกับที่ปุ่มอยู่
+                        (ชิดขวาจะไปโผล่กลางการ์ดในแถวหัวข้อที่กว้างหลายคอลัมน์ ห่างจากปุ่มที่เพิ่งกดจนดูเหมือนคนละเรื่องกัน)
+
+                        ทิศทางบน/ล่างและ maxHeight มาจากการวัดที่ว่างจริงตอนกดเปิด ไม่ใช่ค่าคงที่
+                        (60vh ตายตัวไม่พอ เพราะจำกัดแค่ความสูง ไม่ได้ขยับจุดเริ่มต้น กราฟท้ายหน้าจึงยังกางทะลุขอบล่าง)
+
+                        text-xs font-normal ที่กล่อง = ตัดการสืบทอดจากแถวหัวข้อที่ไปวางอยู่
                         (บางแถวเป็น font-semibold ทำให้ตัวหนังสือในกล่องหนากว่าจุดอื่น) กล่องทั้ง 5 จุดจะได้หน้าตาเหมือนกันเสมอ */}
-                    <div className="absolute left-0 right-0 top-full mt-1 z-50 sm:left-auto sm:w-80 bg-surface border border-border rounded-2xl shadow-2xl p-3.5 animate-fade-in space-y-3 text-xs font-normal">
-                        <div className="flex items-center justify-between pb-1 border-b border-border">
+                    <div
+                        style={{ maxHeight: placement.maxHeight || undefined }}
+                        className={`absolute left-0 right-0 z-50 flex flex-col gap-3 sm:right-auto sm:w-80 bg-surface border border-border rounded-2xl shadow-2xl p-3.5 animate-fade-in text-xs font-normal ${
+                            placement.up ? "bottom-full mb-1" : "top-full mt-1"
+                        }`}
+                    >
+                        <div className="flex items-center justify-between pb-1 border-b border-border shrink-0">
                             <span className="text-xs font-semibold text-text">{g.title}</span>
                             <button
                                 type="button"
@@ -140,7 +187,9 @@ export function ChartInfoButton({ guide }: { guide: GuideKey }) {
                             </button>
                         </div>
 
-                        <div className="space-y-2.5 max-h-[60vh] overflow-y-auto">
+                        {/* flex-1 + min-h-0 ให้ส่วนเนื้อหากินที่ว่างที่เหลือแล้วเลื่อนเองเมื่อล้น
+                            (min-h-0 จำเป็น ไม่งั้น flex item ยืดตามเนื้อหาจนดัน maxHeight ของกล่องพัง) */}
+                        <div className="space-y-2.5 flex-1 min-h-0 overflow-y-auto">
                             {g.blocks.map((block, i) => (
                                 <div key={i}>
                                     <p className="text-xs font-semibold text-text-primary mb-1">{block.heading}</p>

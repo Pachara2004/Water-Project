@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
-import { toISODate } from "@/components/dashboard/dashboardHelpers";
+import { toISODate, type ComboOption } from "@/components/dashboard/dashboardHelpers";
 
 export type DashboardAnalyticsState = ReturnType<typeof useDashboardAnalytics>;
 
@@ -26,10 +26,9 @@ export function useDashboardAnalytics() {
     const [endDate, setEndDate] = useState(() => toISODate(new Date()));
     const [agency, setAgency] = useState("all");
     const [locationId, setLocationId] = useState<number | null>(null); // เลือกสถานีเจาะจง (ละเอียดกว่า agency) จากผลค้นหา
-    const [agencySearch, setAgencySearch] = useState(""); // ข้อความที่พิมพ์ค้นหาหน่วยงาน/สถานี
+    const [agencySearch, setAgencySearch] = useState(""); // ข้อความที่พิมพ์ในช่องค้นหาหน่วยงาน
+    const [stationSearch, setStationSearch] = useState(""); // ข้อความที่พิมพ์ในช่องค้นหาสถานี
     const [trendMode, setTrendMode] = useState<"wow" | "mom">("wow");
-    const [showAgencyMenu, setShowAgencyMenu] = useState(false); // เปิด/ปิด dropdown ผลค้นหาหน่วยงาน+สถานี
-    const agencyMenuRef = useRef<HTMLDivElement>(null);
 
     const userRole = currentUser?.role?.toLowerCase() || "officer";
     const userId = currentUser?.id || null;
@@ -38,16 +37,6 @@ export function useDashboardAnalytics() {
         if (userRole === "collector") setViewMode("MINE");
         else if (userRole === "officer") setViewMode("ALL");
     }, [userRole]);
-
-    // ปิด dropdown หน่วยงานเวลาคลิกนอกกล่อง
-    useEffect(() => {
-        if (!showAgencyMenu) return;
-        const handleClickOutside = (e: MouseEvent) => {
-            if (agencyMenuRef.current && !agencyMenuRef.current.contains(e.target as Node)) setShowAgencyMenu(false);
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [showAgencyMenu]);
 
     useEffect(() => {
         // guest/ยังไม่ login ไม่มีสิทธิ์เห็นหน้านี้อยู่แล้ว (จะโดน guard ด้านล่างเด้งกลับ) — ข้ามการยิง fetch ไปเลย
@@ -79,6 +68,43 @@ export function useDashboardAnalytics() {
         return () => controller.abort();
     }, [viewMode, userId, userRole, startDate, endDate, agency, locationId, retryTick, currentUser]);
 
+    // analytics มาจาก API เป็น any — ประกาศรูปร่างที่ใช้จริงไว้ตรงนี้ ตัวกรอง/ตัวเลือกด้านล่างจะได้ตรวจชนิดได้
+    const locations: { id: number; stationName: string; governingAgency: string }[] = analytics?.locations ?? [];
+    const agencyOptions: ComboOption[] = (analytics?.agencies || []).map((a: string) => ({ key: a, label: a }));
+
+    // รายการสถานีถูกกรองด้วยหน่วยงานที่เลือกอยู่ — เลือกกรมประมงแล้วช่องสถานีเหลือเฉพาะสถานีของกรมประมง
+    const stationOptions: ComboOption[] = locations
+        .filter((l) => agency === "all" || l.governingAgency === agency)
+        .map((l) => ({ key: l.id, label: l.stationName, hint: l.governingAgency }));
+
+    // เลือกหน่วยงานใหม่แล้วสถานีที่ค้างอยู่อาจไม่ได้สังกัดหน่วยงานนั้น ต้องล้างทิ้ง
+    // ไม่งั้นสองช่องขัดกันเอง และ where ฝั่ง API ให้ locationId ชนะ agency ผลที่ได้จะไม่ตรงกับที่เห็นบนช่องหน่วยงาน
+    const selectAgency = (name: string) => {
+        setAgency(name);
+        setAgencySearch(name === "all" ? "" : name);
+        if (locationId !== null && name !== "all") {
+            const current = locations.find((l) => l.id === locationId);
+            if (current?.governingAgency !== name) {
+                setLocationId(null);
+                setStationSearch("");
+            }
+        }
+    };
+
+    // เลือกสถานีแล้วเติมหน่วยงานที่สถานีนั้นสังกัดให้เอง — สถานีหนึ่งมีหน่วยงานเดียวอยู่แล้ว
+    // ให้ช่องซ้ายบอกได้ว่ากำลังดูข้อมูลของหน่วยงานไหน แทนที่จะค้างอยู่ที่ "ทุกหน่วยงาน" ทั้งที่กรองสถานีเดียวอยู่
+    // ล้างสถานีแล้วหน่วยงานยังอยู่ ผู้ใช้จึงไล่ดูสถานีอื่นในหน่วยงานเดิมต่อได้ทันที
+    const selectStation = (opt: ComboOption | null) => {
+        setLocationId(opt ? Number(opt.key) : null);
+        setStationSearch(opt ? opt.label : "");
+        if (!opt) return;
+        const owner = locations.find((l) => l.id === Number(opt.key))?.governingAgency;
+        if (owner) {
+            setAgency(owner);
+            setAgencySearch(owner);
+        }
+    };
+
     return {
         currentUser,
         theme,
@@ -99,10 +125,13 @@ export function useDashboardAnalytics() {
         setLocationId,
         agencySearch,
         setAgencySearch,
+        stationSearch,
+        setStationSearch,
+        agencyOptions,
+        stationOptions,
+        selectAgency,
+        selectStation,
         trendMode,
         setTrendMode,
-        showAgencyMenu,
-        setShowAgencyMenu,
-        agencyMenuRef,
     };
 }

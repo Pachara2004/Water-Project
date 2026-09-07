@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, useMemo, useDeferredValue } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
-import { LucideCalendarDays, LucideTrendingUp, LucideTrendingDown, LucideArrowRight } from "lucide-react";
+import { LucideCalendarDays, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX } from "lucide-react";
 import { ChartInfoButton } from "@/components/dashboard/chartGuides";
+import { ResponsiveContainer, BarChart, Bar, Cell, LabelList, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { parameterColor } from "@/lib/chartColors";
 
 // แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
@@ -55,28 +56,6 @@ export function chartTokens(isDark: boolean) {
 // คีย์ nh3/po4 เป็นชื่อที่หน้าแดชบอร์ดใช้เรียกสารสองตัวนี้ ไม่ใช่ชื่อในตาราง `parameters`
 export const CHEM_COLOR: Record<"nh3" | "po4", string> = { nh3: parameterColor("ammonia"), po4: parameterColor("phosphate") };
 
-// 0–1 → คู่ hex ต่อท้ายสี (#RRGGBBAA) สำหรับใช้ใน CSS gradient ที่รับ fill-opacity แยกไม่ได้แบบ SVG
-export function alphaHex(a: number): string {
-    return Math.round(Math.min(1, Math.max(0, a)) * 255)
-        .toString(16)
-        .padStart(2, "0");
-}
-
-// ตัดเส้น y = slope*x + intercept ให้อยู่ในกรอบ [xMin,xMax] × [yMin,yMax] — คืน null หากเส้นไม่ผ่านกรอบเลย
-export function clipLineToRect(slope: number, intercept: number, xMin: number, xMax: number, yMin: number, yMax: number) {
-    if (slope === 0) {
-        const y = intercept;
-        if (y < yMin || y > yMax) return null;
-        return { x0: xMin, y0: y, x1: xMax, y1: y };
-    }
-    const xAtYMin = (yMin - intercept) / slope;
-    const xAtYMax = (yMax - intercept) / slope;
-    const xLo = Math.max(xMin, Math.min(xAtYMin, xAtYMax));
-    const xHi = Math.min(xMax, Math.max(xAtYMin, xAtYMax));
-    if (xLo > xHi) return null;
-    return { x0: xLo, y0: slope * xLo + intercept, x1: xHi, y1: slope * xHi + intercept };
-}
-
 // ตีความว่าทิศทางไหนของการ์ดนี้คือ "ดี" — ใช้ตัดสินสีของ trend badge แทนการฟันธงว่าขึ้น=เขียว/ลง=แดงเสมอ
 // (ตัวอย่างเกินมาตรฐาน/เฝ้าระวังยิ่งลดยิ่งดี ในขณะที่อัตราความปลอดภัยยิ่งขึ้นยิ่งดี ส่วนจำนวนตัวอย่างรวมไม่มีทิศทางที่ดี/แย่ตายตัว)
 export function getTrendPolarity(title: string): "up-good" | "down-good" | "neutral" {
@@ -86,8 +65,26 @@ export function getTrendPolarity(title: string): "up-good" | "down-good" | "neut
     return "neutral";
 }
 
+// จำนวนตัวอย่างขั้นต่ำของ "แต่ละฝั่ง" ที่ยังพอเชื่อผลต่างได้
+// ต่ำกว่านี้ตัวอย่างชิ้นเดียวขยับผลลัพธ์ได้เกิน 10 จุด ป้ายจะกลายเป็นสัญญาณรบกวนมากกว่าข้อมูล
+// (เห็นชัดช่วงต้นสัปดาห์/ต้นเดือนที่เพิ่งเก็บตัวอย่างไปไม่กี่ชิ้น)
+const MIN_TREND_SAMPLES = 10;
+
 export function renderTrend(trend: any, modeLabel: string, polarity: "up-good" | "down-good" | "neutral") {
     if (!trend) return null;
+
+    // ฐานเล็กเกินไป — ไม่โชว์ตัวเลขที่เชื่อไม่ได้ แต่ก็ไม่ซ่อนเงียบ ๆ บอกไปตรง ๆ ว่าทำไมถึงไม่มีให้ดู
+    if (typeof trend.nCur === "number" && typeof trend.nPrev === "number" && (trend.nCur < MIN_TREND_SAMPLES || trend.nPrev < MIN_TREND_SAMPLES)) {
+        return (
+            <span
+                className="inline-flex items-center gap-0.5 text-xs font-semibold px-1 py-0.5 rounded text-text-muted bg-surface-subtle cursor-help"
+                title={`ตัวอย่างน้อยเกินกว่าจะเทียบได้ (${modeLabel}): ${trend.windowLabel ?? ""} มี ${trend.nCur} และ ${trend.nPrev} ตัวอย่าง ต้องมีอย่างน้อยฝั่งละ ${MIN_TREND_SAMPLES} ตัวอย่าง`}
+            >
+                ตัวอย่างน้อย {modeLabel}
+            </span>
+        );
+    }
+
     if (trend.value === null || trend.value === undefined) {
         // ช่วงก่อนหน้าไม่มีตัวอย่างในสถานะนี้เลย (ฐาน = 0) จึงคำนวณ % เปลี่ยนแปลงไม่ได้ — โชว์ป้ายอธิบายแทนการซ่อนเงียบๆ
         return (
@@ -109,16 +106,35 @@ export function renderTrend(trend: any, modeLabel: string, polarity: "up-good" |
         );
     }
     const up = trend.value > 0;
-    const suffix = trend.kind === "pp" ? "pp" : "%";
     const isGood = polarity === "neutral" ? null : polarity === "up-good" ? up : !up;
     const color = isGood === null ? "text-text-secondary bg-surface-subtle" : isGood ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50";
     const Arrow = up ? LucideTrendingUp : LucideTrendingDown;
+
+    // ป้ายโชว์ "ค่าช่วงก่อน → ค่าช่วงนี้" ไม่ใช่ผลต่าง
+    // เพราะป้ายคิดตามปฏิทิน (สัปดาห์/เดือนนี้) ส่วนตัวเลขใหญ่บนการ์ดคิดจากช่วงวันที่ที่เลือกด้านบน — คนละฐานกัน
+    // ถ้าโชว์เป็นผลต่าง ผู้อ่านจะเอาไปบวกลบกับตัวเลขใหญ่แล้วได้ค่าที่เป็นไปไม่ได้ (เช่น 81.8% กับ -21.1pp อ่านได้ว่าช่วงก่อนคือ 102.9%)
+    // ส่วนคู่ค่าเป็นตัวเลขของช่วงตัวเองล้วน ๆ ไม่มีอะไรให้เอาไปประกอบกับตัวเลขใหญ่
+    const valueUnit = trend.kind === "pp" ? "%" : "";
+    const hasPair = typeof trend.cur === "number" && typeof trend.prev === "number";
+    const detail = hasPair ? `${trend.windowLabel ?? modeLabel} · จาก ${trend.nPrev} และ ${trend.nCur} ตัวอย่างตามลำดับ` : undefined;
+
     return (
-        <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1 py-0.5 rounded ${color}`}>
+        <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1 py-0.5 rounded ${color} ${detail ? "cursor-help" : ""}`} title={detail}>
             <Arrow size={8} />
-            {up ? "+" : ""}
-            {formatDisplayNumber(trend.value)}
-            {suffix} {modeLabel}
+            {hasPair ? (
+                <>
+                    {formatDisplayNumber(trend.prev)}
+                    {valueUnit} → {formatDisplayNumber(trend.cur)}
+                    {valueUnit}
+                </>
+            ) : (
+                <>
+                    {up ? "+" : ""}
+                    {formatDisplayNumber(trend.value)}
+                    {trend.kind === "pp" ? "pp" : "%"}
+                </>
+            )}{" "}
+            {modeLabel}
         </span>
     );
 }
@@ -183,123 +199,213 @@ export function DateField({ label, value, onChange }: { label: string; value: st
 }
 
 // จำนวนจุดขั้นต่ำที่ยอมให้วาด heatmap/เส้น trend — น้อยกว่านี้ความหนาแน่นและค่า r ไม่มีความหมายทางสถิติ
-const MIN_CORRELATION_POINTS = 5;
+export type ComboOption = { key: string | number; label: string; hint?: string };
 
-// 🌦️ Correlation — density heatmap แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
+/**
+ * ช่องพิมพ์ค้นหาพร้อมรายการให้เลือก — ใช้ทั้งช่องหน่วยงานและช่องสถานี และใช้ร่วมกันทั้งเดสก์ท็อป/มือถือ
+ *
+ * เปิด/ปิดรายการและ ref สำหรับดักคลิกนอกกล่องเก็บไว้ในตัวเอง เพราะเป็นเรื่องภายในของกล่องนี้ล้วน ๆ
+ * ส่วนข้อความที่พิมพ์กับค่าที่เลือกอยู่ข้างนอก เพราะปุ่มล้างตัวกรองที่อื่นต้องสั่งล้างได้ด้วย
+ */
+export function FilterCombo({
+    placeholder,
+    search,
+    setSearch,
+    options,
+    allLabel,
+    selectedKey,
+    onSelect,
+    disabled = false,
+}: {
+    placeholder: string;
+    search: string;
+    setSearch: (v: string) => void;
+    options: ComboOption[];
+    allLabel: string;
+    /** คีย์ที่เลือกอยู่ — "all" คือยังไม่ได้เจาะจง */
+    selectedKey: string | number;
+    /** null = เลือก "ทั้งหมด" */
+    onSelect: (opt: ComboOption | null) => void;
+    disabled?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const boxRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const onClickOutside = (e: MouseEvent) => {
+            if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", onClickOutside);
+        return () => document.removeEventListener("mousedown", onClickOutside);
+    }, [open]);
+
+    const q = search.trim().toLowerCase();
+    // ค้นหาจากทั้งชื่อและคำกำกับ (ชื่อสถานีหาด้วยชื่อหน่วยงานที่สังกัดได้)
+    const matched = options.filter((o) => o.label.toLowerCase().includes(q) || (o.hint ?? "").toLowerCase().includes(q));
+    const isAll = selectedKey === "all";
+
+    return (
+        <div className="relative flex-1 min-w-0" ref={boxRef}>
+            <div className={`h-10 w-full text-xs flex items-center gap-1.5 bg-card-general border border-border rounded-xl px-3 transition-all ${disabled ? "opacity-50" : ""}`}>
+                <LucideSearch size={13} className="text-text-muted shrink-0" />
+                <input
+                    type="text"
+                    value={search}
+                    disabled={disabled}
+                    onFocus={(e) => {
+                        setOpen(true);
+                        e.target.select();
+                    }}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setOpen(true);
+                    }}
+                    placeholder={placeholder}
+                    className="bg-transparent outline-none text-text-primary font-semibold text-xs w-full min-w-0 disabled:cursor-not-allowed"
+                />
+                {!isAll && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onSelect(null);
+                            setOpen(false);
+                        }}
+                        className="shrink-0 text-text-muted hover:text-text-secondary cursor-pointer"
+                        aria-label={`ล้างตัวกรอง${placeholder}`}
+                    >
+                        <LucideX size={13} />
+                    </button>
+                )}
+            </div>
+
+            {open && !disabled && (
+                <div className="absolute z-20 top-full left-0 mt-1 w-full bg-surface border border-border rounded-xl shadow-lg py-1 max-h-72 overflow-y-auto">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onSelect(null);
+                            setOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle ${isAll ? "text-primary bg-primary/10" : "text-text-primary"}`}
+                    >
+                        {allLabel}
+                    </button>
+
+                    {matched.map((opt) => (
+                        <button
+                            type="button"
+                            key={opt.key}
+                            onClick={() => {
+                                onSelect(opt);
+                                setOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${
+                                opt.key === selectedKey ? "text-primary bg-primary/10" : "text-text-primary"
+                            }`}
+                        >
+                            {opt.label}
+                            {opt.hint && <span className="text-text-muted font-normal"> · {opt.hint}</span>}
+                        </button>
+                    ))}
+
+                    {matched.length === 0 && <div className="px-3 py-2 text-xs text-text-muted">ไม่พบ &quot;{search}&quot;</div>}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ระดับความแรงของความสัมพันธ์ตาม |r| — ใช้แปลตัวเลขเป็นคำพูดให้คนที่ไม่ได้อ่านค่าสถิติเป็น
+// ขอบเขต 0.2 / 0.5 เป็นเกณฑ์หยาบที่ใช้กันทั่วไป ไม่ใช่ค่าที่มีนัยสำคัญทางสถิติในตัวเอง
+const R_WEAK = 0.2;
+const R_STRONG = 0.5;
+
+const AXIS_PHRASE: Record<"rain" | "temp", string> = {
+    rain: "ยิ่งฝนตกหนัก",
+    temp: "ยิ่งน้ำอุ่นขึ้น",
+};
+
+const CHEM_NAME: Record<"nh3" | "po4", string> = {
+    nh3: "แอมโมเนีย",
+    po4: "ฟอสเฟต",
+};
+
+// แปลง Pearson r เป็นประโยคไทยประโยคเดียวที่สรุปกราฟให้เสร็จ
+// เจตนาคือคนดูไม่ต้องตีความกราฟเอง และไม่ต้องรู้ว่า r คืออะไร ตัวเลขดิบย้ายไปอยู่ในปุ่ม (i) แทน
+function correlationSentence(axis: "rain" | "temp", chem: "nh3" | "po4", r: number | null): string {
+    const subject = `ค่าเฉลี่ย${CHEM_NAME[chem]}`;
+    if (r === null) return `ข้อมูลยังไม่พอสรุปว่าสภาพอากาศมีผลต่อ${subject}หรือไม่`;
+
+    const strength = Math.abs(r);
+    if (strength < R_WEAK) return `${AXIS_PHRASE[axis]} ${subject}แทบไม่ต่างจากเดิม`;
+
+    const direction = r > 0 ? "สูงขึ้น" : "ลดลง";
+    const degree = strength >= R_STRONG ? "ชัดเจน" : "บ้าง";
+    return `${AXIS_PHRASE[axis]} ${subject}มีแนวโน้ม${direction}${degree}`;
+}
+
+// 🌦️ Correlation — กราฟเส้นค่าเฉลี่ยรายกลุ่มสภาพอากาศ แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
 export function CorrelationSection({ correlation }: { correlation: any }) {
     const { theme } = useAppStore();
     const isDark = theme === "dark";
     const chartTone = chartTokens(isDark);
     const [axis, setAxis] = useState<"rain" | "temp">("rain");
     const [chem, setChem] = useState<"nh3" | "po4">("nh3");
-    // เลื่อนการวาด heatmap (rect หลายสิบช่อง) ไปทำเบื้องหลัง — ปุ่ม/การ์ดตอบสนองทันที
-    const dAxis = useDeferredValue(axis);
-    const dChem = useDeferredValue(chem);
-    const hm = correlation?.heatmaps?.[`${dAxis}_${dChem}`];
 
-    const VB_W = 440,
-        VB_H = 240,
-        // mL ต้องกว้างพอให้ตัวเลขแกน Y (เช่น "0.800" ตอน phosphate ที่ปัด 4 ตำแหน่ง) กับหัวข้อแกนแนวตั้งไม่ทับกัน
-        mL = 56,
-        mR = 10,
-        // mT = 0 ให้เส้นขอบบนของกราฟชิดขอบบนกล่องพอดี ตรงกับขอบบนการ์ดค่า Pearson r ฝั่งขวาที่อยู่แถวกริดเดียวกัน
-        // (ตัวเลขแกน Y บนสุดล้นขึ้นไปเล็กน้อย ต้องเปิด overflow="visible" ที่ <svg> ไม่งั้นโดนตัด)
-        mT = 0,
-        mB = 26;
-    const pw = VB_W - mL - mR,
-        ph = VB_H - mT - mB;
-    // สเกลสีของ heatmap: สีเดียวไล่ความทึบ ช่องยิ่งหนาแน่นยิ่งทึบ
-    // ความทึบทำให้ช่องเบาบางจางลงหาสีพื้นการ์ดเองโดยไม่ต้องรู้ว่าพื้นเป็นสีอะไร
-    // ส่วนสีปลายทึบสุดไม่มีสีเดียวที่เด่นได้ทั้งบนพื้นขาวและพื้นเข้ม จึงต้องแยกตามธีม
-    const HEAT_PEAK = isDark ? "#60a5fa" : "#1d4ed8";
-    const HEAT_MIN_ALPHA = 0.18; // ความทึบของช่องที่เบาบางที่สุด — ต่ำกว่านี้จะกลืนพื้นจนนึกว่าไม่มีข้อมูล
+    const series = correlation?.series?.[`${axis}_${chem}`];
+    const metric = correlation?.metrics?.find((m: any) => m.key === `${axis}_${chem}`);
+    const minGroupSamples = correlation?.minGroupSamples ?? 5;
+    const lineColor = CHEM_COLOR[chem];
 
-    const activeKey = `${axis}_${chem}`;
-    const deferredKey = `${dAxis}_${dChem}`;
-    const activeMetric = correlation?.metrics?.find((m: any) => m.key === deferredKey);
+    // memo ไว้เพราะ series?.points ?? [] คืน array ใหม่ทุกครั้งที่ render ทำให้ useMemo ที่พึ่งค่านี้คำนวณใหม่เปล่า ๆ
+    const points = useMemo(() => series?.points ?? [], [series]);
+    // กลุ่มที่ไม่มีตัวอย่างเลยยังต้องอยู่บนแกน X (คนดูจะได้รู้ว่ามีหมวดนี้อยู่แต่ไม่มีข้อมูล)
+    // แต่ถ้าไม่มีกลุ่มไหนมีค่าเลย ก็ไม่เหลืออะไรให้วาด
+    const hasAnyValue = points.some((p: any) => p.avg !== null);
+    const lowSampleGroups = points.filter((p: any) => p.n > 0 && !p.reliable);
 
-    // แปลงค่าข้อมูล → พิกัดพิกเซล (memoize ให้วาดใหม่เฉพาะตอนเปลี่ยนชุดข้อมูล)
-    const view = useMemo(() => {
-        const empty = (reason: string) => ({ rects: [] as any[], xTicks: [] as any[], yTicks: [] as any[], trendLine: null as any, hasData: false, reason });
-        if (!hm || !hm.domain || hm.bins.length === 0) return empty("ยังไม่มีข้อมูลสำหรับชุดนี้");
-        const { xMin, xMax, yMin, yMax } = hm.domain;
-        // ต่ำกว่าเกณฑ์นี้ heatmap อ่านความหนาแน่นไม่ได้ และ Pearson r ไวต่อจุดเดียวจนไม่มีความหมาย
-        if (typeof activeMetric?.n === "number" && activeMetric.n < MIN_CORRELATION_POINTS) {
-            return empty(`ข้อมูลไม่พอสำหรับชุดนี้ (มี ${activeMetric.n} จุด ต้องมีอย่างน้อย ${MIN_CORRELATION_POINTS} จุด)`);
-        }
-        // จุดทั้งหมดทับกันในแกนใดแกนหนึ่ง (ช่วงข้อมูล = 0) จึงแบ่ง bin ตามสัดส่วนไม่ได้
-        // ถ้าฝืนวาด binW/binH ที่ server fallback เป็น 1 หน่วยจะถูกยืดเต็มกราฟกลายเป็นบล็อกสีทึบ และ tick ทั้ง 3 จุดจะซ้ำค่าเดียวกัน
-        if (xMax - xMin <= 0 || yMax - yMin <= 0) return empty("ข้อมูลไม่พอสำหรับชุดนี้ (ค่าที่วัดได้ไม่มีความแปรปรวน จุดทุกจุดทับกัน)");
-        const dx = xMax - xMin;
-        const dy = yMax - yMin;
-        const sx = (v: number) => mL + ((v - xMin) / dx) * pw;
-        const sy = (v: number) => mT + (1 - (v - yMin) / dy) * ph;
-        const cw = (hm.binW / dx) * pw;
-        const chh = (hm.binH / dy) * ph;
+    // แกนค่าเริ่มที่ 0 เสมอ — ความยาวแท่งจะได้เทียบกันตรง ๆ ไม่ใช่ถูกซูมจนความต่างเล็กน้อยดูใหญ่เกินจริง
+    // เผื่อปลายไว้ 1.25 เท่า ให้ตัวเลขที่พิมพ์ท้ายแท่งยาวที่สุดไม่ล้นออกนอกกรอบ
+    const xMax = useMemo(() => {
+        const values = points.filter((p: any) => p.avg !== null).map((p: any) => p.avg as number);
+        if (values.length === 0) return 0;
+        return Number((Math.max(...values) * 1.25).toPrecision(3));
+    }, [points]);
 
-        // ความหนาแน่นของช่อง → 0–1 สำหรับคุมความทึบ
-        // จำนวนจุดต่อช่องกระจายแบบเบ้ (ช่องส่วนใหญ่มีไม่กี่จุด ช่องหนาแน่นจัดมีอยู่ไม่กี่ช่อง)
-        // sqrt จึงเป็นเส้นโค้งที่ถ่างช่วงล่างที่ข้อมูลกระจุกอยู่ออก โดยไม่บีบช่วงบนจนแยกกันไม่ออก
-        // b.intensity คือ count/maxCount ที่ API คำนวณมาแล้ว ใช้แทนได้เมื่อไม่มี count ดิบ
-        const maxCount = hm.bins.reduce((m: number, b: any) => (typeof b.count === "number" && b.count > m ? b.count : m), 0);
-        const density = (b: any) =>
-            maxCount > 0 && typeof b.count === "number" ? Math.sqrt(b.count / maxCount) : Math.sqrt(Math.min(1, Math.max(0, b.intensity)));
-
-        const rects = hm.bins.map((b: any, i: number) => ({
-            key: i,
-            x: sx(b.x) - cw / 2,
-            y: sy(b.y) - chh / 2,
-            // ช่องต้องปูชนขอบพอดี ห้ามขยายให้ซ้อนกัน — สีเป็นแบบโปร่ง ส่วนที่ซ้อนจะทึบซ้อนกันจนเห็นเป็นเส้นตาราง
-            w: cw,
-            h: chh,
-            opacity: HEAT_MIN_ALPHA + (1 - HEAT_MIN_ALPHA) * density(b),
-        }));
-        const xTicks = [xMin, (xMin + xMax) / 2, xMax].map((v) => ({ x: sx(v), label: v.toFixed(v >= 20 ? 0 : 1) }));
-
-        // แกน Y คือค่าสารเคมี (ammonia หรือ phosphate แล้วแต่ chem) — phosphate ค่าปกติเล็กมาก (~0.001-0.02)
-        // .toFixed(2) ตายตัวจะปัด tick ทั้ง 3 จุดกลายเป็น "0.00" ซ้ำกันหมด ดูเหมือนไม่มีข้อมูล
-        // เลือกจำนวนทศนิยมตามสเกลจริงของแกนแทน เหมือนที่ xTicks ทำอยู่แล้ว
-        const yScale = Math.abs(yMax);
-        const yDecimals = yScale === 0 ? 2 : yScale < 0.01 ? 4 : yScale < 1 ? 3 : yScale >= 20 ? 0 : 1;
-        const yTicks = [yMin, (yMin + yMax) / 2, yMax].map((v) => ({ y: sy(v), label: v.toFixed(yDecimals) }));
-
-        // เส้น trend: วาดเสมอ ตัดขอบให้อยู่ในกรอบ heatmap แล้วแปลงเป็นพิกัดพิกเซล
-        let trendLine: any = null;
-        if (activeMetric?.trend) {
-            const seg = clipLineToRect(activeMetric.trend.slope, activeMetric.trend.intercept, xMin, xMax, yMin, yMax);
-            if (seg) {
-                const absR = activeMetric.r === null ? 0 : Math.abs(activeMetric.r);
-                trendLine = {
-                    x1: sx(seg.x0),
-                    y1: sy(seg.y0),
-                    x2: sx(seg.x1),
-                    y2: sy(seg.y1),
-                    opacity: 0.25 + 0.75 * absR, // ยิ่ง |r| สูง เส้นยิ่งเข้ม — ต่อเนื่อง ไม่มีขั้นกระโดด
-                };
-            }
-        }
-
-        return { rects, xTicks, yTicks, trendLine, hasData: true, reason: "" };
-    }, [hm, dAxis, dChem, activeMetric]);
-    const xLabel = dAxis === "rain" ? "ฝนสะสม (mm)" : "อุณหภูมิอากาศ (°C)";
     const pill = (on: boolean) => `px-2 py-0.5 rounded-md transition-all cursor-pointer ${on ? "bg-surface text-primary shadow-xs" : "text-text-muted"}`;
+
+    // tooltip เขียนเองเพื่อบอกจำนวนตัวอย่างของกลุ่มนั้นไปด้วย — ค่าเฉลี่ยที่มาจาก 2 ตัวอย่างกับ 200 ตัวอย่างเชื่อถือได้ไม่เท่ากัน
+    const renderTooltip = ({ active, payload }: any) => {
+        if (!active || !payload?.length) return null;
+        const p = payload[0].payload;
+        return (
+            <div style={chartTone.tooltip} className="px-2.5 py-1.5 text-xs">
+                <div className="font-semibold">{p.label}</div>
+                <div>
+                    ค่าเฉลี่ย {formatDisplayNumber(p.avg)} mg/L · จาก {p.n} ตัวอย่าง
+                </div>
+                {!p.reliable && <div className="text-amber-500 mt-0.5">ตัวอย่างน้อย ใช้อ้างอิงไม่ได้</div>}
+            </div>
+        );
+    };
 
     return (
         <div className="bg-surface rounded-xl border border-border p-3 shadow-xs shrink-0">
             <div className="grid grid-cols-1 md:grid-cols-12 md:items-center gap-2 md:gap-2.5 mb-2">
                 {/* relative อยู่ที่บรรทัดหัวข้อ ไม่ใช่ทั้งแถว — กล่องคำอธิบายจะได้โผล่ชิดใต้ปุ่ม ไม่ใช่ใต้ปุ่มสลับฝน/อุณหภูมิที่ตกบรรทัดบนจอแคบ */}
-                <div className="relative md:col-span-8 flex items-center gap-1.5 text-sm font-semibold text-text-primary">
-                    {correlation.title || "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ"}
+                <div className="relative md:col-span-7 flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                    {correlation.title || "สภาพอากาศมีผลต่อค่าสารเคมีในน้ำหรือไม่"}
                     <ChartInfoButton guide="correlation" />
                 </div>
-                {/* จอแคบกว่า sm (มือถือจอเล็ก) เรียงสองกลุ่มปุ่มซ้อนกันแทนเคียงข้าง — เรียงแนวนอนแบบตายตัวเดิมทำให้ปุ่มล้นขอบการ์ดเมื่อจอแคบกว่า ~350px */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full md:col-span-4">
+                {/* จอแคบกว่า sm (มือถือจอเล็ก) เรียงสองกลุ่มปุ่มซ้อนกันแทนเคียงข้าง — เรียงแนวนอนแบบตายตัวทำให้ปุ่มล้นขอบการ์ดเมื่อจอแคบกว่า ~350px */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full md:col-span-5">
                     <div className="grid grid-cols-2 w-full sm:flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
                         <button onClick={() => setAxis("rain")} className={pill(axis === "rain")}>
                             ฝน
                         </button>
                         <button onClick={() => setAxis("temp")} className={pill(axis === "temp")}>
-                            อุณหภูมิ
+                            อุณหภูมิน้ำ
                         </button>
                     </div>
                     <div className="grid grid-cols-2 w-full sm:flex-1 rounded-lg p-0.5 bg-surface-subtle border border-border text-xs font-semibold">
@@ -312,94 +418,54 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                     </div>
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-                {/* Density heatmap (SVG) + จุด outlier DANGER ทับ */}
-                <div className="col-span-1 md:col-span-8 w-full">
-                    {view.hasData ? (
-                        <svg
-                            viewBox={`0 0 ${VB_W} ${VB_H}`}
-                            style={{ width: "100%", height: "auto", overflow: "visible" }}
-                            role="img"
-                            aria-label={`density heatmap ของ ${xLabel} กับความเข้มข้น${chem === "nh3" ? " Ammonia" : " Phosphate"}`}
-                        >
-                            <rect x={mL} y={mT} width={pw} height={ph} fill="none" stroke={chartTone.grid} strokeWidth={1} />
-                            {view.rects.map((r: any) => (
-                                <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={HEAT_PEAK} fillOpacity={r.opacity} shapeRendering="crispEdges" />
-                            ))}
-                            {view.trendLine && (
-                                <line
-                                    x1={view.trendLine.x1}
-                                    y1={view.trendLine.y1}
-                                    x2={view.trendLine.x2}
-                                    y2={view.trendLine.y2}
-                                    stroke={CHEM_COLOR[dChem]}
-                                    strokeWidth={1.6}
-                                    strokeOpacity={view.trendLine.opacity}
-                                    strokeDasharray="5 4"
-                                />
-                            )}
-                            {view.xTicks.map((t: any, i: number) => (
-                                <text key={`x${i}`} x={t.x} y={VB_H - 13} fontSize={12} fill={chartTone.axis} textAnchor="middle">
-                                    {t.label}
-                                </text>
-                            ))}
-                            {view.yTicks.map((t: any, i: number) => (
-                                <text key={`y${i}`} x={mL - 8} y={t.y + 3} fontSize={12} fill={chartTone.axis} textAnchor="end">
-                                    {t.label}
-                                </text>
-                            ))}
-                            <text x={mL + pw / 2} y={VB_H - 2} fontSize={12} fill={chartTone.label} textAnchor="middle">
-                                {xLabel}
-                            </text>
-                            <text x={10} y={mT + ph / 2} fontSize={12} fill={chartTone.label} textAnchor="middle" transform={`rotate(-90 10 ${mT + ph / 2})`}>
-                                ความเข้มข้น (mg/L)
-                            </text>
-                        </svg>
-                    ) : (
-                        <div className="h-48 flex items-center justify-center rounded-lg border border-dashed border-border text-text-muted text-xs text-center px-4">
-                            {view.reason}
-                        </div>
-                    )}
-                    {/* legend */}
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted flex-wrap">
-                        <div className="flex items-center gap-1">
-                            <span>จุดน้อย</span>
-                            {/* แถบ legend ใช้สูตรความทึบชุดเดียวกับช่องในกราฟ จะได้ไม่มีวันเพี้ยนจากกัน */}
-                            <span
-                                className="inline-block w-16 h-2 rounded"
-                                style={{ background: `linear-gradient(90deg, ${HEAT_PEAK}${alphaHex(HEAT_MIN_ALPHA)}, ${HEAT_PEAK})` }}
-                            />
-                            <span>จุดมาก</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <span className="inline-block w-4 h-0 border-t-2" style={{ borderColor: CHEM_COLOR[dChem] }} />
-                            เส้นประ trend (ยิ่งเข้ม = ยิ่งสัมพันธ์แรง)
-                        </div>
+
+            {hasAnyValue ? (
+                <>
+                    {/* แท่งแนวนอน: ค่าสารอยู่แกนนอน หมวดอยู่แกนตั้ง เรียงจากบน (แห้ง/เย็น) ลงล่าง (ฝนหนัก/ร้อน)
+                        ป้ายหมวดเป็นข้อความไทยยาว วางบนแกนตั้งจึงมีที่พอโดยไม่ต้องเอียงหรือตัดคำ
+                        ความสูงคิดตามจำนวนหมวด ไม่ใช่ค่าคงที่ — 3 กับ 4 หมวดจะได้ความหนาแท่งเท่ากัน */}
+                    <div className="w-full" style={{ height: points.length * 52 + 40 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={points} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartTone.grid} horizontal={false} />
+                                <XAxis type="number" domain={[0, xMax]} stroke={chartTone.axis} fontSize={12} tickLine={false} tickFormatter={(v: number) => formatDisplayNumber(v)} />
+                                <YAxis type="category" dataKey="label" stroke={chartTone.axis} fontSize={12} tickLine={false} axisLine={false} width={108} interval={0} />
+                                <Tooltip content={renderTooltip} cursor={{ fill: chartTone.grid, fillOpacity: 0.35 }} />
+                                {/* หมวดที่ avg เป็น null จะไม่มีแท่งโผล่ แต่ยังเหลือแถวกับป้ายไว้ให้เห็นว่าหมวดนี้ไม่มีตัวอย่าง */}
+                                <Bar dataKey="avg" name={CHEM_NAME[chem]} radius={[0, 4, 4, 0]} barSize={22}>
+                                    {points.map((pt: any, i: number) => (
+                                        // แท่งของกลุ่มที่ตัวอย่างน้อยวาดจาง ๆ ให้แยกออกจากกลุ่มที่เชื่อถือได้ด้วยตาเปล่า
+                                        <Cell key={i} fill={lineColor} fillOpacity={pt.reliable ? 1 : 0.3} />
+                                    ))}
+                                    <LabelList dataKey="avg" position="right" fontSize={12} fill={chartTone.label} formatter={(v: any) => (v === null || v === undefined ? "" : formatDisplayNumber(Number(v)))} />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
+
+                    {/* ประโยคสรุปแทนการ์ดตัวเลข r — ตัวเลขดิบอยู่ในปุ่ม (i) สำหรับคนที่อยากดูลึก */}
+                    <div className="mt-2 pt-2 border-t border-border">
+                        <p className="text-sm font-semibold" style={{ color: lineColor }}>
+                            {correlationSentence(axis, chem, metric?.r ?? null)}
+                        </p>
+                        <p className="text-xs text-text-muted mt-0.5">
+                            ค่าเฉลี่ย{CHEM_NAME[chem]} (mg/L) ต่อ{series?.xLabel} · {metric?.n ?? 0} ผลตรวจ · r ={" "}
+                            {/* คำอธิบายในปุ่ม (i) อ้างถึงค่า r ตัวนี้ ต้องมีที่ให้ดูบนหน้าจอ ไม่งั้นคำอธิบายชี้ไปยังของที่ไม่มีอยู่
+                                toFixed(2) ตายตัวให้ความละเอียดคงที่ — ฝั่ง API ปัดมา 2 ตำแหน่งแล้วแต่ Number() ตัดศูนย์ท้ายทิ้ง (0.70 เหลือ 0.7) */}
+                            <span className="font-semibold">{typeof metric?.r === "number" ? (metric.r > 0 ? "+" : "") + metric.r.toFixed(2) : "—"}</span>
+                        </p>
+                        {lowSampleGroups.length > 0 && (
+                            <p className="text-xs text-amber-500 mt-0.5">
+                                แท่งสีจางคือกลุ่มที่มีไม่ถึง {minGroupSamples} ตัวอย่าง ({lowSampleGroups.map((g: any) => g.label).join(", ")}) ค่าเฉลี่ยเหวี่ยงง่าย
+                            </p>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div className="h-48 flex items-center justify-center rounded-lg border border-dashed border-border text-text-muted text-xs text-center px-4">
+                    ยังไม่มีผลตรวจของ{CHEM_NAME[chem]}ที่บันทึกสภาพอากาศไว้ในช่วงวันที่ที่เลือก
                 </div>
-                {/* การ์ดค่าสหสัมพันธ์ Pearson r (คำนวณจากข้อมูลเต็มที่ server) */}
-                <div className="col-span-1 md:col-span-4 grid grid-cols-2 gap-2 content-start">
-                    {correlation.metrics?.map((m: any, i: number) => {
-                        const active = m.key === activeKey;
-                        const rColor = m.r === null ? "text-text-muted" : m.r >= 0.5 ? "text-rose-500" : m.r <= -0.5 ? "text-blue-500" : "text-text-secondary";
-                        return (
-                            <button
-                                key={i}
-                                onClick={() => {
-                                    const [a, c] = m.key.split("_");
-                                    setAxis(a === "temp" ? "temp" : "rain");
-                                    setChem(c === "po4" ? "po4" : "nh3");
-                                }}
-                                className={`rounded-lg border p-2 text-center transition-all cursor-pointer ${active ? "border-primary/40 bg-primary/10" : "border-border bg-surface-subtle/40 opacity-50 hover:opacity-80"}`}
-                            >
-                                <div className={`text-base font-bold ${rColor}`}>{m.r === null ? "—" : (m.r > 0 ? "+" : "") + formatDisplayNumber(m.r)}</div>
-                                <div className="text-xs text-text-muted font-semibold mt-0.5 truncate">{m.label}</div>
-                                <div className="text-xs text-text-muted">n={m.n}</div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
+            )}
         </div>
     );
 }
