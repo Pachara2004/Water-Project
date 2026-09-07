@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
 import { STATUS_COLOR, parameterColor } from "@/lib/chartColors";
+import { getWeatherConditionLabel } from "@/lib/weather";
 import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters, toThaiWallClock, fromThaiWallClock, getThaiHour } from "@/lib/sampleFilters";
 
 export async function GET(request: NextRequest) {
@@ -328,6 +329,7 @@ export async function GET(request: NextRequest) {
                 collectionTime: true,
                 rainAccumulation: true, // ใช้ต่อในส่วน Correlation (สภาพอากาศ × ความเข้มข้นสาร)
                 airTemperature: true,
+                weatherCondCode: true, // หมวดสภาพอากาศ = แกน X ของกราฟความสัมพันธ์
                 measurements: {
                     where: { parameter: { name: { in: ["ammonia", "phosphate"] } } },
                     select: { value: true, parameter: { select: { name: true } } },
@@ -525,12 +527,48 @@ export async function GET(request: NextRequest) {
             rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStartThai)} – ${formatThaiDate(bucketRangeEndThai)}` : "",
         };
 
-        // ---  [มิติที่ 5: Correlation] สหสัมพันธ์สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
-        // เก็บคู่จุดของแต่ละชุด (แกน × สาร) เพื่อคำนวณ Pearson r และแบ่ง density bin ฝั่ง server
+        // ---  [มิติที่ 5: Correlation] สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
+        // ส่งออกสองอย่างที่ตอบคำถามเดียวกันคนละมุม:
+        //   series  = ค่าเฉลี่ยรายกลุ่ม สำหรับวาดเส้น บอก "รูปร่าง" ของความสัมพันธ์แบบที่คนทั่วไปอ่านออก
+        //   metrics = Pearson r คิดจากค่าต่อเนื่องดิบ (ฝนหน่วย mm, อุณหภูมิหน่วย °C) บอก "ความแรง" เป็นตัวเลข
+        // r คิดจากค่าดิบไม่ใช่จากรหัสหมวดสภาพอากาศ เพราะระยะห่างระหว่างรหัสไม่ได้แทนปริมาณฝนจริง
         const rainNH3: { x: number; y: number }[] = [];
         const rainPO4: { x: number; y: number }[] = [];
         const tempNH3: { x: number; y: number }[] = [];
         const tempPO4: { x: number; y: number }[] = [];
+
+        // กลุ่มบนแกน X ของเส้นฝน — รหัสใน samples.weather_cond_code มาจาก mapWmoToLegacyCode ของ lib/tmd.ts
+        // ซึ่งปล่อยออกมาแค่ 4 ค่านี้ เรียงจากไม่มีฝนไปฝนหนัก ป้ายชื่อดึงจาก lib/weather.ts ที่หน้าอื่นใช้อยู่แล้ว
+        const WEATHER_BUCKET_CODES = [1, 2, 5, 7];
+
+        // กลุ่มบนแกน X ของเส้นอุณหภูมิ — ขอบเขตยึดช่วงอากาศทั่วไปของชายฝั่งอ่าวไทย ไม่ได้อิงการกระจายของข้อมูล
+        // ความหมายของแต่ละช่วงจึงคงที่ ไม่ขยับตามชุดข้อมูลที่ผู้ใช้กรองอยู่
+        const TEMP_BUCKETS = [
+            { key: "lt30", label: "ต่ำกว่า 30°C", match: (t: number) => t < 30 },
+            { key: "30to32", label: "30–32°C", match: (t: number) => t >= 30 && t <= 32 },
+            { key: "gt32", label: "สูงกว่า 32°C", match: (t: number) => t > 32 },
+        ];
+
+        // ประกาศทุกกลุ่มไว้ล่วงหน้าเสมอ แม้กลุ่มนั้นไม่มีตัวอย่างเลย
+        // แกน X จึงคงที่ทุกครั้งที่กรอง และคนดูเห็นได้ว่ากลุ่มนั้น "ไม่มีตัวอย่าง" ไม่ใช่ "หายไปจากกราฟ"
+        type CorrBucket = { key: string; label: string; sum: number; n: number };
+        const newWeatherBuckets = (): CorrBucket[] => WEATHER_BUCKET_CODES.map((c) => ({ key: String(c), label: getWeatherConditionLabel(c), sum: 0, n: 0 }));
+        const newTempBuckets = (): CorrBucket[] => TEMP_BUCKETS.map((b) => ({ key: b.key, label: b.label, sum: 0, n: 0 }));
+
+        const bucketSets = {
+            rain_nh3: newWeatherBuckets(),
+            rain_po4: newWeatherBuckets(),
+            temp_nh3: newTempBuckets(),
+            temp_po4: newTempBuckets(),
+        };
+
+        const addToBucket = (buckets: CorrBucket[], key: string | null, value: number) => {
+            if (key === null) return;
+            const b = buckets.find((x) => x.key === key);
+            if (!b) return;
+            b.sum += value;
+            b.n += 1;
+        };
 
         timeSeriesSamples.forEach((s) => {
             const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value ?? null;
@@ -542,23 +580,46 @@ export async function GET(request: NextRequest) {
             if (rain !== null && rain !== undefined && phos !== null) rainPO4.push({ x: rain, y: phos });
             if (temp !== null && temp !== undefined && amm !== null) tempNH3.push({ x: temp, y: amm });
             if (temp !== null && temp !== undefined && phos !== null) tempPO4.push({ x: temp, y: phos });
+
+            // รหัสนอกชุดที่รู้จัก (ข้อมูลเก่าที่ mapper รุ่นก่อนเขียนไว้) ไม่เข้ากลุ่มไหนเลย จึงไม่ถูกนับใน n ของกราฟเส้น
+            const weatherKey = s.weatherCondCode !== null && s.weatherCondCode !== undefined ? String(s.weatherCondCode) : null;
+            const tempKey = temp !== null && temp !== undefined ? TEMP_BUCKETS.find((b) => b.match(temp))?.key ?? null : null;
+
+            if (amm !== null) {
+                addToBucket(bucketSets.rain_nh3, weatherKey, amm);
+                addToBucket(bucketSets.temp_nh3, tempKey, amm);
+            }
+            if (phos !== null) {
+                addToBucket(bucketSets.rain_po4, weatherKey, phos);
+                addToBucket(bucketSets.temp_po4, tempKey, phos);
+            }
         });
 
         const pearsonPairs = (pts: { x: number; y: number }[]): [number, number][] => pts.map((p) => [p.x, p.y]);
-        // เส้น trend คำนวณจากคู่ข้อมูลชุดเดียวกับ Pearson r เสมอ (ความชัน/จุดตัดแกน y)
         const correlationMetrics = [
-            { key: "rain_nh3", label: "ฝน × Ammonia", r: pearson(pearsonPairs(rainNH3)), n: rainNH3.length, trend: linearFit(pearsonPairs(rainNH3)) },
-            { key: "rain_po4", label: "ฝน × Phosphate", r: pearson(pearsonPairs(rainPO4)), n: rainPO4.length, trend: linearFit(pearsonPairs(rainPO4)) },
-            { key: "temp_nh3", label: "อุณหภูมิ × Ammonia", r: pearson(pearsonPairs(tempNH3)), n: tempNH3.length, trend: linearFit(pearsonPairs(tempNH3)) },
-            { key: "temp_po4", label: "อุณหภูมิ × Phosphate", r: pearson(pearsonPairs(tempPO4)), n: tempPO4.length, trend: linearFit(pearsonPairs(tempPO4)) },
+            { key: "rain_nh3", label: "ฝน × Ammonia", r: pearson(pearsonPairs(rainNH3)), n: rainNH3.length },
+            { key: "rain_po4", label: "ฝน × Phosphate", r: pearson(pearsonPairs(rainPO4)), n: rainPO4.length },
+            { key: "temp_nh3", label: "อุณหภูมิน้ำ × Ammonia", r: pearson(pearsonPairs(tempNH3)), n: tempNH3.length },
+            { key: "temp_po4", label: "อุณหภูมิน้ำ × Phosphate", r: pearson(pearsonPairs(tempPO4)), n: tempPO4.length },
         ];
 
-        // แบ่ง density bin ทั้ง 4 ชุด (แกน × สาร) — ส่งเฉพาะช่องที่มีค่า payload เล็กแม้ข้อมูลหลักพัน
-        const correlationHeatmaps = {
-            rain_nh3: densityBins(rainNH3),
-            rain_po4: densityBins(rainPO4),
-            temp_nh3: densityBins(tempNH3),
-            temp_po4: densityBins(tempPO4),
+        // กลุ่มที่มีตัวอย่างน้อยกว่านี้ ค่าเฉลี่ยเหวี่ยงตามตัวอย่างเดียวจนเส้นชี้ผิดทาง — ส่งธงไปให้หน้าจอวาดแบบไม่เน้น
+        const MIN_GROUP_SAMPLES = 5;
+        const toPoints = (buckets: CorrBucket[]) =>
+            buckets.map((b) => ({
+                key: b.key,
+                label: b.label,
+                // null = ไม่มีตัวอย่างในกลุ่มนี้ — ต่างจาก 0 ที่แปลว่าวัดได้ 0 จริง ฝั่งกราฟจะเว้นเส้นให้ขาดตรงนั้น
+                avg: b.n > 0 ? Number((b.sum / b.n).toFixed(4)) : null,
+                n: b.n,
+                reliable: b.n >= MIN_GROUP_SAMPLES,
+            }));
+
+        const correlationSeries = {
+            rain_nh3: { xLabel: "สภาพอากาศขณะเก็บตัวอย่าง", points: toPoints(bucketSets.rain_nh3) },
+            rain_po4: { xLabel: "สภาพอากาศขณะเก็บตัวอย่าง", points: toPoints(bucketSets.rain_po4) },
+            temp_nh3: { xLabel: "อุณหภูมิน้ำ (ประมาณ) ขณะเก็บตัวอย่าง", points: toPoints(bucketSets.temp_nh3) },
+            temp_po4: { xLabel: "อุณหภูมิน้ำ (ประมาณ) ขณะเก็บตัวอย่าง", points: toPoints(bucketSets.temp_po4) },
         };
 
         return NextResponse.json({
@@ -597,10 +658,14 @@ export async function GET(request: NextRequest) {
             },
             trends: trendsData,
             correlation: {
-                title: "กราฟความสัมพันธ์เชิงสถิติระหว่างสภาพภูมิอากาศ",
-                note: "อุณหภูมิ = อุณหภูมิอากาศ (ไม่มีอุณหภูมิน้ำใน schema)",
+                title: "สภาพอากาศมีผลต่อค่าสารเคมีในน้ำหรือไม่",
+                // ฟิลด์ samples.air_temperature ชื่อว่าอากาศ แต่ค่าที่เขียนลงไปคืออุณหภูมิน้ำที่ประมาณจาก
+                // apparent/skin temperature ของ Open-Meteo ผ่าน calculateWaterTemperature ใน lib/tmd.ts
+                // ไม่ใช่ค่าที่วัดจากหน้างาน และไม่ใช่อุณหภูมิอากาศ
+                note: "อุณหภูมิ = อุณหภูมิน้ำที่ประมาณจากแบบจำลอง ไม่ใช่ค่าที่วัดหน้างาน",
+                minGroupSamples: MIN_GROUP_SAMPLES,
                 metrics: correlationMetrics,
-                heatmaps: correlationHeatmaps,
+                series: correlationSeries,
             },
         });
     } catch (error) {
@@ -662,62 +727,3 @@ function pearson(pairs: [number, number][]): number | null {
     return Number((cov / Math.sqrt(varX * varY)).toFixed(2));
 }
 
-// เส้น trend (least-squares) จากคู่ข้อมูลเดียวกับ Pearson — คืน slope/intercept หรือ null หากคำนวณไม่ได้
-function linearFit(pairs: [number, number][]): { slope: number; intercept: number } | null {
-    const n = pairs.length;
-    if (n < 2) return null;
-    let sx = 0,
-        sy = 0,
-        sxx = 0,
-        sxy = 0;
-    for (const [x, y] of pairs) {
-        sx += x;
-        sy += y;
-        sxx += x * x;
-        sxy += x * y;
-    }
-    const denom = n * sxx - sx * sx;
-    if (denom === 0) return null;
-    const slope = (n * sxy - sx * sy) / denom;
-    const intercept = (sy - slope * sx) / n;
-    return { slope: Number(slope.toFixed(4)), intercept: Number(intercept.toFixed(4)) };
-}
-
-// แบ่งจุดเป็นตารางความหนาแน่น (density bin) — คืนเฉพาะช่องที่มีจุด พร้อมขอบเขตและขนาดช่อง
-// ต้นทุน O(N) รอบเดียว และเอาต์พุตคงที่ (≤ cols×rows ช่อง) ไม่ว่าจะมีจุดกี่พัน
-function densityBins(pts: { x: number; y: number }[], cols = 18, rows = 12) {
-    if (pts.length === 0) return { bins: [] as any[], domain: null, binW: 0, binH: 0, cols, rows };
-    let xMin = Infinity,
-        xMax = -Infinity,
-        yMin = Infinity,
-        yMax = -Infinity;
-    for (const p of pts) {
-        if (p.x < xMin) xMin = p.x;
-        if (p.x > xMax) xMax = p.x;
-        if (p.y < yMin) yMin = p.y;
-        if (p.y > yMax) yMax = p.y;
-    }
-    const binW = (xMax - xMin) / cols || 1;
-    const binH = (yMax - yMin) / rows || 1;
-    const grid: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(0));
-    for (const p of pts) {
-        const c = Math.min(cols - 1, Math.max(0, Math.floor((p.x - xMin) / binW)));
-        const r = Math.min(rows - 1, Math.max(0, Math.floor((p.y - yMin) / binH)));
-        grid[r][c]++;
-    }
-    let maxCount = 0;
-    for (const row of grid) for (const v of row) if (v > maxCount) maxCount = v;
-    const bins: { x: number; y: number; count: number; intensity: number }[] = [];
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            if (!grid[r][c]) continue;
-            bins.push({
-                x: Number((xMin + (c + 0.5) * binW).toFixed(3)),
-                y: Number((yMin + (r + 0.5) * binH).toFixed(4)),
-                count: grid[r][c],
-                intensity: Number((grid[r][c] / maxCount).toFixed(3)),
-            });
-        }
-    }
-    return { bins, domain: { xMin, xMax, yMin, yMax }, binW, binH, cols, rows };
-}
