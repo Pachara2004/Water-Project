@@ -68,8 +68,6 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const sheetRef = useRef<HTMLDivElement>(null);
     const animationFrameRef = useRef<number | null>(null);
 
-    const dragBaseTranslateYRef = useRef(0);
-
     const [windowHeight, setWindowHeight] = useState(700);
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -78,21 +76,15 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     }, []);
 
     const HEIGHTS = useMemo(
-        () => {
-            const navBarHeight = 88;
-            const availableHeight = windowHeight - navBarHeight;
-            return {
-                collapsed: 125,
-                half: availableHeight * 0.5,
-                full: availableHeight - 80, // Leave 80px from the top of the screen
-            };
-        },
+        () => ({
+            collapsed: 125,
+            half: windowHeight * 0.5,
+            full: windowHeight * 0.9,
+        }),
         [windowHeight],
     );
 
-    const getTranslateY = useCallback((snap: "collapsed" | "half" | "full"): number => {
-        return HEIGHTS.full - HEIGHTS[snap];
-    }, [HEIGHTS]);
+    const getSnapHeight = useCallback((snap: "collapsed" | "half" | "full"): number => HEIGHTS[snap], [HEIGHTS]);
 
     const getNearestSnapPoint = (height: number): "collapsed" | "half" | "full" => {
         const dists = {
@@ -105,8 +97,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
     const snapTo = (point: "collapsed" | "half" | "full") => {
         if (sheetRef.current) {
-            sheetRef.current.style.transition = "transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1)";
-            sheetRef.current.style.transform = `translateY(${HEIGHTS.full - HEIGHTS[point]}px)`;
+            sheetRef.current.style.transition = "height 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
+            sheetRef.current.style.height = `${getSnapHeight(point)}px`;
         }
         setSheetHeight(point);
     };
@@ -118,17 +110,8 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         lastYRef.current = clientY;
         lastTimeRef.current = Date.now();
         velocityRef.current = 0;
-        
-        let currentTranslateY = getTranslateY(sheetHeight);
-        if (sheetRef.current) {
-            const computedStyle = window.getComputedStyle(sheetRef.current);
-            if (computedStyle.transform && computedStyle.transform !== 'none') {
-                const matrix = new DOMMatrix(computedStyle.transform);
-                currentTranslateY = matrix.m42;
-            }
-            sheetRef.current.style.transition = "none";
-        }
-        dragBaseTranslateYRef.current = currentTranslateY;
+        dragBaseHeightRef.current = sheetRef.current ? sheetRef.current.getBoundingClientRect().height : getSnapHeight(sheetHeight);
+        if (sheetRef.current) sheetRef.current.style.transition = "none";
     };
 
     const handleDragMove = useCallback(
@@ -143,17 +126,14 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
             lastYRef.current = clientY;
             lastTimeRef.current = now;
 
-            const delta = clientY - dragStartYRef.current;
-            let newTranslateY = dragBaseTranslateYRef.current + delta;
-            
-            const maxTranslateY = HEIGHTS.full - HEIGHTS.collapsed;
-            newTranslateY = Math.max(0, Math.min(maxTranslateY, newTranslateY));
+            const delta = dragStartYRef.current - clientY;
+            const newHeight = Math.max(HEIGHTS.collapsed, Math.min(HEIGHTS.full, dragBaseHeightRef.current + delta));
 
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
             animationFrameRef.current = requestAnimationFrame(() => {
                 if (sheetRef.current) {
-                    sheetRef.current.style.transform = `translateY(${newTranslateY}px)`;
+                    sheetRef.current.style.height = `${newHeight}px`;
                 }
             });
         },
@@ -165,16 +145,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         isDraggingRef.current = false;
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
-        let currentTranslateY = getTranslateY(sheetHeight);
-        if (sheetRef.current) {
-            const computedStyle = window.getComputedStyle(sheetRef.current);
-            if (computedStyle.transform && computedStyle.transform !== 'none') {
-                const matrix = new DOMMatrix(computedStyle.transform);
-                currentTranslateY = matrix.m42;
-            }
-        }
-
-        const currentHeight = HEIGHTS.full - currentTranslateY;
+        const currentHeight = sheetRef.current ? sheetRef.current.getBoundingClientRect().height : getSnapHeight(sheetHeight);
         const velocity = velocityRef.current;
         const VELOCITY_THRESHOLD = 0.25;
 
@@ -200,11 +171,11 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     }, []);
 
     useEffect(() => {
-        if (sheetRef.current && !isDraggingRef.current) {
-            sheetRef.current.style.transition = "transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1)";
-            sheetRef.current.style.transform = `translateY(${getTranslateY(sheetHeight)}px)`;
+        if (sheetRef.current) {
+            sheetRef.current.style.transition = "height 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
+            sheetRef.current.style.height = `${getSnapHeight(sheetHeight)}px`;
         }
-    }, [getTranslateY, sheetHeight]);
+    }, [getSnapHeight, sheetHeight]);
 
     /**
      * ข้อมูลกราฟแนวโน้ม — เส้นกราฟงอกตามสารที่พบจริงในข้อมูล ไม่ผูกกับฟอสเฟต/แอมโมเนีย
@@ -412,6 +383,11 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                         </div>
                     </div>
 
+                    {isCollapsed && latest && (
+                        <div className="shrink-0 sm:hidden">
+                            <StatusBadge status={latest.status?.toLowerCase() as any} size="md" />
+                        </div>
+                    )}
                 </div>
 
                 {(!isCollapsed || (typeof window !== "undefined" && window.innerWidth >= 640)) && (
@@ -635,51 +611,42 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
         <>
             <div className="hidden" onClick={onClose} />
 
-            {/* Wrapper for clipping the translated sheet so it doesn't overlap Navbar */}
             <div
-                className="sm:hidden fixed left-0 right-0 z-1000 pointer-events-none"
+                ref={sheetRef}
+                className="sm:hidden fixed left-0 right-0 z-1000 bg-bg rounded-t-3xl border border-border flex flex-col will-change-[height]"
                 style={{
-                    bottom: `calc(88px + env(safe-area-inset-bottom))`,
-                    height: HEIGHTS.full,
-                    overflow: "hidden",
+                    bottom: `calc(72px + env(safe-area-inset-bottom))`,
+                    height: `${getSnapHeight(sheetHeight)}px`,
+                    maxHeight: "85vh",
+                    touchAction: "none",
                 }}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
+                onTouchEnd={handleDragEnd}
+                onMouseMove={(e) => handleDragMove(e.clientY)}
+                onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
             >
-                <div
-                    ref={sheetRef}
-                    className="absolute bottom-0 left-0 right-0 bg-bg rounded-t-3xl border border-border flex flex-col pointer-events-auto will-change-transform"
-                    style={{
-                        height: HEIGHTS.full,
-                        transform: `translateY(${getTranslateY(sheetHeight)}px)`,
-                        touchAction: "none",
-                    }}
-                    onMouseUp={handleDragEnd}
-                    onMouseLeave={handleDragEnd}
-                    onTouchEnd={handleDragEnd}
-                    onMouseMove={(e) => handleDragMove(e.clientY)}
-                    onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
-                >
-                    <div className="bottom-sheet-header flex items-center justify-between px-7 pt-4 pb-3 shrink-0 select-none" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
-                        <div className="flex-1 flex items-center justify-center">
-                            <div
-                                className="bottom-sheet-handle h-7 text-primary flex items-center justify-center cursor-grab active:cursor-grabbing rounded-full"
-                                onMouseDown={handleDragStart}
-                                onTouchStart={handleDragStart}
-                            >
-                                <div className="w-20 h-1 rounded-full bg-secondary transition-all" />
-                            </div>
+                <div className="bottom-sheet-header flex items-center justify-between px-7 pt-4 pb-3 shrink-0 select-none" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
+                    <div className="flex-1 flex items-center justify-center">
+                        <div
+                            className="bottom-sheet-handle h-7 text-primary flex items-center justify-center cursor-grab active:cursor-grabbing rounded-full"
+                            onMouseDown={handleDragStart}
+                            onTouchStart={handleDragStart}
+                        >
+                            <div className="w-20 h-1 rounded-full bg-secondary transition-all" />
                         </div>
-                        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center transition-transform active:scale-90 cursor-pointer pointer-events-auto">
-                            <X size={24} className="text-primary" />
-                        </button>
                     </div>
-                    <div
-                        className={`flex-1 flex flex-col px-6 pb-4 pointer-events-auto transition-none ${sheetHeight === "collapsed" ? "overflow-hidden" : "overflow-y-auto scrollbar-none"}`}
-                        style={{
-                            paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
-                        }}
-                    >
-                        {renderContent()}
-                    </div>
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center transition-transform active:scale-90 cursor-pointer">
+                        <X size={24} className="text-primary" />
+                    </button>
+                </div>
+                <div
+                    className={`flex-1 flex flex-col px-6 pb-4 pointer-events-auto transition-all ${sheetHeight === "collapsed" ? "overflow-hidden" : "overflow-y-auto scrollbar-none"}`}
+                    style={{
+                        paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
+                    }}
+                >
+                    {renderContent()}
                 </div>
             </div>
 

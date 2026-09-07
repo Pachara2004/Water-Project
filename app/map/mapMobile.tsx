@@ -16,7 +16,7 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
 
 export default function MapMobile() {
     return (
-        <div className="fixed top-0 left-0 w-full h-[calc(100dvh-88px-env(safe-area-inset-bottom))] overflow-hidden">
+        <div className="fixed top-0 left-0 w-full h-[calc(100dvh-72px-env(safe-area-inset-bottom))] overflow-hidden">
             <div className="w-full h-full relative">
                 <MapView mode="explorer" />
             </div>
