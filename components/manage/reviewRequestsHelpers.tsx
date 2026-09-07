@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
 import { readChemMeasurements, formatMeasuredValue } from "@/lib/chemLabels";
-import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown, Download } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
@@ -1040,12 +1040,45 @@ export function ImageLightbox({ images, onClose }: { images: PreviewImages; onCl
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xs z-2000 flex flex-col items-center justify-center p-2 animate-in fade-in duration-200" onClick={onClose}>
-            <button
-                onClick={onClose}
-                className="absolute top-5 right-5 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
-            >
-                <X size={20} />
-            </button>
+            <div className="absolute top-5 right-5 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                {currentUrl && (
+                    <button
+                        onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                                const res = await fetch(currentUrl);
+                                const blob = await res.blob();
+                                const blobUrl = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = blobUrl;
+                                a.download = `water-test-${active}.jpg`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                            } catch (err) {
+                                const a = document.createElement("a");
+                                a.href = currentUrl;
+                                a.download = `water-test-${active}.jpg`;
+                                a.target = "_blank";
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            }
+                        }}
+                        className="h-10 px-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center gap-1.5 text-white text-xs font-bold transition-all active:scale-90 cursor-pointer"
+                    >
+                        <Download size={16} />
+                        <span className="hidden sm:inline">ดาวน์โหลด</span>
+                    </button>
+                )}
+                <button
+                    onClick={onClose}
+                    className="w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
+                >
+                    <X size={20} />
+                </button>
+            </div>
 
             <div onClick={(e) => e.stopPropagation()} className="flex gap-1 mb-4 bg-white/10 border border-white/20 rounded-full p-1">
                 {tabs.map((t) => (

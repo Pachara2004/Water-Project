@@ -53,59 +53,62 @@ interface AnalyzeButtonProps {
 
 export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentLocationId, isRecommending, weatherStatus = "idle", handleAnalyze }: AnalyzeButtonProps) {
     const hasEnabledParam = activeParameters.length > 0;
-    const isAllImagesUploaded = hasEnabledParam && activeParameters.every((p) => imageFiles[p.id] !== undefined);
+    const uploadedCount = activeParameters.filter((p) => imageFiles[p.id] !== undefined).length;
+    const hasAnyImageUploaded = uploadedCount > 0;
     // สภาพอากาศถูกบันทึกลงใบตรวจตอน save โดยอิงสถานี+เวลาชุดเดียวกับที่ preview ใช้
     // ถ้าดึงไม่ได้ตอนนี้ ตอน save ก็จะได้ null เหมือนกัน จึงกันไว้ตั้งแต่ต้นทาง
     const isWeatherReady = weatherStatus === "ready";
 
     return (
-        <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={!isAllImagesUploaded || !currentLocationId || isRecommending || !isWeatherReady}
-            className="w-full py-3 px-4 min-h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-secondary hover:bg-primary text-white shadow-xs cursor-pointer"
-        >
-            {isRecommending ? (
-                <>
-                    <Loader2 size={15} className="animate-spin" />
-                    <span>กำลังตรวจจับตำแหน่ง…</span>
-                </>
-            ) : !hasEnabledParam ? (
-                <>
-                    <ToggleLeft size={15} />
-                    <span>เปิดสารที่ต้องการส่งตรวจก่อน</span>
-                </>
-            ) : !currentLocationId ? (
-                <>
-                    <MapPin size={15} />
-                    <span>กรุณาเลือกสถานีก่อน</span>
-                </>
-            ) : !isAllImagesUploaded ? (
-                <>
-                    <Camera size={15} />
-                    <span>ถ่ายภาพให้ครบทุกสารที่เปิด</span>
-                </>
-            ) : weatherStatus === "loading" ? (
-                <>
-                    <Loader2 size={15} className="animate-spin" />
-                    <span>กำลังดึงข้อมูลสภาพอากาศ…</span>
-                </>
-            ) : weatherStatus === "unavailable" ? (
-                <>
-                    <CloudOff size={15} />
-                    <span>ไม่พบข้อมูลสภาพอากาศของเวลานี้</span>
-                </>
-            ) : !isWeatherReady ? (
-                <>
-                    <CloudAlert size={15} />
-                    <span>ดึงข้อมูลสภาพอากาศไม่สำเร็จ</span>
-                </>
-            ) : (
-                <>
-                    <Sparkles size={15} />
-                    <span>วิเคราะห์ด้วยข้อมูล</span>
-                </>
-            )}
-        </button>
+        <div className="flex flex-col gap-2">
+            <button
+                type="button"
+                onClick={handleAnalyze}
+                disabled={!hasAnyImageUploaded || !currentLocationId || isRecommending || !isWeatherReady}
+                className="w-full py-3 px-4 min-h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-secondary hover:bg-primary text-white shadow-xs cursor-pointer"
+            >
+                {isRecommending ? (
+                    <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>กำลังตรวจจับตำแหน่ง…</span>
+                    </>
+                ) : !hasEnabledParam ? (
+                    <>
+                        <ToggleLeft size={15} />
+                        <span>เปิดสารที่ต้องการส่งตรวจก่อน</span>
+                    </>
+                ) : !currentLocationId ? (
+                    <>
+                        <MapPin size={15} />
+                        <span>กรุณาเลือกสถานีก่อน</span>
+                    </>
+                ) : !hasAnyImageUploaded ? (
+                    <>
+                        <Camera size={15} />
+                        <span>ถ่ายภาพอย่างน้อย 1 สาร</span>
+                    </>
+                ) : weatherStatus === "loading" ? (
+                    <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>กำลังดึงข้อมูลสภาพอากาศ…</span>
+                    </>
+                ) : weatherStatus === "unavailable" ? (
+                    <>
+                        <CloudOff size={15} />
+                        <span>ไม่พบข้อมูลสภาพอากาศของเวลานี้</span>
+                    </>
+                ) : !isWeatherReady ? (
+                    <>
+                        <CloudAlert size={15} />
+                        <span>ดึงข้อมูลสภาพอากาศไม่สำเร็จ</span>
+                    </>
+                ) : (
+                    <>
+                        <Sparkles size={15} />
+                        <span>วิเคราะห์ด้วยข้อมูล</span>
+                    </>
+                )}
+            </button>
+        </div>
     );
 }

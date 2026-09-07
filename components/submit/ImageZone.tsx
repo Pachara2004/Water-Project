@@ -1,6 +1,6 @@
 // components/submit/ImageZone.tsx
 import { useRef, useState, useMemo, useEffect } from "react";
-import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft } from "lucide-react";
+import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft, Download } from "lucide-react";
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult, VerifyError } from "./types";
 import { SectionHead } from "./SharedAtoms";
@@ -295,19 +295,52 @@ ${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`
                         ) : displayImgSrc ? (
                             <>
                                 <img src={displayImgSrc} alt={param.name} className="w-full h-full object-contain" />
-                                {step === "results" && hasPlotImg && (
+                                <div className="absolute top-3 right-3 flex items-center gap-2">
                                     <button
                                         type="button"
-                                        className="absolute top-3 right-3 flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
-                                        onClick={(e) => {
+                                        className="flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                        onClick={async (e) => {
                                             e.stopPropagation();
-                                            setViewMode(viewMode === "analyzed" ? "raw" : "analyzed");
+                                            try {
+                                                const url = displayImgSrc as string;
+                                                const res = await fetch(url);
+                                                const blob = await res.blob();
+                                                const blobUrl = URL.createObjectURL(blob);
+                                                const a = document.createElement("a");
+                                                a.href = blobUrl;
+                                                a.download = `water-test-${param.name}.jpg`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                                            } catch (err) {
+                                                const a = document.createElement("a");
+                                                a.href = displayImgSrc as string;
+                                                a.download = `water-test-${param.name}.jpg`;
+                                                a.target = "_blank";
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                            }
                                         }}
                                     >
-                                        <Eye size={13} strokeWidth={2.5} />
-                                        <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
+                                        <Download size={13} strokeWidth={2.5} />
+                                        <span className="hidden sm:inline">ดาวน์โหลด</span>
                                     </button>
-                                )}
+                                    {step === "results" && hasPlotImg && (
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setViewMode(viewMode === "analyzed" ? "raw" : "analyzed");
+                                            }}
+                                        >
+                                            <Eye size={13} strokeWidth={2.5} />
+                                            <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
+                                        </button>
+                                    )}
+                                </div>
 
                                 {/* ป้ายบอกว่าแตะที่ภาพแล้วเลือกรูปใหม่ได้ — ขึ้นเฉพาะขั้นอัปโหลด ซึ่งเป็นขั้นเดียวที่กรอบภาพรับคลิก
                                     pointer-events-none เพื่อให้คลิกทะลุไปที่กรอบภาพซึ่งเป็นตัวเปิดแกลเลอรี */}
