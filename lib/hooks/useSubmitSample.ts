@@ -496,6 +496,7 @@ export function useSubmitSample() {
         setVerifyErrors({}); // ล้างผลบล็อกรอบก่อนหน้าก่อนเริ่มวิเคราะห์ใหม่
 
         try {
+            const analyzeStartTime = Date.now();
             const newErrors: Record<number, VerifyError> = {};
             const items: AnalyzedItem[] = [];
 
@@ -587,6 +588,12 @@ export function useSubmitSample() {
                     isSystemUnknown,
                     notTestTube: false,
                 });
+            }
+
+            // หน่วงเวลาให้ครบ 1 วินาทีเป็นอย่างน้อย เพื่อไม่ให้ UI กระตุกเร็วเกินไปจนผู้ใช้คิดว่าไม่ได้กดหรือค้าง
+            const elapsedTime = Date.now() - analyzeStartTime;
+            if (elapsedTime < 1000) {
+                await new Promise((resolve) => setTimeout(resolve, 1000 - elapsedTime));
             }
 
             // ถ้ามีสารตัวใดไม่ผ่านด่าน → ยังไม่เข้าหน้าผลลัพธ์ กลับไปหน้ากรอกข้อมูลพร้อมแบนเนอร์เตือน
