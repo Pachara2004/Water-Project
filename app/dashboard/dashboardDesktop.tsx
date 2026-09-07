@@ -2,10 +2,10 @@
 
 import { useEffect } from "react";
 import ExportButtons from "@/components/dashboard/ExportButtons";
-import { LucideShieldAlert, LucideSearch, LucideX, LucideRepeat2 } from "lucide-react";
+import { LucideShieldAlert, LucideRepeat2 } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import type { DashboardAnalyticsState } from "@/lib/hooks/useDashboardAnalytics";
-import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection, formatDisplayNumber } from "@/components/dashboard/dashboardHelpers";
+import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity, renderTrend, DateField, CorrelationSection, FilterCombo, formatDisplayNumber } from "@/components/dashboard/dashboardHelpers";
 import { ChartInfoButton } from "@/components/dashboard/chartGuides";
 import { DashboardContentSkeleton } from "./loading";
 
@@ -26,16 +26,17 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
         endDate,
         setEndDate,
         agency,
-        setAgency,
         locationId,
-        setLocationId,
         agencySearch,
         setAgencySearch,
         trendMode,
         setTrendMode,
-        showAgencyMenu,
-        setShowAgencyMenu,
-        agencyMenuRef,
+        stationSearch,
+        setStationSearch,
+        agencyOptions,
+        stationOptions,
+        selectAgency,
+        selectStation,
         currentUser,
     } = props;
     const chartTone = chartTokens(theme === "dark");
@@ -68,110 +69,25 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                        {/* ค้นหาหน่วยงาน/สถานี แทนที่ dropdown เดิม — พิมพ์แล้วกรองรายชื่อจาก analytics.agencies + analytics.locations */}
-                        <div className="relative flex-1" ref={agencyMenuRef}>
-                            <div className="h-10 w-full text-xs flex items-center gap-1.5 bg-card-general border border-border rounded-xl px-3 transition-all">
-                                <LucideSearch size={13} className="text-text-muted shrink-0" />
-                                <input
-                                    type="text"
-                                    value={agencySearch}
-                                    onFocus={(e) => {
-                                        setShowAgencyMenu(true);
-                                        e.target.select();
-                                    }}
-                                    onChange={(e) => {
-                                        setAgencySearch(e.target.value);
-                                        setShowAgencyMenu(true);
-                                    }}
-                                    placeholder="ค้นหาหน่วยงาน/สถานี"
-                                    className="bg-transparent outline-none text-text-primary font-semibold text-xs w-full min-w-0"
-                                />
-                                {(agency !== "all" || locationId) && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setAgency("all");
-                                            setLocationId(null);
-                                            setAgencySearch("");
-                                        }}
-                                        className="shrink-0 text-text-muted hover:text-text-secondary cursor-pointer"
-                                        aria-label="ล้างตัวกรองหน่วยงาน/สถานี"
-                                    >
-                                        <LucideX size={13} />
-                                    </button>
-                                )}
-                            </div>
-
-                            {showAgencyMenu &&
-                                (() => {
-                                    const q = agencySearch.trim().toLowerCase();
-                                    const matchedAgencies = (analytics?.agencies || []).filter((a: string) => a.toLowerCase().includes(q));
-                                    const matchedLocations = (analytics?.locations || []).filter((l: any) => l.stationName?.toLowerCase().includes(q) || l.governingAgency?.toLowerCase().includes(q));
-                                    const hasResults = matchedAgencies.length > 0 || matchedLocations.length > 0;
-                                    return (
-                                        <div className="absolute z-20 top-full left-0 mt-1 w-full bg-surface border border-border rounded-xl shadow-lg py-1 max-h-72 overflow-y-auto">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setAgency("all");
-                                                    setLocationId(null);
-                                                    setAgencySearch("");
-                                                    setShowAgencyMenu(false);
-                                                }}
-                                                className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle ${agency === "all" && !locationId ? "text-primary bg-primary/10" : "text-text-primary"}`}
-                                            >
-                                                ทุกหน่วยงาน
-                                            </button>
-
-                                            {matchedAgencies.length > 0 && (
-                                                <>
-                                                    <div className="px-3 pt-2 pb-1 text-xs font-semibold text-text-muted">หน่วยงาน</div>
-                                                    {matchedAgencies.map((item: string, i: number) => (
-                                                        <button
-                                                            type="button"
-                                                            key={i}
-                                                            onClick={() => {
-                                                                setAgency(item);
-                                                                setLocationId(null);
-                                                                setAgencySearch(item);
-                                                                setShowAgencyMenu(false);
-                                                            }}
-                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${agency === item ? "text-primary bg-primary/10" : "text-text-primary"}`}
-                                                        >
-                                                            {item}
-                                                        </button>
-                                                    ))}
-                                                </>
-                                            )}
-
-                                            {matchedLocations.length > 0 && (
-                                                <>
-                                                    <div className="px-3 pt-2 pb-1 text-xs font-semibold text-text-muted">สถานี</div>
-                                                    {matchedLocations.map((loc: any) => (
-                                                        <button
-                                                            type="button"
-                                                            key={loc.id}
-                                                            onClick={() => {
-                                                                setLocationId(loc.id);
-                                                                setAgency("all");
-                                                                setAgencySearch(loc.stationName);
-                                                                setShowAgencyMenu(false);
-                                                            }}
-                                                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${locationId === loc.id ? "text-primary bg-primary/10" : "text-text-primary"}`}
-                                                        >
-                                                            {loc.stationName}
-                                                            <span className="text-text-muted font-normal"> · {loc.governingAgency}</span>
-                                                        </button>
-                                                    ))}
-                                                </>
-                                            )}
-
-                                            {!hasResults && q && <div className="px-3 py-2 text-xs text-text-muted">ไม่พบ "{agencySearch}"</div>}
-                                        </div>
-                                    );
-                                })()}
-                        </div>
-
+                        {/* หน่วยงานกับสถานีแยกเป็นคนละช่อง — เลือกหน่วยงานแล้วช่องสถานีจะเหลือเฉพาะสถานีของหน่วยงานนั้น */}
+                        <FilterCombo
+                            placeholder="ทุกหน่วยงาน"
+                            allLabel="ทุกหน่วยงาน"
+                            search={agencySearch}
+                            setSearch={setAgencySearch}
+                            options={agencyOptions}
+                            selectedKey={agency}
+                            onSelect={(opt) => selectAgency(opt ? String(opt.key) : "all")}
+                        />
+                        <FilterCombo
+                            placeholder="ทุกสถานี"
+                            allLabel="ทุกสถานี"
+                            search={stationSearch}
+                            setSearch={setStationSearch}
+                            options={stationOptions}
+                            selectedKey={locationId ?? "all"}
+                            onSelect={selectStation}
+                        />
                         {/* แถบตัวกรองช่วงวันที่ — เดสก์ท็อปวางข้างช่องค้นหาแทนการวางแยกแถว */}
                         <div className="h-10 flex items-center w-full max-w-md shrink-0 bg-card-general border border-border rounded-xl transition-all">
                             <DateField label="วันที่เริ่มต้น" value={startDate} onChange={setStartDate} />

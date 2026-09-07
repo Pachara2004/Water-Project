@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
-import { LucideCalendarDays, LucideTrendingUp, LucideTrendingDown, LucideArrowRight } from "lucide-react";
+import { LucideCalendarDays, LucideTrendingUp, LucideTrendingDown, LucideArrowRight, LucideSearch, LucideX } from "lucide-react";
 import { ChartInfoButton } from "@/components/dashboard/chartGuides";
 import { ResponsiveContainer, BarChart, Bar, Cell, LabelList, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { parameterColor } from "@/lib/chartColors";
@@ -199,6 +199,123 @@ export function DateField({ label, value, onChange }: { label: string; value: st
 }
 
 // จำนวนจุดขั้นต่ำที่ยอมให้วาด heatmap/เส้น trend — น้อยกว่านี้ความหนาแน่นและค่า r ไม่มีความหมายทางสถิติ
+export type ComboOption = { key: string | number; label: string; hint?: string };
+
+/**
+ * ช่องพิมพ์ค้นหาพร้อมรายการให้เลือก — ใช้ทั้งช่องหน่วยงานและช่องสถานี และใช้ร่วมกันทั้งเดสก์ท็อป/มือถือ
+ *
+ * เปิด/ปิดรายการและ ref สำหรับดักคลิกนอกกล่องเก็บไว้ในตัวเอง เพราะเป็นเรื่องภายในของกล่องนี้ล้วน ๆ
+ * ส่วนข้อความที่พิมพ์กับค่าที่เลือกอยู่ข้างนอก เพราะปุ่มล้างตัวกรองที่อื่นต้องสั่งล้างได้ด้วย
+ */
+export function FilterCombo({
+    placeholder,
+    search,
+    setSearch,
+    options,
+    allLabel,
+    selectedKey,
+    onSelect,
+    disabled = false,
+}: {
+    placeholder: string;
+    search: string;
+    setSearch: (v: string) => void;
+    options: ComboOption[];
+    allLabel: string;
+    /** คีย์ที่เลือกอยู่ — "all" คือยังไม่ได้เจาะจง */
+    selectedKey: string | number;
+    /** null = เลือก "ทั้งหมด" */
+    onSelect: (opt: ComboOption | null) => void;
+    disabled?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const boxRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const onClickOutside = (e: MouseEvent) => {
+            if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", onClickOutside);
+        return () => document.removeEventListener("mousedown", onClickOutside);
+    }, [open]);
+
+    const q = search.trim().toLowerCase();
+    // ค้นหาจากทั้งชื่อและคำกำกับ (ชื่อสถานีหาด้วยชื่อหน่วยงานที่สังกัดได้)
+    const matched = options.filter((o) => o.label.toLowerCase().includes(q) || (o.hint ?? "").toLowerCase().includes(q));
+    const isAll = selectedKey === "all";
+
+    return (
+        <div className="relative flex-1 min-w-0" ref={boxRef}>
+            <div className={`h-10 w-full text-xs flex items-center gap-1.5 bg-card-general border border-border rounded-xl px-3 transition-all ${disabled ? "opacity-50" : ""}`}>
+                <LucideSearch size={13} className="text-text-muted shrink-0" />
+                <input
+                    type="text"
+                    value={search}
+                    disabled={disabled}
+                    onFocus={(e) => {
+                        setOpen(true);
+                        e.target.select();
+                    }}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setOpen(true);
+                    }}
+                    placeholder={placeholder}
+                    className="bg-transparent outline-none text-text-primary font-semibold text-xs w-full min-w-0 disabled:cursor-not-allowed"
+                />
+                {!isAll && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onSelect(null);
+                            setOpen(false);
+                        }}
+                        className="shrink-0 text-text-muted hover:text-text-secondary cursor-pointer"
+                        aria-label={`ล้างตัวกรอง${placeholder}`}
+                    >
+                        <LucideX size={13} />
+                    </button>
+                )}
+            </div>
+
+            {open && !disabled && (
+                <div className="absolute z-20 top-full left-0 mt-1 w-full bg-surface border border-border rounded-xl shadow-lg py-1 max-h-72 overflow-y-auto">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onSelect(null);
+                            setOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle ${isAll ? "text-primary bg-primary/10" : "text-text-primary"}`}
+                    >
+                        {allLabel}
+                    </button>
+
+                    {matched.map((opt) => (
+                        <button
+                            type="button"
+                            key={opt.key}
+                            onClick={() => {
+                                onSelect(opt);
+                                setOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 text-xs font-semibold cursor-pointer hover:bg-surface-subtle truncate ${
+                                opt.key === selectedKey ? "text-primary bg-primary/10" : "text-text-primary"
+                            }`}
+                        >
+                            {opt.label}
+                            {opt.hint && <span className="text-text-muted font-normal"> · {opt.hint}</span>}
+                        </button>
+                    ))}
+
+                    {matched.length === 0 && <div className="px-3 py-2 text-xs text-text-muted">ไม่พบ &quot;{search}&quot;</div>}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ระดับความแรงของความสัมพันธ์ตาม |r| — ใช้แปลตัวเลขเป็นคำพูดให้คนที่ไม่ได้อ่านค่าสถิติเป็น
 // ขอบเขต 0.2 / 0.5 เป็นเกณฑ์หยาบที่ใช้กันทั่วไป ไม่ใช่ค่าที่มีนัยสำคัญทางสถิติในตัวเอง
 const R_WEAK = 0.2;
