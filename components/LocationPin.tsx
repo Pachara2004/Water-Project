@@ -2,10 +2,7 @@
  * LocationPin — Custom SVG marker icons for react-leaflet
  *
  * สีหมุดบอกสถานะคุณภาพน้ำของสถานที่ (ค่าล่าสุดของแต่ละสาร เทียบกับทุกเกณฑ์ เอาผลแย่สุด)
- * - safe    → Green (#22C55E)
- * - warning → Amber (#F59E0B)
- * - danger  → Red   (#EF4444)
- * - no data → Gray  (#94A3B8)
+ * ค่าสีมาจาก STATUS_PIN_COLOR ใน lib/chartColors.ts ชุดเดียวกับแท่งสถานะบนแดชบอร์ด
  *
  * เดิมมีรูปทรงข้างในแยกตามหน่วยงาน (FISHERY วงกลม / POLLUTION ข้าวหลามตัด / OTHER สี่เหลี่ยม)
  * แต่ไม่เคยทำงานเลย: มันหาคีย์จาก governingAgency ซึ่งเก็บชื่อไทย ("กรมประมง") ไม่ใช่โค้ด
@@ -13,22 +10,17 @@
  */
 
 import L from "leaflet";
+import { STATUS_PIN_COLOR } from "@/lib/chartColors";
 
-// ปรับเปลี่ยนคีย์สเตตัสให้เป็นตัวพิมพ์เล็กตรงตามผังระบบล่าสุดของครับ
-const STATUS_COLORS: Record<string, { fill: string; stroke: string; inner: string }> = {
-    safe: { fill: "#22C55E", stroke: "#16A34A", inner: "#DCFCE7" },
-    warning: { fill: "#F59E0B", stroke: "#D97706", inner: "#FEF3C7" },
-    danger: { fill: "#EF4444", stroke: "#DC2626", inner: "#FEE2E2" },
-};
-
-const DEFAULT_COLOR = { fill: "#94A3B8", stroke: "#64748B", inner: "#F1F5F9" };
+const DEFAULT_COLOR = STATUS_PIN_COLOR.noData;
 
 function getStatusColors(status: string | null) {
     if (!status) return DEFAULT_COLOR;
 
     // ป้องกันเหนียวด้วยการสั่ง .toLowerCase() เคลียร์ค่าพิมพ์เล็กพิมพ์ใหญ่ก่อนวิ่งเข้า Map วัตถุ
     const lowerStatus = status.toLowerCase();
-    return STATUS_COLORS[lowerStatus] || DEFAULT_COLOR;
+    if (lowerStatus === "safe" || lowerStatus === "warning" || lowerStatus === "danger") return STATUS_PIN_COLOR[lowerStatus];
+    return DEFAULT_COLOR;
 }
 
 function buildPinSvg(colors: typeof DEFAULT_COLOR): string {

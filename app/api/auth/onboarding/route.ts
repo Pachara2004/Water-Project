@@ -60,17 +60,26 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: "ไม่พบสิทธิ์ที่ต้องการร้องขอในระบบ" }, { status: 400 });
         }
 
-        // 3. สร้างรายการคำร้องขอเปลี่ยนสิทธิ์ (Role Request)
-        await prisma.roleRequest.create({
-            data: {
-                userId: updatedUser.id,
-                requestedRoleId: targetRole.id,
-                status: "pending",
-            },
-        });
+        // 3. สร้างคำร้องขอเปลี่ยนสิทธิ์เฉพาะเมื่อขอสิทธิ์ที่ต่างจากที่ถืออยู่
+        //
+        // ผู้ใช้ใหม่ถูกสร้างเป็น guest อยู่แล้วตั้งแต่ตอนล็อกอิน LINE (ดู app/api/auth/route.ts)
+        // การขอสิทธิ์ "ผู้ใช้งานทั่วไป" จึงไม่มีอะไรให้อนุมัติ ถ้ายังสร้างคำร้องไว้ คิวของผู้ดูแลระบบ
+        // จะเต็มไปด้วยรายการที่กดอนุมัติแล้วสิทธิ์ก็เท่าเดิม และผู้ใช้ต้องรอทั้งที่ใช้งานได้ทันที
+        const needsApproval = targetRole.id !== updatedUser.roleId;
+
+        if (needsApproval) {
+            await prisma.roleRequest.create({
+                data: {
+                    userId: updatedUser.id,
+                    requestedRoleId: targetRole.id,
+                    status: "pending",
+                },
+            });
+        }
 
         return NextResponse.json({
             success: true,
+            needsApproval,
             user: {
                 id: updatedUser.id,
                 lineUniqueId: updatedUser.lineUniqueId,
