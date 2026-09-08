@@ -255,6 +255,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             let allMeasurements: any[] = [];
             let sampleImagesMap: Record<number, { raw: string | null; plot: string | null }> = {};
             
+            // รายการรูประดับ snapshot รวม ใช้เป็นทางถอยของเรคคอร์ดที่บันทึกไว้ก่อนมี rawImageUrl/plotImageUrl รายสาร
+            const imgData = sampleRecord.imageUrl && typeof sampleRecord.imageUrl === "object" ? (sampleRecord.imageUrl as any) : null;
+            const legacyRawUrls: string[] = Array.isArray(imgData?.rawImageUrls) ? imgData.rawImageUrls : [];
+            const legacyPlotUrls: string[] = Array.isArray(imgData?.plotImageUrls) ? imgData.plotImageUrls : [];
+
             if (sampleRecord.parameterData && Array.isArray(sampleRecord.parameterData)) {
                 sampleRecord.parameterData.forEach((m: any, index: number) => {
                     const paramId = m.parameterId || index;
@@ -267,24 +272,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         value: toMeasuredNumber(m.value),
                         confidence: toMeasuredNumber(m.confidence),
                     });
-                });
-            }
 
-            let rawImageUrl = null;
-            let analyzedPlotUrl = null;
-            if (sampleRecord.imageUrl && typeof sampleRecord.imageUrl === 'object') {
-                const imgData = sampleRecord.imageUrl as any;
-                if (imgData.rawImageUrls && imgData.rawImageUrls.length > 0) rawImageUrl = imgData.rawImageUrls[0];
-                if (imgData.plotImageUrls && imgData.plotImageUrls.length > 0) analyzedPlotUrl = imgData.plotImageUrls[0];
-                
-                // สำหรับ history page (รองรับ multiple images per parameter ถ้าทำได้ แต่ตอนนี้ mapping ง่ายๆ ก่อน)
-                allMeasurements.forEach((m) => {
-                    sampleImagesMap[m.sampleId] = {
-                        raw: rawImageUrl,
-                        plot: analyzedPlotUrl
+                    // รูปของสารนี้โดยเฉพาะ ไม่ใช่รูปตัวแรกของทั้งกลุ่ม
+                    // เรคคอร์ดเก่าไม่มีคีย์รายสาร จึงถอยไปจับคู่ตามลำดับ (parameterData เรียงตาม sample เดียวกับตอนประกอบ
+                    // legacyRawUrls) แล้วค่อยถอยไปรูปแรกเมื่อลำดับไม่พอ — ไม่แม่นเท่าคีย์รายสารแต่ไม่แย่กว่าเดิม
+                    sampleImagesMap[paramId] = {
+                        raw: m.rawImageUrl ?? legacyRawUrls[index] ?? legacyRawUrls[0] ?? null,
+                        plot: m.plotImageUrl ?? legacyPlotUrls[index] ?? legacyPlotUrls[0] ?? null,
                     };
                 });
             }
+
+            // ค่าระดับหน้า ใช้เป็นทางถอยสุดท้ายเมื่อสารตัวนั้นไม่มีรูปของตัวเอง
+            const rawImageUrl = legacyRawUrls[0] ?? null;
+            const analyzedPlotUrl = legacyPlotUrls[0] ?? null;
 
             const sampleLocationId = sampleRecord.locationNameCurrentId;
             const sampleCollectionTime = sampleRecord.collectionTime;
