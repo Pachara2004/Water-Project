@@ -44,6 +44,7 @@ export default function AdminReviewRequestsPage() {
 
     // การแบ่งหน้าเกิดที่ฝั่ง API — `requests` คือคำร้องของหน้าปัจจุบันเท่านั้น
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [totalPages, setTotalPages] = useState(0);
 
     // Reject drawer — reason ต้องกรอกเสมอก่อนส่ง (บังคับที่ API ด้วย)
@@ -61,10 +62,10 @@ export default function AdminReviewRequestsPage() {
     const [editSaving, setEditSaving] = useState(false);
 
     // silent=true สำหรับ refetch หลัง approve/reject — ไม่ให้ list ยุบเป็น spinner ทั้งก้อน
-    const fetchRequests = useCallback(async (status: ReviewStatusFilter, targetPage: number, silent = false) => {
+    const fetchRequests = useCallback(async (status: ReviewStatusFilter, targetPage: number, targetPageSize: number, silent = false) => {
         if (!silent) setIsLoadingRequests(true);
         try {
-            const res = await fetch(`/api/review-requests?status=${status}&page=${targetPage}`, {
+            const res = await fetch(`/api/review-requests?status=${status}&page=${targetPage}&pageSize=${targetPageSize}`, {
                 headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
             });
             const data = await res.json();
@@ -90,15 +91,21 @@ export default function AdminReviewRequestsPage() {
     useEffect(() => {
         if (currentUser?.role === "admin") {
             const timer = setTimeout(() => {
-                fetchRequests(tab, page);
+                fetchRequests(tab, page, pageSize);
             }, 0);
             return () => clearTimeout(timer);
         }
-    }, [currentUser?.role, tab, page, fetchRequests]);
+    }, [currentUser?.role, tab, page, pageSize, fetchRequests]);
 
     // สลับแท็บ = ชุดผลลัพธ์คนละชุด ต้องกลับหน้า 1 ไม่งั้นค้างอยู่หน้าที่แท็บใหม่อาจไม่มี
     const changeTab = (v: ReviewStatusFilter) => {
         setTab(v);
+        setPage(1);
+    };
+
+    // จำนวนแถวต่อหน้าเปลี่ยน = เลขหน้าเดิมชี้ไปคนละชุด ต้องกลับหน้า 1 เหมือนตอนสลับแท็บ
+    const changePageSize = (size: number) => {
+        setPageSize(size);
         setPage(1);
     };
 
@@ -132,7 +139,7 @@ export default function AdminReviewRequestsPage() {
             if (!res.ok) throw new Error(data?.error || "เกิดข้อผิดพลาดในการอนุมัติคำร้อง");
 
             showToast(`อนุมัติผลตรวจของ "${item.location?.name ?? "จุดตรวจ"}" แล้ว`, "success");
-            fetchRequests(tab, page, true);
+            fetchRequests(tab, page, pageSize, true);
             refreshNavDots();
         } catch (err) {
             alertError("อนุมัติไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
@@ -161,7 +168,7 @@ export default function AdminReviewRequestsPage() {
 
             showToast(`ปฏิเสธผลตรวจของ "${rejectTarget.location?.name ?? "จุดตรวจ"}" แล้ว`, "danger");
             setRejectTarget(null);
-            fetchRequests(tab, page, true);
+            fetchRequests(tab, page, pageSize, true);
             refreshNavDots();
         } catch (err) {
             alertError("ปฏิเสธไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
@@ -231,7 +238,7 @@ export default function AdminReviewRequestsPage() {
 
             showToast(`แก้ไขและอนุมัติผลตรวจของ "${editTarget.location?.name ?? "จุดตรวจ"}" แล้ว`, "success");
             setEditTarget(null);
-            fetchRequests(tab, page, true);
+            fetchRequests(tab, page, pageSize, true);
             refreshNavDots();
         } catch (err) {
             alertError("แก้ไขและอนุมัติไม่สำเร็จ", err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง");
@@ -261,6 +268,8 @@ export default function AdminReviewRequestsPage() {
         page,
         totalPages,
         setPage,
+        pageSize,
+        changePageSize,
         isLoadingRequests,
         actingId,
         standards,

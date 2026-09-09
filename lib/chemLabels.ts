@@ -15,10 +15,33 @@ export function chemNameFromValueKey(key: string): string | null {
     return matched ? matched[1] : null;
 }
 
-// ตัวย่อ = อักษรตัวแรกของชื่อสาร (ammonia -> A, phosphate -> P)
-// ข้อจำกัด: สารที่ขึ้นต้นด้วยอักษรเดียวกันจะได้ตัวย่อชนกัน (เช่น phosphate กับ ph ได้ P ทั้งคู่)
-export function chemAbbrev(name: string): string {
-    return name.trim().charAt(0).toUpperCase() || "?";
+/**
+ * ชื่อสารแบบสั้นสำหรับป้ายชิป ใช้เมื่อยังไม่มีสูตรเคมีในฐานข้อมูล
+ *
+ * ตัดเหลือ 4 ตัวให้พอกับความกว้างป้าย แล้วขึ้นต้นด้วยตัวใหญ่
+ * ยกเว้นชื่อที่มีตัวพิมพ์ใหญ่ปนมาอยู่แล้ว ซึ่งถือว่าเป็นรูปเขียนที่ตั้งใจและห้ามดัด
+ * ("pH" ต้องไม่กลายเป็น "PH", "DO" ต้องไม่กลายเป็น "Do")
+ */
+function chemShortName(name: string): string {
+    const trimmed = name.trim();
+    if (!trimmed) return "?";
+
+    const short = trimmed.slice(0, 4);
+    const hasUppercase = trimmed !== trimmed.toLowerCase();
+    return hasUppercase ? short : short.charAt(0).toUpperCase() + short.slice(1);
+}
+
+/**
+ * ป้ายกำกับสารบนชิป — สูตรเคมีจากคอลัมน์ `parameters.formula` เป็นหลัก
+ *
+ * สูตรมาจากฐานข้อมูล ไม่ใช่คำนวณจากชื่อ เพราะชื่อสารไม่ได้บอกสูตรเสมอไป
+ * (ammonia -> NH3 ไม่มีกฎไหนอนุมานได้) และเพื่อให้เพิ่มสารใหม่ได้โดยไม่ต้องแก้โค้ดหน้าเว็บ
+ *
+ * ไม่มีสูตร (สารที่เพิ่งเพิ่มและยังไม่ได้กรอก) ตกไปใช้ชื่อย่อ — แสดงผลได้เสมอ ไม่พัง
+ */
+export function chemAbbrev(name: string, formula?: string | null): string {
+    const cleaned = typeof formula === "string" ? formula.trim() : "";
+    return cleaned || chemShortName(name);
 }
 
 // สีของสารมาจาก lib/chartColors.ts ที่เดียว เพื่อให้การ์ด กราฟแผนที่ และแดชบอร์ดตรงกัน
@@ -45,7 +68,7 @@ export function formatMeasuredValue(value: number | null | undefined, digits = 2
 export interface ChemReading {
     key: string; // คีย์/ชื่อเดิมที่ใช้เป็น React key
     name: string; // ชื่อสารเต็มจาก DB เช่น "ammonia"
-    abbrev: string; // ตัวย่อที่แสดงบนป้าย
+    abbrev: string; // ป้ายที่แสดงบนชิป — สูตรเคมีจาก DB ถ้ามี ไม่มีก็เป็นชื่อย่อ
     color: string; // Tailwind class ของไอคอน
     value: number;
 }
@@ -54,8 +77,14 @@ export interface ChemReading {
 // ถ้าไม่เรียง ป้ายจะสลับตำแหน่งไปมาระหว่างการ์ด
 const byName = (a: ChemReading, b: ChemReading) => a.name.localeCompare(b.name);
 
-// อ่านค่าสารทั้งหมดจากอ็อบเจกต์ตัวอย่างน้ำที่ค่าสารถูกแบนเป็นคีย์ (การ์ด collector / BottomSheet)
-export function readChemValues(source: Record<string, unknown> | null | undefined): ChemReading[] {
+/**
+ * อ่านค่าสารทั้งหมดจากอ็อบเจกต์ตัวอย่างน้ำที่ค่าสารถูกแบนเป็นคีย์ (การ์ด collector / BottomSheet)
+ *
+ * formulaByName = สูตรเคมีของแต่ละสาร คีย์เป็นชื่อตัวพิมพ์เล็ก มาจากฟิลด์ `parameterFormulas`
+ * ที่ /api/samples ส่งมาพร้อม payload — ไม่ส่งมาก็ยังทำงานได้ แค่ป้ายใช้ชื่อย่อแทนสูตร
+ * (BottomSheet เรียกโดยไม่ส่ง เพราะใช้ชื่อสารเต็มไม่ได้ใช้ป้ายชิป)
+ */
+export function readChemValues(source: Record<string, unknown> | null | undefined, formulaByName?: Record<string, string> | null): ChemReading[] {
     if (!source) return [];
     const readings: ChemReading[] = [];
     for (const [key, raw] of Object.entries(source)) {
@@ -65,14 +94,21 @@ export function readChemValues(source: Record<string, unknown> | null | undefine
         if (raw === null || raw === undefined || raw === "") continue;
         const value = typeof raw === "number" ? raw : Number(raw);
         if (!Number.isFinite(value)) continue;
-        readings.push({ key, name, abbrev: chemAbbrev(name), color: chemIconColor(name), value });
+        readings.push({ key, name, abbrev: chemAbbrev(name, formulaByName?.[name.toLowerCase()]), color: chemIconColor(name), value });
     }
     return readings.sort(byName);
 }
 
-// อ่านค่าสารจาก array measurements ที่มีชื่อสารมาตรงๆ (หน้าอนุมัติคำร้อง)
-// สารซ้ำเอาตัวแรกที่เจอ คงพฤติกรรมเดิมที่ใช้ .find()
-export function readChemMeasurements(measurements: Array<{ parameterName?: string | null; value: number | null }> | null | undefined): ChemReading[] {
+/**
+ * อ่านค่าสารจาก array measurements ที่มีชื่อสารมาตรงๆ (หน้าอนุมัติคำร้อง)
+ * สารซ้ำเอาตัวแรกที่เจอ คงพฤติกรรมเดิมที่ใช้ .find()
+ *
+ * ที่นี่สูตรติดมากับ measurement แต่ละตัวเลย (`parameterFormula` จาก /api/review-requests)
+ * ไม่ต้องรับ map แยกเหมือน readChemValues เพราะ payload ฝั่งนี้ไม่ได้แบนค่าเป็นคีย์
+ */
+export function readChemMeasurements(
+    measurements: Array<{ parameterName?: string | null; parameterFormula?: string | null; value: number | null }> | null | undefined,
+): ChemReading[] {
     if (!measurements) return [];
     const readings: ChemReading[] = [];
     const seen = new Set<string>();
@@ -82,7 +118,7 @@ export function readChemMeasurements(measurements: Array<{ parameterName?: strin
         // เช็ค null/undefined แยกด้วย — Number.isFinite ไม่ใช่ type predicate จึงไม่ narrow ชนิดให้ TS
         if (m.value === null || m.value === undefined || !Number.isFinite(m.value)) continue;
         seen.add(name.toLowerCase());
-        readings.push({ key: name, name, abbrev: chemAbbrev(name), color: chemIconColor(name), value: m.value });
+        readings.push({ key: name, name, abbrev: chemAbbrev(name, m.parameterFormula), color: chemIconColor(name), value: m.value });
     }
     return readings.sort(byName);
 }

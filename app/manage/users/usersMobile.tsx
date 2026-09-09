@@ -26,6 +26,9 @@ export interface UsersPageProps {
     page: number;
     totalPages: number;
     setPage: (p: number) => void;
+    pageSize: number;
+    /** เปลี่ยนจำนวนแถวต่อหน้าแล้วดีดกลับหน้า 1 ให้ในตัว */
+    changePageSize: (size: number) => void;
 
     updating: number | null;
     openDropdown: number | null;
@@ -40,8 +43,32 @@ export interface UsersPageProps {
 }
 
 export default function UsersMobile(props: UsersPageProps) {
-    const { router, toastElement, stats, tab, setTab, search, setSearch, isDesc, setIsDesc, users, total, page, totalPages, setPage, updating, openDropdown, setOpenDropdown, rejectingAll, handleRejectAll, handleRoleChange, handleApprove, handleReject } =
-        props;
+    const {
+        router,
+        toastElement,
+        stats,
+        tab,
+        setTab,
+        search,
+        setSearch,
+        isDesc,
+        setIsDesc,
+        users,
+        total,
+        page,
+        totalPages,
+        setPage,
+        pageSize,
+        changePageSize,
+        updating,
+        openDropdown,
+        setOpenDropdown,
+        rejectingAll,
+        handleRejectAll,
+        handleRoleChange,
+        handleApprove,
+        handleReject,
+    } = props;
 
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
@@ -166,7 +193,7 @@ export default function UsersMobile(props: UsersPageProps) {
                             </div>
                         )}
 
-                        <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
+                        <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={changePageSize} />
                     </div>
                 </div>
             </div>

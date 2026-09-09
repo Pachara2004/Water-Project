@@ -165,6 +165,9 @@ model Parameter {
   name        String                   @unique @map("name")
   unit        String?                  @map("unit")
   description String?                  @db.Text
+  // สูตรเคมีที่ใช้แสดงบนป้ายชิปเล็ก เช่น "NH3" — เก็บเป็นตัวธรรมดาไม่ใช่ตัวห้อย เพราะถูกส่งต่อเป็นข้อความล้วน
+  // null = ยังไม่ระบุ ฝั่งแสดงผลจะตกไปใช้ชื่อสารแบบย่อแทน (ดู chemAbbrev ใน lib/chemLabels.ts)
+  formula     String?                  @map("formula")
   createdAt   DateTime                 @default(now()) @map("created_at")
   updatedAt   DateTime                 @updatedAt @map("updated_at")
 

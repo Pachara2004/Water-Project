@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
-import { Camera, FileText, Calendar, Beaker, MapPin, FileScan, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check, ArrowLeft, ArrowRight } from "lucide-react";
+import { Camera, FileText, Calendar, Beaker, MapPin, FileScan, Search, SlidersHorizontal, ArrowUp, ArrowDown, X, CalendarDays, ChevronDown, Check } from "lucide-react";
+import PaginationBar from "@/components/PaginationBar";
 import StatusBadge from "@/components/map/StatusBadge";
 import NotificationBell from "@/components/NotificationBell";
 import type { CollectorFiltersState } from "@/lib/hooks/useCollectorFilters";
@@ -37,6 +38,9 @@ export default function CollectorMobile(props: CollectorProps) {
         page,
         totalPages,
         setPage,
+        pageSize,
+        changePageSize,
+        parameterFormulas,
         showOnlyMine,
         setShowOnlyMine,
         globalFilter,
@@ -433,7 +437,7 @@ export default function CollectorMobile(props: CollectorProps) {
 
                                                         {/* แถวสารเคมี */}
                                                         <div className="flex items-center gap-2 flex-wrap w-full">
-                                                            {readChemValues(sample).map((c) => (
+                                                            {readChemValues(sample, parameterFormulas).map((c) => (
                                                                 <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
                                                                     <Beaker size={12} className={c.color} />
                                                                     <span>
@@ -449,32 +453,7 @@ export default function CollectorMobile(props: CollectorProps) {
                                     })}
                                 </div>
 
-                                {/* Pagination Controls */}
-                                {totalPages > 1 && (
-                                    <div className="flex items-center justify-between border-t border-border pt-4 mt-2 select-none">
-                                        <div className="text-xs text-text-muted font-medium">
-                                            หน้า <span className="font-bold text-text">{page}</span> จาก <span className="font-bold text-text">{totalPages}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <button
-                                                disabled={page <= 1}
-                                                onClick={() => setPage(page - 1)}
-                                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
-                                            >
-                                                <ArrowLeft size={15} strokeWidth={2.5} className="text-text shrink-0" />
-                                                ก่อนหน้า
-                                            </button>
-                                            <button
-                                                disabled={page >= totalPages}
-                                                onClick={() => setPage(page + 1)}
-                                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer "
-                                            >
-                                                ถัดไป
-                                                <ArrowRight size={15} strokeWidth={2.5} className="text-text shrink-0" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                                <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={changePageSize} />
                             </div>
                         );
                     })()}

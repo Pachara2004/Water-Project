@@ -84,11 +84,11 @@ async function main() {
     // ─── 3. PARAMETERS SEEDING ───
     console.log("🧪 Creating parameter master data...");
     const paramAmmonia = await prisma.parameter.create({
-        data: { name: "ammonia", unit: "mg/L", description: "สารแอมโมเนียในน้ำ (NH3)" },
+        data: { name: "ammonia", unit: "mg/L", description: "สารแอมโมเนียในน้ำ (NH3)", formula: "NH3" },
     });
 
     const paramPhosphate = await prisma.parameter.create({
-        data: { name: "phosphate", unit: "mg/L", description: "สารฟอสเฟตในน้ำ (PO4)" },
+        data: { name: "phosphate", unit: "mg/L", description: "สารฟอสเฟตในน้ำ (PO4)", formula: "PO4" },
     });
 
     // ─── 3.1 LOCATION TYPES + STANDARDS ───

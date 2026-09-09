@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
             include: {
                 location: { select: { id: true, stationName: true, governingAgency: true, province: true, district: true, subdistrict: true } },
                 collector: { select: { id: true, lineProfileName: true, firstName: true, lastName: true } },
-                measurements: { include: { parameter: { select: { id: true, name: true, unit: true } } } },
+                measurements: { include: { parameter: { select: { id: true, name: true, unit: true, formula: true } } } },
             },
             orderBy: { collectionTime: "desc" },
         });
@@ -116,6 +116,9 @@ export async function GET(request: NextRequest) {
                     measurements: s.measurements.map((m) => ({
                         parameterId: m.parameterId,
                         parameterName: m.parameter?.name ?? null,
+                        // สูตรเคมีเดินทางมากับผลตรวจเลย ฝั่งหน้าเว็บจะได้ไม่ต้องยิง /api/parameters เพิ่ม
+                        // แล้วเห็นป้ายกระพริบจากชื่อย่อเป็นสูตรตอนโหลดเสร็จ
+                        parameterFormula: m.parameter?.formula ?? null,
                         unit: m.parameter?.unit ?? null,
                         value: m.value,
                         confidence: m.confidence,

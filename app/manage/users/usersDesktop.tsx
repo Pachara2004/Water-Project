@@ -22,6 +22,8 @@ export default function UsersDesktop(props: UsersPageProps) {
         page,
         totalPages,
         setPage,
+        pageSize,
+        changePageSize,
         updating,
         openDropdown,
         setOpenDropdown,
@@ -160,7 +162,7 @@ export default function UsersDesktop(props: UsersPageProps) {
                         )}
                     </div>
 
-                    <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
+                    <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={changePageSize} />
                 </div>
             </div>
 
