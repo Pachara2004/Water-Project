@@ -6,23 +6,65 @@ export interface LocationData {
 }
 
 function parseCoordinate(value: any, ref?: string): number | null {
-    if (typeof value === "number") return value;
-    if (typeof value === "string") {
-        const num = parseFloat(value);
-        if (!isNaN(num)) return ref === "S" || ref === "W" ? -num : num;
-    }
-    if (Array.isArray(value) && value.length === 3) {
-        const dd = value[0] + value[1] / 60 + value[2] / 3600;
-        if (!isNaN(dd)) {
-            return ref === "S" || ref === "W" ? -dd : dd;
+    if (value == null) return null;
+
+    let dd: number | null = null;
+
+    if (typeof value === "number") {
+        dd = value;
+    } else if (Array.isArray(value)) {
+        if (value.length >= 3) {
+            // รองรับทั้ง [d, m, s] และ [[num, den], [num, den], [num, den]] (rational arrays)
+            const parsePart = (part: any) => {
+                if (typeof part === "number") return part;
+                if (Array.isArray(part) && part.length === 2 && part[1] !== 0) {
+                    return part[0] / part[1];
+                }
+                const n = Number(part);
+                return isNaN(n) ? 0 : n;
+            };
+            const d = parsePart(value[0]);
+            const m = parsePart(value[1]);
+            const s = parsePart(value[2]);
+            dd = d + (m / 60) + (s / 3600);
+        } else if (value.length === 1) {
+            dd = Number(value[0]);
+        }
+    } else if (typeof value === "string") {
+        const str = value.trim();
+        // รองรับ DMS string เช่น 13°45'32.1" หรือ 13 deg 45' 32.1"
+        const dmsMatch = str.match(/(\d+)[^\d\.]+?(\d+)[^\d\.]+?(\d+(\.\d+)?)/);
+        if (dmsMatch) {
+            const d = parseFloat(dmsMatch[1]);
+            const m = parseFloat(dmsMatch[2]);
+            const s = parseFloat(dmsMatch[3]);
+            dd = d + (m / 60) + (s / 3600);
+        } else {
+            // รองรับ string ที่คั่นด้วย comma "13,45,32.1"
+            const parts = str.split(',').map(p => parseFloat(p.trim()));
+            if (parts.length >= 3 && parts.every(p => !isNaN(p))) {
+                dd = parts[0] + (parts[1] / 60) + (parts[2] / 3600);
+            } else {
+                dd = parseFloat(str);
+            }
         }
     }
+
+    if (dd !== null && !isNaN(dd)) {
+        // หากมีอ้างอิง S หรือ W ต้องเป็นค่าติดลบ
+        const upperRef = ref?.toUpperCase();
+        if ((upperRef === "S" || upperRef === "W") && dd > 0) {
+            return -dd;
+        }
+        return dd;
+    }
+
     return null;
 }
 
 export async function getExifLocation(file: File | Blob | ArrayBuffer): Promise<LocationData | null> {
     try {
-        // 1. ลองดึง GPS มาตรฐานด่านแรก
+        // 1. ลองดึง GPS มาตรฐานด่านแรก (exifr.gps จะคำนวณและแปลงให้แล้วสำหรับเครื่องส่วนใหญ่)
         const gps = await exifr.gps(file);
         if (gps && typeof gps.latitude === "number" && typeof gps.longitude === "number" && gps.latitude !== 0) {
             return {
@@ -31,7 +73,7 @@ export async function getExifLocation(file: File | Blob | ArrayBuffer): Promise<
             };
         }
 
-        // 2. ถ้าด่านแรกไม่เจอ ให้ parse อ่านลึกลงไปในเซกเมนต์ TIFF / XMP / GPS
+        // 2. ถ้าด่านแรกไม่เจอ ให้ parse อ่านลึกลงไปในเซกเมนต์ TIFF / XMP / GPS ทุกฟิลด์ที่อาจซ่อนอยู่
         const allData = await exifr.parse(file, {
             gps: true,
             tiff: true,
@@ -39,8 +81,14 @@ export async function getExifLocation(file: File | Blob | ArrayBuffer): Promise<
         });
 
         if (allData) {
-            let lat = parseCoordinate(allData.latitude ?? allData.GPSLatitude, allData.GPSLatitudeRef);
-            let lng = parseCoordinate(allData.longitude ?? allData.GPSLongitude, allData.GPSLongitudeRef);
+            // ดึงข้อมูลฟิลด์ต่างๆ เผื่อเครื่องแต่ละรุ่นเก็บชื่อไม่เหมือนกัน
+            const rawLat = allData.latitude ?? allData.lat ?? allData.GPSLatitude;
+            const rawLatRef = allData.GPSLatitudeRef ?? allData.latitudeRef;
+            const rawLng = allData.longitude ?? allData.lng ?? allData.lon ?? allData.GPSLongitude;
+            const rawLngRef = allData.GPSLongitudeRef ?? allData.longitudeRef;
+
+            let lat = parseCoordinate(rawLat, rawLatRef);
+            let lng = parseCoordinate(rawLng, rawLngRef);
 
             // ตรวจสอบว่าเป็นตัวเลขพิกัดจริง ไม่ใช่ NaN และไม่ใช่ 0
             if (lat !== null && lng !== null && lat !== 0 && lng !== 0) {
