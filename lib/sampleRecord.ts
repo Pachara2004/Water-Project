@@ -22,6 +22,9 @@ export async function createSampleRecordSnapshot(
   // Aggregate measurements into a JSON object mapping parameter names to values
   // e.g. { "pH": { value: 7.0, confidence: 0.95 }, "DO": ... }
   // We can also store an array if preferred, let's store an array of objects
+  // แต่ละ entry เก็บรูปของ sample ที่มันมาจริง ๆ ไว้ในตัวเอง
+  // รูปในระบบเป็นภาพหลอดทดลอง "หนึ่งใบต่อหนึ่งสาร" การผูกไว้ที่ระดับ snapshot รวม (imageUrl ด้านล่าง)
+  // จึงบอกไม่ได้ว่ารูปไหนเป็นของสารไหน ฝั่งอ่านต้องหยิบจากตรงนี้ก่อนเสมอ
   const parameterData = samples.flatMap((s) =>
     s.measurements.map((m: any) => ({
       sampleCode: s.code,
@@ -32,6 +35,8 @@ export async function createSampleRecordSnapshot(
       boundingBox: m.boundingBox,
       message: m.message,
       sampleId: m.sampleId,
+      rawImageUrl: s.rawImageUrl ?? null,
+      plotImageUrl: s.analyzedPlotUrl ?? null,
     }))
   );
 

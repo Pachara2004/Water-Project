@@ -22,6 +22,17 @@ function worseStatus(a: WaterStatus, b: WaterStatus): WaterStatus {
 }
 
 /**
+ * อายุของไฟล์รูปดิบก่อนถูก /api/cron/cleanup-images ลบทิ้ง (วัน)
+ *
+ * ต้องเซ็ต imageExpiresAt ตอนสร้างแถวเท่านั้น — cron คัดงานด้วย `imageExpiresAt <= now`
+ * ถ้าคอลัมน์เป็น NULL แถวนั้นจะไม่เข้าเงื่อนไขตลอดไป และไฟล์ใน public/uploads จะไม่ถูกลบเลย
+ *
+ * ค่าที่เขียนอิงเวลาไทยเหมือน uploadedActiveAt (ดู getNowAsLocalDateTime) ส่วน cron เทียบกับ
+ * เวลาจริงของเครื่อง รูปจึงถูกลบช้ากว่ากำหนดราว 7 ชม. ซึ่งไม่มีผลที่ความละเอียดระดับวัน
+ */
+const IMAGE_RETENTION_DAYS = Number(process.env.IMAGE_RETENTION_DAYS) > 0 ? Number(process.env.IMAGE_RETENTION_DAYS) : 90;
+
+/**
  * FILENAME SANITIZER WITH DATE STAMP
  */
 function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw"): string {
@@ -372,6 +383,15 @@ export async function POST(request: NextRequest) {
         }
         antiSpam.set(antiSpamKey, Date.now());
 
+        // คีย์ผสมชื่อ+ขนาดไฟล์รูป จึงแทบไม่ซ้ำกันเลยระหว่างคำขอ — ถ้าไม่กวาดทิ้ง Map จะโตตามจำนวนคำขอสะสม
+        // เกณฑ์เดียวกับ /api/analyze: กวาดเมื่อ Map เริ่มใหญ่ ไม่ใช่ทุกครั้ง เพื่อไม่ให้เสียเวลาในเส้นทางปกติ
+        if (antiSpam.size > 500) {
+            const cutoff = Date.now();
+            for (const [key, timestamp] of antiSpam.entries()) {
+                if (cutoff - timestamp >= 3000) antiSpam.delete(key);
+            }
+        }
+
         const auth = await verifyAuth(request, ["collector", "admin"]);
         if (!auth.isValid) {
             return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -618,6 +638,8 @@ export async function POST(request: NextRequest) {
                     status: computedStatus,
                     rawImageUrl: mainRawImageUrl,
                     analyzedPlotUrl: mainAnalyzedPlotUrl,
+                    // ตั้งวันหมดอายุเฉพาะแถวที่มีไฟล์รูปจริง — แถวที่ไม่มีรูปไม่มีอะไรให้ cron ลบ
+                    imageExpiresAt: mainRawImageUrl ? new Date(nowLocal.getTime() + IMAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000) : null,
                     isDeleted: false,
                     sessionGroup: sessionGroupToUse,
                     measurements: {

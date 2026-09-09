@@ -251,6 +251,15 @@ export async function POST(request: NextRequest) {
     if (antiSpam.has(ip) && Date.now() - antiSpam.get(ip)! < 3000) return NextResponse.json({ error: "อย่ากดซ้ำ" }, { status: 429 });
     antiSpam.set(ip, Date.now());
 
+    // คีย์เก่าหมดประโยชน์ทันทีที่พ้น 3 วินาที แต่ไม่มีใครลบให้ Map จึงโตตามจำนวน IP ที่เคยเรียก
+    // เกณฑ์เดียวกับ /api/analyze และ /api/samples: กวาดเมื่อ Map เริ่มใหญ่ ไม่ใช่ทุกครั้ง
+    if (antiSpam.size > 500) {
+        const cutoff = Date.now();
+        for (const [key, timestamp] of antiSpam.entries()) {
+            if (cutoff - timestamp >= 3000) antiSpam.delete(key);
+        }
+    }
+
     try {
         const auth = await verifyAuth(request, ["admin"]);
         if (!auth.isValid) return NextResponse.json({ error: auth.errorResponse }, { status: auth.errorStatus });
@@ -336,12 +345,24 @@ export async function PUT(request: NextRequest) {
         if (subdistrict !== undefined) updateData.subdistrict = subdistrict || null;
         if (zipcode !== undefined) updateData.zipcode = zipcode || null;
 
+        // พิกัดก่อนแก้ไข ใช้ตัดสินว่าต้องดึงสภาพอากาศใหม่หรือไม่ (ดูเงื่อนไขใต้ update)
+        const previous = await prisma.location.findUnique({
+            where: { id: Number(id) },
+            select: { latitude: true, longitude: true },
+        });
+        if (!previous) return NextResponse.json({ error: "ไม่พบสถานีที่ต้องการแก้ไข" }, { status: 404 });
+
         const location = await prisma.location.update({
             where: { id: Number(id) },
             data: updateData,
         });
 
-        await backfillWeatherData(location.id, location.latitude, location.longitude);
+        // ข้อมูลสภาพอากาศผูกกับพิกัด ไม่ใช่ชื่อสถานีหรือหน่วยงาน — แก้ชื่ออย่างเดียวจึงไม่ต้องดึงใหม่
+        // backfill ย้อนหลัง 2 เดือนต่อครั้ง ถ้าเรียกทุกการแก้ไขจะยิง API อากาศซ้ำโดยเปล่าประโยชน์
+        const coordinatesChanged = previous.latitude !== location.latitude || previous.longitude !== location.longitude;
+        if (coordinatesChanged) {
+            await backfillWeatherData(location.id, location.latitude, location.longitude);
+        }
         return NextResponse.json({
             id: location.id,
             name: location.stationName,

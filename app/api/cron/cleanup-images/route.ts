@@ -6,8 +6,16 @@ import path from "path";
 // GET /api/cron/cleanup-images
 export async function GET(request: NextRequest) {
     try {
+        // endpoint นี้ลบไฟล์บนดิสก์จริง จึงต้องปิดตายเมื่อไม่มีความลับตั้งไว้ (fail-closed)
+        // เดิมข้าม header ทั้งก้อนถ้า CRON_SECRET ว่าง ทำให้การลืมตั้ง env กลายเป็นการเปิด endpoint ให้ทุกคนเรียก
+        const cronSecret = process.env.CRON_SECRET;
+        if (!cronSecret) {
+            console.error("CRON_SECRET is not set — refusing to run image cleanup");
+            return NextResponse.json({ error: "Cleanup ถูกปิดใช้งานเพราะยังไม่ได้ตั้งค่า CRON_SECRET" }, { status: 503 });
+        }
+
         const authHeader = request.headers.get("authorization");
-        if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
