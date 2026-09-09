@@ -187,7 +187,6 @@ export default function LocationsDesktop(props: LocationsPageProps) {
                                                     }}
                                                     className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface-subtle transition-colors text-left cursor-pointer"
                                                 >
-                                                    <Building2 size={13} className="text-text-muted shrink-0" />
                                                     {org}
                                                 </button>
                                             ))}

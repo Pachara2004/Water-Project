@@ -10,9 +10,9 @@ import { onNavDotsRefresh } from "@/lib/navEvents";
 
 // ดึงการประกาศ Mapping ข้อความออกมาข้างนอก เพื่อไม่ให้สร้างขึ้นใหม่ทุกรอบการเรนเดอร์
 const MOBILE_LABEL_MAP: Record<string, string> = {
-    แผนที่พิกัดสถานี: "แผนที่",
-    ตรวจคุณภาพน้ำ: "ตรวจน้ำ",
-    จัดการข้อมูล: "จัดการ",
+    แผนที่: "แผนที่",
+    ตรวจคุณภาพ: "ตรวจคุณภาพ",
+    จัดการข้อมูล: "จัดการข้อมูล",
 };
 
 export default function Navbar() {
@@ -114,12 +114,12 @@ export default function Navbar() {
     }, [currentUser, userRole, fetchDots]);
 
     const navItems = useMemo(() => {
-        const items: { href: string; label: string; icon: typeof Map; showDot?: boolean }[] = [{ href: "/map", label: "แผนที่พิกัดสถานี", icon: Map }];
+        const items: { href: string; label: string; icon: typeof Map; showDot?: boolean }[] = [{ href: "/map", label: "แผนที่", icon: Map }];
 
         if (userRole === "collector" || userRole === "admin") {
             items.push({
                 href: "/collector",
-                label: "ตรวจคุณภาพน้ำ",
+                label: "ตรวจคุณภาพ",
                 icon: FileScan,
                 showDot: navDots.hasUnreadRejection,
             });
