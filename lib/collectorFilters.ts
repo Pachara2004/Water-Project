@@ -18,6 +18,8 @@ export interface CollectorFilterState {
     sortDesc: boolean;
     /** เลขหน้าแบบ 1-based ผูกกับ query param `page` ของ /api/samples (ไม่ใช่ pageIndex 0-based ของ TanStack เหมือนเดิม) */
     page: number;
+    /** จำนวนแถวต่อหน้าที่ผู้ใช้เลือกจากแถบแบ่งหน้า — จำคู่กับ page ไม่งั้นหน้าที่กู้มาจะชี้ไปคนละชุดข้อมูล */
+    pageSize: number;
 }
 
 export function readCollectorFilters(): CollectorFilterState | null {
@@ -38,6 +40,8 @@ export function readCollectorFilters(): CollectorFilterState | null {
             endDate: typeof parsed.endDate === "string" ? parsed.endDate : "",
             sortDesc: typeof parsed.sortDesc === "boolean" ? parsed.sortDesc : true,
             page: Number.isInteger(parsed.page) && parsed.page >= 1 ? parsed.page : 1,
+            // ค่าที่บันทึกไว้ก่อนมีดรอปดาวน์ "แถวต่อหน้า" จะไม่มีคีย์นี้ — ตกกลับไปใช้ค่าเริ่มต้นเดิม
+            pageSize: Number.isInteger(parsed.pageSize) && parsed.pageSize >= 1 ? parsed.pageSize : 10,
         };
     } catch {
         return null;

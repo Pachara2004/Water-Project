@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { useRouter } from "next/navigation";
 import { CONFIDENCE_THRESHOLD, type StandardRow } from "@/lib/standards";
-import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText, ArrowLeft, ArrowRight } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText } from "lucide-react";
+import PaginationBar from "@/components/PaginationBar";
 import {
     StatusTabs,
     RejectDrawer,
@@ -30,6 +31,9 @@ export interface ReviewRequestsPageProps {
     page: number;
     totalPages: number;
     setPage: (p: number) => void;
+    pageSize: number;
+    /** เปลี่ยนจำนวนแถวต่อหน้าแล้วดีดกลับหน้า 1 ให้ในตัว */
+    changePageSize: (size: number) => void;
     isLoadingRequests: boolean;
 
     actingId: number | null;
@@ -82,6 +86,8 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
         page,
         totalPages,
         setPage,
+        pageSize,
+        changePageSize,
         isLoadingRequests,
         actingId,
         standards,
@@ -399,32 +405,7 @@ export default function ReviewRequestsMobile(props: ReviewRequestsPageProps) {
                                     ))}
                                 </div>
 
-                                {/* Pagination Controls */}
-                                {totalPages > 1 && (
-                                    <div className="flex items-center justify-between border-t border-border pt-4 mt-2 select-none">
-                                        <div className="text-xs text-text-muted font-medium">
-                                            หน้า <span className="font-bold text-text">{page}</span> จาก <span className="font-bold text-text">{totalPages}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <button
-                                                disabled={page <= 1}
-                                                onClick={() => setPage(page - 1)}
-                                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
-                                            >
-                                                <ArrowLeft size={15} strokeWidth={2.5} className="text-text shrink-0" />
-                                                ก่อนหน้า
-                                            </button>
-                                            <button
-                                                disabled={page >= totalPages}
-                                                onClick={() => setPage(page + 1)}
-                                                className="inline-flex items-center gap-1.5 p-2 text-xs font-semibold rounded-xl border border-border bg-card-general text-text disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
-                                            >
-                                                ถัดไป
-                                                <ArrowRight size={15} strokeWidth={2.5} className="text-text shrink-0" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                                <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={changePageSize} />
                             </div>
                         );
                     })()}

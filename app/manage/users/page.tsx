@@ -34,6 +34,7 @@ export default function AdminUsersPage() {
     // การแบ่งหน้าเกิดที่ฝั่ง API ทั้งหมด — `users` คือแถวของหน้าปัจจุบันที่กรองและเรียงมาแล้ว
     // `total` เป็นจำนวนหลังกรองทั้งชุด (ไม่ใช่แค่หน้านี้) จึงเอาไปโชว์ "พบ N บัญชี" ได้ตรง
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
 
@@ -64,7 +65,7 @@ export default function AdminUsersPage() {
 
     const fetchUsers = useCallback(async () => {
         try {
-            const params = new URLSearchParams({ tab, page: String(page), sort: isDesc ? "desc" : "asc" });
+            const params = new URLSearchParams({ tab, page: String(page), pageSize: String(pageSize), sort: isDesc ? "desc" : "asc" });
             if (debouncedSearch) params.set("search", debouncedSearch);
 
             const res = await fetch(`/api/users?${params.toString()}`, {
@@ -88,7 +89,7 @@ export default function AdminUsersPage() {
         } catch (e) {
             console.error(e);
         }
-    }, [tab, page, isDesc, debouncedSearch]);
+    }, [tab, page, pageSize, isDesc, debouncedSearch]);
 
     useEffect(() => {
         if (currentUser?.role === "admin") {
@@ -102,6 +103,11 @@ export default function AdminUsersPage() {
        ห่อ setter แทนที่จะใช้ effect เพื่อไม่ให้ยิง API ซ้ำสองรอบ (รอบหนึ่งด้วยเลขหน้าเดิม อีกรอบด้วยหน้า 1) */
     const changeTab = (v: "all" | "staff" | "queue") => {
         setTab(v);
+        setPage(1);
+    };
+
+    const changePageSize = (size: number) => {
+        setPageSize(size);
         setPage(1);
     };
 
@@ -272,6 +278,8 @@ export default function AdminUsersPage() {
         page,
         totalPages,
         setPage,
+        pageSize,
+        changePageSize,
         updating,
         openDropdown,
         setOpenDropdown,
