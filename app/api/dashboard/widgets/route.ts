@@ -689,7 +689,7 @@ export async function GET(request: NextRequest) {
             trendWindows,
             trends: trendsData,
             correlation: {
-                title: "สภาพอากาศมีผลต่อค่าสารเคมีในน้ำหรือไม่",
+                title: "ผลกระทบของสภาพอากาศต่อคุณภาพน้ำ",
                 // ฟิลด์ samples.air_temperature ชื่อว่าอากาศ แต่ค่าที่เขียนลงไปคืออุณหภูมิน้ำที่ประมาณจาก
                 // apparent/skin temperature ของ Open-Meteo ผ่าน calculateWaterTemperature ใน lib/tmd.ts
                 // ไม่ใช่ค่าที่วัดจากหน้างาน และไม่ใช่อุณหภูมิอากาศ

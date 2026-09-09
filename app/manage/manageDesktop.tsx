@@ -14,8 +14,8 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
         <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
             <div className="w-full mx-auto p-4">
                 <div className="pt-2 pb-2  p-1">
-                    <h1 className="font-display text-2xl font-semibold text-text ">
-                        บัญชี <span className="text-primary">ของฉัน</span>
+                    <h1 className="text-2xl text-primary font-semibold">
+                        การจัดการระบบ
                     </h1>
                 </div>
 
@@ -24,10 +24,22 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
                         <ProfileCard onEdit={() => setShowEdit(true)} />
                         {/* Desktop: รวม toggle การตั้งค่าไว้ในการ์ดมีป้ายกำกับ ไม่ให้ลอยเดี่ยวๆ ไม่มีบริบทแบบก่อนหน้า */}
                         <div className="bg-card-general rounded-2xl border border-border p-4 flex flex-col gap-3 lg:w-56 shrink-0">
-                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">การตั้งค่าด่วน</p>
+                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">การตั้งค่า</p>
                             <div className="flex flex-col gap-2 items-stretch [&>button]:w-full [&>button]:justify-start">
                                 <ThemeToggle showLabel />
                                 <GpsAutoTrackToggle />
+                                {currentUser && (
+                                    <div className=" border-border flex justify-end">
+                                        {/* Desktop: ปุ่มออกจากระบบสีแดงเด่นชัด สไตล์ Danger */}
+                                        <button
+                                            onClick={handleLogout}
+                                            className="flex items-center gap-2.5 h-10 px-5 group w-full rounded-xl bg-text-danger text-white border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 cursor-pointer"
+                                        >
+                                            <LogOut size={16} />
+                                            <span className="text-sm font-semibold">ออกจากระบบ</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -48,7 +60,7 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
                             </button>
                         </div>
                         <div className="bg-card-general rounded-2xl border border-border p-4 flex flex-col gap-3 lg:w-56 shrink-0">
-                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">การตั้งค่าด่วน</p>
+                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">การตั้งค่า</p>
                             <div className="flex flex-col gap-2 items-stretch [&>button]:w-full [&>button]:justify-start">
                                 <ThemeToggle showLabel />
                                 <GpsAutoTrackToggle />
@@ -107,19 +119,6 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
                                 );
                             })}
                     </div>
-
-                    {currentUser && (
-                        <div className="pt-4 mt-2 border-t border-border flex justify-end">
-                            {/* Desktop: ปุ่มออกจากระบบสีแดงเด่นชัด สไตล์ Danger */}
-                            <button
-                                onClick={handleLogout}
-                                className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-danger text-white border border-border hover:border-red-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 cursor-pointer"
-                            >
-                                <LogOut size={16} />
-                                <span className="text-sm font-semibold">ออกจากระบบ</span>
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
 

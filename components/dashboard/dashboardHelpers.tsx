@@ -322,8 +322,8 @@ const R_WEAK = 0.2;
 const R_STRONG = 0.5;
 
 const AXIS_PHRASE: Record<"rain" | "temp", string> = {
-    rain: "ยิ่งฝนตกหนัก",
-    temp: "ยิ่งน้ำอุ่นขึ้น",
+    rain: "ปริมาณฝนไม่มีผลต่อระดับ",
+    temp: "อุณหภูมิน้ำสูงขึ้น แทบไม่ส่งผลต่อระดับ",
 };
 
 const CHEM_NAME: Record<"nh3" | "po4", string> = {
@@ -334,11 +334,11 @@ const CHEM_NAME: Record<"nh3" | "po4", string> = {
 // แปลง Pearson r เป็นประโยคไทยประโยคเดียวที่สรุปกราฟให้เสร็จ
 // เจตนาคือคนดูไม่ต้องตีความกราฟเอง และไม่ต้องรู้ว่า r คืออะไร ตัวเลขดิบย้ายไปอยู่ในปุ่ม (i) แทน
 function correlationSentence(axis: "rain" | "temp", chem: "nh3" | "po4", r: number | null): string {
-    const subject = `ค่าเฉลี่ย${CHEM_NAME[chem]}`;
+    const subject = `${CHEM_NAME[chem]}`;
     if (r === null) return `ข้อมูลยังไม่พอสรุปว่าสภาพอากาศมีผลต่อ${subject}หรือไม่`;
 
     const strength = Math.abs(r);
-    if (strength < R_WEAK) return `${AXIS_PHRASE[axis]} ${subject}แทบไม่ต่างจากเดิม`;
+    if (strength < R_WEAK) return `${AXIS_PHRASE[axis]}${subject}`;
 
     const direction = r > 0 ? "สูงขึ้น" : "ลดลง";
     const degree = strength >= R_STRONG ? "ชัดเจน" : "บ้าง";
@@ -395,7 +395,7 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
             <div className="grid grid-cols-1 md:grid-cols-12 md:items-center gap-2 md:gap-2.5 mb-2">
                 {/* relative อยู่ที่บรรทัดหัวข้อ ไม่ใช่ทั้งแถว — กล่องคำอธิบายจะได้โผล่ชิดใต้ปุ่ม ไม่ใช่ใต้ปุ่มสลับฝน/อุณหภูมิที่ตกบรรทัดบนจอแคบ */}
                 <div className="relative md:col-span-7 flex items-center gap-1.5 text-sm font-semibold text-text-primary">
-                    {correlation.title || "สภาพอากาศมีผลต่อค่าสารเคมีในน้ำหรือไม่"}
+                    {correlation.title || "ผลกระทบของสภาพอากาศต่อคุณภาพน้ำ"}
                     <ChartInfoButton guide="correlation" />
                 </div>
                 {/* จอแคบกว่า sm (มือถือจอเล็ก) เรียงสองกลุ่มปุ่มซ้อนกันแทนเคียงข้าง — เรียงแนวนอนแบบตายตัวทำให้ปุ่มล้นขอบการ์ดเมื่อจอแคบกว่า ~350px */}
@@ -437,7 +437,13 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                                         // แท่งของกลุ่มที่ตัวอย่างน้อยวาดจาง ๆ ให้แยกออกจากกลุ่มที่เชื่อถือได้ด้วยตาเปล่า
                                         <Cell key={i} fill={lineColor} fillOpacity={pt.reliable ? 1 : 0.3} />
                                     ))}
-                                    <LabelList dataKey="avg" position="right" fontSize={12} fill={chartTone.label} formatter={(v: any) => (v === null || v === undefined ? "" : formatDisplayNumber(Number(v)))} />
+                                    <LabelList
+                                        dataKey="avg"
+                                        position="right"
+                                        fontSize={12}
+                                        fill={chartTone.label}
+                                        formatter={(v: any) => (v === null || v === undefined ? "" : formatDisplayNumber(Number(v)))}
+                                    />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
@@ -449,7 +455,7 @@ export function CorrelationSection({ correlation }: { correlation: any }) {
                             {correlationSentence(axis, chem, metric?.r ?? null)}
                         </p>
                         <p className="text-xs text-text-muted mt-0.5">
-                            ค่าเฉลี่ย{CHEM_NAME[chem]} (mg/L) ต่อ{series?.xLabel} · {metric?.n ?? 0} ผลตรวจ · r ={" "}
+                            ค่าเฉลี่ย{CHEM_NAME[chem]} (mg/L) จำแนกตามสภาพอากาศ · n = · {metric?.n ?? 0} ผลตรวจ · r ={" "}
                             {/* คำอธิบายในปุ่ม (i) อ้างถึงค่า r ตัวนี้ ต้องมีที่ให้ดูบนหน้าจอ ไม่งั้นคำอธิบายชี้ไปยังของที่ไม่มีอยู่
                                 toFixed(2) ตายตัวให้ความละเอียดคงที่ — ฝั่ง API ปัดมา 2 ตำแหน่งแล้วแต่ Number() ตัดศูนย์ท้ายทิ้ง (0.70 เหลือ 0.7) */}
                             <span className="font-semibold">{typeof metric?.r === "number" ? (metric.r > 0 ? "+" : "") + metric.r.toFixed(2) : "—"}</span>
