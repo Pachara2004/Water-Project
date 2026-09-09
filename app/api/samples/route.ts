@@ -226,8 +226,18 @@ export async function GET(request: NextRequest) {
         const total = filteredGroups.length;
         const pageGroupEntries = filteredGroups.slice(pageParams.skip, pageParams.skip + pageParams.take);
 
+        /* สูตรเคมีของทุกสาร ส่งเป็นก้อนแยกท้าย response ไม่ใช่แนบไปกับค่าแต่ละตัว
+           เพราะค่าสารถูกแบนเป็นคีย์ `${ชื่อสาร}Val` (ดูขั้นตอนที่ 8) ซึ่งแนบข้อมูลประกอบไปด้วยไม่ได้
+           ส่งมากับ payload เดียวกันนี้เลยเพื่อให้การ์ดวาดป้ายได้ตั้งแต่ render แรก
+           ไม่ต้องยิง /api/parameters เพิ่มแล้วเห็นป้ายกระพริบจากชื่อย่อเป็นสูตร */
+        const parameterRows = await prisma.parameter.findMany({ select: { name: true, formula: true } });
+        const parameterFormulas: Record<string, string> = {};
+        for (const p of parameterRows) {
+            if (p.formula) parameterFormulas[p.name.toLowerCase()] = p.formula;
+        }
+
         if (pageGroupEntries.length === 0) {
-            return NextResponse.json(pageResult([], total, pageParams));
+            return NextResponse.json({ ...pageResult([], total, pageParams), parameterFormulas });
         }
 
         // 6. เฟส 2 (หนักแต่แคบ): ดึงรายละเอียดเต็ม (รูป, location, collector, ค่าสาร) เฉพาะกลุ่มที่จะแสดงหน้านี้
@@ -347,7 +357,7 @@ export async function GET(request: NextRequest) {
         // ใช้ลำดับที่คำนวณไว้ตอนตัดหน้า (ขั้นตอนที่ 5) ไม่ใช่ลำดับที่ query เฟส 2 คืนมา
         const pageRecords = pageGroupNames.map((sg) => sessionMap.get(sg)).filter(Boolean);
 
-        return NextResponse.json(pageResult(pageRecords, total, pageParams));
+        return NextResponse.json({ ...pageResult(pageRecords, total, pageParams), parameterFormulas });
     } catch (error) {
         console.error("GET /api/samples error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลตรวจน้ำ" }, { status: 500 });

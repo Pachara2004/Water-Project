@@ -13,6 +13,8 @@ export type ReviewStatusFilter = "pending" | "approved" | "rejected";
 export interface ReviewMeasurement {
     parameterId: number;
     parameterName: string | null;
+    /** สูตรเคมีที่ /api/review-requests ส่งมาคู่กับค่า — null = สารนี้ยังไม่ได้กรอกสูตรใน DB */
+    parameterFormula?: string | null;
     unit: string | null;
     value: number | null;
     confidence: number | null;

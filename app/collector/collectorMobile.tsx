@@ -40,6 +40,7 @@ export default function CollectorMobile(props: CollectorProps) {
         setPage,
         pageSize,
         changePageSize,
+        parameterFormulas,
         showOnlyMine,
         setShowOnlyMine,
         globalFilter,
@@ -436,7 +437,7 @@ export default function CollectorMobile(props: CollectorProps) {
 
                                                         {/* แถวสารเคมี */}
                                                         <div className="flex items-center gap-2 flex-wrap w-full">
-                                                            {readChemValues(sample).map((c) => (
+                                                            {readChemValues(sample, parameterFormulas).map((c) => (
                                                                 <div key={c.key} className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-semibold text-text shrink-0">
                                                                     <Beaker size={12} className={c.color} />
                                                                     <span>

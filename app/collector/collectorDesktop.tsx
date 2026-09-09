@@ -37,6 +37,7 @@ export default function CollectorDesktop(props: CollectorProps) {
         setPage,
         pageSize,
         changePageSize,
+        parameterFormulas,
         showOnlyMine,
         setShowOnlyMine,
         globalFilter,
@@ -402,7 +403,7 @@ export default function CollectorDesktop(props: CollectorProps) {
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex items-center gap-2 mt-2 w-full flex-wrap">
-                                                                    {readChemValues(sample).map((c) => (
+                                                                    {readChemValues(sample, parameterFormulas).map((c) => (
                                                                         <div
                                                                             key={c.key}
                                                                             className="flex items-center gap-1 bg-surface-subtle px-2 py-1 rounded-md text-xs font-medium text-text shrink-0"

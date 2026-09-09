@@ -3,6 +3,8 @@ export interface DbParameter {
     name: string;
     unit: string | null;
     description: string | null;
+    /** สูตรเคมีสำหรับป้ายชิป เช่น "NH3" — null = ยังไม่ได้กรอกใน DB */
+    formula: string | null;
 }
 
 export interface LocationItem {

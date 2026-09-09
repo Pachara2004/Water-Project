@@ -58,6 +58,10 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
+    // สูตรเคมีของแต่ละสาร (คีย์เป็นชื่อตัวพิมพ์เล็ก) มาพร้อม payload ของ /api/samples
+    // เก็บไว้ที่นี่เพื่อให้การ์ดวาดป้ายได้พร้อมข้อมูล ไม่ต้องยิง /api/parameters แยกแล้วป้ายกระพริบ
+    const [parameterFormulas, setParameterFormulas] = useState<Record<string, string>>({});
+
     const [showOnlyMine, setShowOnlyMine] = useState(true);
     const [globalFilter, setGlobalFilter] = useState("");
     const [debouncedFilter, setDebouncedFilter] = useState("");
@@ -123,6 +127,9 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
                 return res.json();
             })
             .then((data) => {
+                // ไม่มีฟิลด์นี้ (API เวอร์ชันเก่า) ถือว่าไม่มีสูตร ป้ายจะใช้ชื่อย่อแทน ไม่ล้ม
+                setParameterFormulas(data.parameterFormulas && typeof data.parameterFormulas === "object" ? data.parameterFormulas : {});
+
                 const items = Array.isArray(data.items) ? data.items : [];
                 const mapped: CollectorSample[] = items.map((s: any) => ({
                     id: s.id,
@@ -263,6 +270,7 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
         setPage,
         pageSize,
         changePageSize,
+        parameterFormulas,
         showOnlyMine,
         // ทุก setter ที่ส่งออกไปเป็นตัวที่ห่อ setPage(1) ไว้แล้ว — ฝั่งหน้าเว็บไม่ต้องรีเซ็ตหน้าเอง
         setShowOnlyMine: changeShowOnlyMine,
