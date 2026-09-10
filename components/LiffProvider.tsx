@@ -17,6 +17,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
     const { showToast, toastElement } = useToast();
     const [liffLoaded, setLiffLoaded] = useState(false);
     const [liffError, setLiffError] = useState<string | null>(null);
+    const [loadingStep, setLoadingStep] = useState("กำลังเริ่มต้นระบบ...");
     const currentUser = useAppStore((state) => state.currentUser);
     const setUser = useAppStore((state) => state.setUser);
 
@@ -33,7 +34,14 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
     useEffect(() => {
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
 
+        // Set a timeout so we never hang forever
+        const fallbackTimer = setTimeout(() => {
+            setLiffError("การเชื่อมต่อใช้เวลานานผิดปกติ กรุณารีเฟรชหรือเปิดลิงก์ใหม่");
+            setLiffLoaded(true);
+        }, 15000);
+
         if (!liffId) {
+            setLoadingStep("จำลองการยืนยันตัวตน...");
             fetch("/api/auth", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -46,22 +54,28 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 .then(() => {
                     setUser(null);
                     setLiffLoaded(true);
+                    clearTimeout(fallbackTimer);
                 })
                 .catch((err) => {
                     console.error("Failed to mock authenticate:", err);
                     setLiffError("ไม่สามารถจำลองการยืนยันตัวตนกับฐานข้อมูลได้");
                     setLiffLoaded(true);
+                    clearTimeout(fallbackTimer);
                 });
             return;
         }
 
+        setLoadingStep("กำลังเชื่อมต่อ LINE...");
         liff.init({ liffId })
             .then(async () => {
                 const hasLoggedIntoApp = localStorage.getItem("hasLoggedIntoApp") === "true";
 
                 // ยอมให้ดึงข้อมูลผู้ใช้ก็ต่อเมื่อ LIFF ล็อกอินแล้ว และผู้ใช้ "เคยกดปุ่มเข้าสู่ระบบ" แล้วเท่านั้น
                 if (liff.isLoggedIn() && hasLoggedIntoApp) {
+                    setLoadingStep("กำลังดึงโปรไฟล์ LINE...");
                     const profile = await liff.getProfile();
+                    
+                    setLoadingStep("กำลังตรวจสอบสิทธิ์ผู้ใช้...");
                     const response = await fetch("/api/auth", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -73,20 +87,24 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                     if (!response.ok) throw new Error("Failed to authenticate with backend");
 
+                    setLoadingStep("กำลังโหลดข้อมูลสำเร็จ...");
                     const resData = await response.json();
                     setUser(resData);
                     setLiffLoaded(true);
+                    clearTimeout(fallbackTimer);
                     return;
                 }
 
                 // ถ้ายังไม่เคยกดเข้าสู่ระบบ ให้เป็น Guest เสมอ (ไม่ว่าจะอยู่ใน LINE หรือ Browser)
                 setUser(null);
                 setLiffLoaded(true);
+                clearTimeout(fallbackTimer);
             })
             .catch((err) => {
                 console.error("LIFF init error", err);
                 setUser(null);
                 setLiffLoaded(true);
+                clearTimeout(fallbackTimer);
             })
             .finally(() => {
                 const isDark = typeof window !== "undefined" && localStorage.getItem("theme") === "dark";
@@ -190,7 +208,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 <div className="flex flex-col items-center z-10">
                     <div className="h-9 w-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                     <p className="mt-4 text-primary font-semibold text-md uppercase tracking-widest animate-pulse">
-                        กำลังเชื่อมต่อ<span className="text-text-safe">ระบบ</span>
+                        {loadingStep}
                     </p>
                 </div>
             </div>
