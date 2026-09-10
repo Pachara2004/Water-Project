@@ -7,12 +7,22 @@ import StatusBadge from "./StatusBadge";
 import { evaluateAgainstLocationType } from "@/lib/standards";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
-import TimeSeriesChart, { type TimeSeriesDataPoint, type TimeSeriesSeries } from "../TimeSeriesChart";
+import { type TimeSeriesDataPoint, type TimeSeriesSeries } from "../TimeSeriesChart";
+import dynamic from "next/dynamic";
 import { useAppStore } from "@/lib/store";
 import { getWeatherConditionLabel } from "@/lib/weather";
 import { chemNameFromValueKey, chemStrokeColor, readChemValues } from "@/lib/chemLabels";
 import { parameterIconClass } from "@/lib/chartColors";
 import { useParameterUnits } from "@/lib/hooks/useParameterUnits";
+
+const TimeSeriesChart = dynamic(() => import("../TimeSeriesChart"), {
+    ssr: false,
+    loading: () => (
+        <div className="h-56 w-full bg-surface-subtle animate-pulse rounded-2xl border border-border flex items-center justify-center">
+            <span className="text-xs font-semibold text-text-muted">กำลังโหลดกราฟ...</span>
+        </div>
+    ),
+});
 
 export interface BottomSheetLocation {
     id: string;

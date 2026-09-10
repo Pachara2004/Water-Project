@@ -83,6 +83,7 @@ export function ImageZone({
 
     const [viewMode, setViewMode] = useState<"raw" | "analyzed">("analyzed");
     const [showExampleModal, setShowExampleModal] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
     const paramKey = matchParamKey(param.name, PARAM_EXAMPLE_IMAGE);
     const exampleImage = paramKey ? PARAM_EXAMPLE_IMAGE[paramKey] : null;
@@ -108,6 +109,26 @@ export function ImageZone({
             alertError("รูปแบบไฟล์ไม่ถูกต้อง!", "ระบบอนุญาตเฉพาะไฟล์รูปภาพสากล (.jpg, .jpeg, .png, .webp) เท่านั้นครับ");
             return;
         }
+
+        // ─── Artificial Progress (Labor Illusion) ───
+        setUploadProgress(0);
+        await new Promise<void>((resolve) => {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.floor(Math.random() * 20) + 15;
+                if (progress >= 100) {
+                    progress = 100;
+                    setUploadProgress(100);
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        setUploadProgress(null);
+                        resolve();
+                    }, 300); // ค้างที่ 100% แป๊บนึงให้ดูสมจริง
+                } else {
+                    setUploadProgress(progress);
+                }
+            }, 150);
+        });
 
         onImageFilesChange(file);
         setIsRecommending(true);
@@ -287,7 +308,17 @@ export function ImageZone({
                         }
 ${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`}
                     >
-                        {step === "analyzing" ? (
+                        {uploadProgress !== null ? (
+                            <div className="flex flex-col items-center justify-center gap-4 w-full px-6 py-10">
+                                <span className="text-xs font-medium text-primary tracking-widest uppercase animate-pulse">กำลังประมวลผล... {uploadProgress}%</span>
+                                <div className="w-full max-w-xs h-2.5 bg-surface-muted border border-border/50 rounded-full overflow-hidden shadow-inner">
+                                    <div 
+                                        className="h-full bg-secondary transition-all duration-200 ease-out"
+                                        style={{ width: `${uploadProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        ) : step === "analyzing" ? (
                             <>
                                 {preview && <img src={preview} alt={param.name} className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
                                 <div className="animate-laser" />
