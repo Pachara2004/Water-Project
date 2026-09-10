@@ -6,7 +6,7 @@ import liff from "@line/liff";
 import { ChevronRight, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import GpsAutoTrackToggle from "@/components/GpsAutoTrackToggle";
-import { adminMenus, MenuBoxDisable, EditProfileDrawer, ProfileCard } from "@/components/manage/manageHelpers";
+import { adminMenus, generalMenus, MenuBoxDisable, EditProfileDrawer, ProfileCard } from "@/components/manage/manageHelpers";
 
 export interface ManagePageProps {
     currentUser: CurrentUser | null | undefined;
@@ -102,6 +102,34 @@ export default function ManageMobile({ currentUser, isAdmin, pendingCounts, show
                                     </button>
                                 );
                             })}
+                            
+                        {/* General Menus for all users */}
+                        {generalMenus.map((menu) => {
+                            const Icon = menu.icon;
+                            return (
+                                <button
+                                    key={menu.href}
+                                    onClick={() => menu.available && router.push(menu.href)}
+                                    className="w-full h-full group flex items-start gap-4 p-4 bg-card-general rounded-2xl border border-border transition-all duration-75 text-left hover:border-primary/30 hover:scale-[1.01] cursor-pointer active:scale-[0.99]"
+                                >
+                                    <div className="flex items-center justify-center shrink-0 self-center transition-transform duration-200 group-hover:scale-105">
+                                        <Icon size={24} />
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="text-sm font-semibold text-text-primary truncate">{menu.label}</h3>
+                                        </div>
+                                        <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
+                                    </div>
+
+                                    <ChevronRight
+                                        size={18}
+                                        className="shrink-0 self-center transition-all duration-75 text-secondary group-hover:text-primary group-hover:translate-x-0.5"
+                                    />
+                                </button>
+                            );
+                        })}
 
                         {currentUser && (
                             <>

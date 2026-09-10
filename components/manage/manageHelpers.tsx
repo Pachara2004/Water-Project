@@ -3,7 +3,7 @@
 import { useState } from "react";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { MapPin, Users, Phone, Check, AlertCircle, User, ClipboardCheck, Pencil } from "lucide-react";
+import { MapPin, Users, ReceiptText, Check, AlertCircle, User, ClipboardCheck, Pencil, ShieldAlert } from "lucide-react";
 import Popup from "@/components/Popup";
 
 // countKey เชื่อมกับผลลัพธ์ /api/manage/pending-count เพื่อบอกว่าเมนูไหนมีคำร้องค้างอยู่
@@ -41,6 +41,31 @@ export const adminMenus = [
         available: true,
         countKey: "rolePendingCount" as const,
     },
+];
+
+export const generalMenus = [
+    {
+        href: "/manage/privacy-policy",
+        icon: ShieldAlert,
+        label: "นโยบายความเป็นส่วนตัว",
+        description: "นโยบายการคุ้มครองข้อมูลส่วนบุคคล",
+        badge: "Privacy",
+        color: "bg-primary text-primary border-primary/10",
+        iconBg: "bg-secondary text-white",
+        available: true,
+        countKey: null,
+    },
+    {
+        href: "/manage/terms",
+        icon: ReceiptText,
+        label: "ข้อตกลงการใช้งาน",
+        description: "ข้อกำหนดและเงื่อนไขการใช้งานระบบ",
+        badge: "Terms",
+        color: "bg-primary text-primary border-primary/10",
+        iconBg: "bg-secondary text-white",
+        available: true,
+        countKey: null,
+    }
 ];
 
 // แมปป้ายกำกับและสไตล์สีตามกลุ่มสิทธิ์ระบบพิมพ์เล็กชุดล่าสุดของ
