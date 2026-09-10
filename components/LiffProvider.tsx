@@ -76,10 +76,15 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                     return;
                 }
 
-                try {
-                    liff.login();
-                } catch (loginErr) {
-                    console.warn("User cancelled or login failed, proceeding as guest", loginErr);
+                if (liff.isInClient()) {
+                    try {
+                        liff.login();
+                    } catch (loginErr) {
+                        console.warn("User cancelled or login failed, proceeding as guest", loginErr);
+                        setUser(null);
+                        setLiffLoaded(true);
+                    }
+                } else {
                     setUser(null);
                     setLiffLoaded(true);
                 }
