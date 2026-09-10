@@ -140,7 +140,14 @@ export default function Navbar() {
                 icon: User,
                 onClick: (e: React.MouseEvent) => {
                     e.preventDefault();
-                    liff.login();
+                    if (liff.isInClient() && liff.isLoggedIn()) {
+                        // ถ้าอยู่ใน LINE และ LIFF ล็อกอินแล้ว แต่หลุดเป็น Guest (เช่น API Error)
+                        // ห้ามเรียก liff.login() ซ้ำ เพราะ LINE Browser จะค้าง (Bug ของ LIFF)
+                        // ให้ใช้วิธีโหลดหน้าใหม่ เพื่อให้ระบบดึงข้อมูลจาก API อีกรอบแทน
+                        window.location.reload();
+                    } else {
+                        liff.login();
+                    }
                 }
             });
         } else {

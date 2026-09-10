@@ -79,6 +79,8 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 if (liff.isInClient()) {
                     try {
                         liff.login();
+                        // เพิ่มบรรทัดนี้: ถ้า liff.login() ไม่ยอมรีไดเรกต์ (โดนบล็อก) อย่างน้อยหน้าโหลดก็จะได้หายไป
+                        setLiffLoaded(true);
                     } catch (loginErr) {
                         console.warn("User cancelled or login failed, proceeding as guest", loginErr);
                         setUser(null);
