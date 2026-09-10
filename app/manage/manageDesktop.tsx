@@ -4,7 +4,7 @@ import liff from "@line/liff";
 import { ChevronRight, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import GpsAutoTrackToggle from "@/components/GpsAutoTrackToggle";
-import { adminMenus, MenuBoxDisable, EditProfileDrawer, ProfileCard } from "@/components/manage/manageHelpers";
+import { adminMenus, generalMenus, MenuBoxDisable, EditProfileDrawer, ProfileCard } from "@/components/manage/manageHelpers";
 import type { ManagePageProps } from "./manageMobile";
 
 // Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, เมนูจาก stack แนวตั้งเป็นกริดหลายคอลัมน์)
@@ -112,6 +112,33 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
                                                         {pendingCount} รายการ
                                                     </span>
                                                 )}
+                                            </div>
+                                            <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        {generalMenus.map((menu) => {
+                                const Icon = menu.icon;
+                                return (
+                                    <button
+                                        key={menu.href}
+                                        onClick={() => menu.available && router.push(menu.href)}
+                                        className="w-full h-full group flex flex-col items-start gap-4 p-6 bg-card-general rounded-2xl border border-border transition-all duration-150 text-left hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 cursor-pointer active:translate-y-0"
+                                    >
+                                        <div className="flex items-center justify-between w-full">
+                                            <div className={`flex items-center justify-center shrink-0 w-12 h-12 rounded-xl transition-transform duration-200 ${menu.iconBg} group-hover:scale-105`}>
+                                                <Icon size={22} />
+                                            </div>
+                                            <ChevronRight
+                                                size={18}
+                                                className="shrink-0 transition-all duration-150 text-secondary group-hover:text-primary group-hover:translate-x-1"
+                                            />
+                                        </div>
+
+                                        <div className="flex-1 min-w-0 w-full">
+                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                <h3 className="text-base font-semibold text-text-primary">{menu.label}</h3>
                                             </div>
                                             <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
                                         </div>
