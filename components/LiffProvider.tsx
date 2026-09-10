@@ -79,26 +79,9 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                     return;
                 }
 
-<<<<<<< Updated upstream
-                if (liff.isInClient()) {
-                    try {
-                        liff.login();
-                        // เพิ่มบรรทัดนี้: ถ้า liff.login() ไม่ยอมรีไดเรกต์ (โดนบล็อก) อย่างน้อยหน้าโหลดก็จะได้หายไป
-                        setLiffLoaded(true);
-                    } catch (loginErr) {
-                        console.warn("User cancelled or login failed, proceeding as guest", loginErr);
-                        setUser(null);
-                        setLiffLoaded(true);
-                    }
-                } else {
-                    setUser(null);
-                    setLiffLoaded(true);
-                }
-=======
                 // ถ้ายังไม่เคยกดเข้าสู่ระบบ ให้เป็น Guest เสมอ (ไม่ว่าจะอยู่ใน LINE หรือ Browser)
                 setUser(null);
                 setLiffLoaded(true);
->>>>>>> Stashed changes
             })
             .catch((err) => {
                 console.error("LIFF init error", err);
