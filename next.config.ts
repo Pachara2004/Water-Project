@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
     // บล็อกคำสั่งเช็กความปลอดภัย HMR
-    allowedDevOrigins: ["localhost:3000", "192.168.137.1:3000", "constraint-austin-availability-gardening.trycloudflare.com"],
+    allowedDevOrigins: ["localhost:3000", "192.168.137.1:3000", "beds-naples-invest-lodge.trycloudflare.com"],
 
     images: {
         remotePatterns: [
