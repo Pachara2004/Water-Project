@@ -57,7 +57,10 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
         liff.init({ liffId })
             .then(async () => {
-                if (liff.isLoggedIn()) {
+                const hasLoggedIntoApp = localStorage.getItem("hasLoggedIntoApp") === "true";
+
+                // ยอมให้ดึงข้อมูลผู้ใช้ก็ต่อเมื่อ LIFF ล็อกอินแล้ว และผู้ใช้ "เคยกดปุ่มเข้าสู่ระบบ" แล้วเท่านั้น
+                if (liff.isLoggedIn() && hasLoggedIntoApp) {
                     const profile = await liff.getProfile();
                     const response = await fetch("/api/auth", {
                         method: "POST",
@@ -76,6 +79,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                     return;
                 }
 
+<<<<<<< Updated upstream
                 if (liff.isInClient()) {
                     try {
                         liff.login();
@@ -88,6 +92,11 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                     setUser(null);
                     setLiffLoaded(true);
                 }
+=======
+                // ถ้ายังไม่เคยกดเข้าสู่ระบบ ให้เป็น Guest เสมอ (ไม่ว่าจะอยู่ใน LINE หรือ Browser)
+                setUser(null);
+                setLiffLoaded(true);
+>>>>>>> Stashed changes
             })
             .catch((err) => {
                 console.error("LIFF init error", err);

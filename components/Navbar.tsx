@@ -140,7 +140,20 @@ export default function Navbar() {
                 icon: User,
                 onClick: (e: React.MouseEvent) => {
                     e.preventDefault();
+<<<<<<< Updated upstream
                     liff.login();
+=======
+                    // บันทึกว่าผู้ใช้เคยกดปุ่มเข้าสู่ระบบแล้ว (เพื่อไม่ให้เป็น Guest อีกต่อไป)
+                    localStorage.setItem("hasLoggedIntoApp", "true");
+
+                    if (liff.isInClient() && liff.isLoggedIn()) {
+                        // ถ้าอยู่ใน LINE และ LIFF ล็อกอินแล้ว (แต่เป็น Guest เพราะไม่มี Flag)
+                        // ให้ใช้วิธีโหลดหน้าใหม่ เพื่อให้ระบบไปดึงข้อมูลจาก API แทนการเรียก liff.login() ซ้ำ
+                        window.location.reload();
+                    } else {
+                        liff.login();
+                    }
+>>>>>>> Stashed changes
                 }
             });
         } else {
