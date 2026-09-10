@@ -138,17 +138,32 @@ export default function Navbar() {
                 href: "#login",
                 label: "เข้าสู่ระบบ",
                 icon: User,
-                onClick: (e: React.MouseEvent) => {
+                onClick: async (e: React.MouseEvent) => {
                     e.preventDefault();
 
-                    liff.login();
-                    // บันทึกว่าผู้ใช้เคยกดปุ่มเข้าสู่ระบบแล้ว (เพื่อไม่ให้เป็น Guest อีกต่อไป)
+                    // บันทึกว่าผู้ใช้เคยกดปุ่มเข้าสู่ระบบแล้ว
                     localStorage.setItem("hasLoggedIntoApp", "true");
 
                     if (liff.isInClient() && liff.isLoggedIn()) {
-                        // ถ้าอยู่ใน LINE และ LIFF ล็อกอินแล้ว (แต่เป็น Guest เพราะไม่มี Flag)
-                        // ให้ใช้วิธีโหลดหน้าใหม่ เพื่อให้ระบบไปดึงข้อมูลจาก API แทนการเรียก liff.login() ซ้ำ
-                        window.location.reload();
+                        // แทนที่จะโหลดหน้าใหม่แล้วค้าง ให้ยิง API ดึงข้อมูลและอัปเดต State ทันที
+                        try {
+                            const profile = await liff.getProfile();
+                            const response = await fetch("/api/auth", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    accessToken: liff.getAccessToken(),
+                                    name: profile.displayName,
+                                }),
+                            });
+
+                            if (response.ok) {
+                                const resData = await response.json();
+                                useAppStore.getState().setUser(resData);
+                            }
+                        } catch (err) {
+                            console.error("Auto login via LINE client failed:", err);
+                        }
                     } else {
                         liff.login();
                     }
