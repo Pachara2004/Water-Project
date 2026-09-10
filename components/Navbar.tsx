@@ -140,9 +140,8 @@ export default function Navbar() {
                 icon: User,
                 onClick: (e: React.MouseEvent) => {
                     e.preventDefault();
-<<<<<<< Updated upstream
+
                     liff.login();
-=======
                     // บันทึกว่าผู้ใช้เคยกดปุ่มเข้าสู่ระบบแล้ว (เพื่อไม่ให้เป็น Guest อีกต่อไป)
                     localStorage.setItem("hasLoggedIntoApp", "true");
 
@@ -153,7 +152,6 @@ export default function Navbar() {
                     } else {
                         liff.login();
                     }
->>>>>>> Stashed changes
                 }
             });
         } else {
