@@ -114,7 +114,7 @@ export default function Navbar() {
     }, [currentUser, userRole, fetchDots]);
 
     const navItems = useMemo(() => {
-        const items: { href: string; label: string; icon: typeof Map; showDot?: boolean }[] = [{ href: "/map", label: "แผนที่", icon: Map }];
+        const items: { href: string; label: string; icon: typeof Map; showDot?: boolean; onClick?: (e: React.MouseEvent) => void }[] = [{ href: "/map", label: "แผนที่", icon: Map }];
 
         if (userRole === "collector" || userRole === "admin") {
             items.push({
@@ -133,15 +133,27 @@ export default function Navbar() {
             });
         }
 
-        items.push({
-            href: "/manage",
-            label: "จัดการข้อมูล",
-            icon: Settings,
-            showDot: navDots.hasPendingManageQueue,
-        });
+        if (!currentUser) {
+            items.push({
+                href: "#login",
+                label: "เข้าสู่ระบบ",
+                icon: User,
+                onClick: (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    liff.login();
+                }
+            });
+        } else {
+            items.push({
+                href: "/manage",
+                label: "จัดการข้อมูล",
+                icon: Settings,
+                showDot: navDots.hasPendingManageQueue,
+            });
+        }
 
         return items;
-    }, [userRole, navDots.hasUnreadRejection, navDots.hasPendingManageQueue]);
+    }, [userRole, currentUser, navDots.hasUnreadRejection, navDots.hasPendingManageQueue]);
 
     return (
         <>
@@ -158,6 +170,7 @@ export default function Navbar() {
                                 key={item.href}
                                 href={item.href}
                                 prefetch={true}
+                                onClick={item.onClick}
                                 className={`flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-all duration-75 relative active:scale-[0.95] will-change-transform ${
                                     isActive ? "text-primary font-semibold" : "text-text hover:text-primary"
                                 }`}
@@ -192,6 +205,7 @@ export default function Navbar() {
                                     key={item.href}
                                     href={item.href}
                                     prefetch={true}
+                                    onClick={item.onClick}
                                     className={`group flex items-center h-11 rounded-xl font-semibold text-xs transition-all duration-150 active:scale-[0.98] will-change-transform overflow-hidden w-full px-4 gap-3.5 relative ${
                                         isActive ? "bg-secondary text-white" : "hover:bg-primary hover:text-text-primary"
                                     }`}
