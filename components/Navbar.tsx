@@ -144,7 +144,9 @@ export default function Navbar() {
                     // บันทึกว่าผู้ใช้เคยกดปุ่มเข้าสู่ระบบแล้ว
                     localStorage.setItem("hasLoggedIntoApp", "true");
 
-                    if (liff.isInClient() && liff.isLoggedIn()) {
+                    const isLineApp = liff.isInClient() || navigator.userAgent.includes("Line");
+
+                    if (isLineApp && liff.isLoggedIn()) {
                         // แทนที่จะโหลดหน้าใหม่แล้วค้าง ให้ยิง API ดึงข้อมูลและอัปเดต State ทันที
                         try {
                             const profile = await liff.getProfile();

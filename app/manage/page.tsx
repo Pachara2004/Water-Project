@@ -51,9 +51,11 @@ export default function ManagePage() {
 
         // 2. ถ้าผู้ใช้กด "ออกจากระบบ" (ยืนยัน) ให้ทำตามกระบวนการเดิม
         try {
-            // ห้ามเรียก liff.logout() ถ้าอยู่ในแอป LINE เพราะจะทำให้ liff.init ค้างเมื่อพยายามล็อกอินใหม่
-            if (!liff.isInClient() && liff.isLoggedIn()) {
-                liff.logout();
+            // เช็คว่าเป็น LINE Browser หรือไม่ (ใช้ User-Agent ช่วยดักจับในกรณีที่ใช้ลิงก์ Cloudflare ตรงๆ)
+            const isLineApp = liff.isInClient() || navigator.userAgent.includes("Line");
+
+            if (!isLineApp && liff.isLoggedIn()) {
+                liff.logout(); // ล้างโทเคนของ LINE ออกหมด (ทำได้เฉพาะในเบราว์เซอร์ปกติ)
             }
             
             // ลบสถานะการเข้าสู่ระบบออก เพื่อให้กลับไปเป็น Guest
