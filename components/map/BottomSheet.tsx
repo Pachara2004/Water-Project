@@ -391,6 +391,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
     const renderContent = () => {
         const isCollapsed = sheetHeight === "collapsed";
+        const isGuestOrPublic = !currentUser || currentUser.role === "guest";
 
         return (
             <div className="flex-1">
@@ -431,7 +432,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                                 {renderCollectorInfo()}
 
-                                {currentUser?.role !== "guest" && (
+                                {!isGuestOrPublic && (
                                     <div className="grid grid-cols-2 gap-2">
                                         {chemicalItems.map((item) => {
                                             const formattedTime = item.collectedAt
@@ -476,7 +477,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                     </div>
                                 )}
 
-                                {(currentUser?.role !== "guest" || !currentUser?.role) &&
+                                {!isGuestOrPublic &&
                                     (latest.airTemperature !== null ||
                                         latest.rainAccumulation !== null ||
                                         latest.weatherCondCode !== null ||
@@ -570,7 +571,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                             </span>
 
                                                             {/* ฝั่งกลาง: ชิปสารแบบ Responsive กว้างยืดหดตามสัดส่วน */}
-                                                            {(currentUser?.role !== "guest" || !currentUser?.role) && (
+                                                            {!isGuestOrPublic && (
                                                                 <div className="flex flex-col gap-1 flex-1 items-center min-w-0">
                                                                     {paramValues.length > 0 ? (
                                                                         paramValues.map((p, pIdx) => (
@@ -608,7 +609,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                             </div>
                         )}
 
-                        {(currentUser?.role !== "guest" || !currentUser?.role) && chartData.length > 0 && (
+                        {!isGuestOrPublic && chartData.length > 0 && (
                             <div className="bg-card-general rounded-2xl mt-4">
                                 <TimeSeriesChart data={chartData} series={chartSeries} />
                             </div>
