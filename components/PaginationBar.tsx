@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 /**
  * แถบแบ่งหน้ากลาง ใช้ร่วมกันทุกหน้าที่ดึงข้อมูลแบบแบ่งหน้าจาก API
@@ -107,6 +107,77 @@ function PageNumbers({
     );
 }
 
+/**
+ * ดรอปดาวน์ "แถวต่อหน้า" แบบ custom แทน <select> เพราะเมนูของ select เป็นของเบราว์เซอร์ แต่งสไตล์ไม่ได้
+ * หน้าตาเดินตามชุดตัวกรองบนแผนที่ (OfficerFilterBar) ให้ทั้งระบบเป็นชุดเดียวกัน
+ * เมนูกางขึ้นด้านบนเพราะแถบแบ่งหน้าอยู่ท้ายตารางเสมอ กางลงจะโดนขอบจอตัด
+ */
+function PageSizeSelect({ value, options, onChange }: { value: number; options: number[]; onChange: (size: number) => void }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const rootRef = useRef<HTMLSpanElement>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handlePointerDown = (e: PointerEvent) => {
+            if (rootRef.current && !rootRef.current.contains(e.target as Node)) setIsOpen(false);
+        };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setIsOpen(false);
+        };
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isOpen]);
+
+    return (
+        <span ref={rootRef} className="relative inline-block">
+            <button
+                type="button"
+                onClick={() => setIsOpen((o) => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
+                aria-label="จำนวนแถวต่อหน้า"
+                className={`inline-flex ${boxClass} pl-3 pr-2 gap-1.5 font-semibold ${isOpen ? "border-primary" : ""}`}
+            >
+                {value}
+                <ChevronDown size={14} strokeWidth={2.5} className={`text-text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {isOpen && (
+                <div
+                    role="listbox"
+                    aria-label="จำนวนแถวต่อหน้า"
+                    className="absolute bottom-[calc(100%+6px)] right-0 min-w-full w-24 p-1 flex flex-col gap-0.5 bg-card-general rounded-2xl shadow-2xl border border-border/80 animate-in fade-in slide-in-from-bottom-2 duration-150 z-50"
+                >
+                    {options.map((size) => {
+                        const isSelected = size === value;
+                        return (
+                            <button
+                                key={size}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                    if (!isSelected) onChange(size);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all duration-100 cursor-pointer
+                ${isSelected ? "bg-primary text-white" : "text-text hover:bg-surface-subtle active:bg-surface-muted"}`}
+                            >
+                                {size}
+                                {isSelected && <Check size={13} strokeWidth={3} />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </span>
+    );
+}
+
 export default function PaginationBar({ page, totalPages, onPageChange, pageSize, onPageSizeChange, pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS }: PaginationBarProps) {
     // ช่องกรอกเลขหน้าถือค่าดิบระหว่างพิมพ์ (ให้ลบจนว่างได้) แล้วค่อย commit ตอน Enter หรือ blur
     const [pageDraft, setPageDraft] = useState(String(page));
@@ -162,23 +233,10 @@ export default function PaginationBar({ page, totalPages, onPageChange, pageSize
                 </div>
 
                 {showPageSize && (
-                    <label className="flex items-center gap-2 text-xs text-text-muted font-medium sm:order-3">
+                    <div className="flex items-center gap-2 text-xs text-text-muted font-medium sm:order-3">
                         <span className="whitespace-nowrap">แถวต่อหน้า</span>
-                        <span className="relative">
-                            <select
-                                value={pageSize}
-                                onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                                className="h-10 sm:h-9 pl-3 pr-8 rounded-xl border border-border bg-card-general text-text text-xs font-semibold outline-none focus:border-primary appearance-none cursor-pointer transition-colors"
-                            >
-                                {pageSizeOptions.map((size) => (
-                                    <option key={size} value={size}>
-                                        {size}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown size={14} strokeWidth={2.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                        </span>
-                    </label>
+                        <PageSizeSelect value={pageSize} options={pageSizeOptions} onChange={onPageSizeChange} />
+                    </div>
                 )}
             </div>
 
