@@ -61,7 +61,7 @@ export default function SubmitDesktop(props: any) {
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
                             <h2 className="text-xs font-medium text-text">ข้อมูลประกอบการตรวจ</h2>
-                            <MetadataFields {...hook} weatherData={hook.weatherData} />
+                            <MetadataFields {...hook} weatherData={hook.weatherData} disabled={step !== "upload"} />
                         </div>
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
