@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { REVIEW_NOTE_MAX_LENGTH, PARTIAL_REJECT_NOTE } from "@/lib/reviewConstants";
 import { generateSessionGroup } from "@/lib/sessionGroup";
-import { nowThai } from "@/lib/thaiTime";
+import { nowThai, toApiString } from "@/lib/thaiTime";
 import { ReviewStatus, WaterStatus } from "@prisma/client";
 import { evaluateSample } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
@@ -278,7 +278,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         }
 
         const result = await prisma.reviewRequest.findUnique({ where: { id: requestId } });
-        return NextResponse.json(result);
+        // Date ทุกตัวต้องออกไปแบบไม่มี Z เหมือน GET (client ไม่ได้ใช้ค่านี้แสดงผลตอนนี้ แต่กติกาต้องคงเดิมทุก route)
+        return NextResponse.json(
+            result && { ...result, createdAt: toApiString(result.createdAt), updatedAt: toApiString(result.updatedAt), reviewedAt: toApiString(result.reviewedAt), acknowledgedAt: toApiString(result.acknowledgedAt) }
+        );
     } catch (error) {
         console.error("PATCH /api/review-requests/[id] error:", error);
         return NextResponse.json({ error: "เกิดข้อผิดพลาดในการตัดสินคำร้อง" }, { status: 500 });

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
                 message: n.message,
                 isReading: n.isReading,
                 createdAt: toApiString(n.createdAt),
-                collectionTime: s?.collectionTime ?? null,
+                collectionTime: toApiString(s?.collectionTime),
                 rawImageUrl: s?.rawImageUrl ?? null,
                 location: s?.location ? { id: s.location.id, name: s.location.stationName, organization: s.location.governingAgency } : null,
             };

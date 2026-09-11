@@ -148,7 +148,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 },
                 include: {
                     measurements: {
-                        include: { parameter: true },
+                        include: { parameter: { select: { id: true, name: true, unit: true, formula: true } } },
                     },
                 },
             });
@@ -403,7 +403,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     },
                 },
                 measurements: {
-                    include: { parameter: true },
+                    include: { parameter: { select: { id: true, name: true, unit: true, formula: true } } },
                 },
             },
             orderBy: { id: "desc" }
@@ -432,7 +432,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 orderBy: { id: "asc" },
                 include: {
                     measurements: {
-                        include: { parameter: true },
+                        include: { parameter: { select: { id: true, name: true, unit: true, formula: true } } },
                     },
                 },
             });

@@ -5,7 +5,7 @@ import { getPendingSessionGroups } from "@/lib/review";
 import { STATUS_COLOR, parameterColor } from "@/lib/chartColors";
 import { getWeatherConditionLabel } from "@/lib/weather";
 import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters, getThaiHour } from "@/lib/sampleFilters";
-import { nowThai } from "@/lib/thaiTime";
+import { nowThai, toApiString } from "@/lib/thaiTime";
 
 // Date จาก DB มี getUTC*() = นาฬิกาไทยอยู่แล้ว (ดู lib/thaiTime.ts) ทุกฟังก์ชันปฏิทินในไฟล์นี้จึงอ่านด้วย getUTC* เสมอ
 const thaiMonthAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -536,8 +536,8 @@ export async function GET(request: NextRequest) {
         const granularityInfo = {
             granularity,
             label: granularityThaiLabel[granularity],
-            rangeStart: bucketRangeStart.toISOString(),
-            rangeEnd: bucketRangeEnd.toISOString(),
+            rangeStart: toApiString(bucketRangeStart),
+            rangeEnd: toApiString(bucketRangeEnd),
             rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStart)} – ${formatThaiDate(bucketRangeEnd)}` : "",
         };
 
