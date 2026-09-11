@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { localDayStart, localDayEnd } from "@/lib/thaiTime";
 import { CONFIDENCE_THRESHOLD } from "@/lib/standards";
 import { Search, SlidersHorizontal, ChevronDown, CalendarDays, X, ArrowUp, ArrowDown, Check, FileText } from "lucide-react";
 import PaginationBar from "@/components/PaginationBar";
@@ -116,12 +117,13 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
                     if (!matchLocation && !matchGroup) return false;
                 }
 
-                // 2. ช่วงเวลาส่งตรวจ (createdAt หรือ collectionTime)
+                // 2. ช่วงเวลาเก็บตัวอย่าง (collectionTime หรือ createdAt ถ้าไม่มี)
+                // ค่าจาก API ไม่มี Z → new Date() อ่านเป็นเวลาเครื่อง ขอบเขตวันจึงต้องเป็นเวลาเครื่องด้วย (localDayStart/End)
                 if (startDate || endDate) {
                     const timeStr = item.collectionTime || item.createdAt;
                     const timeVal = timeStr ? new Date(timeStr).getTime() : 0;
-                    if (startDate && timeVal < new Date(startDate).getTime()) return false;
-                    if (endDate && timeVal > new Date(endDate).setHours(23, 59, 59, 999)) return false;
+                    if (startDate && timeVal < localDayStart(startDate).getTime()) return false;
+                    if (endDate && timeVal >= localDayEnd(endDate).getTime()) return false;
                 }
 
                 // 3. กรองตามสถานะความปลอดภัยน้ำ (safe / warning / danger)

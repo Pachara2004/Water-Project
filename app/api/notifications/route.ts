@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
+import { toApiString } from "@/lib/thaiTime";
 
 // ==========================================
 // GET /api/notifications
@@ -53,8 +54,8 @@ export async function GET(request: NextRequest) {
                 status: n.status,
                 message: n.message,
                 isReading: n.isReading,
-                createdAt: n.createdAt,
-                collectionTime: s?.collectionTime ?? null,
+                createdAt: toApiString(n.createdAt),
+                collectionTime: toApiString(s?.collectionTime),
                 rawImageUrl: s?.rawImageUrl ?? null,
                 location: s?.location ? { id: s.location.id, name: s.location.stationName, organization: s.location.governingAgency } : null,
             };

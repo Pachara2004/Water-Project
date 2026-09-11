@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ต Guard กลางเข้ามาสลักนิรภัย
 import { parsePageParams, pageResult } from "@/lib/pagination";
+import { toApiString } from "@/lib/thaiTime";
 
 type UserTab = "all" | "staff" | "queue";
 
@@ -39,8 +40,14 @@ export async function GET(request: NextRequest) {
 
         const where: any = { ...TAB_FILTERS[tab] };
 
-        if (search) {
-            where.OR = [{ firstName: { contains: search } }, { lastName: { contains: search } }, { phoneNumber: { contains: search } }];
+        // หน้ารายชื่อแสดง "ชื่อ นามสกุล" ต่อกัน ผู้ใช้จึงพิมพ์ค้นทั้งก้อน แต่ DB เก็บแยกสองคอลัมน์
+        // และ contains เทียบข้ามคอลัมน์ไม่ได้ → แยกคำที่พิมพ์ด้วยช่องว่าง แล้วทุกคำต้องเจอในคอลัมน์ใดคอลัมน์หนึ่ง
+        // ("สมชาย ใจดี" = สมชาย เจอใน firstName และ ใจดี เจอใน lastName) — คำเดียวก็ยังทำงานเหมือนเดิม
+        const terms = search.split(/\s+/).filter(Boolean);
+        if (terms.length > 0) {
+            where.AND = terms.map((term) => ({
+                OR: [{ firstName: { contains: term } }, { lastName: { contains: term } }, { phoneNumber: { contains: term } }],
+            }));
         }
 
         if (role && role !== "ALL") {
@@ -93,8 +100,8 @@ export async function GET(request: NextRequest) {
                 fullName: `${u.firstName || ""} ${u.lastName || ""}`.trim() || "ยังไม่ลงทะเบียนข้อมูล",
                 phoneNumber: u.phoneNumber || null,
                 role: u.systemRole.roleName,
-                registeredAt: u.registeredAt.toISOString(),
-                lastActiveAt: u.lastActiveAt.toISOString(),
+                registeredAt: toApiString(u.registeredAt),
+                lastActiveAt: toApiString(u.lastActiveAt),
                 samplesCount: u._count.samples,
                 pendingRequestId: pendingRequest ? pendingRequest.id : null,
                 requestedRole: pendingRequest ? pendingRequest.requestedRole.roleName : null,

@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 import crypto from "crypto";
+import { nowThai, toYmd } from "@/lib/thaiTime";
 import { verifyAuth } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma"; // 🔍 ดึง Prisma เข้ามาสแกน Parameter ใน DB
 
@@ -10,11 +11,7 @@ import { prisma } from "@/lib/prisma"; // 🔍 ดึง Prisma เข้าม�
  * 🔒 FILENAME SANITIZER WITH DATE STAMP
  */
 function sanitizeAndGenerateFilename(originalName: string, prefix: string = "upload"): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const dateStamp = `${year}${month}${day}`;
+    const dateStamp = toYmd(nowThai()).replace(/-/g, "");
 
     const ext = originalName.split(".").pop()?.toLowerCase() || "jpg";
     const cleanExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext) ? ext : "jpg";
