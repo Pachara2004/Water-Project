@@ -335,7 +335,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 locationId: sampleRecord.locationNameCurrentId,
                 collectionTime: cleanDateString(sampleRecord.collectionTime),
                 uploadedActiveAt: cleanDateString(sampleRecord.uploadedActiveAt),
-                updatedActiveAt: cleanDateString(sampleRecord.uploadedActiveAt),
+                updatedActiveAt: cleanDateString(sampleRecord.updatedActiveAt),
                 dissolvedOxygen: sampleRecord.dissolvedOxygen,
                 airTemperature: sampleRecord.airTemperature,
                 rainAccumulation: sampleRecord.rainAccumulation,

@@ -71,6 +71,8 @@ export async function createSampleRecordSnapshot(
       governingAgencyFrom: baseSample.location?.governingAgency ?? null,
       locationNameCurrentId: baseSample.locationId,
       collectionTime: baseSample.collectionTime,
+      // ต้อง copy มาจากตัวอย่างต้นทาง ไม่งั้น default now() จะกลายเป็น "เวลาอนุมัติ" แทนเวลาที่ส่งจริง
+      uploadedActiveAt: baseSample.uploadedActiveAt,
       dissolvedOxygen: baseSample.dissolvedOxygen,
       airTemperature: baseSample.airTemperature,
       rainAccumulation: baseSample.rainAccumulation,

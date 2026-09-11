@@ -45,6 +45,12 @@ async function main() {
 
     // 1. Clean existing data (ลบตามลำดับป้องกัน Foreign Key Constraints)
     console.log("🧹 Cleaning existing data...");
+    // สามตารางนี้ผูกกับ session ด้วยรหัสสตริง (ไม่มี FK) จึงไม่ถูก cascade ตอนลบ samples
+    // ถ้าไม่ล้าง snapshot เก่าจะชนรหัส SES ของ seed รอบใหม่ แล้วหน้าประวัติหยิบ snapshot ผิดตัวไปแสดง
+    await prisma.sampleRecord.deleteMany();
+    await prisma.sampleRawLog.deleteMany();
+    await prisma.notification.deleteMany();
+    await prisma.weatherData.deleteMany();
     await prisma.dashboardWidget.deleteMany();
     await prisma.roleRequest.deleteMany();
     await prisma.reviewRequest.deleteMany();
