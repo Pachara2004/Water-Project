@@ -434,6 +434,7 @@ ${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`
                             title="เลือกรูปภาพหรือไฟล์"
                             ref={galleryInputRef}
                             type="file"
+                            accept="image/*"
                             onChange={handleFileSelect}
                             className="hidden"
                         />     </div>
