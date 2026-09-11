@@ -89,7 +89,7 @@ export default function SubmitMobile(props: any) {
                         ))}
                 {step === "upload" && (
                     <>
-                        <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
+                        <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} exifStatus={hook.exifStatus} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
                         <MetadataFields {...hook} weatherData={hook.weatherData} />
                         <AnalyzeButton {...hook} />
 

@@ -24,6 +24,7 @@ interface LocationPickerProps {
 
     gpsCoords: { lat: number; lng: number } | null;
     exifCoords: { lat: number; lng: number } | null;
+    exifStatus?: "idle" | "checking" | "found" | "not-found" | "error";
     activeSource: "gps" | "exif" | "manual";
     onSelectSource: (source: "gps" | "exif") => void;
 }
@@ -37,6 +38,7 @@ export function LocationPicker({
     allLocations,
     gpsCoords,
     exifCoords,
+    exifStatus = "idle",
     activeSource,
     onSelectSource,
 }: LocationPickerProps) {
@@ -99,6 +101,24 @@ export function LocationPicker({
                         <span className="truncate">พิกัดรูปภาพ {hasExif ? "" : "(ไม่มี)"}</span>
                     </button>
                 </div>
+
+                {exifStatus !== "idle" && (
+                    <p
+                        className={`text-xs ${
+                            exifStatus === "found"
+                                ? "text-text-safe"
+                                : exifStatus === "checking"
+                                  ? "text-text-muted"
+                                  : "text-text-warning"
+                        }`}
+                    >
+                        {exifStatus === "checking" && "กำลังอ่านพิกัดจากรูปภาพ…"}
+                        {exifStatus === "found" && "พบพิกัดจากข้อมูลในรูปภาพแล้ว"}
+                        {exifStatus === "not-found" &&
+                            "ไม่พบพิกัด EXIF ในไฟล์ที่ Chrome ส่งมา — Android อาจปกปิดตำแหน่งรูปภาพ; ใช้ GPS เครื่องแทนได้"}
+                        {exifStatus === "error" && "อ่านข้อมูลพิกัดจากรูปภาพไม่สำเร็จ กรุณาลองเลือกรูปอีกครั้ง"}
+                    </p>
+                )}
 
                 {/* ช่องค้นหาสถานี */}
                 <div className="relative">

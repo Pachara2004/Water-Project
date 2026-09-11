@@ -53,7 +53,7 @@ export default function SubmitDesktop(props: any) {
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
                             <h2 className="text-xs font-medium text-text">ตำแหน่งจุดเก็บตัวอย่าง</h2>
-                            <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />
+                            <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} exifStatus={hook.exifStatus} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />
                         </div>
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">

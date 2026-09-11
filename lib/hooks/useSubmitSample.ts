@@ -123,6 +123,7 @@ export function useSubmitSample() {
     // เพิ่ม State และ Ref สำหรับเก็บค่าพิกัดดิบทั้งสองฝั่ง
     const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [exifCoords, setExifCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [exifStatus, setExifStatus] = useState<"idle" | "checking" | "found" | "not-found" | "error">("idle");
     const [activeSource, setActiveSource] = useState<"gps" | "exif" | "manual">("manual");
 
     // ฟังก์ชันสำหรับคำนวณเรียงลำดับสถานีใกล้เคียงใหม่ตามพิกัดที่เลือก
@@ -313,22 +314,58 @@ export function useSubmitSample() {
     // 1. แกะ EXIF และสลับมาใช้พิกัดรูปภาพทันที
     const processImageExif = useCallback(
         async (file: File) => {
+            setExifStatus("checking");
             try {
                 const { getExifLocation } = await import("@/lib/exif");
-                const coords = await getExifLocation(file);
+                // อ่านใน browser ก่อนเพื่อลดการอัปโหลดซ้ำในกรณีปกติ
+                let coords = await getExifLocation(file);
+
+                // Android Chrome/LINE WebView บางรุ่นอ่าน EXIF จาก File ไม่ครบ
+                // จึงส่งไฟล์ต้นฉบับให้ Node.js อ่านซ้ำเฉพาะเมื่อฝั่ง browser หาไม่พบ
+                if (!coords) {
+                    const formData = new FormData();
+                    formData.append("image", file, file.name);
+
+                    const response = await fetch("/api/image-location", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Server EXIF fallback failed: ${response.status}`);
+                    }
+
+                    const result: unknown = await response.json();
+                    if (
+                        typeof result === "object" &&
+                        result !== null &&
+                        "found" in result &&
+                        result.found === true &&
+                        "latitude" in result &&
+                        "longitude" in result &&
+                        typeof result.latitude === "number" &&
+                        typeof result.longitude === "number"
+                    ) {
+                        coords = { latitude: result.latitude, longitude: result.longitude };
+                    }
+                }
 
                 if (coords) {
                     const exif = { lat: coords.latitude, lng: coords.longitude };
                     setExifCoords(exif);
+                    setExifStatus("found");
                     setActiveSource("exif");
                     updateNearestByCoords(exif);
                 } else {
                     console.warn("รูปภาพนี้ไม่มีข้อมูลพิกัด EXIF GPS");
                     setExifCoords(null);
+                    setExifStatus("not-found");
                 }
             } catch (err) {
                 console.error("ไม่สามารถอ่านค่า EXIF จากรูปภาพได้:", err);
                 setExifCoords(null);
+                setExifStatus("error");
             }
         },
         [updateNearestByCoords],
@@ -834,6 +871,7 @@ export function useSubmitSample() {
 
         gpsCoords,
         exifCoords,
+        exifStatus,
         activeSource,
         handleSelectSource,
         processImageExif,
