@@ -12,10 +12,8 @@ const nextConfig: NextConfig = {
             },
         ],
     },
-    devIndicators: {
-        buildActivity: false,
-        appIsrStatus: false,
-    },
+    // ซ่อนปุ่ม N (Next.js DevTools) มุมจอตอน dev; error overlay ยังขึ้นตามปกติ
+    devIndicators: false,
     turbopack: {},
 };
 
