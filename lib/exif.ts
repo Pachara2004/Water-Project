@@ -5,7 +5,7 @@ export interface LocationData {
     longitude: number;
 }
 
-function parseCoordinate(value: any, ref?: string): number | null {
+function parseCoordinate(value: unknown, ref?: string): number | null {
     if (value == null) return null;
 
     let dd: number | null = null;
@@ -15,7 +15,7 @@ function parseCoordinate(value: any, ref?: string): number | null {
     } else if (Array.isArray(value)) {
         if (value.length >= 3) {
             // รองรับทั้ง [d, m, s] และ [[num, den], [num, den], [num, den]] (rational arrays)
-            const parsePart = (part: any) => {
+            const parsePart = (part: unknown) => {
                 if (typeof part === "number") return part;
                 if (Array.isArray(part) && part.length === 2 && part[1] !== 0) {
                     return part[0] / part[1];
@@ -29,6 +29,14 @@ function parseCoordinate(value: any, ref?: string): number | null {
             dd = d + m / 60 + s / 3600;
         } else if (value.length === 1) {
             dd = Number(value[0]);
+        }
+    } else if (typeof value === "object") {
+        // บางรุ่นเก็บค่า rational ของ XMP เป็น { numerator, denominator }
+        const rational = value as Record<string, unknown>;
+        const numerator = Number(rational.numerator ?? rational.num);
+        const denominator = Number(rational.denominator ?? rational.den);
+        if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
+            dd = numerator / denominator;
         }
     } else if (typeof value === "string") {
         const str = value.trim();
@@ -98,15 +106,25 @@ export async function getExifLocation(file: File | Blob | ArrayBuffer): Promise<
             );
 
             // ดึงข้อมูลฟิลด์ต่างๆ เผื่อเครื่องแต่ละรุ่นเก็บชื่อไม่เหมือนกัน
-            const rawLat = allData.latitude ?? allData.lat ?? allData.GPSLatitude;
-            const rawLatRef = allData.GPSLatitudeRef ?? allData.latitudeRef;
-            const rawLng = allData.longitude ?? allData.lng ?? allData.lon ?? allData.GPSLongitude;
-            const rawLngRef = allData.GPSLongitudeRef ?? allData.longitudeRef;
+            // XMP/EXIF key casing differs between Android camera apps and WebViews.
+            const findField = (...names: string[]) => {
+                const wanted = names.map((name) => name.toLowerCase());
+                const key = Object.keys(allData).find((candidate) => {
+                    const normalized = candidate.toLowerCase();
+                    const shortName = normalized.includes(":") ? normalized.slice(normalized.lastIndexOf(":") + 1) : normalized;
+                    return wanted.includes(normalized) || wanted.includes(shortName);
+                });
+                return key ? allData[key] : undefined;
+            };
+            const rawLat = findField("latitude", "lat", "GPSLatitude", "GPSLatitudeRaw");
+            const rawLatRef = findField("GPSLatitudeRef", "latitudeRef", "latRef");
+            const rawLng = findField("longitude", "lng", "lon", "GPSLongitude", "GPSLongitudeRaw");
+            const rawLngRef = findField("GPSLongitudeRef", "longitudeRef", "lngRef", "lonRef");
 
             console.log("[EXIF] Raw values:", { rawLat, rawLatRef, rawLng, rawLngRef });
 
-            let lat = parseCoordinate(rawLat, rawLatRef);
-            let lng = parseCoordinate(rawLng, rawLngRef);
+            const lat = parseCoordinate(rawLat, rawLatRef);
+            const lng = parseCoordinate(rawLng, rawLngRef);
 
             console.log("[EXIF] Parsed coordinates:", { lat, lng });
 
