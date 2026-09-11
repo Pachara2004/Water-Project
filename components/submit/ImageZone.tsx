@@ -281,11 +281,10 @@ export function ImageZone({
 
                     {!isHistoryView && hasConf && !isPendingAdminValue && (
                         <div
-                            className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${
-                                isLowConf
-                                    ? "border border-border-danger bg-bg-danger text-text-danger"
-                                    : "border border-border-safe bg-bg-safe text-text-safe"
-                            }`}
+                            className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${isLowConf
+                                ? "border border-border-danger bg-bg-danger text-text-danger"
+                                : "border border-border-safe bg-bg-safe text-text-safe"
+                                }`}
                         >
                             {(() => {
                                 const confValue = typeof measurement.confidence === "number" ? `${(measurement.confidence * 100).toFixed(0)}%` : "-";
@@ -299,20 +298,19 @@ export function ImageZone({
                     <div
                         onClick={() => step === "upload" && galleryInputRef.current?.click()}
                         className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
-                        ${
-                            step === "analyzing"
+                        ${step === "analyzing"
                                 ? "aspect-square sm:aspect-4/3 md:aspect-video border-slate-700 bg-slate-950 cursor-default"
                                 : displayImgSrc
-                                  ? "aspect-square sm:aspect-4/3 md:aspect-video border-primary/30 bg-surface-subtle cursor-pointer"
-                                  : "aspect-square sm:aspect-4/3 border-border hover:border-primary/50 bg-surface-subtle cursor-pointer"
-                        }
+                                    ? "aspect-square sm:aspect-4/3 md:aspect-video border-primary/30 bg-surface-subtle cursor-pointer"
+                                    : "aspect-square sm:aspect-4/3 border-border hover:border-primary/50 bg-surface-subtle cursor-pointer"
+                            }
 ${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`}
                     >
                         {uploadProgress !== null ? (
                             <div className="flex flex-col items-center justify-center gap-4 w-full px-6 py-10">
                                 <span className="text-xs font-medium text-primary tracking-widest uppercase animate-pulse">กำลังประมวลผล... {uploadProgress}%</span>
                                 <div className="w-full max-w-xs h-2.5 bg-surface-muted border border-border/50 rounded-full overflow-hidden shadow-inner">
-                                    <div 
+                                    <div
                                         className="h-full bg-secondary transition-all duration-200 ease-out"
                                         style={{ width: `${uploadProgress}%` }}
                                     />
@@ -420,9 +418,25 @@ ${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`
                                 </div>
                             </div>
                         )}
-                        <input title="เลือกรูปภาพ" ref={galleryInputRef} type="file" onChange={handleFileSelect} className="hidden" />
-                        <input title="ถ่ายรูปสด" ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
-                    </div>
+                        {/* สำหรับถ่ายภาพสด: บังคับเลือกเฉพาะรูปภาพ และเปิดกล้องหลังมือถือทันที */}
+                        <input
+                            title="ถ่ายภาพสด"
+                            ref={cameraInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
+
+                        {/* สำหรับเลือกไฟล์: ไม่บังคับประเภทไฟล์ (เปิดได้ทั้งรูปและไฟล์อื่นๆ) */}
+                        <input
+                            title="เลือกรูปภาพหรือไฟล์"
+                            ref={galleryInputRef}
+                            type="file"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />     </div>
                 </div>
             )}
         </section>
