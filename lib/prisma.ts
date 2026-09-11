@@ -121,10 +121,12 @@ export type ExtendedPrismaClient = ReturnType<typeof createClient>;
  */
 export type TxClient = Parameters<Parameters<ExtendedPrismaClient["$transaction"]>[0] extends (tx: infer T) => unknown ? (tx: T) => unknown : never>[0];
 
+// key ตั้งชื่อเฉพาะ ไม่ใช้ "prisma" เดิม — dev server ที่รันอยู่ก่อนจะยังถือ client เปล่า (ไม่มี extension) ไว้ใน key เก่า
+// ถ้าใช้ชื่อเดียวกัน hot reload จะหยิบตัวเก่ามาใช้ต่อ แล้วเวลาที่ Prisma เติมให้เองจะกลับเป็น UTC โดยไม่มีอะไรฟ้อง
 const globalForPrisma = globalThis as unknown as {
-    prisma: ExtendedPrismaClient | undefined;
+    prismaThaiTimestamps: ExtendedPrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? createClient();
+export const prisma = globalForPrisma.prismaThaiTimestamps ?? createClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prismaThaiTimestamps = prisma;
