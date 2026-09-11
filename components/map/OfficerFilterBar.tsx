@@ -69,15 +69,15 @@ export default function FilterBar({ value, onChange }: FilterBarProps) {
         <div className="relative w-full" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full bg-card-general flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform cursor-pointer"
+                className="w-full min-w-0 bg-card-general flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97] will-change-transform cursor-pointer overflow-hidden"
             >
                 <div className="shrink-0">
                     <Filter size={16} strokeWidth={3} className="text-primary" />
                 </div>
 
                 <div className="flex flex-col items-start leading-none min-w-0 flex-1">
-                    <span className="text-xs text-primary font-semibold sm:font-medium">หน่วยงาน</span>
-                    <span className="font-semibold sm:font-medium text-text text-xs mt-0.5 truncate w-full text-left">{currentLabel}</span>
+                    <span className="text-xs text-primary font-semibold sm:font-medium whitespace-nowrap">หน่วยงาน</span>
+                    <span className="font-semibold sm:font-medium text-text text-xs mt-0.5 w-full text-left break-all line-clamp-1">{currentLabel}</span>
                 </div>
 
                 <ChevronDown size={16} className={`text-primary ml-auto shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />

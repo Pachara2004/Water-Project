@@ -7,6 +7,7 @@ import type { WeatherStatus } from "./NavWorkflow";
 interface MetadataFieldsProps {
     collectionTime: string;
     setCollectionTime: (t: string) => void;
+    disabled?: boolean;
     oxygen?: string;
     setOxygen?: (o: string) => void;
 
@@ -47,7 +48,7 @@ function WeatherTile({ label, value, isLoading }: { label: string; value: string
 }
 
 export function MetadataFields(props: MetadataFieldsProps) {
-    const { collectionTime, setCollectionTime, weatherData, weatherStatus = "idle", retryWeather } = props;
+    const { collectionTime, setCollectionTime, weatherData, weatherStatus = "idle", retryWeather, disabled = false } = props;
     const isWeatherLoading = weatherStatus === "loading";
     // ดึงไม่สำเร็จกับไม่มีข้อมูลของชั่วโมงนั้น บล็อกปุ่มวิเคราะห์เหมือนกัน แต่แจ้งผู้ใช้คนละแบบ
     const weatherProblem = weatherStatus === "error" ? "ดึงข้อมูลสภาพอากาศไม่สำเร็จ" : weatherStatus === "unavailable" ? "ไม่พบข้อมูลสภาพอากาศของสถานีนี้ในเวลาที่เลือก" : null;
@@ -101,8 +102,9 @@ export function MetadataFields(props: MetadataFieldsProps) {
                         min={min60Days} // 🟢 ล็อคห้ามเลือกย้อนหลังเกิน 60 วัน
                         max={maxNow} // 🟢 ล็อคห้ามเลือกอนาคต
                         required
+                        disabled={disabled}
                         onChange={handleTimeChange}
-                        className="w-full px-3 py-2 bg-surface-subtle border border-border text-text rounded-lg text-xs focus:outline-hidden transition-colors min-h-10 cursor-pointer font-medium"
+                        className={`w-full px-3 py-2 bg-surface-subtle border border-border text-text rounded-lg text-xs focus:outline-hidden transition-colors min-h-10 font-medium ${disabled ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"}`}
                     />
                 </div>
 
