@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import type { TxClient } from "@/lib/prisma";
+import { sameDayRange, toYymmdd } from "@/lib/thaiTime";
 
 /**
  * GENERATOR: SessionGroup Format -> SES[YYMMDD][Sequence 0001-9999]
@@ -7,22 +8,16 @@ import { Prisma } from "@prisma/client";
  * ต้องเรียกภายใน transaction (tx) เพื่อให้การนับกับการเขียนอยู่ในสโคปเดียวกัน
  * ใช้ร่วมกันทั้งตอน submit (สร้างกลุ่มใหม่) และตอน review แยกกลุ่มสารที่ปฏิเสธออกจากกลุ่มที่อนุมัติ
  */
-export async function generateSessionGroup(tx: Prisma.TransactionClient, collectionTime: Date): Promise<string> {
-    const yy = String(collectionTime.getFullYear()).slice(-2);
-    const mm = String(collectionTime.getMonth() + 1).padStart(2, "0");
-    const dd = String(collectionTime.getDate()).padStart(2, "0");
-    const datePrefix = `SES${yy}${mm}${dd}`;
-
-    const startOfDay = new Date(collectionTime);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(collectionTime);
-    endOfDay.setHours(23, 59, 59, 999);
+export async function generateSessionGroup(tx: TxClient, collectionTime: Date): Promise<string> {
+    // วันของรหัสและขอบเขตวันคิดจากค่า UTC ของ Date ซึ่งคือปฏิทินไทย (ดู lib/thaiTime.ts) — ไม่ขึ้นกับ TZ ของ process
+    const datePrefix = `SES${toYymmdd(collectionTime)}`;
+    const { start, end } = sameDayRange(collectionTime);
 
     // นับกลุ่ม sessionGroup ที่เริ่มด้วย SES[YYMMDD] ในวันนั้น
     const groups = await tx.waterSample.groupBy({
         by: ["sessionGroup"],
         where: {
-            collectionTime: { gte: startOfDay, lte: endOfDay },
+            collectionTime: { gte: start, lt: end },
             sessionGroup: { startsWith: datePrefix },
         },
     });

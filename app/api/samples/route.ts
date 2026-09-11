@@ -14,6 +14,7 @@ import { getPendingSessionGroups } from "@/lib/review";
 import { generateSessionGroup } from "@/lib/sessionGroup";
 import { parsePageParams, pageResult } from "@/lib/pagination";
 import { createSampleRecordSnapshot, createNotificationEntry } from "@/lib/sampleRecord";
+import { dayEnd, dayStart, floorToHour, nowThai, parseThaiInput, sameDayRange, toApiString, toYmd, toYymmdd } from "@/lib/thaiTime";
 
 /** ลำดับความรุนแรงของสถานะ ใช้หาค่า "แย่สุด" ของกลุ่มตัวอย่าง (หนึ่ง sessionGroup อาจมีหลายแถว หนึ่งแถวต่อสาร) */
 const STATUS_SEVERITY: Record<WaterStatus, number> = { safe: 0, warning: 1, danger: 2 };
@@ -24,11 +25,8 @@ function worseStatus(a: WaterStatus, b: WaterStatus): WaterStatus {
 /**
  * อายุของไฟล์รูปดิบก่อนถูก /api/cron/cleanup-images ลบทิ้ง (วัน)
  *
- * ต้องเซ็ต imageExpiresAt ตอนสร้างแถวเท่านั้น — cron คัดงานด้วย `imageExpiresAt <= now`
+ * ต้องเซ็ต imageExpiresAt ตอนสร้างแถวเท่านั้น — cron คัดงานด้วย `imageExpiresAt <= nowThai()`
  * ถ้าคอลัมน์เป็น NULL แถวนั้นจะไม่เข้าเงื่อนไขตลอดไป และไฟล์ใน public/uploads จะไม่ถูกลบเลย
- *
- * ค่าที่เขียนอิงเวลาไทยเหมือน uploadedActiveAt (ดู getNowAsLocalDateTime) ส่วน cron เทียบกับ
- * เวลาจริงของเครื่อง รูปจึงถูกลบช้ากว่ากำหนดราว 7 ชม. ซึ่งไม่มีผลที่ความละเอียดระดับวัน
  */
 const IMAGE_RETENTION_DAYS = Number(process.env.IMAGE_RETENTION_DAYS) > 0 ? Number(process.env.IMAGE_RETENTION_DAYS) : 90;
 
@@ -36,11 +34,7 @@ const IMAGE_RETENTION_DAYS = Number(process.env.IMAGE_RETENTION_DAYS) > 0 ? Numb
  * FILENAME SANITIZER WITH DATE STAMP
  */
 function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw"): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const dateStamp = `${year}${month}${day}`;
+    const dateStamp = toYmd(nowThai()).replace(/-/g, "");
 
     const ext = originalName.split(".").pop()?.toLowerCase() || "jpg";
     const cleanExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
@@ -53,21 +47,15 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
  * GENERATOR: Sample Code Format -> SP[YYMMDD][LocationID 3 หลัก][Sequence 0001-9999]
  */
 async function generateSampleCode(tx: any, locationId: number, collectionTime: Date): Promise<string> {
-    const yy = String(collectionTime.getFullYear()).slice(-2);
-    const mm = String(collectionTime.getMonth() + 1).padStart(2, "0");
-    const dd = String(collectionTime.getDate()).padStart(2, "0");
-    const prefix = `SP${yy}${mm}${dd}${String(locationId).padStart(3, "0")}`;
-
-    const startOfDay = new Date(collectionTime);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(collectionTime);
-    endOfDay.setHours(23, 59, 59, 999);
+    // วันของรหัสและขอบเขตวันคิดจากค่า UTC ของ Date ซึ่งคือปฏิทินไทย (ดู lib/thaiTime.ts) — ไม่ขึ้นกับ TZ ของ process
+    const prefix = `SP${toYymmdd(collectionTime)}${String(locationId).padStart(3, "0")}`;
+    const { start, end } = sameDayRange(collectionTime);
 
     // นับจำนวน WaterSample ของสถานีนี้ในวันนั้น
     const count = await tx.waterSample.count({
         where: {
             locationId: Number(locationId),
-            collectionTime: { gte: startOfDay, lte: endOfDay },
+            collectionTime: { gte: start, lt: end },
         },
     });
 
@@ -126,10 +114,12 @@ export async function GET(request: NextRequest) {
             ];
         }
 
+        // ขอบเขตวันต้องสร้างจาก dayStart/dayEnd — new Date("YYYY-MM-DDT00:00:00") จะถูกอ่านตาม TZ ของ process
+        // ซึ่งไม่ตรงกับนาฬิกาไทยใน DB เมื่อ server ไม่ได้รันด้วย TZ=Asia/Bangkok
         if (startDate || endDate) {
             where.collectionTime = {};
-            if (startDate) where.collectionTime.gte = new Date(`${startDate}T00:00:00`);
-            if (endDate) where.collectionTime.lte = new Date(`${endDate}T23:59:59.999`);
+            if (startDate) where.collectionTime.gte = dayStart(startDate);
+            if (endDate) where.collectionTime.lt = dayEnd(endDate);
         }
 
         // 2. หากลุ่มที่ถูกปฏิเสธไว้ก่อน — สมาชิกกลุ่มถูก soft-delete แล้ว (isDeleted จริง) จึงต้องเปิดพิเศษ
@@ -282,8 +272,8 @@ export async function GET(request: NextRequest) {
                     sessionGroup: record.sessionGroup,
                     collectorId: record.collectorId,
                     locationId: record.locationId,
-                    collectionTime: record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null,
-                    uploadedActiveAt: record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null,
+                    collectionTime: toApiString(record.collectionTime),
+                    uploadedActiveAt: toApiString(record.uploadedActiveAt),
                     dissolvedOxygen: record.dissolvedOxygen,
                     airTemperature: record.airTemperature,
                     rainAccumulation: record.rainAccumulation,
@@ -318,8 +308,8 @@ export async function GET(request: NextRequest) {
 
                 // Overwrite properties from the latest record
                 existing.id = record.id;
-                existing.collectionTime = record.collectionTime ? record.collectionTime.toISOString().replace("Z", "") : null;
-                existing.uploadedActiveAt = record.uploadedActiveAt ? record.uploadedActiveAt.toISOString().replace("Z", "") : null;
+                existing.collectionTime = toApiString(record.collectionTime);
+                existing.uploadedActiveAt = toApiString(record.uploadedActiveAt);
                 existing.dissolvedOxygen = record.dissolvedOxygen;
                 existing.airTemperature = record.airTemperature;
                 existing.rainAccumulation = record.rainAccumulation;
@@ -477,33 +467,10 @@ export async function POST(request: NextRequest) {
             await Promise.all(fileTasks);
         }
 
-        // 🟢 ฟังก์ชันแปลงเวลาล็อกตัวเลขเวลาไทย (+07:00)
-        const parseLocalDateTime = (timeStr: string): Date => {
-            const cleanStr = timeStr.replace(/(Z|\+\d{2}:\d{2})$/, "");
-            const [datePart, timePart] = cleanStr.split("T");
-            const [year, month, day] = datePart.split("-").map(Number);
-            const [hours, minutes] = timePart.split(":").map(Number);
-            return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-        };
-
-        const getNowAsLocalDateTime = (): Date => {
-            const now = new Date();
-            // Convert server time (usually UTC in Vercel) to Thai Time (+7)
-            const thaiTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-            return new Date(
-                Date.UTC(
-                    thaiTime.getUTCFullYear(),
-                    thaiTime.getUTCMonth(),
-                    thaiTime.getUTCDate(),
-                    thaiTime.getUTCHours(),
-                    thaiTime.getUTCMinutes(),
-                    thaiTime.getUTCSeconds(),
-                    thaiTime.getUTCMilliseconds()
-                )
-            );
-        };
-
-        const parsedCollectionTime = parseLocalDateTime(collectionTime);
+        const parsedCollectionTime = parseThaiInput(collectionTime);
+        if (!parsedCollectionTime) {
+            return NextResponse.json({ error: "รูปแบบเวลาเก็บตัวอย่างไม่ถูกต้อง" }, { status: 400 });
+        }
         let finalWeather = {
             airTemperature: null as number | null,
             rainAccumulation: null as number | null,
@@ -533,9 +500,7 @@ export async function POST(request: NextRequest) {
                 finalWeather.rainAccumulation = existingGroupSample.rainAccumulation;
                 finalWeather.weatherCondCode = existingGroupSample.weatherCondCode;
             } else {
-                const normalizedTime = new Date(parsedCollectionTime.getTime());
-                normalizedTime.setMinutes(0, 0, 0);
-                normalizedTime.setSeconds(0, 0);
+                const normalizedTime = floorToHour(parsedCollectionTime);
 
                 let weatherCache = await prisma.weatherData.findUnique({
                     where: {
@@ -604,7 +569,7 @@ export async function POST(request: NextRequest) {
         const sample = await prisma.$transaction(async (tx) => {
             let sessionGroupToUse: string;
 
-            const nowLocal = getNowAsLocalDateTime();
+            const nowLocal = nowThai();
             const oneMinuteAgo = new Date(nowLocal.getTime() - 60 * 1000);
 
             // ค้นหาสารเคมีใน Batch เดียวกันที่บันทึกลง DB ไปก่อนหน้านี้ (ยิงติดๆ กันไม่เกิน 1 นาที)
@@ -701,11 +666,12 @@ export async function POST(request: NextRequest) {
             return created;
         });
 
-        // 🟢 ก่อนส่ง sample กลับไป ให้ตัด Z ออกเช่นเดียวกัน
         const safeResponse = {
             ...sample,
-            collectionTime: sample.collectionTime ? sample.collectionTime.toISOString().replace("Z", "") : null,
-            uploadedActiveAt: sample.uploadedActiveAt ? sample.uploadedActiveAt.toISOString().replace("Z", "") : null,
+            collectionTime: toApiString(sample.collectionTime),
+            uploadedActiveAt: toApiString(sample.uploadedActiveAt),
+            updatedActiveAt: toApiString(sample.updatedActiveAt),
+            imageExpiresAt: toApiString(sample.imageExpiresAt),
         };
 
         return NextResponse.json(safeResponse, { status: 201 });

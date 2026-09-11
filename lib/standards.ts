@@ -11,6 +11,7 @@ export type { LocationTypeCode } from "./generated/location-types";
 export { LOCATION_TYPE_CODES, DEFAULT_LOCATION_TYPE_CODE, isLocationTypeCode } from "./generated/location-types";
 
 import type { LocationTypeCode } from "./generated/location-types";
+import { toApiString } from "./thaiTime";
 
 /** @deprecated ใช้ `LocationTypeCode` ที่ gen จาก DB แทน — alias นี้ไว้กันของเดิมพังระหว่างเปลี่ยนผ่าน */
 export type LocationType = LocationTypeCode;
@@ -184,7 +185,7 @@ export function computeLatestValueByParameter(samples: SampleForLatestValue[]): 
     const latestByParameter = new Map<number, LatestParameterValue>();
 
     for (const s of samples) {
-        const collectedAt = typeof s.collectionTime === "string" ? s.collectionTime.replace(/(Z|\+\d{2}:\d{2})$/, "") : s.collectionTime.toISOString().replace("Z", "");
+        const collectedAt = typeof s.collectionTime === "string" ? s.collectionTime.replace(/(Z|[+-]\d{2}:\d{2})$/, "") : toApiString(s.collectionTime);
         for (const m of s.measurements) {
             if (latestByParameter.has(m.parameterId)) continue;
             // แถวที่ไม่มีค่า (AI อ่านไม่ออก) ไม่นับเป็นการวัดสารตัวนั้น — ข้ามไปหาค่าจริงที่ใหม่ที่สุดแทน
