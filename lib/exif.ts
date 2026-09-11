@@ -14,9 +14,19 @@ function parseCoordinate(value: any, ref?: string): number | null {
         dd = value;
     } else if (Array.isArray(value)) {
         if (value.length >= 3) {
-            // รองรับทั้ง [d, m, s] และ [[num, den], [num, den], [num, den]] (rational arrays)
-            const parsePart = (part: any) => {
+            // รองรับทั้ง [d, m, s], [[num, den], ...] (rational arrays),
+            // และ [{numerator, denominator}, ...] (exifr Rational object จากมือถือบางรุ่น)
+            const parsePart = (part: any): number => {
                 if (typeof part === "number") return part;
+                // exifr Rational object: { numerator, denominator }
+                if (typeof part === "object" && part !== null && !Array.isArray(part)) {
+                    const num = part.numerator ?? part.n ?? part[0];
+                    const den = part.denominator ?? part.d ?? part[1];
+                    if (typeof num === "number" && typeof den === "number" && den !== 0) {
+                        return num / den;
+                    }
+                    return 0;
+                }
                 if (Array.isArray(part) && part.length === 2 && part[1] !== 0) {
                     return part[0] / part[1];
                 }
@@ -66,7 +76,9 @@ export async function getExifLocation(file: File | Blob | ArrayBuffer): Promise<
     try {
         // 1. ลองดึง GPS มาตรฐานด่านแรก (exifr.gps จะคำนวณและแปลงให้แล้วสำหรับเครื่องส่วนใหญ่)
         const gps = await exifr.gps(file);
-        if (gps && typeof gps.latitude === "number" && typeof gps.longitude === "number" && gps.latitude !== 0) {
+        if (gps && typeof gps.latitude === "number" && !isNaN(gps.latitude)
+            && typeof gps.longitude === "number" && !isNaN(gps.longitude)
+            && gps.latitude !== 0) {
             return {
                 latitude: gps.latitude,
                 longitude: gps.longitude,
