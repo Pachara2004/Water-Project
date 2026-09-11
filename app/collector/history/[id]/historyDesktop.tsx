@@ -305,9 +305,6 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                     plotFile={mockSubmitHook.imagePlotFiles[key]}
                                     measurement={measurement}
                                     onImageFilesChange={() => {}}
-                                    onNearestLocationsUpdate={() => {}}
-                                    allLocations={[]}
-                                    setIsRecommending={() => {}}
                                     isHistoryView={true}
                                 />
                             </div>

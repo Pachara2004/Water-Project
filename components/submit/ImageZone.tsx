@@ -50,9 +50,6 @@ interface ImageZoneProps {
     measurement?: MeasurementResult;
     verifyError?: VerifyError;
     onImageFilesChange: (file: File) => void;
-    onNearestLocationsUpdate: (locations: any[]) => void;
-    allLocations: any[];
-    setIsRecommending: (b: boolean) => void;
     enabled?: boolean;
     onToggle?: () => void;
     onRevertAutoSwitch?: () => void;
@@ -69,9 +66,6 @@ export function ImageZone({
     measurement,
     verifyError,
     onImageFilesChange,
-    onNearestLocationsUpdate,
-    allLocations,
-    setIsRecommending,
     enabled = true,
     onToggle,
     onRevertAutoSwitch,
@@ -130,22 +124,9 @@ export function ImageZone({
             }, 150);
         });
 
-        onImageFilesChange(file);
-        setIsRecommending(true);
-        try {
-            const { getExifLocation, calculateDistance } = await import("@/lib/exif");
-            const coords = await getExifLocation(file);
-            if (coords && allLocations.length) {
-                const sorted = [...allLocations].sort(
-                    (a, b) => calculateDistance(coords.latitude, coords.longitude, a.lat, a.lng) - calculateDistance(coords.latitude, coords.longitude, b.lat, b.lng),
-                );
-                onNearestLocationsUpdate(sorted.slice(0, 5));
-            }
-        } catch (err) {
-            console.error("EXIF Error:", err);
-        } finally {
-            setIsRecommending(false);
-        }
+        // อ่าน EXIF ที่จุดเดียวใน useSubmitSample เท่านั้น
+        // Android Chrome/บาง WebView อ่านไฟล์เดิมพร้อมกันหลายครั้งแล้วได้ metadata ไม่ครบได้
+        await onImageFilesChange(file);
     };
 
     const hasPlotImg = !!plotFile;

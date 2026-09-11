@@ -20,9 +20,6 @@ export default function SubmitDesktop(props: any) {
         imagePreviews,
         imagePlotFiles,
         handleImageSelect,
-        setNearestLocations,
-        allLocations,
-        setIsRecommending,
         step,
         results,
         resultEntries,
@@ -180,9 +177,6 @@ export default function SubmitDesktop(props: any) {
                                           measurement={results[param.id]}
                                           verifyError={verifyErrors[param.id]}
                                           onImageFilesChange={(file: File) => handleImageSelect(param.id, file)}
-                                          onNearestLocationsUpdate={setNearestLocations}
-                                          allLocations={allLocations}
-                                          setIsRecommending={setIsRecommending}
                                           enabled={enabledParamIds.has(param.id)}
                                           onToggle={() => toggleParam(param.id)}
                                       />
@@ -199,9 +193,6 @@ export default function SubmitDesktop(props: any) {
                                             measurement={results[param.id]}
                                             verifyError={verifyErrors[param.id]}
                                             onImageFilesChange={(file: File) => handleImageSelect(param.id, file)}
-                                            onNearestLocationsUpdate={setNearestLocations}
-                                            allLocations={allLocations}
-                                            setIsRecommending={setIsRecommending}
                                         />
                                     </div>
                                 ))
@@ -215,9 +206,6 @@ export default function SubmitDesktop(props: any) {
                                             plotFile={imagePlotFiles[key]}
                                             measurement={measurement}
                                             onImageFilesChange={() => {}}
-                                            onNearestLocationsUpdate={setNearestLocations}
-                                            allLocations={allLocations}
-                                            setIsRecommending={setIsRecommending}
                                             onRevertAutoSwitch={saved ? undefined : () => hook.revertAutoSwitch(key)}
                                             isSaved={saved}
                                         />
