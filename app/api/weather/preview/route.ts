@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { backfillWeatherData } from "@/lib/tmd";
+import { floorToHour, parseThaiInput } from "@/lib/thaiTime";
 
 export async function GET(request: NextRequest) {
     try {
@@ -21,13 +22,11 @@ export async function GET(request: NextRequest) {
         }
 
         // แปลงเวลาเก็บตัวอย่างให้ลงรอบชั่วโมง (00:00:00) ตามรอบการเก็บข้อมูล Weather
-        const cleanStr = collectionTime.replace(/(Z|\+\d{2}:\d{2})$/, "");
-        const [datePart, timePart] = cleanStr.split("T");
-        const [year, month, day] = datePart.split("-").map(Number);
-        const [hours, minutes] = timePart.split(":").map(Number);
-
-        const normalizedTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-        normalizedTime.setMinutes(0, 0, 0);
+        const parsedTime = parseThaiInput(collectionTime);
+        if (!parsedTime) {
+            return NextResponse.json({ error: "Invalid collectionTime" }, { status: 400 });
+        }
+        const normalizedTime = floorToHour(parsedTime);
 
         let weatherCache = await prisma.weatherData.findUnique({
             where: {

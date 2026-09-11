@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getThaiAddressTree } from "@/lib/thaiAddress.server";
 import { validateAddressParts, lookupZipcode } from "@/lib/thaiAddress";
 import { prisma } from "@/lib/prisma";
+import { toApiString } from "@/lib/thaiTime";
 import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
 import { backfillWeatherData } from "@/lib/tmd";
@@ -171,7 +172,7 @@ export async function GET(request: NextRequest) {
                         phosphateVal: currentMeasurements["phosphateVal"] ?? null,
                         ammoniaVal: currentMeasurements["ammoniaVal"] ?? null,
 
-                        collectedAt: s.collectionTime.toISOString().replace("Z", ""),
+                        collectedAt: toApiString(s.collectionTime),
                         oxygen: s.dissolvedOxygen,
                         temperature: s.airTemperature,
                         rainVolume: s.rainAccumulation,

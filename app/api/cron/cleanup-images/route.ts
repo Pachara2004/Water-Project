@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
+import { nowThai } from "@/lib/thaiTime";
 
 // GET /api/cron/cleanup-images
 export async function GET(request: NextRequest) {
@@ -19,7 +20,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const now = new Date();
+        // imageExpiresAt เป็นนาฬิกาไทยตามกติกา DB จึงต้องเทียบกับ nowThai() ไม่ใช่ new Date()
+        const now = nowThai();
 
         // 1. ค้นหาผ่าน prisma.waterSample และใช้ rawImageUrl ตาม Schema
         const expiredSamples = await prisma.waterSample.findMany({
