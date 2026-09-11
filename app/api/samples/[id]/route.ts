@@ -180,7 +180,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             status: createdSample.status,
             rawImageUrl: createdSample.rawImageUrl,
             analyzedPlotUrl: createdSample.analyzedPlotUrl,
-            imageExpiresAt: createdSample.imageExpiresAt,
+            imageExpiresAt: cleanDateString(createdSample.imageExpiresAt),
             isDeleted: createdSample.isDeleted,
             lastModifiedBy: createdSample.lastModifiedBy,
             sessionGroup: createdSample.sessionGroup,

@@ -90,3 +90,19 @@ export function toYymmdd(d: Date): string {
 export function toDisplayDateTime(d: Date): string {
     return `${toYmd(d)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
 }
+
+// --- ฝั่ง client (browser) ---
+// สตริงจาก API ไม่มี Z จึงถูก new Date() อ่านเป็นเวลาเครื่องผู้ใช้ ขอบเขตวันที่จะเทียบด้วยต้องสร้างเป็นเวลาเครื่องเหมือนกัน
+// ห้ามใช้ new Date("YYYY-MM-DD") เพราะสตริงแบบมีแต่วันถูกอ่านเป็นเที่ยงคืน UTC ไม่ใช่เที่ยงคืนเครื่อง → คลาดเท่า offset ของเครื่อง
+
+/** เที่ยงคืนต้นวัน "YYYY-MM-DD" ตามเวลาเครื่องผู้ใช้ (ขอบล่างแบบ inclusive) */
+export function localDayStart(ymd: string): Date {
+    const [y, m, d] = ymd.split("-").map(Number);
+    return new Date(y, m - 1, d);
+}
+
+/** เที่ยงคืนของวันถัดไปตามเวลาเครื่องผู้ใช้ — ใช้กับ "น้อยกว่า" */
+export function localDayEnd(ymd: string): Date {
+    const [y, m, d] = ymd.split("-").map(Number);
+    return new Date(y, m - 1, d + 1);
+}

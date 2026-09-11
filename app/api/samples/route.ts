@@ -670,6 +670,8 @@ export async function POST(request: NextRequest) {
             ...sample,
             collectionTime: toApiString(sample.collectionTime),
             uploadedActiveAt: toApiString(sample.uploadedActiveAt),
+            updatedActiveAt: toApiString(sample.updatedActiveAt),
+            imageExpiresAt: toApiString(sample.imageExpiresAt),
         };
 
         return NextResponse.json(safeResponse, { status: 201 });

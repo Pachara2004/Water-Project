@@ -89,8 +89,8 @@ export async function GET(request: NextRequest) {
                 id: r.id,
                 sessionGroup: r.sessionGroup,
                 statusRequest: r.statusRequest,
-                createdAt: r.createdAt,
-                reviewedAt: r.reviewedAt,
+                createdAt: toApiString(r.createdAt),
+                reviewedAt: toApiString(r.reviewedAt),
                 reviewNote: r.reviewNote,
                 reviewedBy: reviewer ? { id: reviewer.id, name: `${reviewer.firstName || ""} ${reviewer.lastName || ""}`.trim() || reviewer.lineProfileName } : null,
 
