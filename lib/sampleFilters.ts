@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getPendingSessionGroups } from "@/lib/review";
+import { dayEnd, dayStart, nowThai, toDisplayDateTime, toYmd } from "@/lib/thaiTime";
 
 /**
  * แหล่งความจริงเดียวของ "ตัวอย่างน้ำชุดไหนนับเข้ารายงาน" — ใช้ร่วมกันระหว่างแดชบอร์ดและการส่งออก
@@ -9,6 +10,9 @@ import { getPendingSessionGroups } from "@/lib/review";
  * ทุก read path ที่แสดงสถิติหรือส่งออกไฟล์ต้องสร้าง where จากที่นี่เท่านั้น
  * ห้ามประกอบ where เองซ้ำที่ route อื่น เพราะตัวเลขในไฟล์ที่ส่งออกต้องตรงกับที่เห็นบนหน้าจอเสมอ
  * (เกณฑ์ที่ต้องตรงกัน: ตัดข้อมูลที่ถูกลบ, ซ่อน session ที่ยังรออนุมัติ, ขอบเขตสิทธิ์ของ collector, ช่วงวันที่ตามเวลาไทย)
+ *
+ * เวลาใน DB เป็นนาฬิกาไทยตรง ๆ (ดู lib/thaiTime.ts) — ขอบเขตวันและการจัดรูปแบบจึงใช้ค่า UTC ของ Date ได้เลย
+ * ห้ามบวก/ลบ 7 ชม. หรือใช้ timeZone: "Asia/Bangkok" ที่ชั้นนี้ ไม่งั้นไฟล์ที่ส่งออกจะคลาดจากหน้าจอ 7 ชม.
  */
 
 export type SampleFilters = {
@@ -20,17 +24,14 @@ export type SampleFilters = {
     locationId: number | null;
 };
 
-// ตีความ "YYYY-MM-DD" จาก filter เป็นขอบเขตเวลาไทย (+07:00) ให้ตรงกับ toISODate ฝั่ง frontend
-// ป้องกัน off-by-one จากการ parse เป็น UTC เที่ยงคืน (คลาดกับเวลาไทย 7 ชม.)
+// ตีความ "YYYY-MM-DD" จาก filter เป็นขอบเขตวันตามนาฬิกาไทย ให้ตรงกับ toISODate ฝั่ง frontend
 export function parseLocalDayStart(dateStr: string): Date {
-    return new Date(`${dateStr}T00:00:00+07:00`);
+    return dayStart(dateStr);
 }
 
+// ครอบคลุมทั้งวัน: ใช้ "น้อยกว่า" เที่ยงคืนของวันถัดไป แทนการเดา .999
 export function parseLocalDayEnd(dateStr: string): Date {
-    // ครอบคลุมทั้งวัน: ใช้ "น้อยกว่า" เที่ยงคืนของวันถัดไป แทนการเดา .999
-    const d = parseLocalDayStart(dateStr);
-    d.setDate(d.getDate() + 1);
-    return d;
+    return dayEnd(dateStr);
 }
 
 /**
@@ -102,51 +103,22 @@ export async function buildAllScopeWhere(filters: SampleFilters, pendingGroups?:
     return buildSampleWhere({ ...filters, startDate: null, endDate: null, agency: null, locationId: null }, { withDateRange: false, pendingGroups });
 }
 
-// --- การจัดรูปแบบเวลาไทยสำหรับไฟล์ที่ส่งออก ---
-// ข้อมูลใน DB เป็น UTC — ถ้าเขียนลงไฟล์ด้วย toISOString() ตรง ๆ ทุกแถวจะคลาดจากเวลาที่ผู้ใช้เก็บจริง 7 ชม.
-
-const THAI_OFFSET_MS = 7 * 60 * 60 * 1000;
-
-/**
- * instant จริง → Date ที่ getUTC*() อ่านออกมาตรงกับปฏิทิน/นาฬิกาเวลาไทย
- * ใช้ได้เพราะไทยเป็น UTC+7 คงที่ ไม่มี DST — ห้ามลอกไปใช้กับโซนที่มี DST
- * ค่าที่คืนไม่ใช่ instant จริงอีกต่อไป ใช้ได้เฉพาะอ่านปฏิทิน/จัดกลุ่ม/แสดงผลเท่านั้น
- * ถ้าจะเอาไปใช้เป็นขอบเขต query ต้องแปลงกลับด้วย fromThaiWallClock ก่อนเสมอ
- */
-export function toThaiWallClock(d: Date): Date {
-    return new Date(d.getTime() + THAI_OFFSET_MS);
-}
-
-/** Date เวลาไทย (wall-clock จาก toThaiWallClock) → instant จริง สำหรับใช้เป็นขอบเขต query */
-export function fromThaiWallClock(d: Date): Date {
-    return new Date(d.getTime() - THAI_OFFSET_MS);
-}
+// --- การจัดรูปแบบเวลาสำหรับไฟล์ที่ส่งออก ---
+// Date จาก DB มี getUTC*() = นาฬิกาไทยอยู่แล้ว จึงพิมพ์ค่า UTC ออกมาตรง ๆ ไม่ต้องแปลงโซน
 
 /** ชั่วโมง 0–23 ตามเวลาไทย — ห้ามใช้ Date.getHours() แทน (ค่านั้นขึ้นกับ TZ ของ process ที่รัน ไม่ใช่เวลาที่เก็บจริง) */
 export function getThaiHour(d: Date): number {
-    return toThaiWallClock(d).getUTCHours();
+    return d.getUTCHours();
 }
 
-const bangkokDateTime = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-});
-
-const bangkokDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" });
-
-// "2026-07-31 14:05" ตามเวลาไทย (locale sv-SE ให้รูปแบบ ISO อยู่แล้ว จึงไม่ต้องประกอบเอง)
+// "2026-07-31 14:05" ตามเวลาไทย
 export function formatThaiDateTime(d: Date): string {
-    return bangkokDateTime.format(d);
+    return toDisplayDateTime(d);
 }
 
 // "2026-07-31" ตามเวลาไทย — ใช้ในชื่อไฟล์
 export function formatThaiDate(d: Date): string {
-    return bangkokDate.format(d);
+    return toYmd(d);
 }
 
 /**
@@ -189,7 +161,7 @@ export async function resolveExportContext(request: NextRequest, user: { id: num
  */
 export function buildContentDisposition(filters: SampleFilters, scope: "filtered" | "all", stationName: string | null, ext: "csv" | "xlsx"): string {
     const { targetLabel } = describeScope(filters, scope, stationName);
-    const range = scope === "all" ? "ทั้งหมด" : filters.startDate && filters.endDate ? `${filters.startDate}_${filters.endDate}` : formatThaiDate(new Date());
+    const range = scope === "all" ? "ทั้งหมด" : filters.startDate && filters.endDate ? `${filters.startDate}_${filters.endDate}` : formatThaiDate(nowThai());
 
     const asciiName = `water-quality_${scope === "all" ? "all" : `${filters.startDate ?? "start"}_${filters.endDate ?? "end"}`}.${ext}`;
     // แทนอักขระที่ใช้ในชื่อไฟล์ไม่ได้ (เว้นวรรค / เครื่องหมายพาธ) ด้วยขีดกลาง กันชื่อพังบน Windows

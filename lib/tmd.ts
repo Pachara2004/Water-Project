@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { nowThai } from "@/lib/thaiTime";
 
 interface OpenMeteoResponse {
     hourly: {
@@ -90,13 +91,15 @@ export async function backfillWeatherData(locationId: number, lat: number, lon: 
 
         // บันทึกข้อมูลแบบก้อนลง DB ครบทุกฟิลด์เดิม
         const upsertPromises = timeArray.map((timeStr: string, index: number) => {
-            const timestamp = new Date(timeStr);
+            // Open-Meteo (timezone=Asia/Bangkok) ให้ "2026-09-11T14:00" ไม่มี offset — ต้องต่อ Z เพื่อให้ตัวเลขถูกอ่าน
+            // เป็นนาฬิกาไทยตามกติกา DB (ดู lib/thaiTime.ts) ไม่ใช่ตาม TZ ของ process ไม่งั้น key ค้นแคชจะคลาดกับตัวอย่าง
+            const timestamp = new Date(`${timeStr}:00Z`);
 
             const baseTemp = tempApparent[index] ?? 29.5;
             const skinTemp = tempSkin[index] ?? baseTemp;
 
             // 🌟 คำนวณแปลงเป็นอุณหภูมิน้ำเพื่อจัดเก็บลงฟิลด์หลัก
-            const waterTemp = calculateWaterTemperature(baseTemp, skinTemp, timestamp.getHours());
+            const waterTemp = calculateWaterTemperature(baseTemp, skinTemp, timestamp.getUTCHours());
 
             return prisma.weatherData.upsert({
                 where: {
@@ -149,7 +152,7 @@ export async function getWeatherData(lat: number, lng: number): Promise<{ airTem
         const baseLive = current.apparent_temperature_ecmwf_ifs ?? current.apparent_temperature ?? 29.5;
         const skinLive = current.skin_temperature_ecmwf_ifs ?? current.skin_temperature ?? baseLive;
 
-        const currentHour = new Date().getHours();
+        const currentHour = nowThai().getUTCHours();
 
         // 🌟 คำนวณอุณหภูมิน้ำ
         const waterTemp = calculateWaterTemperature(parseFloat(baseLive), parseFloat(skinLive), currentHour);

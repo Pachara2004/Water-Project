@@ -4,10 +4,11 @@
  * รัน: npm run seed หรือ npx prisma db seed
  */
 
-import { PrismaClient, WaterStatus } from "@prisma/client";
+import { WaterStatus } from "@prisma/client";
 import { evaluateSample, type StandardRow } from "../lib/standards";
-
-const prisma = new PrismaClient();
+// ใช้ client ตัวเดียวกับแอป เพื่อให้ extension เติม createdAt/updatedAt เป็นนาฬิกาไทยเหมือนข้อมูลจริง
+import { prisma } from "../lib/prisma";
+import { nowThai, toYymmdd } from "../lib/thaiTime";
 
 // ─────────────────────────────────────────────────────────
 // ตัวเจน sessionGroup / code ให้ตรงรูปแบบ production
@@ -18,7 +19,8 @@ const prisma = new PrismaClient();
 // และ seed เขียนข้อมูลแบบเรียงลำดับ ผลลัพธ์จึงตรงกับตรรกะของ generateSessionGroup /
 // generateSampleCode) ข้อจำกัด: ใช้ได้เฉพาะกรณี seed เริ่มจากตารางว่างเท่านั้น
 // ─────────────────────────────────────────────────────────
-const dateKey = (d: Date) => `${String(d.getFullYear()).slice(-2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+// เวลาทุกค่าในไฟล์นี้เป็นนาฬิกาไทยตามกติกา DB (ดู lib/thaiTime.ts) จึงอ่าน/แก้ด้วย getUTC*/setUTC* เท่านั้น
+const dateKey = (d: Date) => toYymmdd(d);
 
 const sessionSeqByDay = new Map<string, number>(); // YYMMDD -> ลำดับกลุ่มล่าสุดของวันนั้น
 const sampleSeqByDayLocation = new Map<string, number>(); // YYMMDD:locationId -> ลำดับตัวอย่างล่าสุดของสถานีในวันนั้น
@@ -236,9 +238,9 @@ async function main() {
     for (let i = 0; i < samplesCount; i++) {
         const daysAgo = Math.floor(Math.random() * 180);
         const hourAgo = Math.floor(Math.random() * 24);
-        const sampleDate = new Date();
-        sampleDate.setDate(sampleDate.getDate() - daysAgo);
-        sampleDate.setHours(sampleDate.getHours() - hourAgo);
+        const sampleDate = nowThai();
+        sampleDate.setUTCDate(sampleDate.getUTCDate() - daysAgo);
+        sampleDate.setUTCHours(sampleDate.getUTCHours() - hourAgo);
 
         const randomCollectorObj = collectors[i % collectors.length];
         const randomLocation = insertedLocations[i % insertedLocations.length];
@@ -319,7 +321,7 @@ async function main() {
     const collectorB = collectors[1];
 
     // A) PENDING Single
-    const timePendingSingle = new Date(Date.now() - 1000 * 60 * 60 * 3);
+    const timePendingSingle = new Date(nowThai().getTime() - 1000 * 60 * 60 * 3);
     const sgPendingSingle = nextSessionGroup(timePendingSingle);
     await prisma.waterSample.create({
         data: {
@@ -339,7 +341,7 @@ async function main() {
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingSingle, statusRequest: "pending" } });
 
     // B) PENDING Paired
-    const timePendingPaired = new Date(Date.now() - 1000 * 60 * 60 * 5);
+    const timePendingPaired = new Date(nowThai().getTime() - 1000 * 60 * 60 * 5);
     const sgPendingPaired = nextSessionGroup(timePendingPaired);
     await prisma.waterSample.create({
         data: {
@@ -370,7 +372,7 @@ async function main() {
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingPaired, statusRequest: "pending" } });
 
     // C) PENDING Other
-    const timePendingOther = new Date(Date.now() - 1000 * 60 * 60 * 8);
+    const timePendingOther = new Date(nowThai().getTime() - 1000 * 60 * 60 * 8);
     const sgPendingOther = nextSessionGroup(timePendingOther);
     await prisma.waterSample.create({
         data: {
@@ -386,7 +388,7 @@ async function main() {
     await prisma.reviewRequest.create({ data: { sessionGroup: sgPendingOther, statusRequest: "pending" } });
 
     // D) APPROVED
-    const timeApproved = new Date(Date.now() - 1000 * 60 * 60 * 24);
+    const timeApproved = new Date(nowThai().getTime() - 1000 * 60 * 60 * 24);
     const sgApproved = nextSessionGroup(timeApproved);
     await prisma.waterSample.create({
         data: {
@@ -404,12 +406,12 @@ async function main() {
             sessionGroup: sgApproved,
             statusRequest: "approved",
             reviewedById: adminUser.id,
-            reviewedAt: new Date(Date.now() - 1000 * 60 * 60 * 20),
+            reviewedAt: new Date(nowThai().getTime() - 1000 * 60 * 60 * 20),
         },
     });
 
     // E) REJECTED
-    const timeRejected = new Date(Date.now() - 1000 * 60 * 60 * 48);
+    const timeRejected = new Date(nowThai().getTime() - 1000 * 60 * 60 * 48);
     const sgRejected = nextSessionGroup(timeRejected);
     await prisma.waterSample.create({
         data: {
@@ -429,7 +431,7 @@ async function main() {
             sessionGroup: sgRejected,
             statusRequest: "rejected",
             reviewedById: adminUser.id,
-            reviewedAt: new Date(Date.now() - 1000 * 60 * 60 * 40),
+            reviewedAt: new Date(nowThai().getTime() - 1000 * 60 * 60 * 40),
             reviewNote: "ภาพเบลอ มองไม่เห็นสีของเหลวชัดเจน กรุณาถ่ายใหม่",
         },
     });

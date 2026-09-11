@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { REVIEW_NOTE_MAX_LENGTH, PARTIAL_REJECT_NOTE } from "@/lib/reviewConstants";
 import { generateSessionGroup } from "@/lib/sessionGroup";
+import { nowThai } from "@/lib/thaiTime";
 import { ReviewStatus, WaterStatus } from "@prisma/client";
 import { evaluateSample } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
@@ -30,7 +31,7 @@ async function splitRejectedSamples(tx: any, sessionGroup: string, approvedSampl
             sessionGroup: newGroup,
             statusRequest: "rejected",
             reviewedById,
-            reviewedAt: new Date(),
+            reviewedAt: nowThai(),
             reviewNote: PARTIAL_REJECT_NOTE,
         },
     });
@@ -125,7 +126,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 data: {
                     statusRequest: nextStatus,
                     reviewedById: auth.user!.id,
-                    reviewedAt: new Date(),
+                    reviewedAt: nowThai(),
                     reviewNote: note || null,
                 },
             });

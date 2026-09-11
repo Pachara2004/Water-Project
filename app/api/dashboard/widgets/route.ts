@@ -4,10 +4,10 @@ import { verifyAuth } from "@/lib/auth-guard";
 import { getPendingSessionGroups } from "@/lib/review";
 import { STATUS_COLOR, parameterColor } from "@/lib/chartColors";
 import { getWeatherConditionLabel } from "@/lib/weather";
-import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters, toThaiWallClock, fromThaiWallClock, getThaiHour } from "@/lib/sampleFilters";
+import { buildSampleWhere, parseLocalDayStart, parseLocalDayEnd, readSampleFilters, getThaiHour } from "@/lib/sampleFilters";
+import { nowThai } from "@/lib/thaiTime";
 
-// วันที่ที่ส่งเข้าฟังก์ชันกลุ่มนี้ต้องเป็นเวลาไทย (wall-clock) แล้ว จึงอ่านด้วย getUTC* เสมอ
-// (ดูหมายเหตุที่ toThaiWallClock ใน sampleFilters.ts)
+// Date จาก DB มี getUTC*() = นาฬิกาไทยอยู่แล้ว (ดู lib/thaiTime.ts) ทุกฟังก์ชันปฏิทินในไฟล์นี้จึงอ่านด้วย getUTC* เสมอ
 const thaiMonthAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 const formatThaiDate = (d: Date) => `${d.getUTCDate()} ${thaiMonthAbbr[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 // "1–7 ก.ย." — สั้นกว่าแบบเต็มปีเพราะใช้ในป้ายบรรทัดเดียวที่ต้องวางคู่กันสองช่วง
@@ -71,7 +71,8 @@ export async function GET(request: NextRequest) {
         const scopeWhere = await buildSampleWhere(filters, { withDateRange: false, pendingGroups });
 
         // "ตอนนี้" เป็นจุดยึดของทั้งขอบเขต WoW/MoM และขอบท้ายของกราฟเมื่อ filter ไม่ได้ระบุวันสิ้นสุด
-        const now = new Date();
+        // ต้องเป็นนาฬิกาไทยเหมือนค่าใน DB ไม่ใช่ new Date() ที่เป็น instant จริง
+        const now = nowThai();
 
         const countByStatus = async (where: any) => {
             const groups = await prisma.waterSample.groupBy({ by: ["status"], where, _count: { _all: true } });
@@ -112,25 +113,17 @@ export async function GET(request: NextRequest) {
         };
 
         // สัปดาห์ปฏิทินแบบ ISO (จันทร์–อาทิตย์) เทียบ "สัปดาห์นี้จนถึงตอนนี้" กับ "ช่วงเดียวกันของสัปดาห์ก่อน"
-        // คำนวณขอบเขตบนเวลาไทย (wall-clock) เสมอ แล้วแปลงกลับเป็น instant จริงก่อนใช้เป็นขอบเขต query
-        // ไม่งั้นขอบสัปดาห์/เดือนจะไปตกเช้ามืดเวลาไทยตาม TZ ของ server (ดูคอมเมนต์ที่ toThaiWallClock ใน sampleFilters.ts)
-        const nowThai = toThaiWallClock(now);
-        const wowCurrentStartThai = startOfISOWeek(nowThai);
-        const wowPreviousStartThai = new Date(wowCurrentStartThai);
-        wowPreviousStartThai.setUTCDate(wowPreviousStartThai.getUTCDate() - 7);
-        const wowPreviousEndThai = new Date(nowThai);
-        wowPreviousEndThai.setUTCDate(wowPreviousEndThai.getUTCDate() - 7);
-        const wowCurrentStart = fromThaiWallClock(wowCurrentStartThai);
-        const wowPreviousStart = fromThaiWallClock(wowPreviousStartThai);
-        const wowPreviousEnd = fromThaiWallClock(wowPreviousEndThai);
+        // ขอบเขตคำนวณด้วย setUTC* บนนาฬิกาไทย จึงใช้เป็นขอบเขต query ได้ตรง ๆ
+        const wowCurrentStart = startOfISOWeek(now);
+        const wowPreviousStart = new Date(wowCurrentStart);
+        wowPreviousStart.setUTCDate(wowPreviousStart.getUTCDate() - 7);
+        const wowPreviousEnd = new Date(now);
+        wowPreviousEnd.setUTCDate(wowPreviousEnd.getUTCDate() - 7);
 
         // เดือนปฏิทิน เทียบ "เดือนนี้จนถึงตอนนี้ (month-to-date)" กับ "ช่วงเดียวกันของเดือนก่อน"
-        const momCurrentStartThai = startOfCalendarMonth(nowThai);
-        const momPreviousStartThai = subtractMonthClamped(momCurrentStartThai, 1);
-        const momPreviousEndThai = subtractMonthClamped(nowThai, 1);
-        const momCurrentStart = fromThaiWallClock(momCurrentStartThai);
-        const momPreviousStart = fromThaiWallClock(momPreviousStartThai);
-        const momPreviousEnd = fromThaiWallClock(momPreviousEndThai);
+        const momCurrentStart = startOfCalendarMonth(now);
+        const momPreviousStart = subtractMonthClamped(momCurrentStart, 1);
+        const momPreviousEnd = subtractMonthClamped(now, 1);
 
         const [wowCurrent, wowPrevious, momCurrent, momPrevious] = await Promise.all([
             countByStatus({ ...scopeWhere, collectionTime: { gte: wowCurrentStart, lte: now } }),
@@ -142,8 +135,8 @@ export async function GET(request: NextRequest) {
         // ป้ายบนการ์ดโชว์ "ค่าช่วงก่อน → ค่าช่วงนี้" ไม่ใช่ผลต่าง จึงไม่มีตัวเลขให้ผู้อ่านเอาไปบวกลบกับตัวเลขใหญ่
         // (ตัวเลขใหญ่คิดจากช่วงวันที่ที่เลือก ส่วนป้ายคิดตามปฏิทิน — คนละฐานกัน ถ้าโชว์เป็นผลต่างจะอ่านรวมกันได้ค่าที่เกิน 100)
         const trendWindows = {
-            wow: `${formatThaiSpan(wowCurrentStartThai, nowThai)} กับ ${formatThaiSpan(wowPreviousStartThai, wowPreviousEndThai)}`,
-            mom: `${formatThaiSpan(momCurrentStartThai, nowThai)} กับ ${formatThaiSpan(momPreviousStartThai, momPreviousEndThai)}`,
+            wow: `${formatThaiSpan(wowCurrentStart, now)} กับ ${formatThaiSpan(wowPreviousStart, wowPreviousEnd)}`,
+            mom: `${formatThaiSpan(momCurrentStart, now)} กับ ${formatThaiSpan(momPreviousStart, momPreviousEnd)}`,
         };
 
         const wowMetrics = buildTrendMetrics(wowCurrent, wowPrevious, trendWindows.wow);
@@ -377,21 +370,15 @@ export async function GET(request: NextRequest) {
               ? new Date(Math.min(...timeSeriesSamples.map((s) => new Date(s.collectionTime).getTime())))
               : (() => {
                     const d = new Date(now);
-                    d.setMonth(d.getMonth() - 6);
+                    d.setUTCMonth(d.getUTCMonth() - 6);
                     return d;
                 })();
         // -1ms ให้เป็นจุดสุดท้ายของวันสิ้นสุดแบบ inclusive (ตรงกับ baseWhere.collectionTime.lt)
         const bucketRangeEnd: Date = endDateParam ? new Date(parseLocalDayEnd(endDateParam).getTime() - 1) : now;
 
-        // เวอร์ชันเวลาไทย (wall-clock) ของขอบเขต — floor/advance/bucketKey/label ทั้งชุดด้านล่างอ่านด้วย getUTC*
-        // จึงต้องป้อนด้วยค่าที่แปลงแล้วเท่านั้น ไม่งั้นจะจัด bucket ผิดวันสำหรับตัวอย่างที่เก็บช่วงเช้ามืดเวลาไทย (00:00–06:59)
-        const bucketRangeStartThai = toThaiWallClock(bucketRangeStart);
-        const bucketRangeEndThai = toThaiWallClock(bucketRangeEnd);
-
         type Granularity = "day" | "week" | "month" | "quarter" | "year";
 
-        // ฟังก์ชันจัด bucket ทั้งชุดนี้อ่าน/เขียนด้วย getUTC*/setUTC* เสมอ — ตัว d ที่รับเข้ามาต้องเป็นเวลาไทย (wall-clock
-        // จาก toThaiWallClock) แล้วเท่านั้น ไม่ใช่ instant จริง มิฉะนั้นจะจัดกลุ่มผิดวันตาม TZ ของ server
+        // ฟังก์ชันจัด bucket ทั้งชุดนี้อ่าน/เขียนด้วย getUTC*/setUTC* เสมอ — ค่า UTC ของ Date จาก DB คือปฏิทินไทยอยู่แล้ว
         const floorToGranularity = (d: Date, gran: Granularity): Date => {
             const date = new Date(d);
             if (gran === "day") {
@@ -460,10 +447,10 @@ export async function GET(request: NextRequest) {
         let granularity: Granularity = "month";
 
         if (bucketRangeEnd.getTime() >= bucketRangeStart.getTime()) {
-            granularity = pickGranularity(bucketRangeStartThai, bucketRangeEndThai);
-            const crossesYear = bucketRangeStartThai.getUTCFullYear() !== bucketRangeEndThai.getUTCFullYear();
-            const stopAt = advanceGranularity(floorToGranularity(bucketRangeEndThai, granularity), granularity);
-            let cursor = floorToGranularity(bucketRangeStartThai, granularity);
+            granularity = pickGranularity(bucketRangeStart, bucketRangeEnd);
+            const crossesYear = bucketRangeStart.getUTCFullYear() !== bucketRangeEnd.getUTCFullYear();
+            const stopAt = advanceGranularity(floorToGranularity(bucketRangeEnd, granularity), granularity);
+            let cursor = floorToGranularity(bucketRangeStart, granularity);
             let guard = 0;
             while (cursor.getTime() < stopAt.getTime() && guard < MAX_BUCKETS + 2) {
                 const key = bucketKeyOf(cursor, granularity);
@@ -477,15 +464,13 @@ export async function GET(request: NextRequest) {
         // วนข้อมูลรอบเดียว จัดเข้า bucket ทั้ง temporal (ก่อนเที่ยง/หลังเที่ยง) และ trend (ทุกช่วงเวลารวมกัน) พร้อมกัน
         timeSeriesSamples.forEach((s) => {
             const rawDate = new Date(s.collectionTime);
-            // bucketing ต้องป้อนด้วยเวลาไทย (wall-clock) เพราะ floorToGranularity อ่านด้วย getUTC* (ดูคอมเมนต์เหนือฟังก์ชันนั้น)
-            const dateObjThai = toThaiWallClock(rawDate);
-            const key = bucketKeyOf(floorToGranularity(dateObjThai, granularity), granularity);
+            const key = bucketKeyOf(floorToGranularity(rawDate, granularity), granularity);
             const bucket = bucketAcc.get(key);
             if (!bucket) return; // ตัวอย่างนอกช่วง bucket (ไม่ควรเกิดเพราะ baseWhere กรองไว้แล้ว) — ข้ามอย่างปลอดภัย
 
             const amm = s.measurements.find((m) => m.parameter.name.toLowerCase() === "ammonia")?.value ?? null;
             const phos = s.measurements.find((m) => m.parameter.name.toLowerCase() === "phosphate")?.value ?? null;
-            // ใช้ชั่วโมงตามเวลาไทยเสมอ — Date.getHours() อ่านตาม TZ ของ process ที่รัน (container prod เป็น UTC) ไม่ใช่เวลาที่เก็บจริง
+            // ใช้ชั่วโมงตามเวลาไทยเสมอ — Date.getHours() อ่านตาม TZ ของ process ที่รัน ไม่ใช่เวลาที่เก็บจริง
             const hour = getThaiHour(rawDate);
             // แบ่งครึ่งวันที่เที่ยงตรง ครอบคลุม 24 ชม. เต็ม — ทุกตัวอย่างตกอยู่ฝั่งใดฝั่งหนึ่งเสมอ ไม่มีช่วงตกหล่นแบบเดิม (06-12 / 15-21)
             const isBeforeNoon = hour < 12;
@@ -547,13 +532,13 @@ export async function GET(request: NextRequest) {
             quarter: "รายไตรมาส",
             year: "รายปี",
         };
-        // ใช้ getUTC* เพราะรับ bucketRangeStartThai/EndThai ที่เป็น wall-clock เวลาไทยแล้ว (ไม่ใช่ instant จริง)
+        // ใช้ getUTC* เพราะค่า UTC ของ Date ในระบบนี้คือปฏิทินไทย
         const granularityInfo = {
             granularity,
             label: granularityThaiLabel[granularity],
             rangeStart: bucketRangeStart.toISOString(),
             rangeEnd: bucketRangeEnd.toISOString(),
-            rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStartThai)} – ${formatThaiDate(bucketRangeEndThai)}` : "",
+            rangeLabel: bucketRangeEnd.getTime() >= bucketRangeStart.getTime() ? `${formatThaiDate(bucketRangeStart)} – ${formatThaiDate(bucketRangeEnd)}` : "",
         };
 
         // ---  [มิติที่ 5: Correlation] สภาพอากาศ (ฝน/อุณหภูมิอากาศ) กับความเข้มข้นสารเคมี ---
@@ -711,8 +696,7 @@ function toCamelCase(str: string) {
 }
 
 // จุดเริ่มต้นสัปดาห์แบบ ISO (จันทร์ 00:00) ของวันที่ที่กำหนด — ใช้คำนวณ WoW ตามปฏิทินสากล
-// รับ/คืนค่าเป็นเวลาไทย (wall-clock จาก toThaiWallClock) เสมอ — อ่าน/เขียนด้วย getUTC*/setUTC* จึงตรงกับปฏิทินไทยตรง ๆ
-// (ผู้เรียกทั้งสองที่ในไฟล์นี้ป้อนด้วยค่าที่แปลงแล้ว — ห้ามป้อน instant จริงตรง ๆ)
+// อ่าน/เขียนด้วย getUTC*/setUTC* เพราะค่า UTC ของ Date ในระบบนี้คือปฏิทินไทย (ดู lib/thaiTime.ts)
 function startOfISOWeek(d: Date): Date {
     const date = new Date(d);
     const day = date.getUTCDay(); // 0=อาทิตย์ ... 6=เสาร์

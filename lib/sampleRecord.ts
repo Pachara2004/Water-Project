@@ -1,9 +1,7 @@
-import { Prisma, ReviewStatus, WaterStatus } from '@prisma/client';
+import { ReviewStatus, WaterStatus } from '@prisma/client';
+import type { TxClient } from "@/lib/prisma";
+import { nowThai } from "@/lib/thaiTime";
 
-/**
- * Type for the transaction client.
- */
-type TxClient = Prisma.TransactionClient;
 
 /**
  * Creates a SampleRecord snapshot from an array of WaterSample records (which should belong to the same sessionGroup).
@@ -140,7 +138,7 @@ export async function createNotificationEntry(
           message: params.message || null,
           reviewBy: params.reviewBy || null,
           isReading: false,
-          createdAt: new Date(), // Update timestamp to bump it to the top
+          createdAt: nowThai(), // Update timestamp to bump it to the top
         }
       });
     }

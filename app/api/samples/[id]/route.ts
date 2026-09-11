@@ -5,30 +5,13 @@ import { toMeasuredNumber } from "@/lib/standards";
 import { evaluateSample, computeValueByParameterAsOf } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
+import { nowThai, parseThaiInput, toApiString } from "@/lib/thaiTime";
 
-// ฟังก์ชันสร้าง Date เวลาปัจจุบันแบบล็อกตัวเลขเวลาไทย (+07:00)
-function getNowAsLocalDateTime(): Date {
-    const now = new Date();
-    return new Date(
-        Date.UTC(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate(),
-            now.getHours(),
-            now.getMinutes(),
-            now.getSeconds(),
-            now.getMilliseconds()
-        )
-    );
-}
-
-// ฟังก์ชันช่วยตัด Z หรือ Timezone Offset ออกเพื่อป้องกัน Frontend บวก 7 ชั่วโมงซ้ำ
-function cleanDateString(dateVal: any): string | null {
+// ค่าที่ส่งให้ client มาได้ทั้ง Date จาก DB และสตริงจาก snapshot (SampleRecord) — ทั้งสองต้องออกไปแบบไม่มี Z/offset
+function cleanDateString(dateVal: Date | string | null | undefined): string | null {
     if (!dateVal) return null;
-    if (dateVal instanceof Date) {
-        return dateVal.toISOString().replace("Z", "");
-    }
-    return String(dateVal).replace(/(Z|\+\d{2}:\d{2})$/, "");
+    if (dateVal instanceof Date) return toApiString(dateVal);
+    return String(dateVal).replace(/(Z|[+-]\d{2}:\d{2})$/, "");
 }
 
 // ========================================================
@@ -60,11 +43,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         let parsedCollectionTime = oldSample.collectionTime;
         if (collectionTime !== undefined && collectionTime !== null && collectionTime !== "") {
-            const cleanStr = String(collectionTime).replace(/(Z|\+\d{2}:\d{2})$/, "");
-            const [datePart, timePart] = cleanStr.split("T");
-            const [year, month, day] = datePart.split("-").map(Number);
-            const [hours, minutes] = timePart.split(":").map(Number);
-            parsedCollectionTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+            const parsed = parseThaiInput(String(collectionTime));
+            if (!parsed) {
+                return NextResponse.json({ error: "รูปแบบเวลาเก็บตัวอย่างไม่ถูกต้อง" }, { status: 400 });
+            }
+            parsedCollectionTime = parsed;
         }
 
         let parsedLocationId = oldSample.locationId;
@@ -126,7 +109,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }));
         }
 
-        const nowLocal = getNowAsLocalDateTime();
+        const nowLocal = nowThai();
 
         const createdSample = await prisma.$transaction(async (tx) => {
             await tx.waterSample.update({
