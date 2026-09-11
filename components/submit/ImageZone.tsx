@@ -420,7 +420,7 @@ ${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`
                                 </div>
                             </div>
                         )}
-                        <input title="เลือกรูปภาพ" ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                        <input title="เลือกรูปภาพ" ref={galleryInputRef} type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleFileSelect} className="hidden" />
                         <input title="ถ่ายรูปสด" ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
                     </div>
                 </div>
