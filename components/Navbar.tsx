@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Map, Settings, FileScan, BarChart2, User } from "lucide-react";
+import { Map, BarChart2, User } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from "react";
 import liff from "@line/liff";
 import { onNavDotsRefresh } from "@/lib/navEvents";
+const SettingsIcon = lazy(() => import("lucide-react").then(mod => ({ default: mod.Settings })));
+const FileScanIcon = lazy(() => import("lucide-react").then(mod => ({ default: mod.FileScan })));
 
 // ดึงการประกาศ Mapping ข้อความออกมาข้างนอก เพื่อไม่ให้สร้างขึ้นใหม่ทุกรอบการเรนเดอร์
 const MOBILE_LABEL_MAP: Record<string, string> = {
@@ -120,7 +122,7 @@ export default function Navbar() {
             items.push({
                 href: "/collector",
                 label: "ตรวจคุณภาพ",
-                icon: FileScan,
+                icon: FileScanIcon,
                 showDot: navDots.hasUnreadRejection,
             });
         }
@@ -175,7 +177,7 @@ export default function Navbar() {
             items.push({
                 href: "/manage",
                 label: "จัดการข้อมูล",
-                icon: Settings,
+                icon: SettingsIcon,
                 showDot: navDots.hasPendingManageQueue,
             });
         }
@@ -186,33 +188,33 @@ export default function Navbar() {
     return (
         <>
             {/* ── Mobile / Tablet: docked bottom bar */}
-            <nav className="lg:hidden fixed bottom-0 left-0 w-full z-950 bg-card-general" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-                <div className="flex items-center justify-around h-22 px-4 w-full">
-                    {navItems.map((item) => {
-                        const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-                        const Icon = item.icon;
-                        const displayLabel = MOBILE_LABEL_MAP[item.label] || item.label;
-
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                prefetch={true}
-                                onClick={item.onClick}
-                                className={`flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-all duration-75 relative active:scale-[0.95] will-change-transform ${
-                                    isActive ? "text-primary font-semibold" : "text-text hover:text-primary"
-                                }`}
-                            >
-                                {isActive && <div className="absolute inset-x-0 inset-y-2 bg-primary/20 rounded-2xl" />}
-                                <div className="relative">
-                                    <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-75 ${isActive ? "-translate-y-0.5 text-primary" : ""}`} />
-                                    {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-text-danger rounded-full border-2 border-border-danger" />}
-                                </div>
-                                <span className={`text-xs mt-1 transition-all duration-75 whitespace-nowrap ${isActive ? "text-primary" : "font-medium"}`}>{displayLabel}</span>
-                            </Link>
-                        );
-                    })}
-                </div>
+            <nav className="lg:hidden fixed bottom-0 left-0 w-full z-950 bg-card-general" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
+<div className="flex items-center justify-around h-22 px-4 w-full">
+  <Suspense fallback={null}>
+    {navItems.map((item) => {
+      const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+      const Icon = item.icon;
+      const displayLabel = MOBILE_LABEL_MAP[item.label] || item.label;
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          prefetch={true}
+          onClick={item.onClick}
+          aria-current={isActive ? "page" : undefined}
+          className={`group flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-all duration-200 ease-[var(--nav-ease)] relative active:scale-[0.92] will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-primary font-semibold" : "text-text hover:text-primary"}`}
+        >
+          {isActive && <div className="absolute inset-x-0 inset-y-2 bg-primary/20 rounded-2xl" />}
+          <div className="relative">
+            <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-75 ${isActive ? "-translate-y-0.5 text-primary" : ""} group-hover:rotate-12`} />
+            {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-text-danger rounded-full border-2 border-border-danger" />}
+          </div>
+          <span className={`text-xs mt-1 transition-all duration-75 whitespace-nowrap ${isActive ? "text-primary" : "font-medium"}`}>{displayLabel}</span>
+        </Link>
+      );
+    })}
+  </Suspense>
+</div>
             </nav>
 
             {/* ── Desktop: Left Sidebar ── */}
@@ -225,6 +227,7 @@ export default function Navbar() {
 
                     {/* Navigation Items */}
                     <div className="flex flex-col gap-1.5 w-full">
+                      <Suspense fallback={null}>
                         {navItems.map((item) => {
                             const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
                             const Icon = item.icon;
@@ -234,13 +237,14 @@ export default function Navbar() {
                                     href={item.href}
                                     prefetch={true}
                                     onClick={item.onClick}
-                                    className={`group flex items-center h-11 rounded-xl font-semibold text-xs transition-all duration-150 active:scale-[0.98] will-change-transform overflow-hidden w-full px-4 gap-3.5 relative ${
-                                        isActive ? "bg-secondary text-white" : "hover:bg-primary hover:text-text-primary"
-                                    }`}
+                                    aria-current={isActive ? "page" : undefined}
+                                    className={`group flex items-center h-11 rounded-xl font-semibold text-xs transition-all duration-200 ease-[var(--nav-ease)] relative active:scale-[0.92] will-change-transform overflow-hidden w-full px-4 gap-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                         isActive ? "bg-secondary text-white" : "hover:bg-primary hover:text-text-primary"
+                                     }`}
                                 >
                                     {currentUser?.role === "admin" && (
                                         <div className="relative shrink-0">
-                                            <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-150 group-hover:translate-x-0.5" />
+                                            <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-150 group-hover:translate-x-0.5 group-hover:rotate-6" />
                                             {item.showDot && (
                                                 <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border-2 ${isActive ? "border-primary" : "border-surface"}`} />
                                             )}
@@ -250,6 +254,7 @@ export default function Navbar() {
                                 </Link>
                             );
                         })}
+                      </Suspense>
                     </div>
                 </div>
 
