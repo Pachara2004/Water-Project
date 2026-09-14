@@ -167,7 +167,7 @@ export async function reviewConfirmDialog({
             <div style="text-align: left; margin-top: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
                     <label for="swal-review-note" class="text-xs font-semibold text-text">
-                        หมายเหตุถึงผู้ดูแลระบบ ${requireNote ? '<span style="color: red;">*</span>' : '(ไม่บังคับ)'}:
+                        หมายเหตุถึงผู้ดูแลระบบ ${requireNote ? '<span style="color: red;">*</span>' : '(ไม่บังคับ)'}
                     </label>
                     <span id="swal-char-count" class="text-xs" style="color: var(--color-text-muted);">0 / 200</span>
                 </div>
