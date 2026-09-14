@@ -262,7 +262,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 zoomControl={false}
                 attributionControl={false}
                 minZoom={mode === "picker" ? 6 : 6} // ซูมออกได้ต่ำสุดแค่นี้ (เห็นภาพรวมประเทศ)
-                maxZoom={15}
+                maxZoom={19}
                 maxBounds={THAILAND_BOUNDS}
                 maxBoundsViscosity={1}
                 bounceAtZoomLimits={true}
@@ -270,8 +270,8 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    maxZoom={15}
-                    maxNativeZoom={15}
+                    maxZoom={19}
+                    maxNativeZoom={19}
                     noWrap={true}
                 />{" "}
                 {renderedMarkers}
