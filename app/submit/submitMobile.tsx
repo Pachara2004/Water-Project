@@ -117,21 +117,21 @@ export default function SubmitMobile(props: any) {
                                 )}
                             </div>
                             <AnalyzeButton {...hook} />
-                        </div>
 
-                        {/* AI ไม่พบหลอดทดลองในบางภาพ — ให้ทางเลือกที่สองแทนการบังคับถ่ายใหม่อย่างเดียว */}
-                        {hasBlockedPending && (
-                            <div className="space-y-2">
-                                <button
-                                    onClick={onConfirmBlockedSubmit}
-                                    className="w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-warning hover:bg-warning/90 shadow-sm transition-all duration-200"
-                                >
-                                    <Send size={15} />
-                                    ยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ
-                                </button>
-                                <p className="text-xs leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้ง หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่า</p>
-                            </div>
-                        )}
+                            {/* AI ไม่พบหลอดทดลองในบางภาพ — ให้ทางเลือกที่สองแทนการบังคับถ่ายใหม่อย่างเดียว */}
+                            {hasBlockedPending && (
+                                <div className="space-y-2">
+                                    <button
+                                        onClick={onConfirmBlockedSubmit}
+                                        className="w-full py-3.5 min-h-13 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-white bg-warning hover:bg-warning/90 shadow-sm transition-all duration-200"
+                                    >
+                                        <Send size={15} />
+                                        ยืนยันส่งให้ผู้ดูแลระบบตรวจสอบ
+                                    </button>
+                                    <p className="text-xs leading-relaxed text-text-muted text-center">ถ่ายภาพใหม่แล้ววิเคราะห์อีกครั้ง หรือส่งชุดนี้ให้ผู้ดูแลระบบตรวจสอบค่า</p>
+                                </div>
+                            )}
+                        </div>
                     </>
                 )}
                 {step === "results" && (
