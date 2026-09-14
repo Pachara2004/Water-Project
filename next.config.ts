@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
             },
         ],
     },
+    // ซ่อนปุ่ม N (Next.js DevTools) มุมจอตอน dev; error overlay ยังขึ้นตามปกติ
     devIndicators: false,
     turbopack: {},
 };
