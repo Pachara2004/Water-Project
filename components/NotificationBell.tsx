@@ -182,17 +182,17 @@ export default function NotificationBell() {
     }, [fetchNotifications]);
 
     useEffect(() => {
-        if (open) {
+        if (open && !isDesktop) {
             document.body.style.overflow = "hidden";
             // เปิดด้วยความสูงที่พอเห็นเนื้อหาได้โดยไม่ต้องเลื่อน — "collapsed" (210px) แคบเกินไปเวลามีมากกว่า 1 รายการ
             // ผู้ใช้ยังลากปรับเป็น full/collapsed เองได้ตามปกติ นี่แค่ตั้งจุดเริ่มต้นให้เหมาะกับเนื้อหา
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSheetHeight(items.length > 1 ? "full" : "collapsed");
             return () => {
                 document.body.style.overflow = "";
             };
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open]);
+    }, [open, isDesktop, items.length]);
 
     const handleAck = async (item: NotificationItem) => {
         if (item.isReading || ackingId === item.id) return;
@@ -221,7 +221,7 @@ export default function NotificationBell() {
     const displayedItems = !isDesktop && sheetHeight === "collapsed" ? items.slice(0, 1) : items;
 
     return (
-        <>
+        <div className="relative shrink-0">
             {/* ปุ่มกระดิ่ง */}
             <button
                 type="button"
@@ -241,21 +241,21 @@ export default function NotificationBell() {
             {open && (
                 <>
                     {/* Backdrop สำหรับปิดเมื่อคลิกด้านนอก */}
-                    <div className="fixed inset-0 bg-black/40 z-1000 backdrop-blur-xs transition-opacity" onClick={() => setOpen(false)} />
+                    <div className="fixed inset-0 bg-black/40 z-1000  transition-opacity md:hidden" onClick={() => setOpen(false)} />
 
                     {/*
                        - Mobile (default): Bottom Sheet ยืดหดได้ลอยจากขอบล่าง
-                       - Desktop (md:): Modal กลางจอ (Centered Modal)
+                       - Desktop (md:): Dropdown ใต้ปุ่มกระดิ่ง
                     */}
                     <div
                         ref={sheetRef}
                         className={`
-                            fixed z-1001 bg-bg shadow-2xl border border-border flex flex-col overflow-hidden
+                            fixed z-1001 bg-bg shadow-xl border border-border flex flex-col overflow-hidden
                             /* Mobile Style */
-                            bottom-0 left-0 right-0 rounded-t-3xl max-w-lg mx-auto will-change-[height]
+                            bottom-0 left-0 right-0 rounded-t-2xl max-w-lg mx-auto will-change-[height]
                             /* Desktop Style (md ขึ้นไป) */
-                            md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto md:right-auto
-                            md:w-full md:max-w-md md:max-h-[85vh] md:rounded-3xl
+                            md:absolute md:top-[calc(100%+0.75rem)] md:right-0 md:bottom-auto md:left-auto
+                            md:w-[min(26rem,calc(100vw-2rem))] md:max-w-none md:max-h-[min(85vh,42rem)] md:rounded-2xl
                         `}
                         style={
                             !isDesktop
@@ -312,7 +312,7 @@ export default function NotificationBell() {
                                 </div>
                             ) : (
                                 displayedItems.map((item) => {
-                                const isRead = item.isReading;
+                                    const isRead = item.isReading;
 
                                     let badgeColor = "bg-bg-danger text-text-danger";
                                     let badgeText = "ถูกปฏิเสธ";
@@ -408,6 +408,6 @@ export default function NotificationBell() {
                     </div>
                 </>
             )}
-        </>
+        </div>
     );
 }
