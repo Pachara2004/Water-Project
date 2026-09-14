@@ -62,9 +62,7 @@ export function ConfidenceChip({ measurement, variant = "solid" }: { measurement
         return (
             <span
                 className={
-                    variant === "solid"
-                        ? "text-xs px-1.5 py-0.5 rounded font-bold border text-amber-700 bg-amber-50 border-amber-200"
-                        : "text-xs px-1.5 py-0.5 rounded font-medium text-amber-700"
+                    variant === "solid" ? "text-xs px-1.5 py-0.5 rounded font-bold border text-amber-700 bg-amber-50 border-amber-200" : "text-xs px-1.5 py-0.5 rounded font-medium text-amber-700"
                 }
                 title="AI ไม่พบหลอดทดลองในภาพ จึงไม่ได้ให้ค่าความมั่นใจมา — ต้องเทียบกับภาพดิบเอง"
             >
@@ -285,7 +283,7 @@ export function RequestDetailPopup({
                             </div>
                         )}
                         {item.reviewNote && (
-                            <div className="text-sm bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-3 rounded-lg break-words [overflow-wrap:anywhere]">
+                            <div className="text-sm bg-amber-50/50 text-amber-900/90 border border-amber-200/60 p-3 rounded-lg wrap-break-word">
                                 <span className="font-semibold">หมายเหตุจากผู้แจ้ง: </span>
                                 {item.reviewNote}
                             </div>
@@ -391,9 +389,7 @@ export function RequestDetailPopup({
                             <InfoRow icon={UserRound} label="ผู้ตัดสิน" value={item.reviewedBy?.name ?? "-"} />
                             <InfoRow icon={Clock} label="ตัดสินเมื่อ" value={formatDateTimeFull(item.reviewedAt)} />
                             {item.reviewNote && (
-                                <p className="text-xs text-text-danger font-semibold sm:font-medium bg-red-500/5 p-2 rounded-lg border border-red-500/10 break-words [overflow-wrap:anywhere]">
-                                    เหตุผล: {item.reviewNote}
-                                </p>
+                                <p className="text-xs text-text-danger font-semibold sm:font-medium bg-red-500/5 p-2 rounded-lg border border-red-500/10 wrap-break-word">เหตุผล: {item.reviewNote}</p>
                             )}
                         </div>
                     </div>
@@ -411,7 +407,6 @@ export function RequestCard({
     onApprove,
     onPreviewImage,
     onOpenEditApprove,
-    mobile,
 }: {
     item: ReviewRequestItem;
     standards: StandardRow[];
@@ -610,34 +605,34 @@ export function RequestCard({
                             </p>
                         )}
                         <div className="flex items-stretch gap-2 w-full">
-                        <button
-                            type="button"
-                            disabled={actingId === item.id}
-                            onClick={() => onOpenReject(item)}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-danger hover:bg-red-100 text-text-danger border border-border text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                        >
-                            <XCircle size={14} />
-                            <span>ปฏิเสธ</span>
-                        </button>
-                        <button
-                            type="button"
-                            disabled={actingId === item.id || noneSelected}
-                            onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                        >
-                            <Edit2 size={14} />
-                            <span>แก้ไข</span>
-                        </button>
-                        <button
-                            type="button"
-                            disabled={actingId === item.id || noneSelected || mustEditBeforeApprove}
-                            onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            title={mustEditBeforeApprove ? "AI ไม่พบหลอดทดลองในภาพ ต้องแก้ไขค่าก่อนอนุมัติ" : undefined}
-                            className="flex-1 min-h-9 px-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
-                            <span>อนุมัติ</span>
-                        </button>
+                            <button
+                                type="button"
+                                disabled={actingId === item.id}
+                                onClick={() => onOpenReject(item)}
+                                className="flex-1 min-h-9 px-2 rounded-xl bg-bg-danger hover:bg-red-100 text-text-danger border border-border text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                <XCircle size={14} />
+                                <span>ปฏิเสธ</span>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actingId === item.id || noneSelected}
+                                onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
+                                className="flex-1 min-h-9 px-2 rounded-xl bg-bg-warning hover:bg-orange-100 text-text-warning border border-border text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                <Edit2 size={14} />
+                                <span>แก้ไข</span>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actingId === item.id || noneSelected || mustEditBeforeApprove}
+                                onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
+                                title={mustEditBeforeApprove ? "AI ไม่พบหลอดทดลองในภาพ ต้องแก้ไขค่าก่อนอนุมัติ" : undefined}
+                                className="flex-1 min-h-9 px-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 size={14} />}
+                                <span>อนุมัติ</span>
+                            </button>
                         </div>
                     </>
                 )}
@@ -665,85 +660,175 @@ export function RejectDrawer({
     onSubmit: () => void;
     onPreviewImage?: (images: PreviewImages) => void;
 }) {
+    const referenceSamples = rejectTarget.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
+    const [activeReferenceSampleId, setActiveReferenceSampleId] = useState<number | null>(referenceSamples[0]?.id ?? null);
+    const [activeReferenceImage, setActiveReferenceImage] = useState<"raw" | "analyzed">("raw");
+    const activeReferenceSample = referenceSamples.find((s) => s.id === activeReferenceSampleId) ?? referenceSamples[0];
+    const activeReferenceUrl = activeReferenceSample
+        ? ((activeReferenceImage === "raw" ? activeReferenceSample.rawImageUrl : activeReferenceSample.analyzedPlotUrl) ?? activeReferenceSample.rawImageUrl ?? activeReferenceSample.analyzedPlotUrl)
+        : null;
+
     return (
-        <Popup title="ปฏิเสธคำร้อง" onClose={() => !rejectSaving && onClose()}>
-            <div className="space-y-6">
-                <p className="text-xs text-text-secondary leading-relaxed">
-                    ผลตรวจของ &quot;{rejectTarget.location?.name ?? "จุดตรวจนี้"}&quot; จะไม่ถูกนำไปคำนวณในภาพรวมของระบบ กรุณาระบุเหตุผลเพื่อให้ผู้เก็บตัวอย่างรับทราบ
-                    (ผู้เก็บจะยังคงเห็นรายการนี้ในหน้าประวัติของตนเอง)
-                </p>
-
-                {/* Image Context */}
-                {rejectTarget.samples.some((s) => s.rawImageUrl || s.analyzedPlotUrl) && (
-                    <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
-                        <span className="text-xs font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
-                        <div className="flex items-center gap-2">
-                            {rejectTarget.samples
-                                .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
-                                .map((s) => (
-                                    <div key={s.id} className="flex gap-2">
-                                        {s.rawImageUrl && (
-                                            <img
-                                                src={s.rawImageUrl}
-                                                alt="ภาพถ่าย"
-                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
-                                            />
-                                        )}
-                                        {s.analyzedPlotUrl && (
-                                            <img
-                                                src={s.analyzedPlotUrl}
-                                                alt="ภาพ AI"
-                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
-                                            />
-                                        )}
-                                    </div>
-                                ))}
+        <Popup title="ปฏิเสธคำร้อง" maxWidth="max-w-6xl" onClose={() => !rejectSaving && onClose()}>
+            <div className="md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] md:gap-8">
+                <section className="hidden md:flex md:min-h-140 md:flex-col md:rounded-2xl md:border md:border-border md:bg-surface-subtle md:p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                        <div>
+                            <div className="flex flex-row text-sm font-semibold uppercase text-primary">
+                                ภาพอ้างอิงสาร:
+                                {activeReferenceSample && (
+                                    <p className=" text-sm font-semibold text-text">{activeReferenceSample.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</p>
+                                )}
+                            </div>
                         </div>
+                        {referenceSamples.length > 1 && (
+                            <span className="text-xs text-text-muted">
+                                ภาพที่ {referenceSamples.findIndex((s) => s.id === activeReferenceSample?.id) + 1}/{referenceSamples.length}
+                            </span>
+                        )}
                     </div>
-                )}
 
-                <div className="space-y-2.5">
-                    <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold sm:font-medium text-text-muted uppercase tracking-wider block">เหตุผลในการปฏิเสธ *</label>
-                        <span className={`text-xs font-medium sm:font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
-                            {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
+                    <button
+                        type="button"
+                        className="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-bg p-2 cursor-pointer"
+                        onClick={() =>
+                            activeReferenceSample && onPreviewImage?.({ raw: activeReferenceSample.rawImageUrl, analyzed: activeReferenceSample.analyzedPlotUrl, active: activeReferenceImage })
+                        }
+                    >
+                        {activeReferenceUrl ? (
+                            <img
+                                src={activeReferenceUrl}
+                                alt={activeReferenceImage === "raw" ? "ภาพถ่าย" : "ภาพ AI"}
+                                className="max-h-[58dvh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
+                            />
+                        ) : (
+                            <span className="text-xs text-text-muted">ไม่พบข้อมูลภาพถ่ายสำหรับรายการนี้</span>
+                        )}
+                        <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                            คลิกเพื่อดูภาพเต็ม
                         </span>
+                    </button>
+
+                    <div className="mt-3 flex items-center gap-2">
+                        {(["raw", "analyzed"] as const).map((imageType) => {
+                            const available = imageType === "raw" ? activeReferenceSample?.rawImageUrl : activeReferenceSample?.analyzedPlotUrl;
+                            return (
+                                <button
+                                    key={imageType}
+                                    type="button"
+                                    disabled={!available}
+                                    onClick={() => setActiveReferenceImage(imageType)}
+                                    className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${activeReferenceImage === imageType ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-text-secondary hover:bg-bg"} disabled:cursor-not-allowed disabled:opacity-40`}
+                                >
+                                    {imageType === "raw" ? "ภาพถ่าย" : "ภาพ AI"}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                        {["ภาพไม่ชัดเจน/เบลอ", "สเกลสีไม่ตรงรุ่น", "แสงจ้า/เงาบัง"].map((text) => (
-                            <button
-                                key={text}
-                                type="button"
-                                onClick={() => setRejectNote(rejectNote ? `${rejectNote} ${text}` : text)}
-                                className="text-xs font-medium sm:font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
-                            >
-                                {text}
-                            </button>
-                        ))}
+                    {referenceSamples.length > 1 && (
+                        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                            {referenceSamples.map((sample, index) => (
+                                <button
+                                    key={sample.id}
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveReferenceSampleId(sample.id);
+                                        if (activeReferenceImage === "raw" && !sample.rawImageUrl) setActiveReferenceImage("analyzed");
+                                        if (activeReferenceImage === "analyzed" && !sample.analyzedPlotUrl) setActiveReferenceImage("raw");
+                                    }}
+                                    title={`ภาพที่ ${index + 1}: ${sample.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}`}
+                                    className={`h-12 w-16 shrink-0 overflow-hidden rounded-lg border-2 bg-bg ${sample.id === activeReferenceSample?.id ? "border-primary" : "border-border"}`}
+                                >
+                                    <img src={sample.rawImageUrl ?? sample.analyzedPlotUrl ?? ""} alt={`ภาพตัวอย่างที่ ${index + 1}`} className="h-full w-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <div className="space-y-6">
+                    <p className="text-xs text-text leading-relaxed font-medium">
+                        ผลตรวจของ &quot;{rejectTarget.location?.name ?? "จุดตรวจนี้"}&quot; จะไม่ถูกนำไปคำนวณในภาพรวมของระบบ กรุณาระบุเหตุผลเพื่อให้เจ้าหน้าที่ภาคสนามผู้เก็บข้อมูลรับทราบ
+                        (เจ้าหน้าที่ภาคสนามผู้เก็บข้อมูลจะยังคงเห็นรายการนี้ในหน้าประวัติของตนเอง)
+                    </p>
+
+                    {/* Image Context */}
+                    <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto md:hidden">
+                        <span className="text-xs font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
+                        {referenceSamples.length === 0 ? (
+                            <span className="text-xs text-text-muted">ไม่พบข้อมูลภาพถ่ายสำหรับรายการนี้</span>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                {rejectTarget.samples
+                                    .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
+                                    .map((s) => (
+                                        <div key={s.id} className="flex gap-2">
+                                            {s.rawImageUrl && (
+                                                <img
+                                                    src={s.rawImageUrl}
+                                                    alt="ภาพถ่าย"
+                                                    className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
+                                                />
+                                            )}
+                                            {s.analyzedPlotUrl && (
+                                                <img
+                                                    src={s.analyzedPlotUrl}
+                                                    alt="ภาพ AI"
+                                                    className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                            </div>
+                        )}
                     </div>
 
-                    <textarea
-                        value={rejectNote}
-                        onChange={(e) => setRejectNote(e.target.value)}
-                        placeholder="เช่น ภาพเบลอ มองไม่เห็นสีของเหลวชัดเจน กรุณาถ่ายใหม่"
-                        rows={3}
-                        maxLength={REVIEW_NOTE_MAX_LENGTH}
-                        className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
-                    />
-                    <p className="text-xs text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
+                    <div className="space-y-2.5">
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="flex  text-xs font-semibold sm:font-medium text-text uppercase tracking-wider">
+                                เหตุผลในการปฏิเสธ <p className="text-text-danger"> *</p>
+                            </label>
+                            <span className={`text-xs font-medium sm:font-medium tabular-nums ${rejectNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                                {rejectNote.length}/{REVIEW_NOTE_MAX_LENGTH}
+                            </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                            {["ภาพไม่ชัดเจน/เบลอ", "สเกลสีไม่ตรงรุ่น", "แสงจ้า/เงาบัง"].map((text) => (
+                                <button
+                                    key={text}
+                                    type="button"
+                                    onClick={() => setRejectNote(rejectNote ? `${rejectNote} ${text}` : text)}
+                                    className="text-xs font-medium sm:font-medium bg-surface hover:bg-surface-subtle border border-border text-text px-2 py-1 rounded-md transition-colors cursor-pointer"
+                                >
+                                    {text}
+                                </button>
+                            ))}
+                        </div>
+
+                        <textarea
+                            value={rejectNote}
+                            onChange={(e) => setRejectNote(e.target.value)}
+                            placeholder="เหตุผลอในการปฏิเสธคำร้อง (จำเป็นต้องกรอก)"
+                            rows={3}
+                            maxLength={REVIEW_NOTE_MAX_LENGTH}
+                            className="w-full p-3 h-30 bg-surface-subtle border border-border text-text rounded-md text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
+                        />
+                        <p className="text-xs text-text">ข้อความนี้จะถูกแสดงให้เจ้าหน้าที่ภาคสนามที่ส่งข้อมูลมาให้ตรวจสอบเห็นในหน้าประวัติการส่งข้อมูล</p>
+                    </div>
+
+                    <button
+                        onClick={onSubmit}
+                        disabled={rejectSaving || !rejectNote.trim()}
+                        className="w-full py-4 min-h-13 bg-text-danger hover:bg-red-500 text-white font-semibold sm:font-medium rounded-md text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                    >
+                        {rejectSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                        ยืนยันปฏิเสธคำร้อง
+                    </button>
                 </div>
-
-                <button
-                    onClick={onSubmit}
-                    disabled={rejectSaving || !rejectNote.trim()}
-                    className="w-full py-4 min-h-13 bg-red-600 hover:bg-red-700 text-white font-semibold sm:font-medium rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
-                >
-                    {rejectSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    ยืนยันปฏิเสธคำร้อง
-                </button>
             </div>
         </Popup>
     );
@@ -874,158 +959,247 @@ export function EditApproveDrawer({
     const userRequestedChange = editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]"));
     const toggleSample = (id: number) => setEditSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     const noneSelected = editSelectedSampleIds.length === 0;
+    const referenceSamples = editTarget.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
+    const [activeReferenceSampleId, setActiveReferenceSampleId] = useState<number | null>(referenceSamples[0]?.id ?? null);
+    const [activeReferenceImage, setActiveReferenceImage] = useState<"raw" | "analyzed">("raw");
+    const activeReferenceSample = referenceSamples.find((s) => s.id === activeReferenceSampleId) ?? referenceSamples[0];
+    const activeReferenceUrl = activeReferenceSample
+        ? ((activeReferenceImage === "raw" ? activeReferenceSample.rawImageUrl : activeReferenceSample.analyzedPlotUrl) ?? activeReferenceSample.rawImageUrl ?? activeReferenceSample.analyzedPlotUrl)
+        : null;
 
     return (
-        <Popup title="แก้ไขและอนุมัติคำร้อง" onClose={() => !editSaving && onClose()}>
-            <div className="space-y-6">
-                <p className="text-xs text-text-secondary leading-relaxed">
-                    คุณสามารถแก้ไขค่าสารที่ระบบ AI วิเคราะห์ผิดพลาดได้ที่นี่ และเมื่อยืนยัน ข้อมูลจะถูกบันทึกเป็นค่าที่ถูกต้องและได้รับการอนุมัติ
-                </p>
-
-                {/* ค่าที่แสดงอยู่มาจากภาพที่ AI ไม่พบหลอดทดลอง ผู้ส่งจึงยังไม่เห็นค่าเหล่านี้ */}
-                {editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
-                    <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
-                        <ImageOff size={15} className="shrink-0 mt-0.5" />
-                        <p className="text-xs leading-relaxed font-medium">
-                            AI ไม่พบหลอดทดลองในภาพของคำร้องนี้ ค่าด้านล่างจึงยังยืนยันไม่ได้และผู้ส่งยังไม่เห็นค่า กรุณาเทียบกับภาพดิบก่อนกรอกค่าที่ถูกต้อง
-                        </p>
-                    </div>
-                )}
-
-                {/* Image Context */}
-                {editTarget.samples.some((s) => s.rawImageUrl || s.analyzedPlotUrl) && (
-                    <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto">
-                        <span className="text-xs font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
-                        <div className="flex items-center gap-2">
-                            {editTarget.samples
-                                .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
-                                .map((s) => (
-                                    <div key={s.id} className="flex gap-2">
-                                        {s.rawImageUrl && (
-                                            <img
-                                                src={s.rawImageUrl}
-                                                alt="ภาพถ่าย"
-                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
-                                            />
-                                        )}
-                                        {s.analyzedPlotUrl && (
-                                            <img
-                                                src={s.analyzedPlotUrl}
-                                                alt="ภาพ AI"
-                                                className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
-                                            />
-                                        )}
-                                    </div>
-                                ))}
+        <Popup title="แก้ไขและอนุมัติคำร้อง" maxWidth="max-w-6xl" onClose={() => !editSaving && onClose()}>
+            <div className="md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] md:gap-8">
+                <section className="hidden md:flex md:min-h-140 md:flex-col md:rounded-2xl md:border md:border-border md:bg-surface-subtle md:p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                        <div>
+                            <div className="flex flex-row text-sm font-semibold uppercase text-primary">
+                                ภาพอ้างอิงสาร:
+                                {activeReferenceSample && (
+                                    <p className=" text-sm font-semibold text-text">{activeReferenceSample.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</p>
+                                )}
+                            </div>
                         </div>
+                        {referenceSamples.length > 1 && (
+                            <span className="text-xs text-text-muted">
+                                ภาพที่ {referenceSamples.findIndex((s) => s.id === activeReferenceSample?.id) + 1}/{referenceSamples.length}
+                            </span>
+                        )}
                     </div>
-                )}
 
-                <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold sm:font-medium text-text-muted uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
-                        {isMultiSample && <span className="text-xs font-medium text-text-muted">เลือกเฉพาะสารที่จะอนุมัติ</span>}
-                    </div>
-                    <div className="bg-surface-subtle border border-border rounded-xl p-3 space-y-3">
-                        {editTarget.samples.map((s) => {
-                            const isSelected = editSelectedSampleIds.includes(s.id);
+                    <button
+                        type="button"
+                        className="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-bg p-2 cursor-pointer"
+                        onClick={() =>
+                            activeReferenceSample && onPreviewImage?.({ raw: activeReferenceSample.rawImageUrl, analyzed: activeReferenceSample.analyzedPlotUrl, active: activeReferenceImage })
+                        }
+                    >
+                        {activeReferenceUrl ? (
+                            <img
+                                src={activeReferenceUrl}
+                                alt={activeReferenceImage === "raw" ? "ภาพถ่าย" : "ภาพ AI"}
+                                className="max-h-[58dvh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
+                            />
+                        ) : (
+                            <span className="text-xs text-text-muted">ไม่พบข้อมูลภาพถ่ายสำหรับรายการนี้</span>
+                        )}
+                        <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                            คลิกเพื่อดูภาพเต็ม
+                        </span>
+                    </button>
+
+                    <div className="mt-3 flex items-center gap-2">
+                        {(["raw", "analyzed"] as const).map((imageType) => {
+                            const available = imageType === "raw" ? activeReferenceSample?.rawImageUrl : activeReferenceSample?.analyzedPlotUrl;
                             return (
-                                <div key={s.id} className={`space-y-2 ${isMultiSample ? "pb-2.5 border-b border-border/60 last:border-b-0 last:pb-0" : ""}`}>
-                                    {isMultiSample && (
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" checked={isSelected} onChange={() => toggleSample(s.id)} className="w-4 h-4 accent-teal-700 cursor-pointer" />
-                                            <span className="text-xs font-bold text-text">{s.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</span>
-                                        </label>
-                                    )}
-                                    <div className={`space-y-3 ${isMultiSample ? "pl-6" : ""} ${!isSelected ? "opacity-40" : ""}`}>
-                                        {s.measurements.map((m) => {
-                                            // หารายชื่อสารที่ถูกเลือกในใบอื่น ๆ ของ session เดียวกัน (ป้องกันการเลือกสารซ้ำ)
-                                            const otherSelectedParams = editTarget.samples
-                                                .filter((otherS) => otherS.id !== s.id && editSelectedSampleIds.includes(otherS.id))
-                                                .flatMap((otherS) => otherS.measurements.map((otherM) => editParameters[otherM.parameterId] ?? otherM.parameterId));
-
-                                            return (
-                                                <div key={m.parameterId} className="flex flex-col gap-2">
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <ParameterSelect
-                                                            value={editParameters[m.parameterId] ?? m.parameterId}
-                                                            options={systemParameters}
-                                                            originalId={m.parameterId}
-                                                            disabledIds={otherSelectedParams}
-                                                            disabled={!isSelected || !userRequestedChange}
-                                                            title={!userRequestedChange ? "ผู้ใช้ไม่ได้เปิดสิทธิ์ให้แอดมินเปลี่ยนสาร (หากผิดกรุณากดปฏิเสธ)" : ""}
-                                                            onChange={(val) => setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }))}
-                                                        />
-                                                        <div className="flex items-center gap-2">
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                disabled={!isSelected}
-                                                                value={editMeasurements[m.parameterId] ?? m.value ?? ""}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
-                                                                }}
-                                                                className="w-20 px-2 py-1.5 bg-bg border border-border rounded-lg text-xs font-semibold sm:font-medium text-center outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
-                                                            />
-                                                            {m.unit && <span className="text-xs text-text-muted w-6">{m.unit}</span>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                                <button
+                                    key={imageType}
+                                    type="button"
+                                    disabled={!available}
+                                    onClick={() => setActiveReferenceImage(imageType)}
+                                    className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${activeReferenceImage === imageType ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-text-secondary hover:bg-bg"} disabled:cursor-not-allowed disabled:opacity-40`}
+                                >
+                                    {imageType === "raw" ? "ภาพถ่าย" : "ภาพ AI"}
+                                </button>
                             );
                         })}
                     </div>
-                    {isMultiSample && editSelectedSampleIds.length < editTarget.samples.length && (
-                        <p className="text-xs font-medium text-text-danger bg-red-500/5 px-2.5 py-1.5 rounded-lg border border-red-500/10">สารที่ไม่ได้เลือกจะถูกปฏิเสธ</p>
+
+                    {referenceSamples.length > 1 && (
+                        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                            {referenceSamples.map((sample, index) => (
+                                <button
+                                    key={sample.id}
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveReferenceSampleId(sample.id);
+                                        if (activeReferenceImage === "raw" && !sample.rawImageUrl) setActiveReferenceImage("analyzed");
+                                        if (activeReferenceImage === "analyzed" && !sample.analyzedPlotUrl) setActiveReferenceImage("raw");
+                                    }}
+                                    title={`ภาพที่ ${index + 1}: ${sample.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}`}
+                                    className={`h-12 w-16 shrink-0 overflow-hidden rounded-lg border-2 bg-bg ${sample.id === activeReferenceSample?.id ? "border-primary" : "border-border"}`}
+                                >
+                                    <img src={sample.rawImageUrl ?? sample.analyzedPlotUrl ?? ""} alt={`ภาพตัวอย่างที่ ${index + 1}`} className="h-full w-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
                     )}
-                </div>
+                </section>
 
-                <div className="space-y-2.5">
-                    <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold sm:font-medium text-text-muted uppercase tracking-wider block">หมายเหตุการแก้ไข *</label>
-                        <span className={`text-xs font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
-                            {editNote.length}/{REVIEW_NOTE_MAX_LENGTH}
-                        </span>
+                <div className="space-y-6">
+                    <p className="text-xs text-text font-medium leading-relaxed">
+                        คุณสามารถแก้ไขค่าสารที่ระบบ AI วิเคราะห์ผิดพลาดได้ที่นี่ และเมื่อยืนยัน ข้อมูลจะถูกบันทึกเป็นค่าที่ถูกต้องและได้รับการอนุมัติ
+                    </p>
+
+                    {/* ค่าที่แสดงอยู่มาจากภาพที่ AI ไม่พบหลอดทดลอง ผู้ส่งจึงยังไม่เห็นค่าเหล่านี้ */}
+                    {editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
+                        <div className="flex items-start gap-2 p-2  rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                            <ImageOff size={16} className="shrink-0 mt-0.5" />
+                            <p className="text-xs leading-relaxed font-medium">
+                                AI ไม่พบหลอดทดลองในภาพของคำร้องนี้ ค่าด้านล่างจึงยังยืนยันไม่ได้และผู้ส่งยังไม่เห็นค่า กรุณาเทียบกับภาพดิบก่อนกรอกค่าที่ถูกต้อง
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Image Context */}
+                    <div className="bg-surface-subtle border border-border rounded-xl p-2.5 flex items-center gap-3 overflow-x-auto md:hidden">
+                        <span className="text-xs font-bold text-text-muted uppercase shrink-0 whitespace-nowrap">ภาพอ้างอิง:</span>
+                        {referenceSamples.length === 0 ? (
+                            <span className="text-xs text-text-muted">ไม่พบข้อมูลภาพถ่ายสำหรับรายการนี้</span>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                {editTarget.samples
+                                    .filter((s) => s.rawImageUrl || s.analyzedPlotUrl)
+                                    .map((s) => (
+                                        <div key={s.id} className="flex gap-2">
+                                            {s.rawImageUrl && (
+                                                <img
+                                                    src={s.rawImageUrl}
+                                                    alt="ภาพถ่าย"
+                                                    className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "raw" })}
+                                                />
+                                            )}
+                                            {s.analyzedPlotUrl && (
+                                                <img
+                                                    src={s.analyzedPlotUrl}
+                                                    alt="ภาพ AI"
+                                                    className="h-12 w-auto object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={() => onPreviewImage?.({ raw: s.rawImageUrl, analyzed: s.analyzedPlotUrl, active: "analyzed" })}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                        {["ปรับค่าตามภาพที่เห็นจริง", "AI อ่านค่าผิดพลาดจากแสง", "แก้ให้ตรงกับสีมาตรฐาน"].map((text) => (
-                            <button
-                                key={text}
-                                type="button"
-                                onClick={() => setEditNote(editNote ? `${editNote} ${text}` : text)}
-                                className="text-xs font-medium bg-surface hover:bg-surface-subtle border border-border text-text-secondary px-2 py-1 rounded-md transition-colors cursor-pointer"
-                            >
-                                {text}
-                            </button>
-                        ))}
+                    <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold sm:font-medium text-text uppercase tracking-wider block">ปรับแก้ค่าสาร</label>
+                            {isMultiSample && <span className="text-xs font-medium text-text">เลือกเฉพาะสารที่จะอนุมัติ</span>}
+                        </div>
+                        <div className="bg-surface-subtle border border-border rounded-xl p-2">
+                            {editTarget.samples.map((s) => {
+                                const isSelected = editSelectedSampleIds.includes(s.id);
+                                return (
+                                    <div key={s.id} className={`space-y-2 ${isMultiSample ? "pb-2.5 border-b border-border/60 last:border-b-0 last:pb-0" : ""}`}>
+                                        {isMultiSample && (
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={isSelected} onChange={() => toggleSample(s.id)} className="w-4 h-4 accent-teal-700 cursor-pointer" />
+                                                <span className="text-xs font-bold text-text">{s.measurements.map((m) => m.parameterName || "ไม่ระบุสาร").join(", ")}</span>
+                                            </label>
+                                        )}
+                                        <div className={`space-y-3 ${isMultiSample ? "pl-6" : ""} ${!isSelected ? "opacity-40" : ""}`}>
+                                            {s.measurements.map((m) => {
+                                                // หารายชื่อสารที่ถูกเลือกในใบอื่น ๆ ของ session เดียวกัน (ป้องกันการเลือกสารซ้ำ)
+                                                const otherSelectedParams = editTarget.samples
+                                                    .filter((otherS) => otherS.id !== s.id && editSelectedSampleIds.includes(otherS.id))
+                                                    .flatMap((otherS) => otherS.measurements.map((otherM) => editParameters[otherM.parameterId] ?? otherM.parameterId));
+
+                                                return (
+                                                    <div key={m.parameterId} className="flex flex-col gap-2">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <ParameterSelect
+                                                                value={editParameters[m.parameterId] ?? m.parameterId}
+                                                                options={systemParameters}
+                                                                originalId={m.parameterId}
+                                                                disabledIds={otherSelectedParams}
+                                                                disabled={!isSelected || !userRequestedChange}
+                                                                title={!userRequestedChange ? "ผู้ใช้ไม่ได้เปิดสิทธิ์ให้แอดมินเปลี่ยนสาร (หากผิดกรุณากดปฏิเสธ)" : ""}
+                                                                onChange={(val) => setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }))}
+                                                            />
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    disabled={!isSelected}
+                                                                    value={editMeasurements[m.parameterId] ?? m.value ?? ""}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        setEditMeasurements((prev) => ({ ...prev, [m.parameterId]: val ? parseFloat(val) : 0 }));
+                                                                    }}
+                                                                    className="w-20 p-2 bg-bg border border-border rounded-lg text-xs font-semibold sm:font-medium text-center outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed"
+                                                                />
+                                                                {m.unit && <span className="text-xs text-text">{m.unit}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {isMultiSample && editSelectedSampleIds.length < editTarget.samples.length && (
+                            <p className="text-xs font-medium text-text-danger bg-red-500/5 px-2.5 py-1.5 rounded-lg border border-red-500/10">สารที่ไม่ได้เลือกจะถูกปฏิเสธ</p>
+                        )}
                     </div>
 
-                    <textarea
-                        value={editNote}
-                        onChange={(e) => setEditNote(e.target.value)}
-                        placeholder="เช่น ปรับค่า pH ตามรูปถ่ายที่เห็นจริง"
-                        rows={3}
-                        maxLength={REVIEW_NOTE_MAX_LENGTH}
-                        className="w-full px-4 py-3.5 bg-surface-subtle border border-border text-text-primary rounded-2xl text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all resize-none"
-                    />
-                    <p className="text-xs text-text-muted mt-1.5">ข้อความนี้จะถูกแสดงให้อาสาสมัครเห็นในหน้าประวัติการส่งข้อมูล</p>
-                </div>
+                    <div className="space-y-2.5">
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="flex text-xs font-semibold sm:font-medium text-text uppercase tracking-wider">
+                                หมายเหตุการแก้ไข <p className="text-text-danger">*</p>
+                            </label>
+                            <span className={`text-xs font-medium tabular-nums ${editNote.length >= REVIEW_NOTE_MAX_LENGTH ? "text-text-danger" : "text-text-muted"}`}>
+                                {editNote.length}/{REVIEW_NOTE_MAX_LENGTH}
+                            </span>
+                        </div>
 
-                <button
-                    onClick={onSubmit}
-                    disabled={editSaving || !editNote.trim() || noneSelected}
-                    className="w-full py-4 min-h-13 bg-orange-500 hover:bg-orange-600 text-white font-semibold sm:font-medium rounded-2xl text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
-                >
-                    {editSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    บันทึกและอนุมัติ
-                </button>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                            {["ปรับค่าตามภาพที่เห็นจริง", "AI อ่านค่าผิดพลาดจากแสง", "แก้ให้ตรงกับสีมาตรฐาน"].map((text) => (
+                                <button
+                                    key={text}
+                                    type="button"
+                                    onClick={() => setEditNote(editNote ? `${editNote} ${text}` : text)}
+                                    className="text-xs font-medium bg-surface hover:bg-surface-subtle border border-border text-text px-2 py-1 rounded-md transition-colors cursor-pointer"
+                                >
+                                    {text}
+                                </button>
+                            ))}
+                        </div>
+
+                        <textarea
+                            value={editNote}
+                            onChange={(e) => setEditNote(e.target.value)}
+                            placeholder="หมายเหตุการแก้ไข (จำเป็นต้องกรอก)"
+                            rows={3}
+                            maxLength={REVIEW_NOTE_MAX_LENGTH}
+                            className="w-full p-3 h-30 bg-surface-subtle border border-border text-text rounded-md text-xs placeholder:text-text-muted/50 focus:ring-2 focus:ring-red-400/20 outline-none transition-all resize-none"
+                        />
+                        <p className="text-xs text-text">ข้อความนี้จะถูกแสดงให้เจ้าหน้าที่ภาคสนามที่ส่งข้อมูลเห็นในหน้าประวัติการส่งข้อมูล</p>
+                    </div>
+
+                    <button
+                        onClick={onSubmit}
+                        disabled={editSaving || !editNote.trim() || noneSelected}
+                        className="w-full py-4 min-h-13 bg-orange-500 hover:bg-orange-700 text-white font-semibold sm:font-medium rounded-md text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                    >
+                        {editSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                        บันทึกและอนุมัติ
+                    </button>
+                </div>
             </div>
         </Popup>
     );
@@ -1306,34 +1480,34 @@ export function RequestCardMobile({
                             </p>
                         )}
                         <div className="flex items-stretch gap-2 w-full mt-1">
-                        <button
-                            type="button"
-                            disabled={actingId === item.id}
-                            onClick={() => onOpenReject(item)}
-                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-danger hover:bg-border-danger text-text-danger  text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                        >
-                            <XCircle size={14} />
-                            <span>ปฏิเสธ</span>
-                        </button>
-                        <button
-                            type="button"
-                            disabled={actingId === item.id || noneSelected}
-                            onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            className="flex-1 min-h-10 px-2 rounded-lg bg-bg-warning hover:bg-border-warning text-text-warning  text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                        >
-                            <Edit2 size={14} />
-                            <span>แก้ไข</span>
-                        </button>
-                        <button
-                            type="button"
-                            disabled={actingId === item.id || noneSelected || mustEditBeforeApprove}
-                            onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
-                            title={mustEditBeforeApprove ? "AI ไม่พบหลอดทดลองในภาพ ต้องแก้ไขค่าก่อนอนุมัติ" : undefined}
-                            className="flex-1 min-h-10 px-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin bg-secondary" /> : <CheckCircle2 size={14} />}
-                            <span>อนุมัติ</span>
-                        </button>
+                            <button
+                                type="button"
+                                disabled={actingId === item.id}
+                                onClick={() => onOpenReject(item)}
+                                className="flex-1 min-h-10 px-2 rounded-lg bg-bg-danger hover:bg-border-danger text-text-danger  text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                <XCircle size={14} />
+                                <span>ปฏิเสธ</span>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actingId === item.id || noneSelected}
+                                onClick={() => onOpenEditApprove?.(item, showSampleSelect ? selectedSampleIds : undefined)}
+                                className="flex-1 min-h-10 px-2 rounded-lg bg-bg-warning hover:bg-border-warning text-text-warning  text-xs font-semibold sm:font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                <Edit2 size={14} />
+                                <span>แก้ไข</span>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actingId === item.id || noneSelected || mustEditBeforeApprove}
+                                onClick={() => onApprove(item, showSampleSelect ? selectedSampleIds : undefined)}
+                                title={mustEditBeforeApprove ? "AI ไม่พบหลอดทดลองในภาพ ต้องแก้ไขค่าก่อนอนุมัติ" : undefined}
+                                className="flex-1 min-h-10 px-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {actingId === item.id ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin bg-secondary" /> : <CheckCircle2 size={14} />}
+                                <span>อนุมัติ</span>
+                            </button>
                         </div>
                     </>
                 )}
@@ -1361,7 +1535,7 @@ export function RequestCardDesktop({
     onPreviewImage: (images: PreviewImages) => void;
     onOpenEditApprove?: (item: ReviewRequestItem, preSelectedSampleIds?: number[]) => void;
 }) {
-    // ใช้ component ตัวเดียวกันกับการ์ด Mobile เลย เพราะโครงสร้างเหมือนกัน 
+    // ใช้ component ตัวเดียวกันกับการ์ด Mobile เลย เพราะโครงสร้างเหมือนกัน
     // และ Desktop grid ก็จัดการความกว้างให้พอดีแล้ว
     return (
         <RequestCardMobile

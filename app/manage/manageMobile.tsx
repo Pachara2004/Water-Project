@@ -25,9 +25,7 @@ export default function ManageMobile({ currentUser, isAdmin, pendingCounts, show
         <div className="min-h-dvh w-full bg-bg transition-colors duration-75">
             <div className="w-full max-w-2xl mx-auto px-4">
                 <div className="pt-8 pb-1 mb-1 p-1">
-                    <h1 className="font-display text-2xl font-semibold text-text ">
-                        บัญชี <span className="text-primary">ของฉัน</span>
-                    </h1>
+                    <h1 className="font-display text-2xl font-semibold text-primary ">การจัดการระบบ</h1>
                 </div>
 
                 {currentUser ? (
@@ -102,7 +100,7 @@ export default function ManageMobile({ currentUser, isAdmin, pendingCounts, show
                                     </button>
                                 );
                             })}
-                            
+
                         {/* General Menus for all users */}
                         {generalMenus.map((menu) => {
                             const Icon = menu.icon;
@@ -123,10 +121,7 @@ export default function ManageMobile({ currentUser, isAdmin, pendingCounts, show
                                         <p className="text-xs text-text-secondary leading-relaxed">{menu.description}</p>
                                     </div>
 
-                                    <ChevronRight
-                                        size={18}
-                                        className="shrink-0 self-center transition-all duration-75 text-secondary group-hover:text-primary group-hover:translate-x-0.5"
-                                    />
+                                    <ChevronRight size={18} className="shrink-0 self-center transition-all duration-75 text-secondary group-hover:text-primary group-hover:translate-x-0.5" />
                                 </button>
                             );
                         })}
