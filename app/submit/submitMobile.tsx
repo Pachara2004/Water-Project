@@ -39,6 +39,8 @@ export default function SubmitMobile(props: any) {
         router,
     } = props;
 
+    const uploadedCount = activeParameters.filter((p: any) => hook.imageFiles[p.id]).length;
+
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
@@ -103,7 +105,19 @@ export default function SubmitMobile(props: any) {
                     <>
                         <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />{" "}
                         <MetadataFields {...hook} weatherData={hook.weatherData} />
-                        <AnalyzeButton {...hook} />
+
+                        <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xs font-semibold text-text">การดำเนินการ</h2>
+                                {/* แสดงเฉพาะตอนยังใส่รูปไม่ครบ — ครบแล้วปุ่มวิเคราะห์บอกสถานะเองอยู่แล้ว */}
+                                {activeParameters.length > 0 && uploadedCount < activeParameters.length && (
+                                    <span className="text-xs font-medium text-text">
+                                        คุณเพิ่มรูปแล้ว {uploadedCount}/{activeParameters.length} ช่อง
+                                    </span>
+                                )}
+                            </div>
+                            <AnalyzeButton {...hook} />
+                        </div>
 
                         {/* AI ไม่พบหลอดทดลองในบางภาพ — ให้ทางเลือกที่สองแทนการบังคับถ่ายใหม่อย่างเดียว */}
                         {hasBlockedPending && (

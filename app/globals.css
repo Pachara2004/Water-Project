@@ -479,7 +479,9 @@ body.popup-shown {
     font-family: var(--font-sans);
     font-size: 0.875rem;
     color: var(--color-text-secondary);
-    margin: 0.5rem 1rem 0;
+    /* ไม่เว้นขอบข้าง ให้เนื้อหากว้างเท่าแถวปุ่ม (.app-swal-actions กว้าง 100%) — SweetAlert2 ใส่ padding ข้าง 1.6em มาเอง จึงต้องล้างทิ้ง */
+    margin: 0.5rem 0 0;
+    padding: 0;
 }
 
 .app-swal-icon {
@@ -499,13 +501,18 @@ body.popup-shown {
 .app-swal-actions {
     width: 100%;
     display: flex;
+    align-items: stretch;
     gap: 0.75rem;
     margin-top: 1.5rem;
 }
 
 .app-swal-confirm,
 .app-swal-cancel {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 0.7rem 1rem;
     border-radius: 10px;
     font-family: var(--font-sans);
