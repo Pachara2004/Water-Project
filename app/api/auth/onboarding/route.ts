@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
+import { TERMS_VERSION } from "@/lib/termsVersion";
 export async function PUT(request: NextRequest) {
     // สกัดสิทธิ์ดักจับโทเคน: อนุญาตให้ทุกบทบาทที่ล็อกอินผ่าน LINE LIFF ถูกต้องเข้าทำรายการได้
     const auth = await verifyAuth(request);
@@ -38,6 +39,12 @@ export async function PUT(request: NextRequest) {
 
         if (!existingUser) {
             return NextResponse.json({ error: "ไม่พบข้อมูลบัญชีผู้ใช้งานนี้ในระบบ" }, { status: 404 });
+        }
+
+        // การยอมรับข้อตกลงถูกบันทึกไว้ที่บัญชีแล้ว (ตอนสร้างใน /api/auth หรือ /api/auth/accept-terms)
+        // ถ้าฉบับไม่ตรง แปลว่าข้อตกลงเปลี่ยนระหว่างทาง ให้กลับไปอ่านใหม่ก่อน
+        if (existingUser.termsVersion !== TERMS_VERSION) {
+            return NextResponse.json({ error: "กรุณายอมรับข้อตกลงการใช้งานฉบับปัจจุบันก่อนลงทะเบียน", code: "TERMS_REQUIRED" }, { status: 400 });
         }
 
         // 1. อัปเดตข้อมูลส่วนตัว (สิทธิ์ในตาราง user ยังเป็น guest ตามเดิม)

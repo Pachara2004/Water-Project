@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { TERMS_VERSION } from "@/lib/termsVersion";
+import { nowThai } from "@/lib/thaiTime";
 
 export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
         // เปลี่ยนจากรับ lineUid ตรง ๆ เป็นรับ accessToken ที่ได้จาก liff.getAccessToken()
-        const { accessToken, name } = body;
+        const { accessToken, name, acceptedTerms } = body;
 
         if (!accessToken || !name) {
             return NextResponse.json({ error: "กรุณาระบุ accessToken และ name ให้ครบถ้วน" }, { status: 400 });
@@ -31,6 +33,12 @@ export async function POST(request: NextRequest) {
         });
 
         if (!user) {
+            // uid ใหม่จะถูกเก็บก็ต่อเมื่อผู้ใช้กดยอมรับข้อตกลงมาแล้วเท่านั้น (LINE User Data Policy / PDPA)
+            // หน้าบ้านต้องผ่าน GET /api/auth/status → TermsGate ก่อน แล้วค่อยเรียกมาที่นี่พร้อม flag
+            if (acceptedTerms !== true) {
+                return NextResponse.json({ error: "กรุณายอมรับข้อตกลงการใช้งานก่อนสร้างบัญชี", code: "TERMS_REQUIRED" }, { status: 400 });
+            }
+
             const guestRole = await prisma.role.findUnique({
                 where: { roleName: "guest" },
             });
@@ -44,6 +52,8 @@ export async function POST(request: NextRequest) {
                     lineUniqueId: lineUid,
                     lineProfileName: name,
                     roleId: guestRole.id,
+                    termsAcceptedAt: nowThai(),
+                    termsVersion: TERMS_VERSION,
                 },
                 include: { systemRole: true },
             });

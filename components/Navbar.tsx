@@ -6,6 +6,7 @@ import { Map, BarChart2, User } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { useCallback, useEffect, useMemo, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
 import liff from "@line/liff";
+import { loginAfterLiff } from "@/lib/lineAuth";
 import { onNavDotsRefresh } from "@/lib/navEvents";
 const SettingsIcon = lazy(() => import("lucide-react").then((mod) => ({ default: mod.Settings })));
 const FileScanIcon = lazy(() => import("lucide-react").then((mod) => ({ default: mod.FileScan })));
@@ -207,21 +208,9 @@ export default function Navbar() {
 
                     if (isLineApp && liff.isLoggedIn()) {
                         // แทนที่จะโหลดหน้าใหม่แล้วค้าง ให้ยิง API ดึงข้อมูลและอัปเดต State ทันที
+                        // (ผ่าน loginAfterLiff เพื่อให้ uid ใหม่ต้องยอมรับข้อตกลงก่อนถูกเก็บ เหมือน path ตอนเปิดแอป)
                         try {
-                            const profile = await liff.getProfile();
-                            const response = await fetch("/api/auth", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                    accessToken: liff.getAccessToken(),
-                                    name: profile.displayName,
-                                }),
-                            });
-
-                            if (response.ok) {
-                                const resData = await response.json();
-                                useAppStore.getState().setUser(resData);
-                            }
+                            await loginAfterLiff();
                         } catch (err) {
                             console.error("Auto login via LINE client failed:", err);
                         }
