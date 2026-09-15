@@ -19,11 +19,17 @@ interface AppState {
     setUser: (user: CurrentUser | null) => void;
     toggleTheme: () => void;
     setTheme: (theme: "light" | "dark") => void;
+    // LIFF ล็อกอินแล้วแต่ยังต้องยอมรับข้อตกลงก่อน (ดู lib/lineAuth.ts)
+    // "new" = ยังไม่มีบัญชี (uid ยังไม่ถูกเก็บ), "existing" = มีบัญชีแต่ยังไม่ยอมรับฉบับปัจจุบัน, null = ไม่ต้อง
+    pendingTermsLogin: "new" | "existing" | null;
+    setPendingTermsLogin: (pending: "new" | "existing" | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
     currentUser: null,
     theme: "light",
+    pendingTermsLogin: null,
+    setPendingTermsLogin: (pending) => set({ pendingTermsLogin: pending }),
 
     // สลับบทบาทผู้ใช้งานชั่วคราว (ใช้ในหน้าจัดการสมาชิกของ Admin)
     setRole: (role) =>

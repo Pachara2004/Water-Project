@@ -37,6 +37,11 @@ model User {
   firstName        String?         @map("first_name")
   lastName         String?         @map("last_name")
   phoneNumber      String?         @map("phone_number")
+
+  // การยอมรับข้อตกลงการใช้งานและนโยบายความเป็นส่วนตัวตอนลงทะเบียน
+  // termsVersion คือค่า TERMS_VERSION (lib/termsVersion.ts) ณ เวลาที่ยอมรับ — ผู้ใช้เก่าก่อนมีระบบนี้เป็น null
+  termsAcceptedAt  DateTime?       @map("terms_accepted_at")
+  termsVersion     String?         @map("terms_version")
   
   roleId           Int             @map("role_id")
   systemRole       Role            @relation(fields: [roleId], references: [id])

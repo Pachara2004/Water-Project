@@ -6,6 +6,8 @@ import { useAppStore } from "@/lib/store";
 import { ShieldAlert, User, Send, ArrowLeft } from "lucide-react";
 import { useToast } from "./useToast";
 import LiffBackground from "@/components/LiffBackground"; // <-- 1. Import พื้นหลังเข้ามา
+import TermsGate from "@/components/TermsGate";
+import { acceptTermsAndLogin, loginAfterLiff } from "@/lib/lineAuth";
 
 interface FieldErrors {
     firstName?: string;
@@ -20,6 +22,9 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
     const [loadingStep, setLoadingStep] = useState("กำลังเริ่มต้นระบบ...");
     const currentUser = useAppStore((state) => state.currentUser);
     const setUser = useAppStore((state) => state.setUser);
+    const pendingTermsLogin = useAppStore((state) => state.pendingTermsLogin);
+    const setPendingTermsLogin = useAppStore((state) => state.setPendingTermsLogin);
+    const [termsBusy, setTermsBusy] = useState(false);
 
     const [step, setStep] = useState<1 | 2>(1);
     const [firstName, setFirstName] = useState("");
@@ -39,6 +44,24 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             setLiffError("การเชื่อมต่อใช้เวลานานผิดปกติ กรุณารีเฟรชหรือเปิดลิงก์ใหม่");
             setLiffLoaded(true);
         }, 15000);
+
+        // ?mockOnboarding (เฉพาะ dev) = จำลองผู้ใช้ใหม่ที่ยังไม่มีเบอร์โทร → หน้าลงทะเบียน
+        // ?mockOnboarding=terms = จำลอง uid ใหม่ที่ยังไม่ยอมรับข้อตกลง → TermsGate
+        // ส่งจริงไม่ได้เพราะไม่มี LINE token — ใช้ตรวจ UI ในเบราว์เซอร์ธรรมดาเท่านั้น
+        const mockMode = process.env.NODE_ENV === "development" ? new URLSearchParams(window.location.search).get("mockOnboarding") : null;
+        if (mockMode !== null) {
+            // ผ่าน microtask เพื่อไม่ setState ตรง ๆ ใน effect ให้เหมือน path อื่นที่รอ Promise
+            Promise.resolve().then(() => {
+                if (mockMode === "terms") {
+                    setPendingTermsLogin("new");
+                } else {
+                    setUser({ id: 0, lineUniqueId: "U_MOCK_NEW", lineProfileName: "Mock New User", firstName: null, lastName: null, phoneNumber: null, role: "guest" });
+                }
+                setLiffLoaded(true);
+                clearTimeout(fallbackTimer);
+            });
+            return;
+        }
 
         if (!liffId) {
             setLoadingStep("จำลองการยืนยันตัวตน...");
@@ -72,24 +95,10 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
 
                 // ยอมให้ดึงข้อมูลผู้ใช้ก็ต่อเมื่อ LIFF ล็อกอินแล้ว และผู้ใช้ "เคยกดปุ่มเข้าสู่ระบบ" แล้วเท่านั้น
                 if (liff.isLoggedIn() && hasLoggedIntoApp) {
-                    setLoadingStep("กำลังดึงโปรไฟล์ LINE...");
-                    const profile = await liff.getProfile();
-                    
                     setLoadingStep("กำลังตรวจสอบสิทธิ์ผู้ใช้...");
-                    const response = await fetch("/api/auth", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            accessToken: liff.getAccessToken(),
-                            name: profile.displayName,
-                        }),
-                    });
-
-                    if (!response.ok) throw new Error("Failed to authenticate with backend");
-
+                    // uid ที่ยังไม่มีในระบบจะไม่ถูกเก็บจนกว่าจะยอมรับข้อตกลง (เปิด TermsGate ผ่าน pendingTermsLogin)
+                    await loginAfterLiff();
                     setLoadingStep("กำลังโหลดข้อมูลสำเร็จ...");
-                    const resData = await response.json();
-                    setUser(resData);
                     setLiffLoaded(true);
                     clearTimeout(fallbackTimer);
                     return;
@@ -110,7 +119,28 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 const isDark = typeof window !== "undefined" && localStorage.getItem("theme") === "dark";
                 useAppStore.getState().setTheme(isDark ? "dark" : "light");
             });
-    }, [setUser]);
+    }, [setUser, setPendingTermsLogin]);
+
+    // ยอมรับข้อตกลง → บันทึกที่บัญชี (สร้างใหม่พร้อม flag หรืออัปเดตบัญชีเดิม) แล้วล็อกอิน
+    const handleAcceptTerms = async () => {
+        if (!pendingTermsLogin) return;
+        setTermsBusy(true);
+        try {
+            await acceptTermsAndLogin(pendingTermsLogin);
+        } catch (err) {
+            console.error("Login after accepting terms failed:", err);
+            showToast("เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่", "danger");
+        } finally {
+            setTermsBusy(false);
+        }
+    };
+
+    // ไม่ยอมรับ = ไม่สร้าง/ไม่เข้าบัญชี กลับเป็น guest; LIFF ยังล็อกอินอยู่แต่แอปจะไม่ดึงข้อมูลจนกว่าจะกดเข้าสู่ระบบอีก
+    const handleDeclineTerms = () => {
+        localStorage.removeItem("hasLoggedIntoApp");
+        setPendingTermsLogin(null);
+        setUser(null);
+    };
 
     const validateField = (name: keyof FieldErrors, value: string) => {
         let errorMsg = "";
@@ -229,7 +259,17 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         );
     }
 
-    // ─── 3. หน้าลงทะเบียน Onboarding ───
+    // ─── 3. หน้าข้อตกลง (LIFF ล็อกอินแล้ว แต่ยังไม่มีบัญชี หรือบัญชียังไม่ยอมรับฉบับปัจจุบัน) ───
+    if (pendingTermsLogin) {
+        return (
+            <>
+                <TermsGate onAccept={handleAcceptTerms} onDecline={handleDeclineTerms} busy={termsBusy} />
+                {toastElement}
+            </>
+        );
+    }
+
+    // ─── 4. หน้าลงทะเบียน Onboarding ───
     if (currentUser && !currentUser.phoneNumber) {
         return (
             <div className="fixed inset-0 z-2000 flex items-center justify-center p-4 sm:p-6">
