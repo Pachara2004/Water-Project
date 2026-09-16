@@ -1,7 +1,46 @@
 /**
- * prisma/seed.ts — Database seed สำหรับโครงสร้างใหม่ตาม schema.prisma จริง
- * ─────────────────────────────────────────────────────────
- * รัน: npm run seed หรือ npx prisma db seed
+ * @file prisma/seed.ts
+ * @project Water Monitoring Project
+ * @module Prisma / Seed
+ * @description
+ * Seed ฐานข้อมูลสำหรับพัฒนา/เดโม ตาม schema.prisma จริง: ล้างทุกตารางตามลำดับ FK (รวม snapshot/log/แคช
+ * ที่ผูกด้วยรหัสสตริงไม่มี FK) และรีเซ็ต AUTO_INCREMENT แล้วสร้าง roles, parameters (NH3/PO4 พร้อมสูตร),
+ * location types + standards, dashboard widgets, users, role requests, สถานีพร้อมที่อยู่ไทย,
+ * ตัวอย่างน้ำ 250 กลุ่ม (500 แถว) กระจายค่าให้มีความสัมพันธ์กับสภาพอากาศจริง และชุดทดสอบคำร้อง
+ * ตรวจสอบครบทุกสถานะ รหัส sessionGroup/code เจนในหน่วยความจำให้ตรงรูปแบบ production
+ *
+ * Development/demo database seed: wipes every table in FK order, resets auto-increment, then
+ * creates roles, parameters, location types & standards, widgets, users, stations, 250 sample
+ * sessions with weather-correlated values and review-request fixtures for every status.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-22 – 2026-09-11)
+ *
+ * @lastModified 2026-09-11 14:23
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้าง seed พร้อมโครงระบบ
+ * - 2026-06-29 10:08 by Pachara P. - เพิ่ม onboarding และ role requests
+ * - 2026-07-03 09:19 by Pachara P. - แยกตาราง parameter
+ * - 2026-07-08 15:13 by Nopparut U. - เพิ่มข้อมูลสำหรับกราฟความสัมพันธ์
+ * - 2026-07-17 11:06 by Nopparut U. - เพิ่มตาราง LocationType และ Standard แทน hardcoded standards
+ * - 2026-07-31 13:13 by Nopparut U. - รหัสตัวอย่างน้ำตรงรูปแบบ production (SES/SP + วันที่)
+ * - 2026-08-31 13:31 by Nopparut U. - สถานีมีที่อยู่ไทย
+ * - 2026-09-07 13:07 by Nopparut U. - ตัวอย่างมีความสัมพันธ์จริงและกระจายตัวใกล้ข้อมูลจริง
+ * - 2026-09-09 13:18 by Nopparut U. - เพิ่มสูตรเคมีให้สาร
+ * - 2026-09-11 by Nopparut U. - ยึดเวลาไทยทุกคอลัมน์ DateTime และล้าง snapshot/log/แคชตอน seed
+ *
+ * @database ใช้ lib/prisma (client ตัวเดียวกับแอป เพื่อให้ extension เติมเวลาไทยเหมือนข้อมูลจริง)
+ * @warning ทำลายข้อมูลทั้งหมด ห้ามรันบนฐานที่มีข้อมูลจริง ใช้ prisma/backfill-*.ts แทนเมื่อต้องเติมคอลัมน์ใหม่
+ * @notes ตัวนับ sessionGroup/code ในหน่วยความจำถูกต้องเฉพาะเมื่อเริ่มจากตารางว่าง; เวลาทุกค่าเป็นนาฬิกาไทย อ่าน/แก้ด้วยเมธอด getUTCxxx / setUTCxxx เท่านั้น
+ * @see docs/skills/SKILL_prisma_data_model.md
+ * @example `npm run seed` หรือ `npx prisma db seed`
+ * @license Private / Proprietary
  */
 
 import { WaterStatus } from "@prisma/client";
@@ -25,6 +64,7 @@ const dateKey = (d: Date) => toYymmdd(d);
 const sessionSeqByDay = new Map<string, number>(); // YYMMDD -> ลำดับกลุ่มล่าสุดของวันนั้น
 const sampleSeqByDayLocation = new Map<string, number>(); // YYMMDD:locationId -> ลำดับตัวอย่างล่าสุดของสถานีในวันนั้น
 
+/** รหัสกลุ่ม `SES[YYMMDD][ลำดับ 4 หลัก]` นับรวมทั้งระบบ รีเซ็ตรายวัน */
 function nextSessionGroup(collectionTime: Date): string {
     const ymd = dateKey(collectionTime);
     const seq = (sessionSeqByDay.get(ymd) ?? 0) + 1;
@@ -32,6 +72,7 @@ function nextSessionGroup(collectionTime: Date): string {
     return `SES${ymd}${String(seq).padStart(4, "0")}`;
 }
 
+/** รหัสตัวอย่าง `SP[YYMMDD][locationId 3 หลัก][ลำดับ 4 หลัก]` นับแยกรายสถานี รีเซ็ตรายวัน */
 function nextSampleCode(locationId: number, collectionTime: Date): string {
     const ymd = dateKey(collectionTime);
     const key = `${ymd}:${locationId}`;
@@ -40,6 +81,7 @@ function nextSampleCode(locationId: number, collectionTime: Date): string {
     return `SP${ymd}${String(locationId).padStart(3, "0")}${String(seq).padStart(4, "0")}`;
 }
 
+/** ล้างแล้วสร้างข้อมูลทั้งหมดตามลำดับ 1–9 (ดูหัวข้อในฟังก์ชัน) */
 async function main() {
     console.log("🌱 Starting database seeding based on actual schema.prisma...");
 

@@ -1,14 +1,29 @@
 /**
- * Codegen: LocationType union จากแถวจริงใน DB
- * ─────────────────────────────────────────────────────────
- * ประเภทการใช้ประโยชน์ของแหล่งน้ำย้ายไปอยู่ในตาราง `location_types` แล้ว ซึ่ง TypeScript
- * มองไม่เห็นตอน compile — ถ้าปล่อยให้เป็น `string` เปล่า ๆ การพิมพ์ code ผิด (เช่น "CORAL_RIF")
- * จะหลุดไป runtime แล้วเงียบ ๆ ตกไปใช้ค่า fallback ซึ่งเป็นบั๊กแบบเดียวกับที่ระบบนี้เคยเจอมาแล้ว
+ * @file scripts/generate-location-types.ts
+ * @project Water Monitoring Project
+ * @module Scripts / Codegen
+ * @description
+ * Codegen สร้าง union type LocationTypeCode จากแถวจริงในตาราง location_types ลง lib/generated/location-types.ts
+ * เพื่อให้ TypeScript ตรวจโค้ดประเภทแหล่งน้ำที่พิมพ์ผิดตอน compile แทนที่จะเงียบๆ ตกไป fallback ตอน runtime
+ * ถ้าต่อ DB ไม่ได้ (เช่น CI) และมีไฟล์เดิม จะใช้ไฟล์ที่ commit ไว้ต่อโดยไม่ล้ม build หยุดทำงานเมื่อตารางว่าง
+ * หรือไม่มีโซน COMMUNITY ที่โค้ดใช้เป็นค่า fallback
  *
- * สคริปต์นี้จึงอ่าน code ทั้งหมดจาก DB แล้ว gen เป็น union type ให้ TS ตรวจให้เหมือนเดิม
+ * Codegen: emits the LocationTypeCode union from the location_types table. Falls back to the
+ * committed file when the DB is unreachable; refuses to emit an empty union or one lacking COMMUNITY.
  *
- * รัน: npm run gen:location-types  (ผูกไว้กับ npm run build ด้วย)
- * ไฟล์ผลลัพธ์ commit ลง git — เพื่อให้ clone มาแล้ว typecheck ได้โดยไม่ต้องต่อ DB
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-17
+ * @version 1.0.0
+ *
+ * @lastModified 2026-07-17 11:06
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-17 11:06 by Nopparut U. - สร้างสคริปต์คู่กับการเพิ่มตาราง LocationType และ Standard
+ *
+ * @database ใช้ lib/prisma (client ตัวเดียวกับแอป)
+ * @notes รัน `npm run gen:location-types` และถูกผูกไว้กับ `npm run build`; ไฟล์ผลลัพธ์ commit ลง git เพื่อให้ clone แล้ว typecheck ได้โดยไม่ต้องต่อ DB
+ * @license Private / Proprietary
  */
 
 import { writeFile, mkdir, access } from "fs/promises";
@@ -17,6 +32,11 @@ import { prisma } from "../lib/prisma";
 
 const OUTPUT_PATH = path.join(process.cwd(), "lib", "generated", "location-types.ts");
 
+/**
+ * ประกอบเนื้อไฟล์ TypeScript ที่จะเขียนออก
+ *
+ * @param codes - รหัสประเภทแหล่งน้ำเรียงตาม id
+ */
 function buildFileContents(codes: string[]): string {
     const union = codes.map((c) => `"${c}"`).join(" | ");
 
@@ -36,6 +56,7 @@ export function isLocationTypeCode(value: string | null | undefined): value is L
 `;
 }
 
+/** true เมื่อไฟล์เข้าถึงได้ ใช้ตัดสิน fallback ตอนต่อ DB ไม่ได้ */
 async function fileExists(filePath: string): Promise<boolean> {
     try {
         await access(filePath);
@@ -45,6 +66,7 @@ async function fileExists(filePath: string): Promise<boolean> {
     }
 }
 
+/** อ่านรหัสจาก DB ตรวจความครบถ้วน แล้วเขียนไฟล์ generated */
 async function main() {
     let codes: string[];
 

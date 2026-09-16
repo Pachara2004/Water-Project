@@ -1,19 +1,37 @@
 /**
- * เติมค่า SampleRecord.governingAgencyFrom ให้เรคคอร์ดที่บันทึกไว้ก่อนจะมีคอลัมน์นี้
+ * @file prisma/backfill-governing-agency.ts
+ * @project Water Monitoring Project
+ * @module Prisma / Backfill Script
+ * @description
+ * สคริปต์เติมค่า SampleRecord.governingAgencyFrom ให้เรคคอร์ดที่บันทึกไว้ก่อนมีคอลัมน์นี้ โดยดึงหน่วยงาน
+ * "ปัจจุบัน" ของสถานีผ่าน locationNameCurrentId (เรคคอร์ดเก่าไม่ได้เก็บหน่วยงาน ณ วันบันทึกไว้ที่ไหนเลย)
+ * จับกลุ่มตามหน่วยงานแล้ว updateMany ทีเดียวต่อกลุ่ม รันซ้ำได้: แตะเฉพาะแถวที่ยังเป็น null
+ * และข้ามสถานีที่ไม่ได้ระบุหน่วยงานหรือถูกลบไปแล้ว
  *
- * ข้อจำกัดที่ยอมรับแล้ว: เรคคอร์ดเก่าไม่ได้เก็บหน่วยงาน ณ วันที่บันทึกไว้ที่ไหนเลย
- * สคริปต์จึงดึงหน่วยงาน "ปัจจุบัน" ของสถานีผ่าน locationNameCurrentId มาเติมแทน
- * ถ้าสถานีเคยย้ายหน่วยงาน ค่าที่เติมจะไม่ตรงกับความจริง ณ วันนั้น
- * ส่วนเรคคอร์ดที่สร้างใหม่หลังจากนี้จะได้ค่าที่ถูกต้องจาก createSampleRecordSnapshot() เอง
+ * One-off idempotent backfill of SampleRecord.governingAgencyFrom from each station's current
+ * agency, grouped into one updateMany per agency.
  *
- * รันซ้ำได้ — แตะเฉพาะแถวที่ยังเป็น null และข้ามสถานีที่ไม่ได้ระบุหน่วยงาน
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-08-26
+ * @version 1.0.0
  *
- *   npx tsx prisma/backfill-governing-agency.ts
+ * @lastModified 2026-08-26 13:26
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-08-26 13:26 by Nopparut U. - สร้างสคริปต์คู่กับการแสดงชื่อหน่วยงานในหน้าประวัติแทนขีด
+ *
+ * @database Prisma Client (MySQL) ใช้ client ใหม่ในสคริปต์ ไม่ผ่าน lib/prisma
+ * @warning ถ้าสถานีเคยย้ายหน่วยงาน ค่าที่เติมจะไม่ตรงกับความจริง ณ วันบันทึก; เรคคอร์ดใหม่ได้ค่าถูกจาก createSampleRecordSnapshot() เอง
+ * @example `npx tsx prisma/backfill-governing-agency.ts`
+ * @license Private / Proprietary
  */
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/** ค้นแถวที่ค้าง จับกลุ่มตามหน่วยงานปัจจุบันของสถานี แล้วอัปเดตเป็นก้อน พร้อมสรุปจำนวนที่เติม/ข้าม */
 async function main() {
   const pending = await prisma.sampleRecord.findMany({
     where: { governingAgencyFrom: null, locationNameCurrentId: { not: null } },
