@@ -45,24 +45,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             setLiffLoaded(true);
         }, 15000);
 
-        // ?mockOnboarding (เฉพาะ dev) = จำลองผู้ใช้ใหม่ที่ยังไม่มีเบอร์โทร → หน้าลงทะเบียน
-        // ?mockOnboarding=terms = จำลอง uid ใหม่ที่ยังไม่ยอมรับข้อตกลง → TermsGate
-        // ส่งจริงไม่ได้เพราะไม่มี LINE token — ใช้ตรวจ UI ในเบราว์เซอร์ธรรมดาเท่านั้น
-        const mockMode = process.env.NODE_ENV === "development" ? new URLSearchParams(window.location.search).get("mockOnboarding") : null;
-        if (mockMode !== null) {
-            // ผ่าน microtask เพื่อไม่ setState ตรง ๆ ใน effect ให้เหมือน path อื่นที่รอ Promise
-            Promise.resolve().then(() => {
-                if (mockMode === "terms") {
-                    setPendingTermsLogin("new");
-                } else {
-                    setUser({ id: 0, lineUniqueId: "U_MOCK_NEW", lineProfileName: "Mock New User", firstName: null, lastName: null, phoneNumber: null, role: "guest" });
-                }
-                setLiffLoaded(true);
-                clearTimeout(fallbackTimer);
-            });
-            return;
-        }
-
         if (!liffId) {
             setLoadingStep("จำลองการยืนยันตัวตน...");
             fetch("/api/auth", {
@@ -119,7 +101,7 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 const isDark = typeof window !== "undefined" && localStorage.getItem("theme") === "dark";
                 useAppStore.getState().setTheme(isDark ? "dark" : "light");
             });
-    }, [setUser, setPendingTermsLogin]);
+    }, [setUser]);
 
     // ยอมรับข้อตกลง → บันทึกที่บัญชี (สร้างใหม่พร้อม flag หรืออัปเดตบัญชีเดิม) แล้วล็อกอิน
     const handleAcceptTerms = async () => {
