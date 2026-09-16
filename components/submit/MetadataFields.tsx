@@ -106,16 +106,16 @@ export function MetadataFields(props: MetadataFieldsProps) {
         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
-    // 🟢 1. คำนวณเวลาสูงสุด (ปัจจุบัน - ห้ามเลือกอนาคต)
+    // 1. คำนวณเวลาสูงสุด (ปัจจุบัน - ห้ามเลือกอนาคต)
     const now = new Date();
     const maxNow = formatLocalDateTime(now);
 
-    // 🟢 2. คำนวณเวลาย้อนหลังสูงสุด 60 วัน (ห้ามเลือกลึกกว่า 60 วัน)
+    // 2. คำนวณเวลาย้อนหลังสูงสุด 60 วัน (ห้ามเลือกลึกกว่า 60 วัน)
     const minDateObj = new Date();
     minDateObj.setDate(now.getDate() - 60);
     const min60Days = formatLocalDateTime(minDateObj);
 
-    // 🟢 3. จัดการการเปลี่ยนเวลาพร้อมดักขอบเขต min/max
+    // 3. จัดการการเปลี่ยนเวลาพร้อมดักขอบเขต min/max
     const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedValue = e.target.value;
         if (!selectedValue) return;
@@ -142,8 +142,8 @@ export function MetadataFields(props: MetadataFieldsProps) {
                         title="datetime"
                         type="datetime-local"
                         value={collectionTime}
-                        min={min60Days} // 🟢 ล็อคห้ามเลือกย้อนหลังเกิน 60 วัน
-                        max={maxNow} // 🟢 ล็อคห้ามเลือกอนาคต
+                        min={min60Days}
+                        max={maxNow}
                         required
                         disabled={disabled}
                         onChange={handleTimeChange}

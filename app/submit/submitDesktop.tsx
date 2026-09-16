@@ -94,15 +94,10 @@ export default function SubmitDesktop(props: any) {
                             <SubmitSteps step={step} isSaved={saved} />
                         </div>
 
-                        <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
-                            <h2 className="text-xs font-medium text-text">ตำแหน่งจุดเก็บตัวอย่าง</h2>
                             <LocationPicker {...hook} gpsCoords={hook.gpsCoords} exifCoords={hook.exifCoords} activeSource={hook.activeSource} onSelectSource={hook.onSelectSource} />
-                        </div>
 
-                        <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
-                            <h2 className="text-xs font-medium text-text">ข้อมูลประกอบการตรวจ</h2>
+                        
                             <MetadataFields {...hook} weatherData={hook.weatherData} disabled={step !== "upload"} />
-                        </div>
 
                         <div className="bg-card-general border border-border rounded-xl p-4 space-y-3">
                             <div className="flex items-center justify-between">
@@ -208,10 +203,9 @@ export default function SubmitDesktop(props: any) {
                     </aside>
 
                     {/* RIGHT COLUMN: Image & Parameter List (8 Columns) */}
-                    <section className="col-span-12 lg:col-span-8 space-y-4">
+                    <section className="col-span-12 lg:col-span-8  space-y-4">
                         {step === "upload"
                             ? systemParameters.map((param: any) => (
-                                  <div key={param.id} className="bg-card-general border border-border rounded-xl p-4">
                                       <ImageZone
                                           param={param}
                                           step={step}
@@ -226,11 +220,9 @@ export default function SubmitDesktop(props: any) {
                                           enabled={enabledParamIds.has(param.id)}
                                           onToggle={() => toggleParam(param.id)}
                                       />
-                                  </div>
                               ))
                             : step === "analyzing"
                               ? activeParameters.map((param: any) => (
-                                    <div key={param.id} className="bg-card-general border border-border rounded-xl p-4">
                                         <ImageZone
                                             param={param}
                                             step={step}
@@ -243,10 +235,8 @@ export default function SubmitDesktop(props: any) {
                                             allLocations={allLocations}
                                             setIsRecommending={setIsRecommending}
                                         />
-                                    </div>
                                 ))
                               : resultEntries.map(({ key, param, measurement }: any) => (
-                                    <div key={key} className="bg-card-general border border-border rounded-xl p-4">
                                         <ImageZone
                                             key={key}
                                             param={param}
@@ -261,7 +251,6 @@ export default function SubmitDesktop(props: any) {
                                             onRevertAutoSwitch={saved ? undefined : () => hook.revertAutoSwitch(key)}
                                             isSaved={saved}
                                         />
-                                    </div>
                                 ))}
                     </section>
                 </div>

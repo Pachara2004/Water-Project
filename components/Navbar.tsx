@@ -116,6 +116,24 @@ function setBlobPos(blob: HTMLDivElement, axis: "x" | "y", offset: number, size:
     else blob.style.height = `${size}px`;
 }
 
+/** ตรวจสอบว่าเมนูนำทางนั้นๆ กำลัง active หรือไม่ รวมถึง route ลูกและ workflow ที่เกี่ยวข้องกัน */
+function isNavItemActive(itemHref: string, pathname: string | null): boolean {
+    if (!pathname) return false;
+    if (pathname === itemHref || pathname.startsWith(itemHref + "/")) return true;
+
+    // หน้า /submit เป็นส่วนหนึ่งของกระบวนการ "ตรวจคุณภาพ" (/collector)
+    if (itemHref === "/collector" && (pathname === "/submit" || pathname.startsWith("/submit/"))) {
+        return true;
+    }
+
+    // หน้า /terms เป็นส่วนหนึ่งของเมนู "จัดการข้อมูล" (/manage)
+    if (itemHref === "/manage" && (pathname === "/terms" || pathname.startsWith("/terms/"))) {
+        return true;
+    }
+
+    return false;
+}
+
 /**
  * แถบนำทางหลัก ไม่รับ props อ่านผู้ใช้/role จาก useAppStore และ pathname จาก Next router
  * วางไว้ใน root layout จึงไม่ remount ตอนเปลี่ยนหน้า
@@ -289,7 +307,7 @@ export default function Navbar() {
 
     // หา active index จาก pathname
     const activeIndex = useMemo(() => {
-        return navItems.findIndex((item) => pathname === item.href || pathname?.startsWith(item.href + "/"));
+        return navItems.findIndex((item) => isNavItemActive(item.href, pathname));
     }, [navItems, pathname]);
 
     /* ── Blob position update (รวม mobile + desktop ไว้ใน effect เดียว ลด overhead) ── */
@@ -388,7 +406,7 @@ export default function Navbar() {
                     <div ref={mobileBlobRef} style={MOBILE_BLOB_STYLE} />
                     <Suspense fallback={null}>
                         {navItems.map((item, i) => {
-                            const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+                            const isActive = isNavItemActive(item.href, pathname);
                             const Icon = item.icon;
                             const displayLabel = MOBILE_LABEL_MAP[item.label] || item.label;
                             return (
@@ -433,7 +451,7 @@ export default function Navbar() {
                         <div ref={desktopBlobRef} style={DESKTOP_BLOB_STYLE} />
                         <Suspense fallback={null}>
                             {navItems.map((item, i) => {
-                                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+                                const isActive = isNavItemActive(item.href, pathname);
                                 const Icon = item.icon;
                                 return (
                                     <Link
