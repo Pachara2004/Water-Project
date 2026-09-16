@@ -1,3 +1,44 @@
+/**
+ * @file Navbar.tsx
+ * @project Water Monitoring Project
+ * @module UI / Navigation
+ * @description
+ * แถบนำทางหลักของแอป: บนมือถือเป็นแถบล่าง บน desktop เป็นแถบข้าง รายการเมนูขึ้นกับ role
+ * (แผนที่ / ตรวจคุณภาพ / แดชบอร์ด / จัดการข้อมูล หรือ เข้าสู่ระบบ) มี "blob" ไฮไลต์เมนูที่ active
+ * แบบแอนิเมชัน 2 จังหวะ (ยืดแล้วหดกลับ) ขยับด้วย useLayoutEffect ตรงๆ ไม่ผ่าน state
+ * แสดงจุดแดงแจ้งเตือนจาก /api/notifications และ /api/manage/pending-count รีเฟรชเมื่อโฟกัสหน้า
+ * หรือเมื่อหน้าอื่นเรียก refreshNavDots() และจัดการปุ่มเข้าสู่ระบบผ่าน LIFF
+ *
+ * Main role-aware navigation (bottom bar on mobile, side rail on desktop) with an
+ * animated active-item blob, unread/pending notification dots and the LIFF login entry.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-22 – 2026-09-15)
+ *
+ * @lastModified 2026-09-15 14:15
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้าง navbar พร้อมโครงระบบ
+ * - 2026-06-22 14:28 by Nopparut U. - เพิ่มเมนูหน้า admin panel (จัดการข้อมูล)
+ * - 2026-07-13 16:03 by Pachara P. - ปรับประสิทธิภาพ (lazy icon, memo รายการเมนู)
+ * - 2026-07-15 12:00 by Nopparut U. - เพิ่มจุดแดงแจ้งเตือนและ event refreshNavDots
+ * - 2026-07-16 13:33 by Pachara P. - ซ่อนหน้า collector จาก officer
+ * - 2026-08-04 09:43 by Pachara P. - ปรับ UI คอมโพเนนต์หลักและ blob ไฮไลต์
+ * - 2026-09-10 by Pachara P. - เข้าสู่ระบบเป็นเมนู; แก้ล็อกอิน/ล็อกเอาต์ผ่าน LINE browser
+ * - 2026-09-14 09:07 by Pachara P. - ย้ายตำแหน่งและเพิ่มแอนิเมชัน
+ * - 2026-09-15 14:15 by Nopparut U. - ปุ่มเข้าสู่ระบบผ่าน loginAfterLiff ให้ uid ใหม่ต้องยอมรับข้อตกลงก่อน
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ @line/liff, localStorage และ useLayoutEffect
+ * @responsive มือถือ = แถบล่าง, desktop (`md` ขึ้นไป) = แถบข้าง render ทั้งคู่แล้วสลับด้วย CSS
+ * @auth อ่าน role จาก useAppStore; ยิง API ด้วย LIFF access token
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -75,6 +116,10 @@ function setBlobPos(blob: HTMLDivElement, axis: "x" | "y", offset: number, size:
     else blob.style.height = `${size}px`;
 }
 
+/**
+ * แถบนำทางหลัก ไม่รับ props อ่านผู้ใช้/role จาก useAppStore และ pathname จาก Next router
+ * วางไว้ใน root layout จึงไม่ remount ตอนเปลี่ยนหน้า
+ */
 export default function Navbar() {
     const pathname = usePathname();
 

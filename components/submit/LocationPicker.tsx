@@ -1,10 +1,42 @@
-// components/submit/LocationPicker.tsx
+/**
+ * @file LocationPicker.tsx
+ * @project Water Monitoring Project
+ * @module UI / Submit / Location
+ * @description
+ * ส่วนเลือกสถานีในหน้า submit: ค้นหาจากรายการทั้งหมด และแนะนำสถานีใกล้ที่สุดตามพิกัดที่เลือกใช้
+ * (GPS ของอุปกรณ์ หรือ EXIF จากรูปที่อัปโหลด สลับแหล่งได้) คำนวณระยะด้วยสูตร Haversine
+ * เมื่อยังไม่มีพิกัดจะให้เลือกด้วยมือจากการค้นหา
+ *
+ * Station picker for the submit page: search all stations or pick from the nearest
+ * ones based on device GPS or photo EXIF coordinates (Haversine distance).
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-07
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-01, 2026-09-03)
+ *
+ * @lastModified 2026-09-07 10:48
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-07 15:30 by Pachara P. - แยกส่วนเลือกสถานีออกมาตอนปรับโครงสร้างไฟล์ submit
+ * - 2026-07-21 13:36 by Pachara P. - ปรับการดึงพิกัดตอนส่งตรวจ
+ * - 2026-08-31 10:32 by Pachara P. - ปรับ logic เลือกตำแหน่ง (GPS / EXIF / manual)
+ * - 2026-09-03 10:48 by Nopparut U. - ใช้ design token แทนสีฝังตาย
+ * - 2026-09-07 10:48 by Pachara P. - ปรับช่องส่งตัวอย่าง
+ *
+ * @client-side ใช้ useEffect/useMemo ต้องอยู่ใน Client Component
+ * @license Private / Proprietary
+ */
+
 import { useEffect, useMemo } from "react";
 import { Search, MapPin, ChevronRight, Loader2, Navigation, Image as ImageIcon } from "lucide-react";
 import { LocationItem } from "./types";
 import { SectionHead } from "./SharedAtoms";
 
-// ฟังก์ชันคำนวณระยะทาง (Haversine)
+/** ระยะทางระหว่างสองพิกัดเป็นกิโลเมตร (สูตร Haversine) */
 function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -13,6 +45,7 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
     return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+/** Props ของ LocationPicker state ทั้งหมดเป็นของ useSubmitSample */
 interface LocationPickerProps {
     searchQuery: string;
     setSearchQuery: (q: string) => void;
@@ -22,12 +55,21 @@ interface LocationPickerProps {
     allLocations: LocationItem[];
     clearLocation: () => void;
 
+    /** พิกัดจากอุปกรณ์; null = ยังไม่ได้/ไม่อนุญาต */
     gpsCoords: { lat: number; lng: number } | null;
+    /** พิกัดจาก EXIF ของรูปที่อัปโหลด; null = รูปไม่มีพิกัด */
     exifCoords: { lat: number; lng: number } | null;
+    /** แหล่งพิกัดที่ใช้แนะนำสถานีอยู่ */
     activeSource: "gps" | "exif" | "manual";
+    /** เรียกเมื่อผู้ใช้สลับแหล่งพิกัด */
     onSelectSource: (source: "gps" | "exif") => void;
 }
 
+/**
+ * ส่วนเลือกสถานี
+ *
+ * @param props - ดู {@link LocationPickerProps}
+ */
 export function LocationPicker({
     searchQuery,
     setSearchQuery,

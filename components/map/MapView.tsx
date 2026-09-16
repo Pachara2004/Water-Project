@@ -1,3 +1,44 @@
+/**
+ * @file MapView.tsx
+ * @project Water Monitoring Project
+ * @module UI / Map / GIS
+ * @description
+ * แผนที่หลักของระบบ (react-leaflet) โหลดสถานีจาก /api/locations ตามตัวกรองหน่วยงาน/สถานะ
+ * วาดหมุดสีตามสถานะน้ำ (LocationPin) และเปิด BottomSheet เมื่อกดหมุด มี 2 โหมด:
+ * "explorer" (หน้าแผนที่ปกติ พร้อมช่องค้นหา ตัวกรอง และปุ่มดึงตำแหน่ง GPS) และ "picker"
+ * (หน้าจัดการสถานที่ กดบนแผนที่เพื่อปักหมุดใหม่) รองรับติดตาม GPS อัตโนมัติตามค่าใน lib/gpsAutoTrack
+ * และเลื่อนจอให้อยู่ในกรอบที่กำหนดผ่าน panInside โดยไม่เปลี่ยนซูม
+ *
+ * Main react-leaflet map: loads stations with agency/status filters, renders
+ * status-coloured pins, opens the BottomSheet, and supports explorer and picker modes
+ * plus optional automatic GPS tracking.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-11 – 2026-09-02)
+ *
+ * @lastModified 2026-09-14 08:55
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้างแผนที่พร้อมโครงระบบ
+ * - 2026-06-11 13:57 by Pachara P. - เพิ่มตัวกรองสถานะ
+ * - 2026-07-13 16:03 by Pachara P. - ปรับประสิทธิภาพ (แคช marker)
+ * - 2026-07-17 14:10 by Nopparut U. - แก้สถานะของหมุดให้ตรงกับผลประเมิน
+ * - 2026-07-21 by Nopparut U./Pachara P. - เพิ่ม GPS อัตโนมัติ และโหมด picker สำหรับเพิ่มจุดตรวจ
+ * - 2026-08-28 08:32 by Pachara P. - รองรับการจัดการสถานที่แบบใหม่ (panInside)
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับสถานะ null (ประเมินไม่ได้)
+ * - 2026-09-14 08:55 by Pachara P. - แก้ไขการซูมของแผนที่
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ต้องโหลดแบบ dynamic ssr:false เพราะ Leaflet ใช้ window
+ * @responsive ใช้ 100dvh และ safe-area สำหรับ LINE LIFF
+ * @see docs/skills/SKILL_googlemap_uxui.md
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -14,6 +55,7 @@ import { Navigation } from "lucide-react";
 import { alertError } from "@/lib/swal";
 import { disableAutoTrackAfterDenial, resolveAutoTrack } from "@/lib/gpsAutoTrack";
 
+/** สถานีตามที่ /api/locations ส่งกลับ (รวมตัวอย่างล่าสุด) */
 interface LocationData {
     id: number;
     name: string;
@@ -114,14 +156,23 @@ function MapController({
     return null;
 }
 
+/** Props ของ MapView */
 interface MapViewProps {
+    /** explorer = หน้าแผนที่ปกติ (ค่าเริ่มต้น) / picker = กดแผนที่เพื่อปักหมุด */
     mode?: "explorer" | "picker";
+    /** เรียกพร้อมพิกัดเมื่อกดแผนที่ในโหมด picker */
     onLocationPick?: (lat: number, lng: number) => void;
+    /** หมุดที่ปักไว้ในโหมด picker */
     pickedPosition?: { lat: number; lng: number } | null;
     /** เลื่อนจอให้พื้นที่ที่เห็นกลับเข้ากรอบนี้ โดยไม่ปักหมุด — เปลี่ยน nonce ทุกครั้งที่ต้องการให้เลื่อนอีกรอบ */
     panInside?: { bounds: [[number, number], [number, number]]; nonce: number } | null;
 }
 
+/**
+ * แผนที่หลัก
+ *
+ * @param props - ดู {@link MapViewProps}
+ */
 export default function MapView({ mode = "explorer", onLocationPick, pickedPosition, panInside }: MapViewProps) {
     const [locations, setLocations] = useState<LocationData[]>([]);
     const [agencyFilter, setAgencyFilter] = useState("ALL");

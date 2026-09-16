@@ -1,3 +1,33 @@
+/**
+ * @file manageDesktop.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage
+ * @description
+ * view desktop ของหน้าจัดการระบบ: ขยาย layout ของ mobile ให้เต็มจอ โปรไฟล์คู่กับการ์ดการตั้งค่า
+ * และเมนูจาก stack แนวตั้งเป็น grid หลายคอลัมน์ ไม่เปลี่ยน logic/handler ใช้ ManagePageProps ชุดเดียวกับ mobile
+ *
+ * Desktop manage view: profile beside a settings card, menus in a multi-column grid.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-04 – 2026-09-10)
+ *
+ * @lastModified 2026-09-10 14:28
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 13:37 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-08-04 09:44 by Pachara P. - ปรับ UI desktop
+ * - 2026-08-11 14:06 by Pachara P. - แก้ error หน้า manage
+ * - 2026-09-10 14:28 by Pachara P. - เพิ่มเมนูข้อตกลงและนโยบายความเป็นส่วนตัว
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import liff from "@line/liff";
@@ -7,8 +37,11 @@ import GpsAutoTrackToggle from "@/components/GpsAutoTrackToggle";
 import { adminMenus, generalMenus, MenuBoxDisable, EditProfileDrawer, ProfileCard } from "@/components/manage/manageHelpers";
 import type { ManagePageProps } from "./manageMobile";
 
-// Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, เมนูจาก stack แนวตั้งเป็นกริดหลายคอลัมน์)
-// ไม่เปลี่ยน logic/handler — ใช้ props ชุดเดียวกับ manageMobile ที่มาจาก page.tsx
+/**
+ * หน้าจัดการระบบบน desktop
+ *
+ * @param props - ดู ManagePageProps ใน manageMobile.tsx
+ */
 export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, showEdit, setShowEdit, handleLogout, router, showToast, toastElement }: ManagePageProps) {
     return (
         <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">

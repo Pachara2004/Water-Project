@@ -1,3 +1,26 @@
+/**
+ * @file app/manage/loading.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Loading
+ * @description
+ * Skeleton ของหน้าจัดการระบบ: หัวข้อ, การ์ดโปรไฟล์ และรายการเมนู
+ *
+ * Route loading UI for /manage.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-16
+ * @version 1.0.0
+ *
+ * @lastModified 2026-07-16 14:52
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-16 14:52 by Pachara P. - เพิ่ม skeleton loader ทุกหน้า
+ *
+ * @client-side ไม่มี hook/state เป็น Server Component ได้ (Next.js route loading UI)
+ * @license Private / Proprietary
+ */
+
 import { ChevronRight } from "lucide-react";
 
 export default function Loading() {

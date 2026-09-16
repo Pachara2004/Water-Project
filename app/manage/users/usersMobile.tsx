@@ -1,3 +1,33 @@
+/**
+ * @file usersMobile.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Users
+ * @description
+ * view มือถือของหน้าจัดการผู้ใช้: การ์ดสถิติ, ช่องค้นหา/แท็บ/เรียงลำดับ/ปุ่มปฏิเสธทั้งหมด, รายการ UserListRow
+ * และ PaginationBar ประกาศ UsersPageProps ที่ usersDesktop ใช้ร่วมด้วย
+ *
+ * Mobile user-management view; also declares the shared UsersPageProps.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-24)
+ *
+ * @lastModified 2026-09-09 10:47
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 14:57 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-07-27 11:49 by Nopparut U. - ใช้ PaginationBar กลาง
+ * - 2026-08-14 12:18 by Nopparut U. - ค้นหาตามเบอร์โทรได้
+ * - 2026-09-09 10:47 by Nopparut U. - แถบแบ่งหน้าใหม่
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import type { useRouter } from "next/navigation";
@@ -6,6 +36,7 @@ import PageHeader from "@/components/PageHeader";
 import { type Role, type UserItem, UserListRow } from "@/components/manage/usersHelpers";
 import PaginationBar from "@/components/PaginationBar";
 
+/** Props ร่วมของ UsersMobile / UsersDesktop ทั้งหมดมาจาก page.tsx */
 export interface UsersPageProps {
     router: ReturnType<typeof useRouter>;
     toastElement: React.ReactNode;
@@ -42,6 +73,11 @@ export interface UsersPageProps {
     handleReject: (user: UserItem, displayName: string) => void;
 }
 
+/**
+ * หน้าจัดการผู้ใช้บนมือถือ
+ *
+ * @param props - ดู {@link UsersPageProps}
+ */
 export default function UsersMobile(props: UsersPageProps) {
     const {
         router,

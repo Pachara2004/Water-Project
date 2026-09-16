@@ -1,29 +1,59 @@
+/**
+ * @file PaginationBar.tsx
+ * @project Water Monitoring Project
+ * @module UI / Data Table
+ * @description
+ * แถบแบ่งหน้ากลาง ใช้ร่วมกันทุกหน้าที่ดึงข้อมูลแบบแบ่งหน้าจาก API เลขหน้ามาจากฝั่ง server
+ * (lib/pagination.ts) ไม่ใช่การตัดอาเรย์ในเบราว์เซอร์ มีปุ่มเลขหน้า (ย่อด้วย "…"), ช่องกระโดดไปหน้า,
+ * และดรอปดาวน์ "แถวต่อหน้า" แบบ custom การซ่อนมีสองระดับ: totalPages 0 ซ่อนทั้งแถบ /
+ * totalPages 1 ซ่อนเฉพาะแถวเลขหน้าแต่คงดรอปดาวน์ไว้ให้เปลี่ยนจำนวนแถวกลับได้
+ *
+ * Shared server-driven pagination bar: page buttons with ellipsis, jump-to-page
+ * input and a custom rows-per-page dropdown. Two-level hiding so the page-size
+ * control stays reachable even when only one page remains.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-27
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-19)
+ *
+ * @lastModified 2026-09-11 16:25
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-27 14:19 by Nopparut U. - สร้างแถบแบ่งหน้ากลาง ใช้ครั้งแรกที่หน้า review-requests
+ * - 2026-08-19 11:10 by Pachara P. - ปรับ UI สถานะ pending
+ * - 2026-09-09 10:47 by Nopparut U. - เพิ่มปุ่มเลขหน้าแบบย่อ ช่องกระโดดหน้า และตัวเลือกจำนวนแถวต่อหน้า
+ * - 2026-09-11 16:25 by Nopparut U. - เปลี่ยนดรอปดาวน์ "แถวต่อหน้า" เป็น custom สไตล์เดียวกับ OfficerFilterBar
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @responsive render เลขหน้าสองชุด (siblings 1 / 0) แล้วสลับด้วย CSS ที่ breakpoint `sm` แทน useMediaQuery กันกระพริบตอน hydrate
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-/**
- * แถบแบ่งหน้ากลาง ใช้ร่วมกันทุกหน้าที่ดึงข้อมูลแบบแบ่งหน้าจาก API
- *
- * เลขหน้ามาจากฝั่ง server (lib/pagination.ts) ไม่ใช่การตัดอาเรย์ในเบราว์เซอร์
- *
- * การซ่อนมีสองระดับ ห้ามยุบเป็นเงื่อนไขเดียว:
- * - totalPages === 0 (ไม่พบผลลัพธ์เลย) ซ่อนทั้งแถบ
- * - totalPages === 1 ซ่อนเฉพาะแถวเลขหน้า แต่ยังต้องโชว์ดรอปดาวน์ "แถวต่อหน้า" ไว้
- *   ไม่งั้นผู้ใช้ที่เลือก 30 แถวจนเหลือหน้าเดียวจะไม่มีทางเปลี่ยนกลับเป็น 10 ได้อีก
- */
-
 /** ตัวเลือกจำนวนแถวต่อหน้า — ทุกค่าต้องไม่เกิน MAX_PAGE_SIZE ใน lib/pagination.ts */
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 15, 20, 30];
 
+/** Props ของ PaginationBar */
 interface PaginationBarProps {
+    /** หน้าปัจจุบัน (เริ่มที่ 1) */
     page: number;
+    /** จำนวนหน้าทั้งหมดจาก server; 0 = ไม่พบผลลัพธ์ */
     totalPages: number;
+    /** เรียกเมื่อผู้ใช้เปลี่ยนหน้า (ผ่านปุ่มหรือช่องกรอก) */
     onPageChange: (p: number) => void;
     /** ส่งคู่กับ onPageSizeChange เท่านั้น — ขาดตัวใดตัวหนึ่งดรอปดาวน์จะไม่ถูก render */
     pageSize?: number;
+    /** เรียกเมื่อผู้ใช้เปลี่ยนจำนวนแถวต่อหน้า */
     onPageSizeChange?: (size: number) => void;
+    /** ตัวเลือกจำนวนแถว (ค่าเริ่มต้น 10/15/20/30) */
     pageSizeOptions?: number[];
 }
 
@@ -178,6 +208,16 @@ function PageSizeSelect({ value, options, onChange }: { value: number; options: 
     );
 }
 
+/**
+ * แถบแบ่งหน้า คืน null เมื่อ totalPages เป็น 0
+ *
+ * @param props - ดู {@link PaginationBarProps}
+ *
+ * @example
+ * ```tsx
+ * <PaginationBar page={page} totalPages={meta.totalPages} onPageChange={setPage} pageSize={size} onPageSizeChange={setSize} />
+ * ```
+ */
 export default function PaginationBar({ page, totalPages, onPageChange, pageSize, onPageSizeChange, pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS }: PaginationBarProps) {
     // ช่องกรอกเลขหน้าถือค่าดิบระหว่างพิมพ์ (ให้ลบจนว่างได้) แล้วค่อย commit ตอน Enter หรือ blur
     const [pageDraft, setPageDraft] = useState(String(page));

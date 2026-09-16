@@ -1,17 +1,56 @@
-// components/submit/ImageZone.tsx
+/**
+ * @file ImageZone.tsx
+ * @project Water Monitoring Project
+ * @module UI / Submit / Image
+ * @description
+ * ช่องอัปโหลดภาพหลอดทดสอบของสารหนึ่งตัว (ถ่ายจากกล้องหรือเลือกจากแกลเลอรี) พร้อมป็อปโอเวอร์
+ * ตัวอย่างสีและสเกลสีจากแผ่นเทียบ Test Kit ตอนเลือกไฟล์จะอ่านพิกัด EXIF เพื่อแนะนำสถานีใกล้เคียง
+ * แสดงแถบ progress จำลองระหว่างอัปโหลด และหลังวิเคราะห์จะแสดงภาพผล ค่า ความมั่นใจ และแบนเนอร์
+ * (สลับสารอัตโนมัติ / สารไม่รู้จัก / ไม่พบหลอดทดลอง) ค่าของภาพที่ AI ไม่พบหลอดจะไม่แสดงให้ผู้ส่ง
+ * จนกว่า admin จะตรวจ blob URL ถูก revoke เมื่อเปลี่ยนไฟล์หรือ unmount
+ *
+ * Per-parameter test-tube image uploader with colour-scale reference, EXIF-based
+ * station suggestion, simulated upload progress and post-analysis result display.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-07
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-14 – 2026-09-03)
+ *
+ * @lastModified 2026-09-11 15:47
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-07 15:30 by Pachara P. - แยกช่องอัปโหลดออกมาตอนปรับโครงสร้างไฟล์ submit
+ * - 2026-07-14 – 07-16 by Nopparut U. - โหมดส่งตัวอย่าง, flow สารผิดช่อง และสารซ้ำ
+ * - 2026-08-04 12:22 by Pachara P. - แสดง confidence
+ * - 2026-08-21 16:23 by Pachara P. - ปรับ flow การส่งตรวจ
+ * - 2026-09-02 14:13 by Nopparut U. - ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ ซ่อนค่าจนกว่า admin ตรวจ
+ * - 2026-09-03 11:51 by Nopparut U. - เพิ่มข้อความบอกวิธีใส่รูป
+ * - 2026-09-07 10:25 by Pachara P. - อัปโหลดรูปพร้อมหน่วงการวิเคราะห์
+ * - 2026-09-10 09:48 by Pachara P. - เพิ่ม progress bar ตอนอัปโหลด
+ * - 2026-09-11 by Pachara P. - แก้การอัปโหลดรูปหลายรอบ
+ *
+ * @client-side ใช้ hook, File API, URL.createObjectURL ต้องอยู่ใน Client Component
+ * @notes อ่าน EXIF ผ่าน dynamic import ของ lib/exif เพื่อไม่โหลดไลบรารีจนกว่าจะมีการเลือกไฟล์
+ * @license Private / Proprietary
+ */
+
 import { useRef, useState, useMemo, useEffect } from "react";
 import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft, Download } from "lucide-react";
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult, VerifyError } from "./types";
 import { SectionHead } from "./SharedAtoms";
 
-// รูปตัวอย่างสีของเหลวชุดทดสอบต่อสาร
+/** รูปตัวอย่างสีของเหลวชุดทดสอบต่อสาร (คีย์ = ชื่อสารตัวพิมพ์เล็ก) */
 const PARAM_EXAMPLE_IMAGE: Record<string, string> = {
     ammonia: "/testkit-examples/ammonia.jpg",
     phosphate: "/testkit-examples/phosphate.jpg",
 };
 
-// โค้ดสีเคมีจริงจากแผ่นเทียบมาตรฐาน Test Kit พร้อมระดับความปลอดภัย
+/** ช่องสีหนึ่งช่องบนแผ่นเทียบมาตรฐาน Test Kit พร้อมระดับความปลอดภัย */
 interface ColorScale {
     color: string;
     value: string;
@@ -42,25 +81,39 @@ function matchParamKey(name: string, table: Record<string, any>): string | null 
     return Object.keys(table).find((key) => n.includes(key)) ?? null;
 }
 
+/** Props ของ ImageZone */
 interface ImageZoneProps {
+    /** สารของช่องนี้ */
     param: DbParameter;
     step: "upload" | "analyzing" | "results";
+    /** URL ภาพต้นฉบับที่เลือกไว้ */
     preview?: string;
+    /** ภาพผลวิเคราะห์ (File จากการวิเคราะห์สด หรือ URL จาก DB) */
     plotFile?: File | string;
     measurement?: MeasurementResult;
+    /** เหตุผลที่ผลถูกบล็อก */
     verifyError?: VerifyError;
+    /** เรียกเมื่อผู้ใช้เลือกไฟล์ใหม่ */
     onImageFilesChange: (file: File) => void;
+    /** ส่งรายการสถานีใกล้พิกัด EXIF กลับให้หน้าแม่ */
     onNearestLocationsUpdate: (locations: any[]) => void;
     allLocations: any[];
     setIsRecommending: (b: boolean) => void;
+    /** เปิดสวิตช์ช่องนี้อยู่ (ค่าเริ่มต้น true) */
     enabled?: boolean;
     onToggle?: () => void;
     onRevertAutoSwitch?: () => void;
+    /** แสดงในหน้าประวัติ (อ่านอย่างเดียว) */
     isHistoryView?: boolean;
     /** บันทึก/ส่งตรวจสอบไปแล้ว — ซ่อนแบนเนอร์แจ้งเตือนก่อนบันทึก (สลับสารอัตโนมัติ/สารไม่รู้จัก) ที่ทำอะไรไม่ได้แล้ว */
     isSaved?: boolean;
 }
 
+/**
+ * ช่องอัปโหลดภาพของสารหนึ่งตัว
+ *
+ * @param props - ดู {@link ImageZoneProps}
+ */
 export function ImageZone({
     param,
     step,

@@ -1,9 +1,41 @@
-// components/submit/SubmitSteps.tsx
+/**
+ * @file SubmitSteps.tsx
+ * @project Water Monitoring Project
+ * @module UI / Submit / Steps
+ * @description
+ * ตัวบอกขั้นตอนการส่งตรวจ 3 ขั้น (อัปโหลด → วิเคราะห์ → บันทึก) แสดงได้ทั้งแนวนอน (มือถือ)
+ * และแนวตั้ง (sidebar บน desktop) คำนวณสถานะแต่ละขั้นจาก step ปัจจุบันและ flag บันทึกแล้ว
+ *
+ * Three-step progress indicator for the submit flow, in horizontal or vertical orientation.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-15
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-20, 2026-08-04)
+ *
+ * @lastModified 2026-09-03 10:48
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-15 16:35 by Nopparut U. - สร้างตัวบอกขั้นตอนพร้อม UI หน้า submit
+ * - 2026-08-04 12:59 by Pachara P. - ปรับตามการส่งตรวจแบบใหม่
+ * - 2026-09-03 10:48 by Nopparut U. - ใช้ design token แทนสีฝังตาย
+ *
+ * @client-side ไม่มี hook/state ใช้ได้ทั้ง Server และ Client Component
+ * @license Private / Proprietary
+ */
+
 import { Check } from "lucide-react";
 
+/** Props ของ SubmitSteps */
 interface SubmitStepsProps {
+    /** ขั้นตอนปัจจุบันของ flow */
     step: "upload" | "analyzing" | "results";
+    /** แนวนอน (ค่าเริ่มต้น) หรือแนวตั้ง */
     orientation?: "horizontal" | "vertical";
+    /** true = บันทึกแล้ว ทำให้ขั้น "บันทึก" เป็น done */
     isSaved?: boolean;
 }
 
@@ -36,6 +68,11 @@ function StepCircle({ n, state }: { n: number; state: "done" | "active" | "idle"
     return <div className="w-8 h-8 rounded-full bg-surface border-2 border-border text-text-muted flex items-center justify-center shrink-0 text-xs font-bold">{n}</div>;
 }
 
+/**
+ * ตัวบอกขั้นตอน 3 ขั้น
+ *
+ * @param props - ดู {@link SubmitStepsProps}
+ */
 export function SubmitSteps({ step, orientation = "horizontal", isSaved = false }: SubmitStepsProps) {
     const states = computeStepStates(step, isSaved);
 

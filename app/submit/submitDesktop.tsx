@@ -1,3 +1,38 @@
+/**
+ * @file submitDesktop.tsx
+ * @project Water Monitoring Project
+ * @module App / Submit
+ * @description
+ * view desktop ของหน้าส่งตรวจ: DesktopSidebar (ข้อมูล session + ขั้นตอนแนวตั้ง) ซ้าย และเนื้อหา 2 คอลัมน์ขวา
+ * ประกอบจาก LocationPicker, MetadataFields, ImageZone ต่อสาร, AnalyzeButton, ResultsPanel และปุ่มยืนยัน/ส่งตรวจสอบ
+ * state และ handler ทั้งหมดมาจาก page.tsx ผ่าน props (ยังพิมพ์เป็น any)
+ *
+ * Desktop submit view: session sidebar plus a two-column content area. Layout only.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-24 – 2026-09-03)
+ *
+ * @lastModified 2026-09-11 12:40
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 09:35 by Pachara P. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-07-24 15:33 by Nopparut U. - ใช้ PageHeader กลาง
+ * - 2026-08-21 16:23 by Pachara P. - ปรับ flow การส่งตรวจ
+ * - 2026-08-25 by Nopparut U./Pachara P. - แก้ปุ่มส่งตรวจสอบ ลบปุ่มยืนยันสารเดิมหลังส่ง และปรับ flow ให้แอดมิน
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับภาพที่ AI ไม่พบหลอดทดลอง
+ * - 2026-09-03 by Nopparut U. - ใช้ design token และจัดขนาดตัวอักษรเข้าสเกล
+ * - 2026-09-07 10:48 by Pachara P. - ไม่บังคับส่งสองสารแม้เปิด 2 ช่อง
+ * - 2026-09-11 12:40 by Pachara P. - แก้วันเวลาเปลี่ยนตอนแสดงผลวิเคราะห์
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { ImageZone } from "@/components/submit/ImageZone";
@@ -9,6 +44,11 @@ import { SubmitSteps } from "@/components/submit/SubmitSteps";
 import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy, Send } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 
+/**
+ * หน้าส่งตรวจบน desktop
+ *
+ * @param props - state/handler จาก page.tsx (hook, results, step, handleImageSelect ฯลฯ)
+ */
 export default function SubmitDesktop(props: any) {
     const {
         hook,

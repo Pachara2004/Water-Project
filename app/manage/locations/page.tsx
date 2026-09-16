@@ -1,3 +1,44 @@
+/**
+ * @file app/manage/locations/page.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Locations
+ * @description
+ * หน้าจัดการจุดตรวจวัดน้ำ (/manage/locations, admin เท่านั้น) เจ้าของ state และ handler ทั้งหมด:
+ * ฟอร์มเพิ่มสถานี (ชื่อ, หน่วยงานเลือก/พิมพ์ใหม่, ที่อยู่ไทย, พิกัดจากแตะแผนที่ / ค้นหา Nominatim / พิมพ์เอง),
+ * กันปักหมุดนอกประเทศไทยด้วยกรอบพิกัดแล้วยืนยันด้วย countryCode จาก reverse geocode (BigDataCloud)
+ * พร้อมเดาจังหวัด/อำเภอ/ตำบลจาก adminLevel, รายการสถานี, แก้ไข และลบ ผ่าน /api/locations
+ * เลือก view mobile/desktop ตามจอ
+ *
+ * Admin station management: owns the create/edit/delete state, Thailand-bounds + reverse-geocode
+ * validation of picked coordinates, and administrative-area parsing; views only lay it out.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-11 – 2026-09-01)
+ *
+ * @lastModified 2026-09-02 14:24
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้างหน้าเพิ่มพิกัดพร้อมโครงระบบ
+ * - 2026-06-22 14:28 by Nopparut U. - ย้ายเข้า admin panel
+ * - 2026-07-21 15:00 by Pachara P. - ปรับการเพิ่มจุดตรวจ (แตะแผนที่ปักหมุด)
+ * - 2026-07-23 14:42 by Nopparut U. - แยก view เป็น desktop/mobile และใช้ Popup กลาง
+ * - 2026-08-28 08:32 by Pachara P. - เพิ่มที่อยู่ไทยและ reverse geocode
+ * - 2026-08-31 10:58 by Pachara P. - กันปักหมุดนอกประเทศไทย
+ * - 2026-09-01 by Nopparut U. - คุมความถูกต้องของที่อยู่ลดหลั่น และแจ้งเตือนเมื่อบันทึกไม่สำเร็จ
+ * - 2026-09-02 14:24 by Pachara P. - บล็อกการเข้าถึงตาม role
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @auth admin เท่านั้น ยิง API ด้วย LIFF access token
+ * @notes reverse geocode ยิงตรงไป api.bigdatacloud.net จากเบราว์เซอร์; ค้นหาชื่อสถานที่ผ่าน /api/nominatim
+ * @see docs/skills/SKILL_googlemap_uxui.md
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -19,6 +60,7 @@ import LocationsDesktop from "./locationsDesktop";
 // ด่านชี้ขาดคือ countryCode จากผล reverse geocode (ดู useEffect ของ pickedPosition)
 const TH_BOUNDS = { minLat: 5.5, maxLat: 20.5, minLng: 97.3, maxLng: 105.7 };
 
+/** ด่านแรก: พิกัดอยู่ในกรอบสี่เหลี่ยมคร่าวๆ ของประเทศไทยหรือไม่ */
 function isWithinThaiBounds(lat: number, lng: number): boolean {
     return lat >= TH_BOUNDS.minLat && lat <= TH_BOUNDS.maxLat && lng >= TH_BOUNDS.minLng && lng <= TH_BOUNDS.maxLng;
 }
@@ -64,6 +106,7 @@ const MapView = dynamic(() => import("@/components/map/MapView"), {
     ),
 });
 
+/** เจ้าของ state หน้าจัดการสถานที่ เลือก view ตามจอ */
 export default function AdminLocationsPage() {
     const { currentUser } = useAppStore();
     const router = useRouter();

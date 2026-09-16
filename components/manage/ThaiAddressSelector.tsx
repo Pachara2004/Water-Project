@@ -1,3 +1,38 @@
+/**
+ * @file ThaiAddressSelector.tsx
+ * @project Water Monitoring Project
+ * @module UI / Manage / Address
+ * @description
+ * ชุดดรอปดาวน์เลือกที่อยู่ไทยแบบลดหลั่น จังหวัด → อำเภอ → ตำบล และเติมรหัสไปรษณีย์ให้อัตโนมัติ
+ * จากต้นไม้ที่อยู่ใน useThaiAddressTree เมื่อเปลี่ยนจังหวัด/อำเภอจะ geocode ผ่าน /api/nominatim
+ * แล้วส่งพิกัดกลับทาง onGeocode ให้หน้าผู้เรียกเลื่อนแผนที่ ดรอปดาวน์เป็น custom (SearchableSelect)
+ * มีช่องค้นหาเมื่อรายการยาว และ render เมนูผ่าน portal เพื่อไม่ให้ถูกขอบ Popup ตัด
+ *
+ * Cascading Thai address selector (province → district → subdistrict) with
+ * automatic zipcode fill and Nominatim geocoding callback. Uses a portal-based
+ * searchable dropdown so menus are not clipped inside scrolling popups.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-08-28
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-01)
+ *
+ * @lastModified 2026-09-02 11:44
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-08-28 08:32 by Pachara P. - สร้างตัวเลือกที่อยู่สำหรับหน้าจัดการสถานที่
+ * - 2026-08-31 10:58 by Pachara P. - geocode ตามจังหวัด/อำเภอเพื่อเลื่อนแผนที่
+ * - 2026-09-01 10:11 by Nopparut U. - เปลี่ยนเป็นดรอปดาวน์ custom มีช่องค้นหา และคุมความถูกต้องของที่อยู่ลดหลั่น
+ * - 2026-09-01 11:53 by Nopparut U. - render เมนูผ่าน portal แก้ถูกขอบ popup ตัด
+ * - 2026-09-02 11:44 by Pachara P. - ปรับ UI
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ createPortal
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -126,6 +161,7 @@ function SearchableSelect({
     );
 }
 
+/** Props ของ ThaiAddressSelector ค่าและ setter ทุกช่องเป็นของหน้าผู้เรียก */
 interface ThaiAddressSelectorProps {
     province: string;
     setProvince: (v: string) => void;
@@ -135,9 +171,15 @@ interface ThaiAddressSelectorProps {
     setSubdistrict: (v: string) => void;
     zipcode: string;
     setZipcode: (v: string) => void;
+    /** เรียกพร้อมพิกัดกึ่งกลางเมื่อ geocode จังหวัด/อำเภอสำเร็จ */
     onGeocode?: (lat: number, lng: number) => void;
 }
 
+/**
+ * ตัวเลือกที่อยู่ไทย 3 ระดับ + รหัสไปรษณีย์ เปลี่ยนระดับบนจะล้างระดับล่างให้
+ *
+ * @param props - ดู {@link ThaiAddressSelectorProps}
+ */
 export function ThaiAddressSelector({
     province, setProvince,
     district, setDistrict,

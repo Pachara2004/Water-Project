@@ -1,4 +1,39 @@
-// components/submit/ResultsPanel.tsx
+/**
+ * @file ResultsPanel.tsx
+ * @project Water Monitoring Project
+ * @module UI / Submit / Results
+ * @description
+ * แผงสรุปผลวิเคราะห์หลัง AI อ่านค่าเสร็จ แสดงค่าแต่ละสารพร้อมแถบระดับ ตารางเปรียบเทียบเกณฑ์
+ * ตามประเภทแหล่งน้ำ (StandardsComparison) และหมายเหตุจากผู้ตรวจสอบ กรณีสารซ้ำ (หลายภาพเป็นสาร
+ * เดียวกัน) ให้ผู้ส่งเลือกเก็บภาพเดียวต่อสาร ใช้ทั้งหน้า submit และหน้าประวัติแบบอ่านอย่างเดียว
+ *
+ * Post-analysis results panel: per-parameter values with threshold bars, standards
+ * comparison, reviewer note and duplicate-substance selection. Reused read-only on
+ * the history page.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-07
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-13 – 2026-09-03)
+ *
+ * @lastModified 2026-09-03 10:49
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-07 15:30 by Pachara P. - แยกแผงผลออกมาตอนปรับโครงสร้างไฟล์ submit
+ * - 2026-07-13 16:19 by Nopparut U. - ส่งคำร้องตรวจสอบเมื่อ confidence ต่ำ
+ * - 2026-07-17 14:53 by Nopparut U. - ใช้ StandardsComparison ร่วมกับ BottomSheet
+ * - 2026-07-20 15:46 by Nopparut U. - แก้ flow สารซ้ำ และแสดงเกณฑ์ประเมิน
+ * - 2026-08-24 10:26 by Pachara P. - แสดงรายการที่ถูกแก้ไข/ไม่อนุมัติ
+ * - 2026-09-02 14:13 by Nopparut U. - ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้แทนการบล็อก
+ * - 2026-09-03 10:49 by Nopparut U. - ใช้ design token และจัดขนาดตัวอักษรเข้าสเกล
+ *
+ * @client-side ใช้ useState ต้องอยู่ใน Client Component
+ * @license Private / Proprietary
+ */
+
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Check, ArrowLeft, FlaskConical, Clock } from "lucide-react";
 import { evaluateValueAgainstStandards, groupStandardsByParameter } from "@/lib/standards";
@@ -8,20 +43,32 @@ import { StandardsComparison, type ComparisonRow } from "../StandardsComparison"
 import { DbParameter, MeasurementResult } from "./types";
 import { ThresholdBar } from "./SharedAtoms";
 
+/** Props ของ ResultsPanel */
 interface ResultsPanelProps {
+    /** ผลต่อภาพ คีย์เป็น key ของช่องอัปโหลด (virtual key กรณีสารซ้ำ) */
     results: Record<number, MeasurementResult>;
     systemParameters: DbParameter[];
     overallStatus: "safe" | "warning" | "danger";
     setStep: (step: "upload" | "analyzing" | "results") => void;
-    // กรณีสารซ้ำ: parameterId → key ของภาพที่ผู้ส่งเลือกเก็บ (เลือกได้ตัวเดียวต่อสาร)
-    // optional เพราะหน้าประวัติ (read-only) ก็ใช้ component นี้ แต่ข้อมูลที่บันทึกแล้วไม่มีสารซ้ำให้เลือก
+    /**
+     * กรณีสารซ้ำ: parameterId → key ของภาพที่ผู้ส่งเลือกเก็บ (เลือกได้ตัวเดียวต่อสาร)
+     * optional เพราะหน้าประวัติ (read-only) ก็ใช้ component นี้ แต่ข้อมูลที่บันทึกแล้วไม่มีสารซ้ำให้เลือก
+     */
     duplicateChoice?: Record<number, number>;
     chooseDuplicate?: (parameterId: number, key: number) => void;
+    /** ยกเลิกการสลับสารอัตโนมัติของภาพนั้น */
     revertAutoSwitch?: (key: number) => void;
+    /** หมายเหตุจากผู้ตรวจสอบ (หน้าประวัติ) */
     reviewNote?: string | null;
+    /** บันทึกแล้ว = โหมดอ่านอย่างเดียว */
     saved?: boolean;
 }
 
+/**
+ * แผงสรุปผลวิเคราะห์
+ *
+ * @param props - ดู {@link ResultsPanelProps}
+ */
 export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate, revertAutoSwitch, reviewNote, saved }: ResultsPanelProps) {
     const [openParamId, setOpenParamId] = useState<number | null>(null);
     const { locationTypes } = useLocationTypes();

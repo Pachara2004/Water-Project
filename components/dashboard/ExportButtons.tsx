@@ -1,3 +1,40 @@
+/**
+ * @file ExportButtons.tsx
+ * @project Water Monitoring Project
+ * @module UI / Dashboard / Export
+ * @description
+ * ปุ่มส่งออกข้อมูลตัวอย่างน้ำเป็น CSV หรือ Excel จากหน้าแดชบอร์ด แสดงเฉพาะ officer/admin
+ * กดแล้วเปิด Popup ให้เลือกขอบเขต (ตามตัวกรองปัจจุบัน / ทั้งหมด) พร้อมนับจำนวนแถวล่วงหน้าจาก
+ * /api/samples/export/count และเตือนถ้าเกินเพดาน XLSX ชื่อไฟล์อ่านจาก Content-Disposition
+ * (filename* รองรับภาษาไทย) ที่ server ตั้งให้
+ *
+ * CSV / Excel export buttons for the dashboard (officer & admin only). Opens a
+ * scope-selection popup with a row-count preview, then downloads the file returned
+ * by /api/samples/export or /export-csv.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-22
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-09 – 2026-09-03)
+ *
+ * @lastModified 2026-09-03 10:49
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-22 14:23 by Pachara P. - สร้างปุ่มส่งออกข้อมูล
+ * - 2026-06-29 12:30 by Pachara P. - ยิง API ด้วย LINE Access Token ตาม RBAC
+ * - 2026-07-27 16:22 by Nopparut U. - ซ่อนปุ่มจาก collector ให้ตรงกับ allowedRoles ของ route
+ * - 2026-07-31 15:49 by Nopparut U. - เพิ่ม popup เลือกขอบเขต นับแถวล่วงหน้า และอ่านชื่อไฟล์จาก header
+ * - 2026-09-03 10:49 by Nopparut U. - จัดขนาดตัวอักษรเข้าสเกลระบบ
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ Blob/URL.createObjectURL
+ * @auth ต้อง role officer หรือ admin (EXPORT_ROLES) และส่ง LIFF access token
+ * @notes เพดานแถว XLSX_ROW_LIMIT ซ้ำจาก server ไว้เตือนก่อนกดเท่านั้น การบังคับจริงอยู่ที่ route (ตอบ 413)
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,17 +51,29 @@ const EXPORT_ROLES = ["officer", "admin"];
 // การบังคับจริงอยู่ที่ route เท่านั้น (ตอบ 413) ตัวเลขนี้แค่ทำให้ผู้ใช้ไม่ต้องรอจนโดนปฏิเสธ
 const XLSX_ROW_LIMIT = 2000;
 
+/** ตัวกรองปัจจุบันของแดชบอร์ด ใช้สร้าง query ตอนส่งออกขอบเขต "filtered" */
 export type ExportFilters = {
+    /** ALL = ทุกคน / MINE = เฉพาะของฉัน */
     viewMode: "ALL" | "MINE";
+    /** YYYY-MM-DD */
     startDate: string;
+    /** YYYY-MM-DD */
     endDate: string;
+    /** ชื่อหน่วยงาน หรือ "ALL" */
     agency: string;
+    /** null = ทุกสถานี */
     locationId: number | null;
 };
 
 type ExportFormat = "csv" | "excel";
 type ExportScope = "filtered" | "all";
 
+/**
+ * ปุ่มส่งออก CSV/Excel คืน null เมื่อผู้ใช้ไม่มีสิทธิ์ส่งออก
+ *
+ * @param className - class ของกล่องครอบปุ่ม (ค่าเริ่มต้น `w-full`)
+ * @param filters - ตัวกรองปัจจุบันของแดชบอร์ด
+ */
 export default function ExportButtons({ className = "w-full", filters }: { className?: string; filters: ExportFilters }) {
     const [isExporting, setIsExporting] = useState<ExportFormat | null>(null);
     const [pendingFormat, setPendingFormat] = useState<ExportFormat | null>(null); // รูปแบบที่รอผู้ใช้ยืนยันขอบเขตใน popup

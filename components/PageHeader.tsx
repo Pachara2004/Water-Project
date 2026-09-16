@@ -1,11 +1,39 @@
+/**
+ * @file PageHeader.tsx
+ * @project Water Monitoring Project
+ * @module UI / Layout
+ * @description
+ * แถบหัวหน้าจอแบบ sticky ใช้ซ้ำได้ทุกหน้า: ปุ่มย้อนกลับชิดซ้าย หัวข้ออยู่กึ่งกลางจริงเสมอ
+ * ด้วย absolute center (ไม่ขยับตามความกว้างของปุ่มซ้าย/spacer ขวา) รูปแบบเดียวกับหน้า submit
+ *
+ * Reusable sticky top bar: back button on the left, title absolutely centered
+ * so it never shifts with the left button / right spacer widths.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-24
+ * @version 1.0.0
+ *
+ * @lastModified 2026-07-24 15:33
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-24 15:33 by Nopparut U. - แยก header ออกจากหน้า submit เป็นคอมโพเนนต์กลาง
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') เพราะใช้ useRouter
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
-// Top bar แบบเดียวกับหน้า submit — ปุ่มย้อนกลับชิดซ้าย, หัวข้ออยู่กึ่งกลางจริงเสมอด้วย absolute center
-// (ไม่ขยับตามความกว้างปุ่มซ้าย/spacer ขวา) ใช้ซ้ำได้ทุกหน้าที่ต้องการ header ลักษณะนี้
-// onBack: กำหนดเองได้ | ไม่ส่ง = ย้อนกลับด้วย router.back()
+/**
+ * แถบหัวหน้าจอพร้อมปุ่มย้อนกลับ
+ *
+ * @param title - หัวข้อที่แสดงกึ่งกลางแถบ
+ * @param onBack - callback ตอนกดย้อนกลับ; ไม่ส่ง = ใช้ `router.back()`
+ */
 export default function PageHeader({ title, onBack }: { title: string; onBack?: () => void }) {
     const router = useRouter();
     const handleBack = onBack ?? (() => router.back());
