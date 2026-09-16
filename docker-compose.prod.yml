@@ -52,7 +52,7 @@ services:
     env_file:
       - .env
     ports:
-      - "3000:3000"
+      - "8054:3000"
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality?charset=utf8mb4}
       CRON_SECRET: ${CRON_SECRET:-}
