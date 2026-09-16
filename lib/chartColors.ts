@@ -1,15 +1,31 @@
 /**
- * สีของกราฟและสถานะทั้งระบบ — แหล่งความจริงเดียว
+ * @fileoverview System-wide color and theme definitions for charts, statuses, and map pins
  *
- * เดิมสีถูกนิยามซ้ำกัน 4 ที่ (dashboardHelpers, AnalyticsCharts, LocationPin, widgets API)
- * ทำให้สารตัวเดียวเป็นคนละสีในแต่ละหน้า เช่น ammonia เคยเป็นทั้ง amber, violet และ rose
+ * [TH] แหล่งความจริงเดียว (Single Source of Truth) สำหรับรหัสสีของกราฟ ระดับสถานะ และหมุดแผนที่
+ * [EN] Single Source of Truth for system-wide color palette covering charts, statuses, and map pins
  *
- * เก็บเป็นค่า hex ไม่ใช่ CSS variable เพราะผู้ใช้บางรายอ่าน var() ไม่ได้:
- * recharts/SVG (ดู chartTokens ใน dashboardHelpers), ฝั่ง server ที่ส่งสีมากับ payload
- * ของ /api/dashboard/widgets และการต่อ alpha เป็น #RRGGBBAA ซึ่งต้องการ hex จริง
+ * @description
+ * [TH] จัดเก็บรหัสสี Hex สำหรับระดับสถานะคุณภาพน้ำ (safe, warning, danger, noData), หมุดบนแผนที่,
+ * และสีประจำสารเคมี (พร้อมอัลกอริทึม FNV-1a Hash สำหรับสารใหม่ที่ไม่เคยกำหนดสีมาก่อน)
+ * [EN] Centralizes HEX colors for water quality statuses, map pin styling, and chemical parameters
+ * with deterministic FNV-1a hash fallbacks for dynamically added parameters.
+ *
+ * @module lib/chartColors
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-07-20
+ * @modified 2026-07-20
+ *
+ * @history
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: รวมสีสารและสถานะเป็น Single Source of Truth ใน lib/chartColors.ts
  */
 
-/** สถานะคุณภาพน้ำ — ยึดชุดเดียวกับแดชบอร์ด */
+/**
+ * [TH] รหัสสี HEX สำหรับระดับสถานะคุณภาพน้ำ (safe, warning, danger, noData)
+ * [EN] HEX color codes for water quality status levels (safe, warning, danger, noData)
+ * @constant
+ */
 export const STATUS_COLOR = {
     safe: "#10b981",
     warning: "#f59e0b",
@@ -18,7 +34,11 @@ export const STATUS_COLOR = {
     noData: "#94a3b8",
 } as const;
 
-/** เฉดประกอบของหมุดบนแผนที่ (ขอบและไส้ใน) อิงจากสีหลักของแต่ละสถานะ */
+/**
+ * [TH] ชุดสีเฉดประกอบของหมุดบนแผนที่ (fill, stroke, inner) ตามระดับสถานะคุณภาพน้ำ
+ * [EN] Composite pin color styling palette (fill, stroke, inner) per water quality status
+ * @constant
+ */
 export const STATUS_PIN_COLOR: Record<"safe" | "warning" | "danger" | "noData", { fill: string; stroke: string; inner: string }> = {
     safe: { fill: STATUS_COLOR.safe, stroke: "#059669", inner: "#D1FAE5" },
     warning: { fill: STATUS_COLOR.warning, stroke: "#D97706", inner: "#FEF3C7" },
@@ -27,10 +47,9 @@ export const STATUS_PIN_COLOR: Record<"safe" | "warning" | "danger" | "noData", 
 };
 
 /**
- * สีประจำสารที่ระบบรู้จัก — คีย์เป็นชื่อสารตัวพิมพ์เล็กตามตาราง `parameters`
- *
- * หมายเหตุ: ammonia ใช้ค่าเดียวกับ STATUS_COLOR.warning โดยตั้งใจ เพื่อให้ตรงกับสีที่
- * แดชบอร์ดใช้มาแต่เดิม ไม่ใช่ความบังเอิญ — ถ้าจะแก้ให้เลี่ยงสีชน ต้องแก้พร้อมกันทั้งระบบ
+ * [TH] รหัสสี HEX ประจำสารเคมีหลักที่ระบบรองรับ (ammonia, phosphate)
+ * [EN] HEX color codes mapped to recognized primary chemical parameters
+ * @constant
  */
 export const PARAMETER_COLOR: Record<string, string> = {
     ammonia: "#f59e0b",
@@ -72,13 +91,27 @@ function fallbackIndex(name: string): number {
     return hash % FALLBACK_COLORS.length;
 }
 
-/** สีเส้น/แท่งกราฟประจำสาร */
+/**
+ * [TH] รับรหัสสี HEX ประจำสารเคมี (หากเป็นสารใหม่ที่ไม่ได้ระบุ จะสุ่มแบบคงที่ด้วยอัลกอริทึม FNV-1a hash)
+ * [EN] Retrieves the HEX color for a chemical parameter name, falling back to a deterministic FNV-1a hash palette
+ *
+ * @function parameterColor
+ * @param {string} name - ชื่อสารเคมี (เช่น ammonia, phosphate)
+ * @returns {string} รหัสสีรูปแบบ HEX string (เช่น #f59e0b)
+ */
 export function parameterColor(name: string): string {
     const key = name.trim().toLowerCase();
     return PARAMETER_COLOR[key] ?? FALLBACK_COLORS[fallbackIndex(key)];
 }
 
-/** Tailwind class ประจำสาร — เฉดเดียวกับ `parameterColor` ของสารตัวเดียวกันเสมอ */
+/**
+ * [TH] รับคลาสสี Tailwind CSS สำหรับไอคอนประจำสารเคมี (ให้สอดคล้องกับ parameterColor เสมอ)
+ * [EN] Retrieves the matching Tailwind CSS text color class for a chemical parameter icon
+ *
+ * @function parameterIconClass
+ * @param {string} name - ชื่อสารเคมี
+ * @returns {string} คลาส Tailwind CSS (เช่น text-amber-500)
+ */
 export function parameterIconClass(name: string): string {
     const key = name.trim().toLowerCase();
     return PARAMETER_ICON_CLASS[key] ?? FALLBACK_ICON_CLASSES[fallbackIndex(key)];

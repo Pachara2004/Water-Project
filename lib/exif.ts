@@ -1,5 +1,35 @@
+/**
+ * @fileoverview EXIF metadata extraction and geospatial distance calculation utilities
+ *
+ * [TH] โมดูลดึงข้อมูลพิกัด GPS จาก EXIF Metadata ของรูปภาพ และคำนวณระยะทางทางภูมิศาสตร์
+ * [EN] Utilities for extracting GPS coordinates from image EXIF metadata and calculating geospatial distance
+ *
+ * @description
+ * [TH] ถอดรหัสพิกัดละติจูด/ลองจิจูดจากภาพถ่าย (รองรับ DMS, Rational arrays, และอ็อบเจกต์ EXIF)
+ * พร้อมฟังก์ชันคำนวณระยะทางระหว่างพิกัด 2 จุดโดยใช้สูตร Haversine (คืนระยะทางเป็นกิโลเมตร)
+ * [EN] Extracts latitude/longitude from image files across various EXIF formats (DMS, rationals)
+ * and provides geospatial distance calculations using the Haversine formula.
+ *
+ * @module lib/exif
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-06-09
+ * @modified 2026-09-11
+ *
+ * @history
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix(exif): harden GPS coordinate parsing from image metadata
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: เพิ่มการอ่านค่าพิกัด GPS จาก EXIF ภาพ
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - initial commit
+ */
+
 import exifr from "exifr";
 
+/**
+ * [TH] โครงสร้างข้อมูลพิกัดละติจูดและลองจิจูด (Decimal Degrees)
+ * [EN] Geographic coordinate structure containing latitude and longitude in decimal degrees
+ */
 export interface LocationData {
     latitude: number;
     longitude: number;
@@ -72,6 +102,15 @@ function parseCoordinate(value: any, ref?: string): number | null {
     return null;
 }
 
+/**
+ * [TH] ดึงข้อมูลพิกัด GPS (ละติจูด, ลองจิจูด) จากไฟล์รูปภาพหรือ ArrayBuffer ผ่าน EXIF
+ * [EN] Extracts GPS coordinates (latitude, longitude) from an image file, Blob, or ArrayBuffer via EXIF
+ *
+ * @async
+ * @function getExifLocation
+ * @param {File | Blob | ArrayBuffer} file - ไฟล์ภาพถ่ายที่ต้องการดึงข้อมูลพิกัด
+ * @returns {Promise<LocationData | null>} อ็อบเจกต์พิกัด หรือ null หากไม่มีข้อมูลหรือไม่สามารถแปลงได้
+ */
 export async function getExifLocation(file: File | Blob | ArrayBuffer): Promise<LocationData | null> {
     try {
         // 1. ลองดึง GPS มาตรฐานด่านแรก (exifr.gps จะคำนวณและแปลงให้แล้วสำหรับเครื่องส่วนใหญ่)
@@ -119,6 +158,17 @@ export async function getExifLocation(file: File | Blob | ArrayBuffer): Promise<
     }
 }
 
+/**
+ * [TH] คำนวณระยะทางทางภูมิศาสตร์ระหว่างพิกัด 2 จุดบนโลกตามแนวเส้นรอบวง (สูตร Haversine) หน่วยเป็นกิโลเมตร
+ * [EN] Calculates the great-circle distance between two geographic points using the Haversine formula in kilometers
+ *
+ * @function calculateDistance
+ * @param {number | string} lat1 - ละติจูดจุดที่ 1
+ * @param {number | string} lon1 - ลองจิจูดจุดที่ 1
+ * @param {number | string} lat2 - ละติจูดจุดที่ 2
+ * @param {number | string} lon2 - ลองจิจูดจุดที่ 2
+ * @returns {number} ระยะทางเป็นกิโลเมตร (km) หรือ NaN หากพิกัดไม่ถูกต้อง
+ */
 export function calculateDistance(lat1: number | string, lon1: number | string, lat2: number | string, lon2: number | string): number {
     const l1 = Number(lat1);
     const ln1 = Number(lon1);

@@ -1,3 +1,30 @@
+/**
+ * @fileoverview Open-Meteo weather integration, water temperature estimation, and historical backfill
+ *
+ * [TH] โมดูลเชื่อมต่อสภาพอากาศ Open-Meteo คำนวณคาดการณ์อุณหภูมิน้ำ และดึงข้อมูลย้อนหลัง (Backfill)
+ * [EN] Open-Meteo weather API integration, water temperature model calculations, and 60-day backfill operations
+ *
+ * @description
+ * [TH] ดึงข้อมูลพยากรณ์และสภาพอากาศสดจาก Open-Meteo (โมเดล ECMWF IFS)
+ * คำนวณอุณหภูมิน้ำจากอุณหภูมิอากาศและอุณหภูมิผิวสัมผัส (Thermal Lag model)
+ * และมีระบบ Backfill ประวัติสภาพอากาศ 60 วันบันทึกลงฐานข้อมูล Prisma
+ * [EN] Fetches weather telemetry from Open-Meteo ECMWF IFS model, calculates estimated water temperatures
+ * using thermal lag formulas, and provides a 60-day historical backfill job into the database.
+ *
+ * @module lib/tmd
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-06-09
+ * @modified 2026-09-11
+ *
+ * @history
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix(weather): compute water temperature and align timestamps with Thai time
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: เพิ่มการดึงสภาพอากาศจาก Open-Meteo ECMWF model และ backfill 60 วัน
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - initial commit
+ */
+
 import { prisma } from "@/lib/prisma";
 import { nowThai } from "@/lib/thaiTime";
 
@@ -11,7 +38,12 @@ interface OpenMeteoResponse {
 }
 
 /**
- * ฟังก์ชันสำหรับแปลงรหัสสภาพอากาศ (WMO Code)
+ * [TH] แปลงรหัสสภาพอากาศ WMO เป็นรหัสสภาพอากาศระบบ (1: แจ่มใส, 2: เมฆบางส่วน, 5: ฝนปรอย, 7: ฝนตกหนัก)
+ * [EN] Maps WMO standard weather code to internal legacy system code
+ *
+ * @function mapWmoToLegacyCode
+ * @param {number} wmoCode - รหัสสภาพอากาศมาตรฐาน WMO
+ * @returns {number} รหัสสภาพอากาศระบบ
  */
 export function mapWmoToLegacyCode(wmoCode: number): number {
     // 1: ท้องฟ้าโปร่ง / แดดจัด / ไม่มีฝนแน่นอน
@@ -37,7 +69,14 @@ export function mapWmoToLegacyCode(wmoCode: number): number {
 }
 
 /**
- * 🌟 ฟังก์ชันคำนวณคาดการณ์อุณหภูมิน้ำ (Thermal Lag & Skin Surface Weighting)
+ * [TH] คำนวณคาดการณ์อุณหภูมิน้ำโดยใช้แบบจำลอง Thermal Lag และการถ่วงน้ำหนักอุณหภูมิผิวสัมผัส
+ * [EN] Estimates water temperature from air and skin temperatures using diurnal thermal lag weighting
+ *
+ * @function calculateWaterTemperature
+ * @param {number} airTemp - อุณหภูมิอากาศ (Apparent temperature) หน่วยองศาเซลเซียส
+ * @param {number} skinTemp - อุณหภูมิผิวสัมผัส (Skin temperature) หน่วยองศาเซลเซียส
+ * @param {number} hour - ชั่วโมงของวันตามเวลาไทย (0-23)
+ * @returns {number} อุณหภูมิน้ำโดยประมาณ (ทศนิยม 1 ตำแหน่ง)
  */
 export function calculateWaterTemperature(airTemp: number, skinTemp: number, hour: number): number {
     const isDaytime = hour >= 9 && hour <= 16;
@@ -51,8 +90,15 @@ export function calculateWaterTemperature(airTemp: number, skinTemp: number, hou
 }
 
 /**
- * 🚀 ดึงข้อมูลสภาพอากาศย้อนหลัง 2 เดือน (60 วัน) ผูกตรงกับ Location ID ลง Database
- * โครงสร้างข้อมูลครบถ้วนเหมือนเดิม เปลี่ยนเฉพาะฟิลด์ temperature ให้บันทึกเป็นค่าอุณหภูมิน้ำ
+ * [TH] ดึงและบันทึกข้อมูลสภาพอากาศย้อนหลัง 60 วันผูกกับ Location ID ลงฐานข้อมูล Prisma
+ * [EN] Fetches and upserts 60 days of historical hourly weather data for a specific location
+ *
+ * @async
+ * @function backfillWeatherData
+ * @param {number} locationId - รหัสสถานที่ตรวจวัด
+ * @param {number} lat - พิกัดละติจูด
+ * @param {number} lon - พิกัดลองจิจูด
+ * @returns {Promise<void>}
  */
 export async function backfillWeatherData(locationId: number, lat: number, lon: number) {
     const baseUrl = process.env.OPEN_METEO_BASE_URL || "https://api.open-meteo.com/v1/forecast";
@@ -131,8 +177,14 @@ export async function backfillWeatherData(locationId: number, lat: number, lon: 
 }
 
 /**
- * ฟังก์ชันดึงข้อมูลสภาพอากาศแบบสด (Live Fetch)
- * คืนโครงสร้างวัตถุ 3 คีย์หลักเหมือนเดิมทุกประการ แต่ airTemperature จะส่งค่าอุณหภูมิน้ำกลับไปแทน
+ * [TH] ดึงข้อมูลสภาพอากาศแบบสด (Live) ณ พิกัดที่ระบุ พร้อมแปลงเป็นอุณหภูมิน้ำ
+ * [EN] Fetches current live weather telemetry for a coordinate, computing estimated water temperature
+ *
+ * @async
+ * @function getWeatherData
+ * @param {number} lat - พิกัดละติจูด
+ * @param {number} lng - พิกัดลองจิจูด
+ * @returns {Promise<{ airTemperature: number | null; rainAccumulation: number | null; weatherCondCode: number | null } | null>} ข้อมูลสภาพอากาศสด หรือ null
  */
 export async function getWeatherData(lat: number, lng: number): Promise<{ airTemperature: number | null; rainAccumulation: number | null; weatherCondCode: number | null } | null> {
     try {
