@@ -356,10 +356,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       )
                     : null;
 
-            const reviewReq = await prisma.reviewRequest.findUnique({ 
-                where: { sessionGroup: sampleRecord.code },
-                select: { statusRequest: true, reviewNote: true }
-            });
+            const reviewReq = sampleRecord.code
+                ? await prisma.reviewRequest.findUnique({
+                      where: { sessionGroup: sampleRecord.code },
+                      select: { statusRequest: true, reviewNote: true },
+                  })
+                : null;
             
             let rawLogs: any[] = [];
             if (sampleRecord.code) {
@@ -458,16 +460,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     include: { parameter: { select: { id: true, name: true, unit: true, formula: true } } },
                 },
             },
-            orderBy: { id: "desc" }
+            orderBy: { id: "desc" },
         });
 
-        const reviewReq = await prisma.reviewRequest.findUnique({
-            where: { sessionGroup: mainSample.sessionGroup ?? "" },
-            select: { statusRequest: true, reviewNote: true }
-        });
+        if (!mainSample) {
+            return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
+        }
+
+        const reviewReq = mainSample.sessionGroup
+            ? await prisma.reviewRequest.findUnique({
+                  where: { sessionGroup: mainSample.sessionGroup },
+                  select: { statusRequest: true, reviewNote: true },
+              })
+            : null;
         const isRejected = reviewReq?.statusRequest === "rejected";
 
-        if (!mainSample || (mainSample.isDeleted && !isRejected)) {
+        if (mainSample.isDeleted && !isRejected) {
             return NextResponse.json({ error: "ไม่พบข้อมูลประวัติการส่งผลตรวจน้ำพิกัดนี้ในฐานข้อมูล" }, { status: 404 });
         }
 

@@ -146,12 +146,12 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
         setFiltersRestored(true);
     }, []);
 
+// In-memory cache สำหรับประวัติผลตรวจน้ำ สลับแท็บกลับมาแล้วแสดงผลทันทีใน 0ms (Stale-While-Revalidate)
+const samplesCache: Record<string, { items: CollectorSample[]; total: number; totalPages: number; parameterFormulas: Record<string, string>; timestamp: number }> = {};
+const SAMPLES_CACHE_TTL = 3 * 60 * 1000; // 3 นาที
+
     useEffect(() => {
         if (!filtersRestored || !currentUser) return;
-
-        // ยกเลิก request เก่าเวลาสลับ filter/หน้าเร็วๆ — กัน response เก่าที่มาช้ากว่ามาทับผลลัพธ์ปัจจุบัน
-        const controller = new AbortController();
-        setLoading(true);
 
         const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), sort: sortDesc ? "desc" : "asc" });
         if (debouncedFilter) params.set("search", debouncedFilter);
@@ -162,7 +162,22 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
         // "เฉพาะของฉัน" มีความหมายเฉพาะ admin (เลือกดูของตัวเอง vs ดูทุกคน) — collector เห็นแค่ของตัวเองอยู่แล้วจาก API เสมอ
         if (currentUser.role === "admin" && showOnlyMine) params.set("mine", "true");
 
-        fetch(`/api/samples?${params.toString()}`, {
+        const cacheKey = params.toString();
+        const cached = samplesCache[cacheKey];
+        if (cached && Date.now() - cached.timestamp < SAMPLES_CACHE_TTL) {
+            setSamples(cached.items);
+            setTotal(cached.total);
+            setTotalPages(cached.totalPages);
+            setParameterFormulas(cached.parameterFormulas);
+            setLoading(false);
+        } else {
+            setLoading(true);
+        }
+
+        // ยกเลิก request เก่าเวลาสลับ filter/หน้าเร็วๆ — กัน response เก่าที่มาช้ากว่ามาทับผลลัพธ์ปัจจุบัน
+        const controller = new AbortController();
+
+        fetch(`/api/samples?${cacheKey}`, {
             headers: { Authorization: `Bearer ${liff.getAccessToken()}` },
             signal: controller.signal,
         })
@@ -172,7 +187,8 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
             })
             .then((data) => {
                 // ไม่มีฟิลด์นี้ (API เวอร์ชันเก่า) ถือว่าไม่มีสูตร ป้ายจะใช้ชื่อย่อแทน ไม่ล้ม
-                setParameterFormulas(data.parameterFormulas && typeof data.parameterFormulas === "object" ? data.parameterFormulas : {});
+                const formulas = data.parameterFormulas && typeof data.parameterFormulas === "object" ? data.parameterFormulas : {};
+                setParameterFormulas(formulas);
 
                 const items = Array.isArray(data.items) ? data.items : [];
                 const mapped: CollectorSample[] = items.map((s: any) => ({
@@ -201,6 +217,15 @@ export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
                           }
                         : null,
                 }));
+
+                samplesCache[cacheKey] = {
+                    items: mapped,
+                    total: data.total ?? 0,
+                    totalPages: data.totalPages ?? 0,
+                    parameterFormulas: formulas,
+                    timestamp: Date.now(),
+                };
+
                 setSamples(mapped);
                 setTotal(data.total ?? 0);
                 setTotalPages(data.totalPages ?? 0);

@@ -28,6 +28,18 @@
 
 import { useSyncExternalStore } from "react";
 
+const mediaQueryCache = new Map<string, MediaQueryList>();
+
+function getMediaQuery(query: string): MediaQueryList | null {
+    if (typeof window === "undefined") return null;
+    let mql = mediaQueryCache.get(query);
+    if (!mql) {
+        mql = window.matchMedia(query);
+        mediaQueryCache.set(query, mql);
+    }
+    return mql;
+}
+
 /**
  * ตรวจว่า media query ตรงกับจอปัจจุบันหรือไม่ อัปเดตเองเมื่อขนาดจอเปลี่ยน
  *
@@ -43,17 +55,16 @@ export function useMediaQuery(query: string): boolean {
     return useSyncExternalStore(
         // 1. Subscribe function: ติดตามการเปลี่ยนแปลงของหน้าจอ
         (onStoreChange) => {
-            if (typeof window === "undefined") return () => {};
+            const media = getMediaQuery(query);
+            if (!media) return () => {};
 
-            const media = window.matchMedia(query);
             media.addEventListener("change", onStoreChange);
-
             return () => media.removeEventListener("change", onStoreChange);
         },
-        // 2. Client snapshot: อ่านค่าจริงบน Browser
+        // 2. Client snapshot: อ่านค่าจริงบน Browser จากแคช
         () => {
-            if (typeof window === "undefined") return false;
-            return window.matchMedia(query).matches;
+            const media = getMediaQuery(query);
+            return media ? media.matches : false;
         },
         // 3. Server snapshot: ค่าเริ่มต้นบน Server (SSR)
         () => false,

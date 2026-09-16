@@ -36,6 +36,10 @@ import { toISODate, type ComboOption } from "@/components/dashboard/dashboardHel
  */
 export type DashboardAnalyticsState = ReturnType<typeof useDashboardAnalytics>;
 
+// In-memory cache สำหรับข้อมูลแดชบอร์ด สลับแท็บกลับมาแล้วแสดงผลทันทีใน 0ms (Stale-While-Revalidate)
+const dashboardCache: Record<string, { data: any; timestamp: number }> = {};
+const DASHBOARD_CACHE_TTL = 3 * 60 * 1000; // 3 นาที
+
 /**
  * [TH] Hook จัดการการดึงข้อมูลและตัวกรองสำหรับหน้าแดชบอร์ดสถิติคุณภาพน้ำ
  * [EN] Hook managing dashboard analytics fetching, filter options, and interactive controls
@@ -47,9 +51,6 @@ export function useDashboardAnalytics() {
     const { currentUser, theme } = useAppStore();
     const router = useRouter();
     const [viewMode, setViewMode] = useState<"ALL" | "MINE">("ALL");
-    const [analytics, setAnalytics] = useState<any>(null);
-    const [fetchError, setFetchError] = useState(false);
-    const [retryTick, setRetryTick] = useState(0); // เพิ่มค่าเพื่อ trigger fetch ใหม่ตอนกดปุ่มลองใหม่
 
     // ค่าเริ่มต้น = 6 เดือนล่าสุดแบบ rolling พอดี (ล็อควันที่ 1 ก่อนถอยเดือน กันเดือนที่ 7 โผล่มาจากเศษวัน) แทนการ hardcode ทั้งปี
     const [startDate, setStartDate] = useState(() => {
@@ -65,6 +66,23 @@ export function useDashboardAnalytics() {
     const [stationSearch, setStationSearch] = useState(""); // ข้อความที่พิมพ์ในช่องค้นหาสถานี
     const [trendMode, setTrendMode] = useState<"wow" | "mom">("wow");
 
+    const [analytics, setAnalytics] = useState<any>(() => {
+        const defaultViewMode = currentUser?.role?.toLowerCase() === "collector" ? "MINE" : "ALL";
+        const now = new Date();
+        const start = new Date();
+        start.setDate(1);
+        start.setMonth(start.getMonth() - 5);
+        const defaultKey = `${defaultViewMode}_${toISODate(start)}_${toISODate(now)}_all_null`;
+        const cached = dashboardCache[defaultKey];
+        if (cached && Date.now() - cached.timestamp < DASHBOARD_CACHE_TTL) {
+            return cached.data;
+        }
+        return null;
+    });
+
+    const [fetchError, setFetchError] = useState(false);
+    const [retryTick, setRetryTick] = useState(0); // เพิ่มค่าเพื่อ trigger fetch ใหม่ตอนกดปุ่มลองใหม่
+
     const userRole = currentUser?.role?.toLowerCase() || "officer";
     const userId = currentUser?.id || null;
 
@@ -77,6 +95,13 @@ export function useDashboardAnalytics() {
         // guest/ยังไม่ login ไม่มีสิทธิ์เห็นหน้านี้อยู่แล้ว (จะโดน guard ด้านล่างเด้งกลับ) — ข้ามการยิง fetch ไปเลย
         // กัน request ที่รู้อยู่แล้วว่าจะโดน 403 จาก backend ไม่ให้ขึ้น error overlay ใน dev เปล่าๆ
         if (!currentUser || userRole === "guest") return;
+
+        // สลับ filter: ดึงจาก cache ทันทีถ้ามีตรงกัน
+        const cacheKey = `${viewMode}_${startDate}_${endDate}_${agency}_${locationId ?? "null"}`;
+        const cached = dashboardCache[cacheKey];
+        if (cached && Date.now() - cached.timestamp < DASHBOARD_CACHE_TTL) {
+            setAnalytics(cached.data);
+        }
 
         // ยกเลิก request เก่าเวลาสลับ filter เร็วๆ — กัน response เก่าที่มาช้ากว่ามาทับผลลัพธ์ของ filter ปัจจุบัน
         const controller = new AbortController();
@@ -93,7 +118,13 @@ export function useDashboardAnalytics() {
                 if (!res.ok) throw new Error("Database Analytics Fetch Error");
                 return res.json();
             })
-            .then((data) => setAnalytics(data))
+            .then((data) => {
+                dashboardCache[cacheKey] = {
+                    data,
+                    timestamp: Date.now(),
+                };
+                setAnalytics(data);
+            })
             .catch((err) => {
                 if (err.name === "AbortError") return;
                 console.error(err);

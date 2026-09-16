@@ -1,3 +1,7 @@
+# ==========================================
+# Production Multi-stage Dockerfile
+# ==========================================
+
 # Stage 0: Shared base image
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
@@ -8,20 +12,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS deps
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-
 RUN npm ci
 
-# Stage 2: Development image
-FROM base AS dev
-COPY package.json package-lock.json ./
-COPY prisma ./prisma
-RUN npm ci
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
-
-# Stage 3: Build the production app
+# Stage 2: Build the production app
 FROM base AS builder
 ARG NEXT_PUBLIC_LIFF_ID=""
 ENV NEXT_PUBLIC_LIFF_ID=$NEXT_PUBLIC_LIFF_ID
@@ -31,7 +24,7 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-# Stage 4: Production runtime
+# Stage 3: Production runtime (Minimal image)
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
