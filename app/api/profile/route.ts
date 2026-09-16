@@ -1,3 +1,35 @@
+/**
+ * @file app/api/profile/route.ts
+ * @project Water Monitoring Project
+ * @module API / Profile & Account
+ * @description
+ * [TH] Route Handler สำหรับการแก้ไขข้อมูลโปรไฟล์ของตนเอง (PATCH)
+ * อนุญาตให้ผู้ใช้แก้ไขชื่อ-นามสกุล และเบอร์โทรศัพท์ของตนเอง โดยระบุตัวตนผ่าน Token (verifyAuth)
+ * มีระบบ Sanitize และตรวจสอบรูปแบบชื่อ (ป้องกัน Script/HTML Injection) และเบอร์โทรศัพท์ไทย/สากล
+ * [EN] Route Handler for authenticated user profile self-service update (PATCH).
+ * Allows users to update their name and phone number using token identity (preventing IDOR).
+ * Enforces sanitization and regex validation for names and Thai/international phone formats.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-23
+ * @version 1.1.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-23)
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-07)
+ *
+ * @lastModified 2026-07-07
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-23 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Initial profile management endpoint
+ * - 2026-07-07 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Enhanced validation & regex sanitization
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Bearer Token (Authenticated user)
+ * @security IDOR-safe via session user id extraction, regex sanitization
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
@@ -10,12 +42,24 @@ const PHONE_REGEX = /^(\+66[0-9]{8,9}|0[2-9][0-9]{7,8})$/;
 // Allow Thai, Latin, spaces, hyphens — block HTML/script injection
 const NAME_REGEX = /^[ก-๙a-zA-Z0-9\s\-'.]+$/;
 
+/**
+ * ตัดช่องว่างส่วนเกินและปรับระยะห่างของข้อความ
+ * Trims and collapses multiple whitespace characters into single spaces.
+ *
+ * @param {string} str - ข้อความนำเข้า
+ * @returns {string} ข้อความที่ผ่านการทำความสะอาดแล้ว
+ */
 function sanitize(str: string) {
     return str.trim().replace(/\s+/g, " ");
 }
 
-// PATCH /api/profile — แก้ไขชื่อ+เบอร์ของ "ตัวเอง"
-// ดึง userId จาก LINE token (verifyAuth) ไม่รับจาก body เพื่อกัน IDOR
+/**
+ * แก้ไขชื่อและเบอร์โทรศัพท์ของผู้ใช้งานปัจจุบัน
+ * Updates profile name and phone number for the authenticated user.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม JSON payload { firstName, lastName, phoneNumber }
+ * @returns {Promise<NextResponse>} ผลลัพธ์ข้อมูลผู้ใช้ที่อัปเดตแล้ว { success: true, user }
+ */
 export async function PATCH(request: NextRequest) {
     const auth = await verifyAuth(request);
     if (!auth.isValid) {

@@ -1,24 +1,54 @@
 "use client";
 
+/**
+ * @fileoverview Custom React hook for anchored portal dropdown menus
+ *
+ * [TH] React Hook สำหรับคำนวณตำแหน่งและควบคุมการปิดเมนูดรอปดาวน์ที่เรนเดอร์ผ่าน React Portal
+ * [EN] React hook for computing anchored positions and outside-click dismissal for portal dropdown menus
+ *
+ * @description
+ * [TH] คำนวณพิกัด (top, bottom, left, width) ของเมนูดรอปดาวน์เทียบกับจุดยึด (Anchor Element)
+ * กางขึ้นด้านบนอัตโนมัติหากพื้นที่ด้านล่างไม่พอ และดักจับการคลิกนอกขอบเขตทั้ง anchor และ portal menu
+ * [EN] Manages viewport positioning (upward/downward flip), resize/scroll recalculations,
+ * and dual-container outside-click handling for menus rendered at document.body via Portal.
+ *
+ * @module lib/hooks/useAnchoredMenu
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-07-20
+ * @modified 2026-07-20
+ *
+ * @history
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: เพิ่ม hook useAnchoredMenu สำหรับ dropdown ใน modal portal
+ */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/**
+ * [TH] โครงสร้างข้อมูลตำแหน่งพิกัดและขนาดของเมนูดรอปดาวน์
+ * [EN] Positioning coordinates and dimensions for an anchored dropdown menu
+ */
 export interface AnchoredMenuPos {
+    /** [TH] ระยะห่างจากขอบซ้ายของหน้าจอ (px) [EN] Left coordinate in pixels */
     left: number;
+    /** [TH] ความกว้างของเมนู (px) [EN] Width in pixels */
     width: number;
+    /** [TH] ระยะห่างจากขอบบนของหน้าจอ (px) [EN] Optional top coordinate in pixels */
     top?: number;
+    /** [TH] ระยะห่างจากขอบล่างของหน้าจอ (px) [EN] Optional bottom coordinate in pixels */
     bottom?: number;
 }
 
 /**
- * จัดตำแหน่งเมนูดรอปดาวน์ที่ถูกส่งไป render ที่ document.body ผ่าน portal
+ * [TH] Hook จัดการตำแหน่งของเมนูดรอปดาวน์ที่ถูกส่งไปเรนเดอร์ที่ document.body ผ่าน Portal
+ * [EN] Hook managing fixed positioning and dismissal for portal-based dropdown menus
  *
- * ที่ต้อง portal เพราะดรอปดาวน์เหล่านี้ถูกใช้ในฟอร์มที่อยู่ใน Popup ซึ่งกล่องเนื้อหา
- * เป็น overflow-y-auto ถ้าวางเมนูแบบ absolute ตามปกติจะโดนขอบกล่องตัด
- * และใช้ position: fixed เฉย ๆ ก็ไม่พอ เพราะ Popup มีแอนิเมชันที่ใช้ transform
- * ซึ่งสร้าง containing block ใหม่ ทำให้ fixed ยังถูกตัดอยู่ดี
- *
- * ครอบคลุม: กางขึ้นเมื่อที่ว่างด้านล่างไม่พอ, คำนวณใหม่เมื่อเลื่อน/ย่อขยายจอ,
- * และปิดเมื่อคลิกนอกทั้งตัว anchor และตัวเมนู (สองกล่องนี้อยู่คนละที่ใน DOM แล้ว)
+ * @function useAnchoredMenu
+ * @param {boolean} isOpen - สถานะการเปิด/ปิดเมนู
+ * @param {() => void} onClose - ฟังก์ชันเรียกกลับเมื่อต้องการปิดเมนู (เมื่อคลิกนอก)
+ * @param {number} [maxHeight=260] - ความสูงสูงสุดของเมนูเพื่อใช้ประเมินทิศทางการกาง (px)
+ * @returns {{ anchorRef: React.RefObject<HTMLDivElement | null>; menuRef: React.RefObject<HTMLDivElement | null>; pos: AnchoredMenuPos | null }} การอ้างอิง DOM และพิกัดตำแหน่ง
  */
 export function useAnchoredMenu(isOpen: boolean, onClose: () => void, maxHeight = 260) {
     const anchorRef = useRef<HTMLDivElement>(null);

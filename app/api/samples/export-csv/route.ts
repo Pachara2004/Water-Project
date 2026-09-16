@@ -1,3 +1,37 @@
+/**
+ * @fileoverview
+ * [TH] Route Handler สำหรับส่งออกข้อมูลตัวอย่างคุณภาพน้ำในรูปแบบไฟล์ CSV ผ่าน ReadableStream
+ * รองรับการใส่ UTF-8 BOM เพื่อให้อ่านภาษาไทยบน Microsoft Excel ได้อย่างถูกต้องสมบูรณ์
+ * ใช้เทคนิคการแบ่งหน้าด้วย Cursor-based pagination (เรียงตาม collectionTime และ id) ทีละหน้า
+ * ป้องกันปัญหาหน่วยความจำเซิร์ฟเวอร์ล้น (OOM) แม้ส่งออกข้อมูลนับหมื่นหรือแสนแถว
+ * คอลัมน์พารามิเตอร์สารเคมีถูกดึงจากตาราง Master Parameter แบบไดนามิกตามข้อมูลที่มีในระบบ
+ *
+ * [EN] Route Handler for exporting water quality sample records in CSV format via ReadableStream.
+ * Prepends UTF-8 BOM to ensure flawless Thai character rendering in Microsoft Excel.
+ * Employs cursor-based pagination (ordered by collectionTime and id) in chunked batches
+ * to eliminate Out-Of-Memory (OOM) risks regardless of export dataset size.
+ * Dynamic chemical parameter columns are generated directly from master parameter definitions.
+ *
+ * @module API / Reports & Exports
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-22
+ * @modified 2026-09-02
+ * @version 2.0.0
+ * @license Proprietary
+ *
+ * @see {@link /lib/csv.ts} ยูทิลิตี้สำหรับจัดรูปแบบ CSV Row และ UTF-8 BOM
+ * @see {@link /lib/sampleFilters.ts} ตัวจัดการ Context, Header Content-Disposition และการแปลงเวลาไทย
+ * @see {@link /lib/auth-guard.ts} ระบบตรวจสอบสิทธิ์ผู้ใช้งานผ่าน LINE Session
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - ผู้พัฒนาเริ่มต้นระบบส่งออกข้อมูล CSV
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - ปรับปรุงเป็น ReadableStream, Cursor-based pagination และ Dynamic parameter columns
+ *
+ * @history
+ * - 2026-09-02 | Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) | ปรับปรุงระบบสตรีมมิ่ง CSV และคอลัมน์ไดนามิก
+ * - 2026-06-22 | Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) | พัฒนาระบบส่งออกไฟล์ CSV เบื้องต้น
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
@@ -11,6 +45,30 @@ export const dynamic = "force-dynamic";
 // ไม่ว่าจะส่งออกหมื่นแถวหรือล้านแถว server ก็ถือข้อมูลไว้แค่ครั้งละ PAGE_SIZE แถว
 const PAGE_SIZE = 1000;
 
+/**
+ * [TH] ส่งออกข้อมูลตัวอย่างคุณภาพน้ำเป็นไฟล์ CSV สตรีมมิ่ง (Streaming CSV Export)
+ * ตรวจสอบสิทธิ์เฉพาะผู้ใช้กลุ่ม officer และ admin จากนั้นดึง Master Parameters สำหรับสร้างหัวตาราง
+ * และสตรีมชุดข้อมูลตัวอย่างคุณภาพน้ำทีละหน้า (Batch ขนาด 1,000 แถว) ผ่าน `ReadableStream`
+ * โดยตั้งค่า HTTP Header ปิด buffering เพื่อให้เบราว์เซอร์เริ่มดาวน์โหลดได้ทันที
+ *
+ * [EN] Streams water quality sample dataset as a downloadable CSV file.
+ * Authenticates officer and admin credentials, reads active master parameters to dynamically build
+ * CSV column headers, and streams sample rows page-by-page (batch size: 1,000) using `ReadableStream`.
+ * Employs non-buffering response headers for immediate client download commencement.
+ *
+ * @async
+ * @function GET
+ * @param {NextRequest} request - Next.js Request object ประกอบด้วย Query Parameters สำหรับการกรอง
+ * @returns {Promise<Response | NextResponse<{ error: string }>>}
+ * สตรีมไฟล์ CSV binary พร้อม Header `Content-Type: text/csv` และ `Content-Disposition` หรือ JSON ข้อผิดพลาด
+ *
+ * @auth officer, admin
+ * @database Prisma Client (MySQL) - อ่าน `Parameter`, นับจำนวนแถว และดึง `WaterSample` เชื่อมโยง `Location`, `Collector`, `Measurements`
+ *
+ * @example
+ * // Request: GET /api/samples/export-csv?scope=filtered&startDate=2026-01-01&endDate=2026-06-30
+ * // Response: 200 OK (Streamed binary CSV file with UTF-8 BOM)
+ */
 export async function GET(request: NextRequest) {
     // 🔒 SECURITY GUARD: อนุญาตเฉพาะสิทธิ์ "officer" และ "admin" เท่านั้น
     const auth = await verifyAuth(request, ["officer", "admin"]);

@@ -1,3 +1,26 @@
+/**
+ * @fileoverview Chemical labels, abbreviations, colors, and value parsing helpers
+ *
+ * [TH] โมดูลช่วยจัดการป้ายชื่อ ตัวย่อ สี และการอ่านค่าสารเคมีสำหรับการ์ดและกราฟ
+ * [EN] Helpers for chemical parameter labels, abbreviations, colors, and measurement extraction
+ *
+ * @description
+ * [TH] รวบรวมฟังก์ชันสำหรับแปลงคีย์ค่าสาร (เช่น ammoniaVal -> ammonia), ดึงสูตรเคมี/ตัวย่อ,
+ * จัดการสีของไอคอนและเส้นกราฟ, และแปลงข้อมูลค่าสารจาก API ให้อยู่ในรูปแบบ ChemReading สำหรับ UI
+ * [EN] Provides utilities to parse chemical measurement keys, extract chemical formulas/abbreviations,
+ * resolve colors, and map API payloads into ChemReading items for cards and sheets.
+ *
+ * @module lib/chemLabels
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-07-20
+ * @modified 2026-07-20
+ *
+ * @history
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: เพิ่ม helper แปลงชื่อ/สูตรเคมีและอ่านค่าสารสำหรับ UI cards
+ */
+
 // ป้ายชื่อ/ตัวย่อ/สีของสารเคมีสำหรับการ์ดตัวอย่างน้ำ
 // ตัวย่อคำนวณจากชื่อสารที่มาจากตาราง `parameters` ส่วนสีมาจาก lib/chartColors.ts
 // สารใหม่ที่เพิ่มใน DB จึงแสดงผลได้เองโดยไม่ต้องแก้โค้ดหน้าเว็บ (ได้สีจากพาเลตสำรอง)
@@ -9,7 +32,14 @@ import { parameterColor, parameterIconClass } from "./chartColors";
 // lazy group + เรียง Val ก่อน Value ทำให้ถอด suffix ได้ถูกทั้งสองแบบ
 const CHEM_VALUE_KEY = /^(.+?)(?:Val|Value)$/;
 
-// คีย์ค่าสาร -> ชื่อสาร (เช่น "ammoniaVal" -> "ammonia") คืน null ถ้าไม่ใช่คีย์ค่าสาร
+/**
+ * [TH] สกัดชื่อสารเคมีออกจากชื่อคีย์ค่าสาร (เช่น "ammoniaVal" หรือ "ammoniaValue" -> "ammonia")
+ * [EN] Extracts the underlying chemical parameter name from a measurement key suffix ('Val' or 'Value')
+ *
+ * @function chemNameFromValueKey
+ * @param {string} key - คีย์ของค่าสาร (เช่น "ammoniaVal", "phosphateValue")
+ * @returns {string | null} ชื่อสารเคมี หรือ null หากไม่ใช่คีย์ค่าสาร
+ */
 export function chemNameFromValueKey(key: string): string | null {
     const matched = CHEM_VALUE_KEY.exec(key);
     return matched ? matched[1] : null;
@@ -32,12 +62,13 @@ function chemShortName(name: string): string {
 }
 
 /**
- * ป้ายกำกับสารบนชิป — สูตรเคมีจากคอลัมน์ `parameters.formula` เป็นหลัก
+ * [TH] รับข้อความป้ายกำกับสารสำหรับชิป โดยใช้สูตรเคมี (formula) จากฐานข้อมูลเป็นหลัก หากไม่มีจะใช้ชื่อย่อ 4 ตัวอักษร
+ * [EN] Generates a display abbreviation for a chemical parameter, prioritizing formula over a 4-letter truncation
  *
- * สูตรมาจากฐานข้อมูล ไม่ใช่คำนวณจากชื่อ เพราะชื่อสารไม่ได้บอกสูตรเสมอไป
- * (ammonia -> NH3 ไม่มีกฎไหนอนุมานได้) และเพื่อให้เพิ่มสารใหม่ได้โดยไม่ต้องแก้โค้ดหน้าเว็บ
- *
- * ไม่มีสูตร (สารที่เพิ่งเพิ่มและยังไม่ได้กรอก) ตกไปใช้ชื่อย่อ — แสดงผลได้เสมอ ไม่พัง
+ * @function chemAbbrev
+ * @param {string} name - ชื่อสารเคมีเต็ม
+ * @param {string | null} [formula] - สูตรทางเคมีจากฐานข้อมูล (ถ้ามี)
+ * @returns {string} ป้ายกำกับตัวย่อหรือสูตรเคมี
  */
 export function chemAbbrev(name: string, formula?: string | null): string {
     const cleaned = typeof formula === "string" ? formula.trim() : "";
@@ -46,30 +77,58 @@ export function chemAbbrev(name: string, formula?: string | null): string {
 
 // สีของสารมาจาก lib/chartColors.ts ที่เดียว เพื่อให้การ์ด กราฟแผนที่ และแดชบอร์ดตรงกัน
 // ฟังก์ชันสองตัวนี้คงชื่อเดิมไว้เพราะถูกเรียกจากหลายที่ — เปลี่ยนแค่ที่มาของค่า
+
+/**
+ * [TH] รับคลาสสีไอคอนของสารเคมี (Tailwind CSS)
+ * [EN] Retrieves Tailwind CSS text color class for the chemical parameter icon
+ *
+ * @function chemIconColor
+ * @param {string} name - ชื่อสารเคมี
+ * @returns {string} คลาส Tailwind CSS
+ */
 export function chemIconColor(name: string): string {
     return parameterIconClass(name);
 }
 
-/** สีเส้นกราฟประจำสาร — คู่ขนานกับ `chemIconColor` และให้เฉดเดียวกันเสมอ */
+/**
+ * [TH] รับรหัสสี HEX เส้นกราฟประจำสารเคมี (สอดคล้องกับ chemIconColor)
+ * [EN] Retrieves HEX color code for chart strokes of the specified chemical parameter
+ *
+ * @function chemStrokeColor
+ * @param {string} name - ชื่อสารเคมี
+ * @returns {string} รหัสสี HEX
+ */
 export function chemStrokeColor(name: string): string {
     return parameterColor(name);
 }
 
 /**
- * ค่าที่วัดได้ในรูปข้อความ — null/undefined/NaN คือ "ยังไม่มีค่า" ไม่ใช่ 0
+ * [TH] แปลงตัวเลขค่าวัดให้อยู่ในรูปข้อความทศนิยม หรือแสดงเครื่องหมายขีด (—) เมื่อไม่มีค่า
+ * [EN] Formats a measured numeric value into a fixed-decimal string, or '—' if null/undefined/NaN
  *
- * แสดงขีดแทนตัวเลข เพื่อไม่ให้ผลที่ AI อ่านไม่ได้ดูเหมือนวัดได้ 0.00 จริง
- * (ค่า 0 จริงยังแสดงเป็น "0.00" ตามปกติ — สองกรณีนี้ต้องแยกออกจากกันบนหน้าจอ)
+ * @function formatMeasuredValue
+ * @param {number | null | undefined} value - ค่าตัวเลขที่วัดได้
+ * @param {number} [digits=2] - จำนวนตำแหน่งทศนิยม (ค่าเริ่มต้นคือ 2)
+ * @returns {string} ข้อความแสดงผล
  */
 export function formatMeasuredValue(value: number | null | undefined, digits = 2): string {
     return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
 }
 
+/**
+ * [TH] โครงสร้างข้อมูลค่าวัดสารเคมี 1 รายการสำหรับการแสดงผลบน UI
+ * [EN] Represents a normalized chemical reading item formatted for UI display
+ */
 export interface ChemReading {
-    key: string; // คีย์/ชื่อเดิมที่ใช้เป็น React key
-    name: string; // ชื่อสารเต็มจาก DB เช่น "ammonia"
-    abbrev: string; // ป้ายที่แสดงบนชิป — สูตรเคมีจาก DB ถ้ามี ไม่มีก็เป็นชื่อย่อ
-    color: string; // Tailwind class ของไอคอน
+    /** [TH] คีย์เดิมที่ใช้อ้างอิงเป็น React key [EN] Original key used as React key */
+    key: string;
+    /** [TH] ชื่อเต็มของสารเคมีจากฐานข้อมูล [EN] Full parameter name from DB */
+    name: string;
+    /** [TH] ป้ายกำกับบนชิป (สูตรเคมี หรือชื่อย่อ) [EN] Chip display abbreviation or formula */
+    abbrev: string;
+    /** [TH] คลาสสี Tailwind CSS ของไอคอน [EN] Tailwind CSS icon color class */
+    color: string;
+    /** [TH] ค่าตัวเลขที่วัดได้ [EN] Measured numeric value */
     value: number;
 }
 
@@ -78,11 +137,13 @@ export interface ChemReading {
 const byName = (a: ChemReading, b: ChemReading) => a.name.localeCompare(b.name);
 
 /**
- * อ่านค่าสารทั้งหมดจากอ็อบเจกต์ตัวอย่างน้ำที่ค่าสารถูกแบนเป็นคีย์ (การ์ด collector / BottomSheet)
+ * [TH] อ่านค่าสารทั้งหมดจากอ็อบเจกต์ตัวอย่างน้ำที่มีคีย์แบนเป็น {name}Val / {name}Value
+ * [EN] Parses all chemical readings from a flattened record object containing Val/Value suffixes
  *
- * formulaByName = สูตรเคมีของแต่ละสาร คีย์เป็นชื่อตัวพิมพ์เล็ก มาจากฟิลด์ `parameterFormulas`
- * ที่ /api/samples ส่งมาพร้อม payload — ไม่ส่งมาก็ยังทำงานได้ แค่ป้ายใช้ชื่อย่อแทนสูตร
- * (BottomSheet เรียกโดยไม่ส่ง เพราะใช้ชื่อสารเต็มไม่ได้ใช้ป้ายชิป)
+ * @function readChemValues
+ * @param {Record<string, unknown> | null | undefined} source - อ็อบเจกต์ข้อมูลตัวอย่างน้ำ
+ * @param {Record<string, string> | null} [formulaByName] - แมพจับคู่ชื่อสารกับสูตรเคมี
+ * @returns {ChemReading[]} รายการค่าสารเคมีที่จัดเรียงตามชื่อ
  */
 export function readChemValues(source: Record<string, unknown> | null | undefined, formulaByName?: Record<string, string> | null): ChemReading[] {
     if (!source) return [];
@@ -100,11 +161,12 @@ export function readChemValues(source: Record<string, unknown> | null | undefine
 }
 
 /**
- * อ่านค่าสารจาก array measurements ที่มีชื่อสารมาตรงๆ (หน้าอนุมัติคำร้อง)
- * สารซ้ำเอาตัวแรกที่เจอ คงพฤติกรรมเดิมที่ใช้ .find()
+ * [TH] อ่านค่าสารเคมีจากอาร์เรย์ measurements ของคำขอแก้ไขตัวอย่างน้ำ
+ * [EN] Extracts normalized chemical readings from a measurements array of sample review requests
  *
- * ที่นี่สูตรติดมากับ measurement แต่ละตัวเลย (`parameterFormula` จาก /api/review-requests)
- * ไม่ต้องรับ map แยกเหมือน readChemValues เพราะ payload ฝั่งนี้ไม่ได้แบนค่าเป็นคีย์
+ * @function readChemMeasurements
+ * @param {Array<{ parameterName?: string | null; parameterFormula?: string | null; value: number | null }> | null | undefined} measurements - อาร์เรย์ข้อมูลการตรวจวัด
+ * @returns {ChemReading[]} รายการค่าสารเคมีที่จัดเรียงตามชื่อ
  */
 export function readChemMeasurements(
     measurements: Array<{ parameterName?: string | null; parameterFormula?: string | null; value: number | null }> | null | undefined,

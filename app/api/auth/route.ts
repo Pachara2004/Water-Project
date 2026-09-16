@@ -1,8 +1,49 @@
+/**
+ * @file app/api/auth/route.ts
+ * @project Water Monitoring Project
+ * @module API / Authentication
+ * @description
+ * [TH] Route Handler สำหรับการเข้าสู่ระบบผ่าน LINE LIFF (POST)
+ * ตรวจสอบความถูกต้องของ Access Token กับ LINE Profile API และสร้างหรืออัปเดตบัญชีผู้ใช้ในระบบ
+ * พร้อมบังคับตรวจสอบการยอมรับข้อตกลงและนโยบายความเป็นส่วนตัว (PDPA / Terms of Service) ก่อนบันทึก LINE UID
+ * [EN] Route Handler for user authentication via LINE LIFF (POST).
+ * Verifies accessToken against the official LINE Profile API, creates or updates user records,
+ * and enforces Terms of Service acceptance prior to persisting LINE UID into the database.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.2.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-09)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-06)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-15)
+ *
+ * @lastModified 2026-09-15
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial user authentication flow
+ * - 2026-07-06 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Update user session and profile mapping
+ * - 2026-09-15 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Enforce terms acceptance before persisting LINE UID
+ *
+ * @database Prisma Client (MySQL)
+ * @auth LINE LIFF Access Token / LINE Profile API
+ * @security Fail-closed verification with LINE API, PDPA compliance
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TERMS_VERSION } from "@/lib/termsVersion";
 import { nowThai } from "@/lib/thaiTime";
 
+/**
+ * ดำเนินการยืนยันตัวตนผู้ใช้ผ่าน LINE Access Token และสร้าง/อัปเดตข้อมูลผู้ใช้ในระบบ
+ * Authenticates user via LINE Access Token and creates or updates database records.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม JSON payload { accessToken, name, acceptedTerms }
+ * @returns {Promise<NextResponse>} ข้อมูลโปรไฟล์ผู้ใช้และระดับสิทธิ์ (Role)
+ */
 export async function POST(request: NextRequest) {
 
     try {

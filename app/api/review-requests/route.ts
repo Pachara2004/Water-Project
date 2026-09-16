@@ -1,3 +1,30 @@
+/**
+ * @file app/api/review-requests/route.ts
+ * @project Water Monitoring Project
+ * @module API / Quality Review & Auditing
+ * @description
+ * [TH] Route Handler กล่องคำร้องขอตรวจสอบผลตรวจคุณภาพน้ำสำหรับ Admin (GET)
+ * ดึงรายการคำร้องที่ค่าความมั่นใจ AI ต่ำกว่าเกณฑ์ หรือเจ้าหน้าที่ส่งมารอการตัดสินใจแบบแบ่งหน้า (Pagination)
+ * กรองตามสถานะ (`pending`, `approved`, `rejected`, `edited_approved`) พร้อมดึงข้อมูลผลตรวจ ภาพถ่าย และผู้ตัดสิน
+ * [EN] Route Handler for managing water quality review requests inbox for Admins (GET).
+ * Retrieves paginated review requests (low AI confidence or manual review flags)
+ * filtered by status (`pending`, `approved`, `rejected`, `edited_approved`) along with sample measurements, images, and reviewer info.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-13
+ * @version 1.2.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-13)
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-14)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-08-20)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Role-based: admin only
+ * @see lib/review.ts, lib/pagination.ts
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { toApiString } from "@/lib/thaiTime";
@@ -7,12 +34,13 @@ import { parsePageParams, pageResult } from "@/lib/pagination";
 
 const VALID_STATUSES: string[] = ["pending", "approved", "rejected", "edited_approved"];
 
-// ==========================================
-// GET /api/review-requests?status=pending&page=&pageSize= — กล่องคำร้องสำหรับ admin ตัดสิน
-// เฉพาะ admin เท่านั้น | ไม่ระบุ status = default "pending" (ใช้ index บน statusRequest)
-// คืน { items, total, page, pageSize, totalPages } ไม่ใช่ array เปล่า
-// การดึง sample/ผู้ตัดสินจะเกิดเฉพาะคำร้องของหน้าที่ขอเท่านั้น (ไม่ใช่ทุกคำร้องใน status นั้น)
-// ==========================================
+/**
+ * ดึงรายการคำร้องขอตรวจสอบผลตรวจน้ำแบบแบ่งหน้าตามสถานะคำร้อง
+ * Retrieves paginated review requests according to filter status.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Query params `?status=...&page=...&pageSize=...`
+ * @returns {Promise<NextResponse>} โครงสร้าง Pagination { items, total, page, pageSize, totalPages }
+ */
 export async function GET(request: NextRequest) {
     const auth = await verifyAuth(request, ["admin"]);
     if (!auth.isValid) {

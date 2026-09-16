@@ -1,3 +1,38 @@
+/**
+ * @file app/api/analyze/route.ts
+ * @project Water Monitoring Project
+ * @module API / Water Quality Analysis
+ * @description
+ * [TH] Route Handler สำหรับการวิเคราะห์ภาพถ่ายแถบทดสอบ/หลอดทดลองคุณภาพน้ำผ่าน AI Pipeline (FastAPI)
+ * และประเมินระดับความปลอดภัยของสารตามเกณฑ์มาตรฐานในฐานข้อมูล พร้อมระบบป้องกันคำขอซ้ำ (Anti-Spam)
+ * [EN] Route Handler for analyzing water test strip/tube images via the external AI Pipeline (FastAPI)
+ * and evaluating safety status against database water standards, equipped with memory-safe anti-spam throttling.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.2.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-09)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-08)
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-19)
+ *
+ * @lastModified 2026-08-19
+ * @lastModifiedBy Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ *
+ * @changelog
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial setup of AI analysis endpoint
+ * - 2026-07-08 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Optimize query performance
+ * - 2026-07-14 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Add sample submission modes
+ * - 2026-07-17 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Remove hardcoded standards to database-driven
+ * - 2026-07-27 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Role access check adjustments
+ * - 2026-08-19 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Performance optimization for route and AI payload
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Bearer Token / Role-based (collector, admin)
+ * @external-service FastAPI Water Analysis AI Server (`API_AI_URL`)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateValueAgainstStandards } from "@/lib/standards";
 import { loadStandardsForParameters } from "@/lib/standards-db";
@@ -9,6 +44,13 @@ const antiSpam = new Map<string, number>();
 
 const apiAi = process.env.API_AI_URL;
 
+/**
+ * จัดการคำขอ POST สำหรับการวิเคราะห์ภาพถ่ายคุณภาพน้ำด้วย AI
+ * Handles POST requests to analyze water sample images using external AI and evaluate results against standards.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม FormData (image, parameterName)
+ * @returns {Promise<NextResponse>} ผลการวิเคราะห์ภาพ ความเข้มข้น สถานะความปลอดภัย และพิกัด Bounding Box
+ */
 export async function POST(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
 

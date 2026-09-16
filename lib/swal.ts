@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * @fileoverview SweetAlert2 dialog and toast notification utilities with custom branding
+ *
+ * [TH] โมดูลจัดการกล่องข้อความแจ้งเตือน (Modal Dialog) และ Toast ด้วย SweetAlert2 ตามธีมระบบ
+ * [EN] SweetAlert2 modal dialog and toast notification wrappers styled for system design guidelines
+ *
+ * @description
+ * [TH] ปรับแต่ง SweetAlert2 ให้เข้ากับธีมของแอปพลิเคชัน (สีโทน danger, warning, primary, review)
+ * รองรับการจองพื้นที่ Scrollbar gutter ป้องกัน Layout shift, กล่องยืนยันการส่งตรวจสอบ (Review Dialog),
+ * กล่องโหลดข้อมูล (Loading), และการยืนยันการออกจากระบบ (Logout)
+ * [EN] Provides branded confirmation dialogs, review request modals, loading spinners, and toasts
+ * with layout-shift prevention (gutter reservation) and mobile viewport compatibility.
+ *
+ * @module lib/swal
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-07-20
+ * @modified 2026-09-11
+ *
+ * @history
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix(review): support forceAllowAdminChange when AI cannot detect test tubes
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: รวมกล่องข้อความ SweetAlert2 และ Toast ทั้งระบบใน lib/swal.ts
+ */
+
 import Swal from "sweetalert2";
 
 /* Dialog กลางของแอปตาม prototype: การ์ดขาวมุมโค้ง ไอคอนวงกลมทึบ
@@ -7,8 +32,18 @@ import Swal from "sweetalert2";
    - danger  = ย้อนกลับไม่ได้ (ปฏิเสธคำร้อง, ลบข้อมูล)
    - warning = ย้อนกลับได้แต่กระทบคนอื่น/ระบบถ้าเลือกผิด (เปลี่ยนสิทธิ์ผู้ใช้)
    - primary = action เชิงบวก ความเสี่ยงต่ำ (อนุมัติคำร้องที่ผู้ใช้ขอเอง) */
+
+/**
+ * [TH] ระดับโทนสีของกล่องแจ้งเตือน: 'danger' | 'warning' | 'primary' | 'review'
+ * [EN] Color tone variants for SweetAlert dialogs representing action severity
+ */
 export type SwalTone = "danger" | "warning" | "primary" | "review";
 
+/**
+ * [TH] รหัสสี HEX/CSS Var ประจำแต่ละโทนของกล่องข้อความ
+ * [EN] Color definitions mapped to each alert tone
+ * @constant
+ */
 export const TONE_COLOR: Record<SwalTone, string> = {
     danger: "#B91C1C",
     warning: "#B45309",
@@ -17,6 +52,11 @@ export const TONE_COLOR: Record<SwalTone, string> = {
     review: "#FE9A00",
 };
 
+/**
+ * [TH] สตริง SVG ไอคอนสีขาวสำหรับใส่ในวงกลมหัวกล่องข้อความ
+ * [EN] Inline SVG icon markup strings for dialog headers
+ * @constant
+ */
 export const ICON_SVG = {
     info: `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="11" x2="12" y2="17"/><circle cx="12" cy="7.5" r="0.5" fill="#fff" stroke-width="2"/></svg>`,
     question: `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M9 9a3 3 0 1 1 4.6 2.5c-.9.6-1.6 1.2-1.6 2.3"/><circle cx="12" cy="17" r="0.5" fill="#fff" stroke-width="2"/></svg>`,
@@ -47,6 +87,12 @@ function releaseGutterForSwal() {
 
 /* heightAuto: false กัน layout พังใน LINE LIFF (100dvh)
    scrollbarPadding: false ทำงานคู่กับ scroll-lock fix ใน globals.css */
+
+/**
+ * [TH] อ็อบเจกต์ SweetAlert2 Mixin หลักที่ตั้งค่าคลาส CSS, ฟอนต์ และการจองพื้นที่ Scrollbar Gutter
+ * [EN] Base SweetAlert2 mixin instance preconfigured with custom classes and gutter management
+ * @constant
+ */
 export const baseSwal = Swal.mixin({
     background: "var(--color-surface, #ffffff)",
     color: "var(--color-text-primary, #112A33)",
@@ -65,14 +111,30 @@ export const baseSwal = Swal.mixin({
     didClose: releaseGutterForSwal,
 });
 
+/**
+ * [TH] ตัวเลือกสำหรับการแสดงกล่องข้อความยืนยันการทำงาน (Confirm Dialog)
+ * [EN] Options interface for generic confirmation modal dialogs
+ */
 export interface ConfirmDialogOptions {
+    /** [TH] หัวข้อกล่องข้อความ [EN] Modal dialog title */
     title: string;
+    /** [TH] ข้อความรายละเอียด [EN] Optional description text */
     text?: string;
+    /** [TH] ข้อความบนปุ่มยืนยัน [EN] Confirm button label */
     confirmText?: string;
+    /** [TH] ระดับโทนสี [EN] Tone severity variant */
     tone?: SwalTone;
 }
 
-/** Dialog ยืนยันก่อนทำ action — คืน true เมื่อผู้ใช้กดยืนยัน */
+/**
+ * [TH] แสดงกล่องข้อความยืนยันการกระทำ (Confirm Dialog) และคืนค่า true หากผู้ใช้กดยืนยัน
+ * [EN] Displays a confirmation modal dialog and resolves to true if confirmed
+ *
+ * @async
+ * @function confirmDialog
+ * @param {ConfirmDialogOptions} options - การตั้งค่ากล่องข้อความ (หัวข้อ, รายละเอียด, ปุ่ม, โทนสี)
+ * @returns {Promise<boolean>} เป็นจริงเมื่อผู้ใช้กดปุ่มยืนยัน
+ */
 export async function confirmDialog({ title, text, confirmText = "ตกลง", tone = "danger" }: ConfirmDialogOptions): Promise<boolean> {
     const result = await baseSwal.fire({
         title,
@@ -87,19 +149,35 @@ export async function confirmDialog({ title, text, confirmText = "ตกลง",
     return result.isConfirmed;
 }
 
+/**
+ * [TH] ตัวเลือกสำหรับกล่องข้อความยืนยันการส่งคำร้องขอให้ผู้เชี่ยวชาญตรวจสอบ
+ * [EN] Options interface for sample review submission confirmation dialogs
+ */
 export interface ReviewConfirmDialogOptions {
+    /** [TH] หัวข้อกล่องข้อความ [EN] Title */
     title: string;
+    /** [TH] ข้อความอธิบาย [EN] Description text */
     text?: string;
+    /** [TH] รายการสาเหตุที่ต้องส่งตรวจสอบ [EN] Array of review reason bullet points */
     reasons?: string[];
+    /** [TH] บังคับให้กรอกหมายเหตุหรือไม่ [EN] Whether notes input is mandatory */
     requireNote?: boolean;
     /**
-     * ล็อกสิทธิ์ให้ผู้ดูแลระบบแก้ไขชนิดสารได้เสมอ โดยผู้ส่งเลือกเป็นอย่างอื่นไม่ได้
-     * ใช้เมื่อ AI ไม่พบหลอดทดลองในภาพ — ยืนยันไม่ได้ทั้งค่าและชนิดสาร
+     * [TH] ล็อกสิทธิ์ให้ผู้ดูแลระบบแก้ไขชนิดสารได้เสมอ โดยผู้ส่งเลือกเป็นอย่างอื่นไม่ได้ (ใช้เมื่อ AI ไม่พบหลอดทดลองในภาพ)
+     * [EN] Forces permission granting admin to alter parameter type when AI detects no tube
      */
     forceAllowAdminChange?: boolean;
 }
 
-/** Dialog ยืนยันก่อนส่งเพื่อรอตรวจสอบ (สำหรับเคสที่ต้องให้แอดมินช่วยดู) พร้อมกล่องข้อความระบุสาเหตุ */
+/**
+ * [TH] แสดงกล่องข้อความยืนยันการส่งตัวอย่างน้ำเพื่อรอการตรวจสอบโดยผู้เชี่ยวชาญ (พร้อมเหตุผล, หมายเหตุ, และการอนุญาตแก้ไขชนิดสาร)
+ * [EN] Displays a specialized review confirmation modal allowing input notes and admin override permissions
+ *
+ * @async
+ * @function reviewConfirmDialog
+ * @param {ReviewConfirmDialogOptions} options - การตั้งค่ากล่องข้อความส่งตรวจสอบ
+ * @returns {Promise<{ confirmed: boolean; reviewNote?: string; allowAdminChange: boolean }>} ผลการตัดสินใจของผู้ใช้
+ */
 export async function reviewConfirmDialog({
     title,
     text,
@@ -293,7 +371,16 @@ export async function reviewConfirmDialog({
     };
 }
 
-/** Dialog แจ้งผลสำเร็จ — ปุ่ม "รับทราบ" เต็มความกว้าง */
+/**
+ * [TH] แสดงกล่องข้อความแจ้งผลการดำเนินการสำเร็จแบบปุ่มเดียวเต็มความกว้าง
+ * [EN] Displays a single-button full-width success alert dialog
+ *
+ * @function alertSuccess
+ * @param {string} title - หัวข้อข้อความ
+ * @param {SwalTone} [tone="danger"] - โทนสี
+ * @param {string} [text] - รายละเอียดเพิ่มเติม
+ * @returns {Promise<SweetAlertResult>}
+ */
 export function alertSuccess(title: string, tone: SwalTone = "danger", text?: string) {
     return baseSwal.fire({
         title,
@@ -307,7 +394,16 @@ export function alertSuccess(title: string, tone: SwalTone = "danger", text?: st
     });
 }
 
-/** Dialog แจ้ง error (เช่น ไฟล์ผิดประเภท/ผิดขนาด) — ปุ่มเดียวเต็มความกว้าง โทนแดงเสมอ */
+/**
+ * [TH] แสดงกล่องข้อความแจ้งข้อผิดพลาด (Error Dialog) โทนสีแดง
+ * [EN] Displays a single-button full-width error alert dialog
+ *
+ * @function alertError
+ * @param {string} title - หัวข้อข้อผิดพลาด
+ * @param {string} [text] - รายละเอียดข้อผิดพลาด
+ * @param {string} [confirmText="เข้าใจแล้ว"] - ข้อความบนปุ่ม
+ * @returns {Promise<SweetAlertResult>}
+ */
 export function alertError(title: string, text?: string, confirmText = "เข้าใจแล้ว") {
     return baseSwal.fire({
         title,
@@ -333,11 +429,28 @@ const toastSwal = Swal.mixin({
     color: "var(--color-text-primary, #112A33)",
 });
 
+/**
+ * [TH] แสดง Toast แจ้งเตือนข้อผิดพลาดขนาดกะทัดรัดที่มุมขวาบน (ปิดเองอัตโนมัติ)
+ * [EN] Displays a compact auto-dismissing error toast notification in the top-right corner
+ *
+ * @function errorToast
+ * @param {string} title - หัวข้อข้อความ
+ * @param {string} [text] - รายละเอียดเพิ่มเติม
+ * @returns {Promise<SweetAlertResult>}
+ */
 export function errorToast(title: string, text?: string) {
     return toastSwal.fire({ icon: "error", title, text });
 }
 
-/** Dialog สปินเนอร์ระหว่างรอ action ยาว (เช่น บันทึกข้อมูล) — ปิดด้วย closeDialog() เมื่อเสร็จ */
+/**
+ * [TH] แสดงกล่องสปินเนอร์กำลังโหลดข้อมูลระหว่างรอการทำงาน (ไม่สามารถกดปิดได้)
+ * [EN] Displays a modal loading spinner blocking user interaction during long operations
+ *
+ * @function loadingDialog
+ * @param {string} title - หัวข้อกำลังโหลด
+ * @param {string} [text] - รายละเอียด
+ * @returns {Promise<SweetAlertResult>}
+ */
 export function loadingDialog(title: string, text?: string) {
     return baseSwal.fire({
         title,
@@ -349,11 +462,24 @@ export function loadingDialog(title: string, text?: string) {
     });
 }
 
+/**
+ * [TH] ปิดกล่องข้อความ SweetAlert2 ที่เปิดอยู่ทั้งหมดในปัจจุบัน
+ * [EN] Closes any currently active SweetAlert2 modal dialog
+ *
+ * @function closeDialog
+ * @returns {void}
+ */
 export function closeDialog() {
     baseSwal.close();
 }
 
-/** Dialog ยืนยันออกจากระบบ — โทนแดง double icon (ใช้ในหน้าจัดการ) */
+/**
+ * [TH] แสดงกล่องข้อความยืนยันการออกจากระบบ (Logout Dialog)
+ * [EN] Displays a specialized confirmation dialog for logging out of the application
+ *
+ * @function confirmLogoutAlert
+ * @returns {Promise<SweetAlertResult>}
+ */
 export function confirmLogoutAlert() {
     return baseSwal.fire({
         title: "ต้องการออกจากระบบใช่หรือไม่",

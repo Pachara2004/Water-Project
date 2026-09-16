@@ -1,13 +1,48 @@
 "use client";
 
+/**
+ * @fileoverview Custom React hook for dashboard analytics widgets data fetching and filtering
+ *
+ * [TH] React Hook สำหรับจัดการดึงข้อมูลสถิติและการกรองข้อมูลในหน้าแดชบอร์ด (/dashboard)
+ * [EN] React hook managing analytics widgets data fetching, cascading agency/station filters, and date ranges
+ *
+ * @description
+ * [TH] จัดการการดึงข้อมูลสถิติจาก /api/dashboard/widgets (รองรับการยกเลิก request ด้วย AbortController),
+ * ตัวกรองช่วงวันที่ (Rolling 6 months), การเลือกหน่วยงาน (Agency) และสถานีตรวจวัด (Location) แบบสองทิศทาง,
+ * และโหมดการแสดงผลตามสิทธิ์ผู้ใช้งาน (ALL / MINE)
+ * [EN] Manages dashboard analytics data fetching, token authorization, auto-scoping based on user role,
+ * bidirectional agency-station relationship filters, and rolling 6-month defaults.
+ *
+ * @module lib/hooks/useDashboardAnalytics
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-07-20
+ * @modified 2026-07-20
+ *
+ * @history
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: แยกตรรกะการดึงและกรองข้อมูลแดชบอร์ดออกมาเป็น hook useDashboardAnalytics
+ */
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
 import { toISODate, type ComboOption } from "@/components/dashboard/dashboardHelpers";
 
+/**
+ * [TH] ชนิดข้อมูลสถานะและตัวควบคุมทั้งหมดที่คืนค่าจาก useDashboardAnalytics
+ * [EN] Return type of useDashboardAnalytics hook containing states, options, and filter dispatchers
+ */
 export type DashboardAnalyticsState = ReturnType<typeof useDashboardAnalytics>;
 
+/**
+ * [TH] Hook จัดการการดึงข้อมูลและตัวกรองสำหรับหน้าแดชบอร์ดสถิติคุณภาพน้ำ
+ * [EN] Hook managing dashboard analytics fetching, filter options, and interactive controls
+ *
+ * @function useDashboardAnalytics
+ * @returns {DashboardAnalyticsState} อ็อบเจกต์สถานะและตัวควบคุมสำหรับแดชบอร์ด
+ */
 export function useDashboardAnalytics() {
     const { currentUser, theme } = useAppStore();
     const router = useRouter();

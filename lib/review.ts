@@ -1,18 +1,54 @@
+/**
+ * @file lib/review.ts
+ * @project Water Monitoring Project
+ * @module Review / Review Request & Workflow Helpers
+ * @description
+ * [TH] ยูทิลิตี้ฟังก์ชันสำหรับระบบตรวจสอบและอนุมัติผลการตรวจวัดคุณภาพน้ำ (Review & Approval Workflow)
+ * ให้บริการดึงรายชื่อ Session Groups ที่อยู่ระหว่างรอการอนุมัติ (`pending`) สำหรับใช้กรองข้อมูลบนแผนที่และแดชบอร์ด
+ * และสืบค้นรายการคำร้องที่ถูกปฏิเสธ (`rejected`) เพื่อแสดงผลบนแถบกระดิ่งแจ้งเตือนของผู้เก็บตัวอย่างน้ำ
+ *
+ * [EN] Helper utilities for the water quality review and approval lifecycle.
+ * Provides central lookup for pending review session groups (used to isolate unverified submissions on map/dashboard views)
+ * and retrieves rejected review submissions for collector notification feeds.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-13
+ * @modified 2026-07-15
+ * @version 1.1.0
+ * @license Proprietary
+ *
+ * @see {@link /lib/sampleFilters.ts} Sample filters engine consuming pending session groups
+ * @see {@link /app/api/review-requests/route.ts} Review requests collection endpoint
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-13)
+ *
+ * @lastModified 2026-07-15
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-07-15 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix: เพิ่มฟังก์ชันแจ้งเตือน
+ * - 2026-07-14 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: เพิ่มโหมดการส่งตัวอย่าง
+ * - 2026-07-13 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: เพิ่มฟังก์ชันส่งคำร้องตรวจสอบตัวอย่างน้ำที่มีค่า confidence ต่ำ
+ */
+
 import { prisma } from "@/lib/prisma";
 
 /**
- * คืนรายชื่อ sessionGroup ทั้งหมดที่ยังอยู่ในสถานะ pending (รอ admin ตัดสิน)
+ * [TH] คืนค่ารายชื่อ Session Groups ทั้งหมดที่ยังอยู่ในสถานะ `pending` (รอเจ้าหน้าที่/ผู้ดูแลระบบพิจารณา)
+ * เป็น Single Source of Truth สำหรับทุก Read Path ที่ต้องการคัดกรองข้อมูลรออนุมัติออกจากการแสดงผลสาธารณะ
  *
- * ทุก read path ที่ต้องรู้ว่า session ไหน "รออนุมัติ" ต้องเรียกฟังก์ชันนี้ตัวเดียว
- * ห้ามเขียน query `reviewRequest.findMany({ where: { statusRequest: "pending" } })` ซ้ำที่อื่น
- * เพื่อกันไม่ให้เกณฑ์การซ่อนข้อมูล pending เพี้ยนไปคนละแบบระหว่างจุดต่าง ๆ (map / dashboard / ประวัติ)
+ * [EN] Retrieves all session group IDs currently awaiting review decision (`statusRequest: "pending"`).
+ * Serves as the single source of truth to exclude unverified submissions from public/analytics read paths.
  *
- * การใช้งานต่างกันตาม surface:
- * - แผนที่ / dashboard (ข้อมูลรวมทุกคน): ซ่อน pending ทั้งหมดด้วย
- *     `OR: [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }]`
- *     ⚠️ อย่าใช้ `sessionGroup: { notIn: pendingGroups }` เดี่ยว ๆ — SQL `NOT IN (...)` จะคัดแถวที่
- *     sessionGroup เป็น NULL (ข้อมูลส่งเดี่ยวส่วนใหญ่) ทิ้งทั้งหมด ทำให้ map/dashboard ว่างเปล่า
- * - ประวัติของ collector เอง (scope ด้วย collectorId อยู่แล้ว): ใช้ผลลัพธ์นี้แค่ "ติด badge" ว่ารายการไหนรออนุมัติ ไม่ใช้กรองทิ้ง
+ * @async
+ * @function getPendingSessionGroups
+ * @returns {Promise<string[]>} อาร์เรย์ของรหัส sessionGroup ที่อยู่ระหว่างรอการตรวจทาน
+ *
+ * @example
+ * const pendingGroups = await getPendingSessionGroups();
+ * // ใช้งานร่วมกับ Where clause:
+ * where.OR = [{ sessionGroup: null }, { sessionGroup: { notIn: pendingGroups } }];
  */
 export async function getPendingSessionGroups(): Promise<string[]> {
     const rows = await prisma.reviewRequest.findMany({
@@ -23,13 +59,16 @@ export async function getPendingSessionGroups(): Promise<string[]> {
 }
 
 /**
- * คืนคำร้องที่ถูก "ปฏิเสธ" ทั้งหมดที่เป็นของ collector คนนี้ (สำหรับกระดิ่งแจ้งเตือน)
+ * [TH] คืนค่ารายการคำร้องที่ถูกปฏิเสธ (`rejected`) ทั้งหมดที่เป็นของผู้เก็บตัวอย่างน้ำที่ระบุ สำหรับแสดงผลบนแถบกระดิ่งแจ้งเตือน
+ * ตรวจสอบความเป็นเจ้าของผ่านความสัมพันธ์ `sessionGroup` ในตาราง `WaterSample` (รวมถึงแถวที่ถูก Soft-delete)
  *
- * เชื่อมความเป็นเจ้าของผ่าน sessionGroup → WaterSample.collectorId เหมือน read path อื่น ๆ
- * (ReviewRequest ไม่มี FK ตรงไปยัง collector — ดูคอมเมนต์ใน schema.prisma)
+ * [EN] Retrieves all rejected review requests belonging to the specified collector for notification bells.
+ * Resolves ownership via `sessionGroup` linkages in `WaterSample` (including soft-deleted samples).
  *
- * หมายเหตุ: sample ในกลุ่มที่ถูกปฏิเสธถูก soft-delete แล้ว จึง "ไม่กรอง isDeleted" ตอนหา
- * ความเป็นเจ้าของ — แต่ปลอดภัยเพราะกรองด้วย collectorId + intersect กับคำร้องที่ rejected เท่านั้น
+ * @async
+ * @function getRejectedReviewsForCollector
+ * @param {number} collectorId - รหัสประจำตัวของผู้เก็บตัวอย่างน้ำ
+ * @returns {Promise<any[]>} อาร์เรย์ของ ReviewRequest ที่ถูกปฏิเสธ เรียงลำดับจากใหม่สุดไปเก่าสุด
  */
 export async function getRejectedReviewsForCollector(collectorId: number) {
     // 1. หา sessionGroup ทั้งหมดที่ collector คนนี้เป็นเจ้าของ (รวมที่ถูก soft-delete)

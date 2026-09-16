@@ -1,3 +1,39 @@
+/**
+ * @file app/api/samples/export/route.ts
+ * @project Water Monitoring Project
+ * @module API / Reports & Exports
+ * @description
+ * [TH] Route Handler สำหรับการส่งออกรายงานคุณภาพน้ำในรูปแบบ Excel Workbook (.xlsx) (GET)
+ * สร้างไฟล์รายงานพร้อมหัวคอลัมน์และคอลัมน์พารามิเตอร์แบบไดนามิกจากฐานข้อมูล (Master Parameters)
+ * ฝังภาพถ่ายตัวอย่างน้ำจริงและภาพพล็อตผลการวิเคราะห์ AI ลงในเซลล์โดยตรง (บีบอัดขนาดภาพด้วย sharp เพื่อประหยัดหน่วยความจำ)
+ * มีระบบจำกัดเพดานความจุสูงสุด 2,000 แถวเพื่อป้องกันปัญหา Out of Memory
+ * [EN] Route Handler for exporting water quality reports in Excel Workbook format (.xlsx) (GET).
+ * Generates dynamic parameter columns based on database catalog, embeds optimized visual and plot images into cells using sharp,
+ * and enforces a safe ceiling of 2,000 rows to prevent heap exhaustion.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-22
+ * @version 1.3.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-22)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-31)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-02)
+ *
+ * @lastModified 2026-09-02
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-22 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial Excel report generation with embedded images
+ * - 2026-07-31 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Dynamic parameter columns from master table
+ * - 2026-09-02 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Row count limit (2000 rows) & sharp image optimization
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Role-based: officer, admin
+ * @security Memory protection via max row limits and thumbnail downsampling
+ * @see lib/sampleFilters.ts
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
@@ -13,12 +49,24 @@ export const dynamic = "force-dynamic";
 // ไฟล์นี้คือ "รายงานของข้อมูลชุดเล็ก" ถ้าต้องการข้อมูลทั้งก้อนให้ใช้ CSV (ไม่มีเพดาน)
 const MAX_XLSX_ROWS = 2000;
 
-// ย่อรูปก่อนฝัง — ต้นฉบับจากมือถือหนัก 2-8MB ต่อไฟล์ ฝังดิบ ๆ 500 แถว x 2 รูป จะได้ไฟล์หลาย GB
-// ย่อเหลือกว้าง 400px คุณภาพ 70 เหลือราว 20-40KB/รูป (เล็กลง ~50 เท่า) ยังคมกว่าขนาดที่แสดงจริงในเซลล์ (150px)
+/**
+ * ย่อขนาดรูปภาพก่อนนำไปฝังลงในเซลล์ของไฟล์ Excel เพื่อลดขนาดไฟล์และป้องกัน Memory เกินขีดจำกัด
+ * Resizes raw images to max width 400px with 70% JPEG quality prior to embedding.
+ *
+ * @param {Buffer} buffer - Buffer ของภาพต้นฉบับ
+ * @returns {Promise<Buffer>} Buffer ของภาพที่ถูกย่อขนาดแล้ว
+ */
 async function resizeForEmbed(buffer: Buffer): Promise<Buffer> {
     return sharp(buffer).resize({ width: 400, withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer();
 }
 
+/**
+ * สร้างและส่งออกไฟล์ Excel (.xlsx) รายงานคุณภาพน้ำตามเงื่อนไขตัวกรอง
+ * Generates and streams an Excel (.xlsx) report workbook with embedded image thumbnails.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Filter params
+ * @returns {Promise<NextResponse>} Binary stream ของไฟล์ Excel (.xlsx)
+ */
 export async function GET(request: NextRequest) {
     // 🔒 SECURITY GUARD: ล็อกกลอนขั้นสูง อนุญาตเฉพาะสิทธิ์ "officer" และ "admin" เท่านั้นที่ส่งออกรายงานได้
     const auth = await verifyAuth(request, ["officer", "admin"]);

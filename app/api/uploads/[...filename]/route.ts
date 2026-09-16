@@ -1,3 +1,37 @@
+/**
+ * @fileoverview
+ * [TH] Route Handler สำหรับการอัปโหลดไฟล์รูปภาพผลการตรวจวัดสารเคมีและกราฟ (Multipart Form Data)
+ * รองรับการอัปโหลดไฟล์แบบกลุ่มตามพารามิเตอร์สารเคมีที่ถูกนิยามในฐานข้อมูล (Dynamic Master Parameters)
+ * ทั้งรูปดิบ (raw) และรูปประมวลผล (plot) พร้อมระบบตรวจสอบขนาดไฟล์ (ไม่เกิน 5MB) และชนิดไฟล์ (MIME types)
+ * มีฟังก์ชันสร้างชื่อไฟล์ใหม่ที่ปลอดภัย (Sanitize) โดยผนวก วันที่ปัจจุบัน (พ.ศ./ค.ศ. ตาม Thai time) และ UUID
+ * เพื่อป้องกันปัญหา Path Traversal และชื่อไฟล์ซ้ำซ้อน
+ *
+ * [EN] Route Handler for uploading chemical parameter test strip photos and graph plots (Multipart Form Data).
+ * Dynamically scans and binds uploads to master chemical parameters defined in the database,
+ * supporting both raw strip captures and processed calibration plots. Enforces strict file size
+ * limits (max 5MB) and MIME-type white-listing. Sanitizes and renames uploaded files with date stamps
+ * and random UUIDs to prevent collisions and Path Traversal vulnerabilities.
+ *
+ * @module API / Storage & Uploads
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-22
+ * @modified 2026-09-11
+ * @version 2.0.0
+ * @license Proprietary
+ *
+ * @see {@link /lib/thaiTime.ts} ยูทิลิตี้จัดการเวลาและวันที่ตามเขตเวลาประเทศไทย
+ * @see {@link /lib/auth-guard.ts} ระบบตรวจสอบสิทธิ์ผู้ใช้งานผ่าน LINE Session
+ * @see {@link /lib/prisma.ts} Prisma Client สำหรับดึงรายชื่อพารามิเตอร์ Master Data
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - ผู้พัฒนาระบบอัปโหลดไฟล์รูปภาพเริ่มต้น
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - ปรับปรุงการจัดเก็บแบบ Dynamic Parameter Loop และ Filename Sanitizer
+ *
+ * @history
+ * - 2026-09-11 | Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) | ปรับปรุงระบบตรวจสอบสิทธิ์และรองรับ Dynamic Master Parameters
+ * - 2026-06-22 | Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) | พัฒนาระบบอัปโหลดรูปภาพลง public/uploads
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -8,7 +42,22 @@ import { verifyAuth } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma"; // 🔍 ดึง Prisma เข้ามาสแกน Parameter ใน DB
 
 /**
- * 🔒 FILENAME SANITIZER WITH DATE STAMP
+ * [TH] ล้างค่าและสุ่มสร้างชื่อไฟล์ใหม่อย่างปลอดภัย พร้อมระบุวันที่และ UUID (Filename Sanitizer)
+ * สกัดนามสกุลไฟล์เดิมและตรวจสอบกับ White-list นามสกุลที่อนุญาต หากไม่อยู่ในรายการจะใช้ .jpg เป็นค่าเริ่มต้น
+ * รูปแบบชื่อไฟล์: `{prefix}-{YYYYMMDD}-{UUID}.{ext}`
+ *
+ * [EN] Sanitizes and generates a collision-resistant, secure file name with date stamp and UUID.
+ * Extracts original extension and checks against permitted image extensions, defaulting to `.jpg`.
+ * Generated pattern: `{prefix}-{YYYYMMDD}-{UUID}.{ext}`.
+ *
+ * @function sanitizeAndGenerateFilename
+ * @param {string} originalName - ชื่อไฟล์ต้นฉบับที่ส่งมาจากฟอร์ม (เช่น "photo.png")
+ * @param {string} [prefix="upload"] - คำนำหน้าชื่อไฟล์เพื่อระบุประเภท (เช่น "raw-phosphate", "plot-ph")
+ * @returns {string} ชื่อไฟล์ที่ได้รับการ Sanitize และต่อท้ายด้วย UUID อย่างปลอดภัย
+ *
+ * @example
+ * sanitizeAndGenerateFilename("my_strip.jpg", "raw-nitrate");
+ * // Returns: "raw-nitrate-20260916-4f3b2c1a-8899-44aa-bbcc-112233445566.jpg"
  */
 function sanitizeAndGenerateFilename(originalName: string, prefix: string = "upload"): string {
     const dateStamp = toYmd(nowThai()).replace(/-/g, "");
@@ -22,6 +71,41 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "upl
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+/**
+ * [TH] รับและบันทึกไฟล์รูปภาพผลการตรวจวัดคุณภาพน้ำลงเซิร์ฟเวอร์ (Upload Chemical Images)
+ * ตรวจสอบสิทธิ์เฉพาะผู้ใช้กลุ่ม collector และ admin ดึงรายการสารเคมีทั้งหมดจากฐานข้อมูล
+ * จากนั้นวนลูปตรวจสอบ FormData สำหรับรูปดิบ (`image_raw_{paramId}`) และรูปพล็อต (`image_plot_{paramId}`)
+ * บันทึกไฟล์ที่ผ่านการตรวจสอบลงไดเรกทอรี `public/uploads` และส่งคืนแมปข้อมูล URL ของแต่ละรูป
+ *
+ * [EN] Receives and stores water sample parameter analysis images on the server storage.
+ * Enforces role authentication restricted to collectors and admins. Reads all active parameter
+ * definitions from the database and iterates through submitted form data matching raw
+ * (`image_raw_{paramId}`) and plot (`image_plot_{paramId}`) file fields. Saves validated files
+ * into `public/uploads` and returns a structured URL map.
+ *
+ * @async
+ * @function POST
+ * @param {NextRequest} request - Next.js Request object ที่บรรจุ Multipart Form Data
+ * @returns {Promise<NextResponse<{ success: boolean, message: string, uploadedFiles: Record<string, { filename: string, url: string, size: number }> } | { error: string }>>}
+ * JSON Response ยืนยันผลการอัปโหลดและรายการไฟล์ หรือข้อความแจ้งเตือนข้อผิดพลาด
+ *
+ * @auth collector, admin
+ * @database Prisma Client (MySQL) - ดึงรายการพารามิเตอร์ทั้งหมดจากโมเดล `Parameter`
+ *
+ * @example
+ * // Request: POST /api/uploads/parameter-files
+ * // FormData:
+ * //   image_raw_1: (Binary Image File)
+ * //   image_plot_1: (Binary Image File)
+ * // Response (201 Created):
+ * // {
+ * //   "success": true,
+ * //   "message": "อัปโหลดไฟล์ระบบ Dynamic สำเร็จ",
+ * //   "uploadedFiles": {
+ * //     "image_raw_1": { "filename": "raw-phosphate-20260916-uuid.jpg", "url": "/uploads/raw-phosphate-20260916-uuid.jpg", "size": 124500 }
+ * //   }
+ * // }
+ */
 export async function POST(request: NextRequest) {
     try {
         // SECURITY STEP 1: ตรวจสิทธิ์ Token LINE

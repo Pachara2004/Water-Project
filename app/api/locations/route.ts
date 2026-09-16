@@ -1,3 +1,35 @@
+/**
+ * @file app/api/locations/route.ts
+ * @project Water Monitoring Project
+ * @module API / Locations & Stations
+ * @description
+ * [TH] Route Handler จัดการสถานีตรวจวัดคุณภาพน้ำชายฝั่ง (CRUD):
+ * - GET: ดึงรายการสถานีทั้งหมดพร้อมผลตรวจคุณภาพน้ำล่าสุด จัดกลุ่มตามเซสชัน (sessionGroup) และสถานะของสถานที่
+ * - POST: เพิ่มสถานีใหม่ (เฉพาะ admin) พร้อมตรวจสอบความถูกต้องของที่อยู่ไทย และดึงข้อมูลสภาพอากาศ TMD ย้อนหลัง 2 เดือนอัตโนมัติ (Backfill)
+ * - PUT: แก้ไขข้อมูลสถานี (เฉพาะ admin) พร้อมดึงสภาพอากาศใหม่หากมีการเปลี่ยนพิกัดละติจูด/ลองจิจูด
+ * - DELETE: ลบสถานีและผลตรวจน้ำที่เกี่ยวข้องออกจากระบบ (เฉพาะ admin)
+ * [EN] Route Handler for managing coastal water quality monitoring stations (CRUD):
+ * - GET: Retrieves all monitoring stations with session-grouped latest water quality results and worst-case location status.
+ * - POST: Creates new stations (admin only), validates Thai administrative addresses, and auto-backfills 2 months of TMD weather.
+ * - PUT: Updates station metadata (admin only) and triggers weather backfill if coordinates changed.
+ * - DELETE: Deletes station and associated water sample records (admin only).
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.4.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-09)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-15)
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-20)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Public (GET) / Role-based admin only (POST, PUT, DELETE)
+ * @external-service TMD / Open-Meteo Weather API
+ * @see lib/thaiAddress.ts, lib/tmd.ts
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getThaiAddressTree } from "@/lib/thaiAddress.server";
 import { validateAddressParts, lookupZipcode } from "@/lib/thaiAddress";
@@ -9,15 +41,15 @@ import { backfillWeatherData } from "@/lib/tmd";
 import { evaluateSample, computeLatestValueByParameter } from "@/lib/standards";
 import { loadAllStandards } from "@/lib/standards-db";
 
-// ==========================================
 /**
- * ตรวจที่อยู่ที่ client ส่งมากับฐานข้อมูลที่อยู่ไทย — คืนข้อความ error หรือ null เมื่อผ่าน
+ * ตรวจสอบความถูกต้องของข้อมูลที่อยู่ไทยเทียบกับฐานข้อมูลโครงสร้างการปกครอง (จังหวัด/อำเภอ/ตำบล/รหัสไปรษณีย์)
+ * Validates Thai address components against the administrative tree hierarchy.
  *
- * ที่อยู่ว่าง (null/"") ยังยอมรับได้ เพราะคอลัมน์เป็น nullable และสถานีกลางทะเลหลายจุด
- * ไม่มีตำบลกำกับจริง ๆ กฎที่บังคับคือ "ถ้าส่งมา ต้องมีอยู่จริงและผูกถูกระดับ"
- * ไม่ใช่ "ต้องส่งมาครบ" เพื่อไม่ให้สัญญาเดิมของ API เปลี่ยน
- *
- * ฝั่งฟอร์มกรองให้ชั้นหนึ่งแล้ว ด่านนี้กันการยิง API ตรงและการแก้ไขผ่านช่องทางอื่น
+ * @param {unknown} province - ชื่อจังหวัด
+ * @param {unknown} district - ชื่ออำเภอ/เขต
+ * @param {unknown} subdistrict - ชื่อตำบล/แขวง
+ * @param {unknown} zipcode - รหัสไปรษณีย์ 5 หลัก
+ * @returns {Promise<string | null>} ข้อความข้อผิดพลาดเมื่อไม่ผ่าน หรือ null เมื่อที่อยู่ถูกต้อง
  */
 async function validateAddressPayload(
     province: unknown,
@@ -56,8 +88,13 @@ async function validateAddressPayload(
     return null;
 }
 
-// GET /api/locations — ดึงรายการสถานีทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
-// ==========================================
+/**
+ * ดึงรายการสถานีตรวจวัดทั้งหมดพร้อมผลตรวจน้ำล่าสุดแบบจัดกลุ่มเซสชัน
+ * Retrieves all locations with their latest session-grouped water sample results.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Optional Query param `org` สำหรับกรองตามหน่วยงาน
+ * @returns {Promise<NextResponse>} รายการสถานี ผลวิเคราะห์ล่าสุด และประวัติย้อนหลัง
+ */
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -246,7 +283,13 @@ export async function GET(request: NextRequest) {
 
 const antiSpam = new Map<string, number>();
 
-// POST /api/locations — เพิ่มสถานีจุดตรวจพิกัดใหม่ (เฉพาะ admin)
+/**
+ * สร้างสถานีจุดตรวจวัดพิกัดใหม่ พร้อมดึงสภาพอากาศย้อนหลัง 2 เดือนอัตโนมัติ (เฉพาะ Admin)
+ * Creates a new water monitoring station and triggers 2-month TMD weather backfill.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม JSON payload { name, organization, lat, lng, province, district, subdistrict, zipcode }
+ * @returns {Promise<NextResponse>} ข้อมูลสถานีที่สร้างสำเร็จ รหัส 201 Created
+ */
 export async function POST(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
     if (antiSpam.has(ip) && Date.now() - antiSpam.get(ip)! < 3000) return NextResponse.json({ error: "อย่ากดซ้ำ" }, { status: 429 });
@@ -307,7 +350,13 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// PUT /api/locations — ปรับปรุงแก้ไขข้อมูลพิกัดสถานีเดิม (เฉพาะ admin)
+/**
+ * ปรับปรุงแก้ไขข้อมูลสถานีจุดตรวจวัดเดิม (เฉพาะ Admin)
+ * Updates station details; re-triggers weather backfill if coordinates changed.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม JSON payload { id, name, organization, lat, lng, province, district, subdistrict, zipcode }
+ * @returns {Promise<NextResponse>} ข้อมูลสถานีที่ได้รับการอัปเดต
+ */
 export async function PUT(request: NextRequest) {
     try {
         const auth = await verifyAuth(request, ["admin"]);
@@ -377,7 +426,13 @@ export async function PUT(request: NextRequest) {
     }
 }
 
-// DELETE /api/locations — ลบสถานีพิกัดออกจากระบบ (เฉพาะ admin)
+/**
+ * ลบสถานีจุดตรวจวัดและผลตรวจน้ำทั้งหมดของสถานีออกจากระบบ (เฉพาะ Admin)
+ * Deletes a station and cascades deletion of its related water samples.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Query param `?id=...`
+ * @returns {Promise<NextResponse>} ผลสำเร็จ { success: true }
+ */
 export async function DELETE(request: NextRequest) {
     try {
         const auth = await verifyAuth(request, ["admin"]);
