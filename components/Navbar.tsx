@@ -42,15 +42,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Map, BarChart2, User } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Map, BarChart2, User, Settings as SettingsIcon, FileScan as FileScanIcon } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useCallback, useEffect, useMemo, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef, useLayoutEffect } from "react";
 import liff from "@line/liff";
 import { loginAfterLiff } from "@/lib/lineAuth";
 import { onNavDotsRefresh } from "@/lib/navEvents";
-const SettingsIcon = lazy(() => import("lucide-react").then((mod) => ({ default: mod.Settings })));
-const FileScanIcon = lazy(() => import("lucide-react").then((mod) => ({ default: mod.FileScan })));
 
 // ดึงการประกาศ Mapping ข้อความออกมาข้างนอก เพื่อไม่ให้สร้างขึ้นใหม่ทุกรอบการเรนเดอร์
 const MOBILE_LABEL_MAP: Record<string, string> = {
@@ -140,6 +138,17 @@ function isNavItemActive(itemHref: string, pathname: string | null): boolean {
  */
 export default function Navbar() {
     const pathname = usePathname();
+    const router = useRouter();
+
+    const handlePrefetch = useCallback((href: string) => {
+        if (href && href.startsWith("/")) {
+            router.prefetch(href);
+            if (href === "/map") {
+                // Preload MapView chunk in background
+                import("@/components/map/MapView").catch(() => {});
+            }
+        }
+    }, [router]);
 
     const currentUser = useAppStore((state) => state.currentUser);
     const userRole = currentUser?.role;
@@ -404,36 +413,36 @@ export default function Navbar() {
                 <div ref={mobileContainerRef} className="flex items-center justify-around h-20 px-4 w-full relative">
                     {/* Fluid blob indicator — inline style, ไม่ต้อง inject <style> tag */}
                     <div ref={mobileBlobRef} style={MOBILE_BLOB_STYLE} />
-                    <Suspense fallback={null}>
-                        {navItems.map((item, i) => {
-                            const isActive = isNavItemActive(item.href, pathname);
-                            const Icon = item.icon;
-                            const displayLabel = MOBILE_LABEL_MAP[item.label] || item.label;
-                            return (
-                                <Link
-                                    key={item.href}
-                                    ref={(el) => {
-                                        mobileItemRefs.current[i] = el;
-                                    }}
-                                    href={item.href}
-                                    prefetch={true}
-                                    onClick={item.onClick}
-                                    aria-current={isActive ? "page" : undefined}
-                                    className={`relative z-1 group flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-colors duration-150 active:scale-[0.92] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-primary font-semibold" : "text-text hover:text-primary"}`}
-                                >
-                                    <div className="relative">
-                                        <Icon
-                                            size={24}
-                                            strokeWidth={isActive ? 2.5 : 2}
-                                            className={`transition-[transform,color] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? "-translate-y-0.5 scale-110 text-primary" : ""} group-hover:rotate-12`}
-                                        />
-                                        {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-text-danger rounded-full border-2 border-border-danger" />}
-                                    </div>
-                                    <span className={`text-xs mt-1 transition-[color,font-weight] duration-150 whitespace-nowrap ${isActive ? "text-primary" : "font-medium"}`}>{displayLabel}</span>
-                                </Link>
-                            );
-                        })}
-                    </Suspense>
+                    {navItems.map((item, i) => {
+                        const isActive = isNavItemActive(item.href, pathname);
+                        const Icon = item.icon;
+                        const displayLabel = MOBILE_LABEL_MAP[item.label] || item.label;
+                        return (
+                            <Link
+                                key={item.href}
+                                ref={(el) => {
+                                    mobileItemRefs.current[i] = el;
+                                }}
+                                href={item.href}
+                                prefetch={true}
+                                onMouseEnter={() => handlePrefetch(item.href)}
+                                onTouchStart={() => handlePrefetch(item.href)}
+                                onClick={item.onClick}
+                                aria-current={isActive ? "page" : undefined}
+                                className={`relative z-1 group flex flex-1 flex-col items-center justify-center h-full rounded-xl transition-colors duration-150 active:scale-[0.92] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-primary font-semibold" : "text-text hover:text-primary"}`}
+                            >
+                                <div className="relative">
+                                    <Icon
+                                        size={24}
+                                        strokeWidth={isActive ? 2.5 : 2}
+                                        className={`transition-[transform,color] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? "-translate-y-0.5 scale-110 text-primary" : ""} group-hover:rotate-12`}
+                                    />
+                                    {item.showDot && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-text-danger rounded-full border-2 border-border-danger" />}
+                                </div>
+                                <span className={`text-xs mt-1 transition-[color,font-weight] duration-150 whitespace-nowrap ${isActive ? "text-primary" : "font-medium"}`}>{displayLabel}</span>
+                            </Link>
+                        );
+                    })}
                 </div>
             </nav>
 
@@ -449,39 +458,39 @@ export default function Navbar() {
                     <div ref={desktopContainerRef} className="flex flex-col gap-1.5 w-full relative">
                         {/* Fluid blob indicator — inline style */}
                         <div ref={desktopBlobRef} style={DESKTOP_BLOB_STYLE} />
-                        <Suspense fallback={null}>
-                            {navItems.map((item, i) => {
-                                const isActive = isNavItemActive(item.href, pathname);
-                                const Icon = item.icon;
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        ref={(el) => {
-                                            desktopItemRefs.current[i] = el;
-                                        }}
-                                        href={item.href}
-                                        prefetch={true}
-                                        onClick={item.onClick}
-                                        aria-current={isActive ? "page" : undefined}
-                                        className={`relative z-1 group flex items-center h-11 rounded-xl font-semibold text-xs transition-colors duration-150 active:scale-[0.97] overflow-hidden w-full px-4 gap-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-white" : "hover:bg-primary hover:text-white"}`}
-                                    >
-                                        {currentUser?.role === "admin" && (
-                                            <div className="relative shrink-0">
-                                                <Icon
-                                                    size={18}
-                                                    strokeWidth={isActive ? 2.5 : 2}
-                                                    className="transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-0.5 group-hover:rotate-6"
-                                                />
-                                                {item.showDot && (
-                                                    <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border-2 ${isActive ? "border-primary" : "border-surface"}`} />
-                                                )}
-                                            </div>
-                                        )}
-                                        <span className="whitespace-nowrap truncate">{item.label}</span>
-                                    </Link>
-                                );
-                            })}
-                        </Suspense>
+                        {navItems.map((item, i) => {
+                            const isActive = isNavItemActive(item.href, pathname);
+                            const Icon = item.icon;
+                            return (
+                                <Link
+                                    key={item.href}
+                                    ref={(el) => {
+                                        desktopItemRefs.current[i] = el;
+                                    }}
+                                    href={item.href}
+                                    prefetch={true}
+                                    onMouseEnter={() => handlePrefetch(item.href)}
+                                    onTouchStart={() => handlePrefetch(item.href)}
+                                    onClick={item.onClick}
+                                    aria-current={isActive ? "page" : undefined}
+                                    className={`relative z-1 group flex items-center h-11 rounded-xl font-semibold text-xs transition-colors duration-150 active:scale-[0.97] overflow-hidden w-full px-4 gap-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-white" : "hover:bg-primary hover:text-white"}`}
+                                >
+                                    {currentUser?.role === "admin" && (
+                                        <div className="relative shrink-0">
+                                            <Icon
+                                                size={18}
+                                                strokeWidth={isActive ? 2.5 : 2}
+                                                className="transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-0.5 group-hover:rotate-6"
+                                            />
+                                            {item.showDot && (
+                                                <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border-2 ${isActive ? "border-primary" : "border-surface"}`} />
+                                            )}
+                                        </div>
+                                    )}
+                                    <span className="whitespace-nowrap truncate">{item.label}</span>
+                                </Link>
+                            );
+                        })}
                     </div>
                 </div>
             </nav>

@@ -480,7 +480,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                 <div className="bg-card-general border border-border rounded-xl p-4">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-xs font-semibold sm:font-medium text-primary">ผลการวิเคราะห์ล่าสุด</span>
-                                        <StatusBadge status={latest.status.toLowerCase() as any} size="md" />
+                                        <StatusBadge status={(latest.status ? latest.status.toLowerCase() : null) as any} size="md" />
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-text">
                                         <Calendar size={16} />
@@ -649,7 +649,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                                                             {/* ฝั่งขวา: StatusBadge */}
                                                             <div className="shrink-0">
-                                                                <StatusBadge status={s.status.toLowerCase() as any} size="xs" />
+                                                                <StatusBadge status={(s.status ? s.status.toLowerCase() : null) as any} size="sm" />
                                                             </div>
                                                         </div>
                                                     );
