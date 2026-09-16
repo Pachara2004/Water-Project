@@ -1,3 +1,35 @@
+/**
+ * @file locationsMobile.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Locations
+ * @description
+ * view มือถือของหน้าจัดการสถานที่: การ์ดฟอร์มเพิ่มสถานี (ค้นหาสถานที่, พิกัด, หน่วยงาน, ที่อยู่, แผนที่ปักหมุด)
+ * และการ์ดรายการสถานีพร้อมค้นหา + LocationEditDrawer ประกาศ LocationsPageProps ที่ locationsDesktop ใช้ร่วมด้วย
+ *
+ * Mobile station-management view; also declares the shared LocationsPageProps.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-24 – 2026-09-09)
+ *
+ * @lastModified 2026-09-09 14:21
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 14:42 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-08-17 14:00 by Nopparut U. - แก้บั๊กเพิ่มสถานที่ไม่ได้
+ * - 2026-08-28 08:32 by Pachara P. - เพิ่มช่องที่อยู่ไทย
+ * - 2026-08-31 12:03 by Pachara P. - เพิ่ม validation
+ * - 2026-09-01 10:11 by Nopparut U. - ดรอปดาวน์แบบ anchored และคุมความถูกต้องของที่อยู่
+ * - 2026-09-09 14:21 by Pachara P. - ปรับ UI และการใช้คำ
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import type { ComponentType } from "react";
@@ -9,6 +41,7 @@ import { ThaiAddressSelector } from "@/components/manage/ThaiAddressSelector";
 
 type PickedPosition = { lat: number; lng: number } | null;
 
+/** Props ร่วมของ LocationsMobile / LocationsDesktop ทั้งหมดมาจาก page.tsx */
 export interface LocationsPageProps {
     router: ReturnType<typeof useRouter>;
     MapView: ComponentType<{ mode?: "explorer" | "picker"; onLocationPick?: (lat: number, lng: number) => void; pickedPosition?: PickedPosition; panInside?: { bounds: [[number, number], [number, number]]; nonce: number } | null }>;
@@ -77,6 +110,11 @@ export interface LocationsPageProps {
     handleEdit: () => void;
 }
 
+/**
+ * หน้าจัดการสถานที่บนมือถือ
+ *
+ * @param props - ดู {@link LocationsPageProps}
+ */
 export default function LocationsMobile(props: LocationsPageProps) {
     const {
         router,

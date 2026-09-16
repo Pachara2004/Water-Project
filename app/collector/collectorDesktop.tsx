@@ -1,3 +1,39 @@
+/**
+ * @file collectorDesktop.tsx
+ * @project Water Monitoring Project
+ * @module App / Collector
+ * @description
+ * view desktop ของหน้ารายการตัวอย่างน้ำ: แถบค้นหา/ตัวกรองเรียงแนวนอนเป็น toolbar และรายการเป็น grid 2 คอลัมน์
+ * การ์ดต้อนรับ + ปุ่มไปหน้าส่งตรวจ, ช่องค้นหา, ตัวกรองช่วงวันที่, ตัวกรองสถานะน้ำ (multi-select),
+ * ตัวกรองสถานะการตรวจสอบ (PENDING/APPROVED/EDITED_APPROVED/REJECTED), สรุปจำนวนตามสถานะ, เรียงลำดับ,
+ * รายการตัวอย่างเป็นการ์ดต่อ sessionGroup (กดไปหน้าประวัติ) และ PaginationBar state ทั้งหมดมาจาก
+ * useCollectorFilters ผ่าน props ไฟล์นี้จัด layout อย่างเดียว
+ *
+ * Desktop collector list view: horizontal filter toolbar and a two-column card grid.
+ * Layout only — state comes from useCollectorFilters.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-27 – 2026-09-09)
+ *
+ * @lastModified 2026-09-09 13:18
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 09:22 by Pachara P. - แยกไฟล์ออกจาก page.tsx และจัด layout desktop
+ * - 2026-07-27 13:38 by Nopparut U. - แบ่งหน้าฝั่ง server
+ * - 2026-08-04 13:55 by Pachara P. - เปลี่ยนรหัสตัวอย่างเป็น sessionGroup
+ * - 2026-08-25 15:37 by Nopparut U. - เพิ่มตัวกรองสถานะการตรวจสอบ
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับภาพที่ AI ไม่พบหลอดทดลอง (ประเมินไม่ได้)
+ * - 2026-09-09 by Nopparut U. - แถบแบ่งหน้าใหม่และป้ายสารเป็นสูตรเคมี
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -25,6 +61,11 @@ const reviewStatusOptions = [
     { id: "REJECTED", label: "ถูกปฏิเสธ" },
 ];
 
+/**
+ * หน้ารายการตัวอย่างน้ำบน desktop
+ *
+ * @param props - ดู CollectorProps ใน collectorMobile.tsx
+ */
 export default function CollectorDesktop(props: CollectorProps) {
     const { currentUser } = useAppStore();
     const router = useRouter();

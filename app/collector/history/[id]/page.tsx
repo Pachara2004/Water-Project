@@ -1,3 +1,41 @@
+/**
+ * @file app/collector/history/[id]/page.tsx
+ * @project Water Monitoring Project
+ * @module App / Collector / History
+ * @description
+ * หน้ารายละเอียดตัวอย่างน้ำหนึ่งชุด (/collector/history/[id] โดย id = sessionGroup) โหลดจาก /api/samples/[id]
+ * และรายชื่อสถานีสำหรับแก้ไข สร้าง mockSubmitHook ให้ ImageZone/ResultsPanel ของหน้า submit นำมาแสดงซ้ำ
+ * แบบอ่านอย่างเดียว ซ่อนค่าจากภาพที่ AI ไม่พบหลอดทดลองเฉพาะช่วงที่ยังรอตรวจสอบ กันสิทธิ์ officer ตอน render
+ *
+ * Sample-session detail page: fetches the session, adapts it into the submit-page components
+ * (read-only), supports editing collection time / station / oxygen, and guards officer access.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-18
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-24 – 2026-08-24)
+ *
+ * @lastModified 2026-09-02 14:13
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-18 14:22 by Nopparut U. - สร้างหน้าประวัติรายรายการ
+ * - 2026-06-19 15:13 by Nopparut U. - เพิ่มแก้ไขประวัติพร้อม validate
+ * - 2026-07-06 10:53 by Pachara P. - แสดงสารแบบ dynamic
+ * - 2026-07-16 13:13 by Nopparut U. - รองรับ workflow สารซ้ำ
+ * - 2026-07-20 15:07 by Pachara P. - ใช้ sessionGroup แทน code
+ * - 2026-07-23 09:35 by Pachara P. - แยก view เป็น desktop/mobile
+ * - 2026-07-27 16:01 by Nopparut U. - กัน officer เข้าหน้านี้
+ * - 2026-09-02 14:13 by Nopparut U. - ซ่อนค่าจากภาพที่ AI ไม่พบหลอดทดลองระหว่างรอตรวจสอบ
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @auth collector และ admin เท่านั้น ยิง API ด้วย LIFF access token
+ * @notes marker [NO_TEST_TUBE] ไม่ถูกลบหลังอนุมัติ จึงต้องดู reviewStatus ควบคู่ ไม่ใช่ marker อย่างเดียว
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +57,7 @@ interface LocationOption {
     agency: string;
 }
 
+/** ชุดตัวอย่างตามที่ /api/samples/[id] ส่งกลับ ฟิลด์ค่าสารเป็น dynamic key */
 interface SampleDetail {
     id: number;
     code?: string | null;
@@ -52,6 +91,7 @@ interface SampleDetail {
     };
 }
 
+/** วันเวลาแบบไทย สำหรับแสดงในหน้ารายละเอียด */
 function formatDateTime(value: string) {
     return new Date(value).toLocaleDateString("th-TH", {
         year: "numeric",
@@ -62,6 +102,7 @@ function formatDateTime(value: string) {
     });
 }
 
+/** โหลดชุดตัวอย่าง จัดการโหมดแก้ไข แล้วเลือก view ตามจอ */
 export default function CollectorHistoryDetailPage() {
     const router = useRouter();
     const params = useParams<{ id: string }>();

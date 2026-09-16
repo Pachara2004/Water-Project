@@ -1,3 +1,36 @@
+/**
+ * @file locationsDesktop.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Locations
+ * @description
+ * view desktop ของหน้าจัดการสถานที่: เรียงการ์ดแนวตั้งเหมือน mobile (ฟอร์มบน รายการล่าง) แต่ในการ์ดฟอร์ม
+ * จัดฟิลด์ซ้าย/แผนที่ขวา และรายการสถานีเป็นหลายคอลัมน์ ไม่เปลี่ยน logic ใช้ LocationsPageProps ชุดเดียวกับ mobile
+ *
+ * Desktop station-management view: form fields beside the map, multi-column station list.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-24 – 2026-09-09)
+ *
+ * @lastModified 2026-09-09 14:21
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 14:42 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-08-17 14:00 by Nopparut U. - แก้บั๊กเพิ่มสถานที่ไม่ได้
+ * - 2026-08-28 08:32 by Pachara P. - เพิ่มช่องที่อยู่ไทย
+ * - 2026-08-31 12:03 by Pachara P. - เพิ่ม validation
+ * - 2026-09-01 10:11 by Nopparut U. - ดรอปดาวน์แบบ anchored และคุมความถูกต้องของที่อยู่
+ * - 2026-09-09 14:21 by Pachara P. - ปรับ UI และการใช้คำ
+ * - 2026-08-27 15:50 by Pachara P. - ปรับ UI desktop
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { MapPin, MapPinPlus, MapPinned, Building2, Save, Plus, Search, FileText } from "lucide-react";
@@ -6,9 +39,11 @@ import { StationListRow, LocationEditDrawer } from "@/components/manage/location
 import { ThaiAddressSelector } from "@/components/manage/ThaiAddressSelector";
 import type { LocationsPageProps } from "./locationsMobile";
 
-// Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ — เรียงการ์ดแนวตั้งเหมือน mobile (ฟอร์มบน รายการล่าง)
-// แต่ข้างในการ์ดฟอร์มจัดฟิลด์ไว้ซ้าย/แผนที่ไว้ขวา ใช้พื้นที่กว้างของจอแทนการบีบเป็นคอลัมน์เดียวยาว
-// ไม่เปลี่ยน logic/handler — ใช้ state ชุดเดียวกับ locationsMobile ที่มาจาก page.tsx
+/**
+ * หน้าจัดการสถานที่บน desktop
+ *
+ * @param props - ดู LocationsPageProps ใน locationsMobile.tsx
+ */
 export default function LocationsDesktop(props: LocationsPageProps) {
     const {
         router,

@@ -1,3 +1,34 @@
+/**
+ * @file app/dashboard/loading.tsx
+ * @project Water Monitoring Project
+ * @module App / Dashboard / Loading
+ * @description
+ * Skeleton ของแดชบอร์ด mirror โครงการ์ดจริงใน dashboardDesktop/Mobile (class/grid/typography เดียวกัน)
+ * ความสูงมาจากโครงจริง ไม่ hardcode: KPI/ตาราง สูงตามเนื้อหา, กราฟ h-64 เท่าการ์ดจริง ใช้ &nbsp;
+ * ในกล่อง text-* ให้บรรทัดสูงเท่าตัวจริง export DashboardContentSkeleton ให้หน้าจริงใช้ตอนโหลดครั้งแรกด้วย
+ *
+ * Dashboard skeleton mirroring the real card structure; DashboardContentSkeleton is reused
+ * by the live page for its first load.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-16
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-22 – 2026-08-04)
+ *
+ * @lastModified 2026-08-04 13:04
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-16 14:52 by Pachara P. - เพิ่ม skeleton loader ทุกหน้า
+ * - 2026-07-24 20:37 by Nopparut U. - ทำ skeleton ให้ตรงโครงการ์ดจริงและแยก DashboardContentSkeleton
+ * - 2026-08-04 13:04 by Nopparut U. - ปรับให้เข้ากับ layout desktop
+ *
+ * @client-side ไม่มี hook/state เป็น Server Component ได้ (Next.js route loading UI)
+ * @license Private / Proprietary
+ */
+
 import { LucideSearch } from "lucide-react";
 
 // Skeleton ของส่วนข้อมูล — mirror โครงการ์ดจริงใน dashboardDesktop/Mobile (คลาส/grid/typography เดียวกัน)
@@ -11,6 +42,7 @@ function Bar({ w }: { w: string }) {
     return <span className={`inline-block max-w-full rounded bg-surface-subtle ${w}`}>&nbsp;</span>;
 }
 
+/** skeleton เฉพาะส่วนเนื้อหา (ไม่รวมแถบควบคุม) มี animate-pulse ในตัว ใช้นอก route loading ได้ */
 export function DashboardContentSkeleton() {
     return (
         <div className="space-y-4 animate-pulse">
@@ -80,6 +112,7 @@ export function DashboardContentSkeleton() {
     );
 }
 
+/** route loading UI: แถบควบคุม + DashboardContentSkeleton */
 export default function Loading() {
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">

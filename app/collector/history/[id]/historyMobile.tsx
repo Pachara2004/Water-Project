@@ -1,3 +1,36 @@
+/**
+ * @file historyMobile.tsx
+ * @project Water Monitoring Project
+ * @module App / Collector / History
+ * @description
+ * view mobile ของหน้ารายละเอียดตัวอย่างน้ำ เรียงแนวตั้ง: หัวข้อ, สรุป, ข้อมูลประกอบ (แก้ไขได้), ภาพและผลวิเคราะห์
+ * ใช้ ImageZone/ResultsPanel/StandardsComparison ของ flow submit แสดงซ้ำแบบอ่านอย่างเดียว
+ * state และ handler ทั้งหมดมาจาก page.tsx ผ่าน props (ยังพิมพ์เป็น any)
+ *
+ * Mobile view of the sample-session detail page; reuses submit-flow components read-only. Layout only.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-08-10 – 2026-09-03)
+ *
+ * @lastModified 2026-09-03 10:49
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 09:35 by Pachara P. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-08-04 11:12 by Pachara P. - ปรับการแสดงผลประวัติ
+ * - 2026-08-17 15:46 by Pachara P. - แสดงสถานะกำลังตรวจสอบ
+ * - 2026-08-24 10:26 by Pachara P. - แสดงรายการที่ถูกแก้ไข/ไม่อนุมัติ
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับภาพที่ AI ไม่พบหลอดทดลอง
+ * - 2026-09-03 10:49 by Nopparut U. - จัดขนาดตัวอักษรเข้าสเกล
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { ArrowLeft, Calendar, MapPin, User, Thermometer, CloudRain, Waves } from "lucide-react";
@@ -8,6 +41,11 @@ import { formatMeasuredValue } from "@/lib/chemLabels";
 import { StandardsComparison } from "@/components/StandardsComparison";
 import { getWeatherConditionLabel } from "@/lib/weather";
 
+/**
+ * หน้ารายละเอียดตัวอย่างบน mobile
+ *
+ * @param props - state/handler จาก page.tsx (sample, editData, isEditing, mockSubmitHook, router ฯลฯ)
+ */
 export default function CollectorHistoryDetailMobile(props: any) {
     const {
         sample,

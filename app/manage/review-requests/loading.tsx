@@ -1,7 +1,33 @@
+/**
+ * @file app/manage/review-requests/loading.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Review Requests / Loading
+ * @description
+ * Skeleton ของหน้าตรวจสอบคำร้อง export ReviewRequestCardSkeleton (การ์ดเดี่ยว) ให้หน้าจริงใช้ตอนสลับแท็บด้วย
+ *
+ * Route loading UI for /manage/review-requests; the single-card skeleton is reused on tab switches.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-16
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-24)
+ *
+ * @lastModified 2026-07-24 16:14
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-16 14:52 by Pachara P. - เพิ่ม skeleton loader ทุกหน้า
+ * - 2026-07-24 13:27 by Nopparut U. - แยก ReviewRequestCardSkeleton ให้ใช้ซ้ำตอนสลับแท็บ
+ *
+ * @client-side ไม่มี hook/state เป็น Server Component ได้ (Next.js route loading UI)
+ * @license Private / Proprietary
+ */
+
 import { ArrowLeft } from "lucide-react";
 
-// การ์ด skeleton เดี่ยวสำหรับคำร้องหนึ่งใบ — ใช้ร่วมกันทั้งตอนโหลด route ครั้งแรก (Loading)
-// และตอนสลับ tab ในหน้าเดิม (reviewRequestsMobile / reviewRequestsDesktop)
+/** การ์ด skeleton ของคำร้องหนึ่งใบ ใช้ทั้งตอนโหลด route ครั้งแรกและตอนสลับแท็บในหน้าเดิม */
 export function ReviewRequestCardSkeleton() {
     return (
         <div className="bg-surface rounded-2xl border border-border p-5 space-y-4 h-64 animate-pulse">

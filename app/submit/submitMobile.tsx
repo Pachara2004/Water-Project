@@ -1,3 +1,37 @@
+/**
+ * @file submitMobile.tsx
+ * @project Water Monitoring Project
+ * @module App / Submit
+ * @description
+ * view มือถือของหน้าส่งตรวจ: แถบหัว, SubmitSteps แนวนอน แล้วเรียงส่วนต่างๆ แนวตั้ง
+ * ประกอบจาก LocationPicker, MetadataFields, ImageZone ต่อสาร, AnalyzeButton, ResultsPanel และปุ่มยืนยัน/ส่งตรวจสอบ
+ * state และ handler ทั้งหมดมาจาก page.tsx ผ่าน props (ยังพิมพ์เป็น any)
+ *
+ * Mobile submit view: header, horizontal steps and a single-column flow. Layout only.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-24 – 2026-09-14)
+ *
+ * @lastModified 2026-09-14 16:23
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 09:35 by Pachara P. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-07-24 15:33 by Nopparut U. - ใช้ PageHeader กลาง
+ * - 2026-08-21 16:23 by Pachara P. - ปรับ flow การส่งตรวจ
+ * - 2026-08-25 by Nopparut U./Pachara P. - แก้ปุ่มส่งตรวจสอบ ลบปุ่มยืนยันสารเดิมหลังส่ง และปรับ flow ให้แอดมิน
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับภาพที่ AI ไม่พบหลอดทดลอง
+ * - 2026-09-03 by Nopparut U. - ใช้ design token และจัดขนาดตัวอักษรเข้าสเกล
+ * - 2026-09-14 16:23 by Nopparut U. - แก้ UI ที่เพี้ยนใน flow และรวมปุ่มดำเนินการไว้ block เดียว
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { ImageZone } from "@/components/submit/ImageZone";
@@ -9,6 +43,11 @@ import { SubmitSteps } from "@/components/submit/SubmitSteps";
 import { Database, CheckCircle2, AlertCircle, Clock, RotateCcw, Copy, Send } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 
+/**
+ * หน้าส่งตรวจบนมือถือ
+ *
+ * @param props - state/handler จาก page.tsx (hook, results, step, handleImageSelect ฯลฯ)
+ */
 export default function SubmitMobile(props: any) {
     const {
         hook,

@@ -1,3 +1,26 @@
+/**
+ * @file app/collector/loading.tsx
+ * @project Water Monitoring Project
+ * @module App / Collector / Loading
+ * @description
+ * Skeleton ของหน้ารายการตัวอย่างน้ำ: การ์ดต้อนรับ, แถบค้นหา/ตัวกรอง และการ์ดรายการ
+ *
+ * Route loading UI for /collector.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-16
+ * @version 1.0.0
+ *
+ * @lastModified 2026-07-16 14:52
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-16 14:52 by Pachara P. - เพิ่ม skeleton loader ทุกหน้า
+ *
+ * @client-side ไม่มี hook/state เป็น Server Component ได้ (Next.js route loading UI)
+ * @license Private / Proprietary
+ */
+
 export default function Loading() {
     return (
         <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">

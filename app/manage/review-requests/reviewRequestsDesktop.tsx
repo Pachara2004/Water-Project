@@ -1,3 +1,36 @@
+/**
+ * @file reviewRequestsDesktop.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Review Requests
+ * @description
+ * view desktop ของหน้าตรวจสอบคำร้อง: แถบแท็บ/ตัวกรองเรียงแนวนอน รายการ RequestCardDesktop แบบแถวกว้าง
+ * PaginationBar และ drawer/lightbox จาก reviewRequestsHelpers ใช้ ReviewRequestsPageProps ชุดเดียวกับ mobile
+ *
+ * Desktop review-queue view with horizontal tabs/filters and wide request rows.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-24 – 2026-09-02)
+ *
+ * @lastModified 2026-09-11 12:56
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 16:08 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-07-27 14:19 by Nopparut U. - ใช้ PaginationBar กลาง
+ * - 2026-08-04 12:20 by Pachara P. - ปรับหน้าจัดการคำขอ
+ * - 2026-08-25 by Nopparut U./Pachara P. - เลือกตัวอย่างบางส่วนเพื่ออนุมัติ และปรับ flow/UI รายการ
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับภาพที่ AI ไม่พบหลอดทดลอง
+ * - 2026-09-09 10:47 by Nopparut U. - แถบแบ่งหน้าใหม่
+ * - 2026-09-11 12:56 by Nopparut U. - แก้ขอบเขตวันของตัวกรอง (เวลาไทยไม่มี Z)
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -16,6 +49,11 @@ const statusOptions = [
     { id: "danger", label: "อันตราย" },
 ];
 
+/**
+ * หน้าตรวจสอบคำร้องบน desktop
+ *
+ * @param props - ดู ReviewRequestsPageProps ใน reviewRequestsMobile.tsx
+ */
 export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
     const {
         router,
