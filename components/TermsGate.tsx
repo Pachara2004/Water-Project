@@ -50,6 +50,7 @@ interface TermsGateProps {
  */
 export default function TermsGate({ onAccept, onDecline, busy = false }: TermsGateProps) {
     const [termsRead, setTermsRead] = useState(false);
+    const scrollerRef = useRef<HTMLDivElement>(null);
     const endRef = useRef<HTMLDivElement>(null);
 
     // ใช้ IntersectionObserver บน sentinel ท้ายเนื้อหาแทนการคำนวณ scrollTop เพราะรองรับทั้งกรณีเนื้อหาสั้นกว่ากล่อง
@@ -58,11 +59,13 @@ export default function TermsGate({ onAccept, onDecline, busy = false }: TermsGa
         if (termsRead) return;
         const el = endRef.current;
         if (!el) return;
+        // root เป็นกล่องเลื่อนเอง ไม่ใช่ viewport และ threshold 0 เพราะ sentinel สูง 1px
+        // ratio จาก sub-pixel rounding บนจอ DPR ไม่เต็มอาจไม่ถึง 0.5 ทั้งที่มองเห็นแล้ว
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries.some((entry) => entry.isIntersecting)) setTermsRead(true);
             },
-            { threshold: 0.5 },
+            { root: scrollerRef.current, threshold: 0 },
         );
         observer.observe(el);
         return () => observer.disconnect();
@@ -82,9 +85,12 @@ export default function TermsGate({ onAccept, onDecline, busy = false }: TermsGa
                 </div>
 
                 <div className="relative mt-5">
-                    <div className="max-h-[45dvh] overflow-y-auto rounded-xl border border-border bg-surface-subtle p-4 overscroll-contain">
-                        <TermsContent />
-                        <div ref={endRef} className="h-px" />
+                    {/* ชั้นนอกถือขอบมนและ clip scrollbar ชั้นในเป็นตัวเลื่อน ถ้ารวมกันขอบโค้งจะไม่ clip scrollbar */}
+                    <div className="rounded-xl border border-border bg-surface-subtle overflow-hidden">
+                        <div ref={scrollerRef} className="max-h-[45dvh] overflow-y-auto p-4 overscroll-contain">
+                            <TermsContent />
+                            <div ref={endRef} className="h-px" />
+                        </div>
                     </div>
                     {/* fade ขอบล่างบอกว่ายังมีเนื้อหาต่อ หายไปเมื่ออ่านจบ */}
                     {!termsRead && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 rounded-b-xl bg-linear-to-t from-surface-subtle to-transparent" />}
