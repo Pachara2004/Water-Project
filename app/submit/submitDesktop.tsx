@@ -80,7 +80,7 @@ export default function SubmitDesktop(props: any) {
     } = props;
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg antialiased transition-colors duration-300">
             <canvas ref={hook.hiddenCanvasRef} className="hidden" />
 
             {/* ── Top Navigation Header ── */}

@@ -58,7 +58,7 @@ export interface ManagePageProps {
  */
 export default function ManageMobile({ currentUser, isAdmin, pendingCounts, showEdit, setShowEdit, handleLogout, router, showToast, toastElement }: ManagePageProps) {
     return (
-        <div className="min-h-dvh w-full bg-bg transition-colors duration-75">
+        <div className="w-full flex-1 bg-bg pb-6 transition-colors duration-75">
             <div className="w-full max-w-2xl mx-auto px-4">
                 <div className="pt-8 pb-1 mb-1 p-1">
                     <h1 className="font-display text-2xl font-semibold text-primary ">การจัดการระบบ</h1>

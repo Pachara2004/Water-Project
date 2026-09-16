@@ -34,7 +34,7 @@ import type { TermsProps } from "./termsMobile";
  */
 export default function TermsDesktop({ onBack }: TermsProps) {
     return (
-        <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
+        <div className="w-full flex-1 bg-bg antialiased transition-colors duration-300">
             <PageHeader title="ข้อตกลงและนโยบายความเป็นส่วนตัว" onBack={onBack} />
 
             <div className="w-full max-w-3xl mx-auto p-4">

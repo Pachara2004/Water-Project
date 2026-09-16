@@ -225,7 +225,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
     );
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg antialiased transition-colors duration-300">
             {/* ── Top Navigation Header ── */}
             <header className="bg-card-general border-b border-border sticky top-0 z-20">
                 <div className="w-full px-4 h-13 flex items-center justify-between relative">
