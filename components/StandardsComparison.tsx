@@ -1,20 +1,42 @@
+/**
+ * @file StandardsComparison.tsx
+ * @project Water Monitoring Project
+ * @module UI / Water Quality
+ * @description
+ * ตารางเปรียบเทียบผลตรวจกับเกณฑ์แต่ละประเภทการใช้ประโยชน์ ใช้ร่วมกันระหว่างหน้า submit
+ * (เทียบทีละสาร) กับ BottomSheet บนแผนที่ (เทียบรวมทั้งสถานี) คอมโพเนนต์นี้ไม่คำนวณอะไรเลย
+ * ผู้เรียกคำนวณ rows มาเอง สิ่งที่แชร์กันคือการแสดงผล เพื่อให้ทั้งสองหน้าใช้คำและสีชุดเดียวกัน
+ *
+ * Presentational comparison table of a result against each usage-class standard.
+ * Shared by the submit page and the map BottomSheet; callers compute the rows.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-17
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-21 – 2026-08-10)
+ *
+ * @lastModified 2026-08-10 13:59
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-17 14:53 by Nopparut U. - รวม JSX เปรียบเทียบเกณฑ์ที่เคยเขียนแยกกันสองหน้า (แสดงระดับไม่ตรงกัน) เป็นคอมโพเนนต์เดียว
+ * - 2026-07-21 10:36 by Pachara P. - ปรับการแสดงสารใน BottomSheet
+ * - 2026-08-10 13:59 by Pachara P. - ปรับ UI ให้เข้ากับหน้าส่งตรวจแบบใหม่
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import type { StatusType } from "@/lib/standards";
 
-/**
- * ตารางเปรียบเทียบผลตรวจกับเกณฑ์แต่ละประเภทการใช้ประโยชน์
- * ─────────────────────────────────────────────────────────
- * ใช้ร่วมกันระหว่างหน้า submit (เทียบทีละสาร) กับ BottomSheet บนแผนที่ (เทียบรวมทั้งสถานี)
- *
- * component นี้ "ไม่คำนวณอะไรเลย" — ผู้เรียกคำนวณ rows มาเอง เพราะสองหน้ามีขอบเขตต่างกัน
- * (หน้า submit เทียบสารตัวเดียว / BottomSheet รวมทุกสาร) สิ่งที่แชร์กันคือ "การแสดงผล"
- * ให้ทั้งสองหน้าพูดเรื่องเดียวกันด้วยคำและสีชุดเดียวกัน — เดิมเขียน JSX แยกกันแล้วเพี้ยน:
- * หน้าหนึ่งโชว์ 3 ระดับ อีกหน้าโชว์ 2 ระดับ ข้อมูลชุดเดียวกันแต่ผู้ใช้เห็นคำตอบขัดกัน
- */
-
+/** หนึ่งแถวในตารางเปรียบเทียบ = หนึ่งประเภทการใช้ประโยชน์ */
 export interface ComparisonRow {
+    /** คีย์เฉพาะสำหรับ React key */
     key: string;
     /** ชื่อประเภทการใช้ประโยชน์ เช่น "เพื่อการอนุรักษ์แหล่งปะการัง" */
     label: string;
@@ -51,6 +73,13 @@ const NO_STANDARD_STYLE = {
     iconClass: "text-text-muted",
 };
 
+/**
+ * ตารางเปรียบเทียบเกณฑ์ คืน null เมื่อไม่มีแถว
+ *
+ * @param title - หัวข้อตาราง
+ * @param rows - แถวที่ผู้เรียกคำนวณสถานะมาแล้ว
+ * @param compact - true = ทรงแน่นสำหรับ BottomSheet; false = การ์ดเต็มสำหรับหน้า submit
+ */
 export function StandardsComparison({ title, rows, compact = false }: { title: string; rows: ComparisonRow[]; compact?: boolean }) {
     if (rows.length === 0) return null;
 

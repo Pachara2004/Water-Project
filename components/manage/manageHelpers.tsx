@@ -1,3 +1,41 @@
+/**
+ * @file manageHelpers.tsx
+ * @project Water Monitoring Project
+ * @module UI / Manage
+ * @description
+ * ส่วนประกอบของหน้าจัดการข้อมูล (/manage) ที่ desktop และ mobile ใช้ร่วมกัน: รายการเมนูผู้ดูแล
+ * (adminMenus ผูก countKey กับ /api/manage/pending-count) และเมนูทั่วไป, ป้ายชื่อ role,
+ * ตัวตรวจชื่อ/เบอร์โทร (กฎเดียวกับหน้าลงทะเบียน), การ์ดโปรไฟล์ และ Popup แก้ไขโปรไฟล์
+ * ที่บันทึกผ่าน /api/profile
+ *
+ * Shared pieces of the /manage page: admin and general menu definitions, role
+ * labels, name/phone validators, the profile card and the edit-profile popup.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-22
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-25 – 2026-09-10)
+ *
+ * @lastModified 2026-09-15 14:15
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-22 14:28 by Nopparut U. - สร้างหน้า admin panel และหน้าจัดการผู้ใช้
+ * - 2026-07-07 14:54 by Nopparut U. - แก้ฟังก์ชันแก้ไขข้อมูลและเพิ่ม sweet alert
+ * - 2026-07-14 13:39 by Pachara P. - เพิ่มระบบออกจากระบบ
+ * - 2026-07-23 13:37 by Nopparut U. - แยก helper ออกมาตอนแยกหน้า manage เป็น desktop/mobile
+ * - 2026-07-23 15:14 by Nopparut U. - ตรวจฟอร์มแก้ไขข้อมูลด้วยกฎเดียวกับตอนสมัคร
+ * - 2026-08-11 11:07 by Pachara P. - ปรับ modal แก้ไขโปรไฟล์
+ * - 2026-09-10 14:28 by Pachara P. - เพิ่มเมนูข้อตกลงและนโยบายความเป็นส่วนตัว
+ * - 2026-09-15 14:15 by Nopparut U. - ปรับตาม flow ยอมรับข้อตกลง
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @auth บันทึกโปรไฟล์ด้วย LIFF access token ผ่าน /api/profile
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -6,7 +44,7 @@ import { useAppStore } from "@/lib/store";
 import { MapPin, Users, ReceiptText, Check, AlertCircle, User, ClipboardCheck, Pencil } from "lucide-react";
 import Popup from "@/components/Popup";
 
-// countKey เชื่อมกับผลลัพธ์ /api/manage/pending-count เพื่อบอกว่าเมนูไหนมีคำร้องค้างอยู่
+/** เมนูสำหรับ admin; `countKey` เชื่อมกับผลลัพธ์ /api/manage/pending-count เพื่อบอกว่าเมนูไหนมีคำร้องค้างอยู่ */
 export const adminMenus = [
     {
         href: "/manage/review-requests",
@@ -43,6 +81,7 @@ export const adminMenus = [
     },
 ];
 
+/** เมนูที่ผู้ใช้ทุก role เห็น */
 export const generalMenus = [
     {
         href: "/terms",
@@ -57,7 +96,7 @@ export const generalMenus = [
     },
 ];
 
-// แมปป้ายกำกับและสไตล์สีตามกลุ่มสิทธิ์ระบบพิมพ์เล็กชุดล่าสุดของ
+/** ป้ายชื่อ role ภาษาไทย (คีย์เป็นตัวพิมพ์เล็กตาม store) */
 export const ROLE_LABEL: Record<string, string> = {
     collector: "ผู้เก็บตัวอย่างน้ำ",
     officer: "ผู้บริหาร",
@@ -69,7 +108,13 @@ export const ROLE_LABEL: Record<string, string> = {
 const NAME_LATIN_RE = /^[A-Za-z]+$/;
 const NAME_THAI_RE = /^[ก-์]+$/;
 
-// ตรวจชื่อจริง/นามสกุลทีละช่อง; label ใช้เติมในข้อความเมื่อเว้นว่าง
+/**
+ * ตรวจชื่อจริง/นามสกุลทีละช่อง: ไทยล้วนหรืออังกฤษล้วน ยาว ≥ 2 และไม่ใช่ตัวอักษรซ้ำ/สุ่มพิมพ์
+ *
+ * @param v - ค่าที่กรอก
+ * @param label - ชื่อช่อง ใช้เติมในข้อความเมื่อเว้นว่าง
+ * @returns ข้อความ error หรือ "" เมื่อผ่าน
+ */
 export function validateNameField(v: string, label: string): string {
     const s = v.trim();
     if (!s) return `กรุณากรอก${label}`;
@@ -80,7 +125,12 @@ export function validateNameField(v: string, label: string): string {
     return "";
 }
 
-// เบอร์มือถือไทย 10 หลัก ขึ้นต้น 06/08/09 กันเลขซ้ำล้วนและเลขเรียงติดกัน
+/**
+ * ตรวจเบอร์มือถือไทย 10 หลัก ขึ้นต้น 06/08/09 กันเลขซ้ำล้วนและเลขเรียงติดกัน
+ *
+ * @param v - ค่าที่กรอก
+ * @returns ข้อความ error หรือ "" เมื่อผ่าน
+ */
 export function validatePhoneField(v: string): string {
     const s = v.trim();
     if (!s) return "กรุณากรอกเบอร์โทรศัพท์";
@@ -94,10 +144,18 @@ export function validatePhoneField(v: string): string {
 // true เมื่อชื่อเป็นภาษาไทย ใช้เทียบว่าชื่อกับนามสกุลเป็นภาษาเดียวกัน
 const isThaiName = (v: string) => NAME_THAI_RE.test(v.trim());
 
+/** กลับค่า `available` ของเมนูเป็น flag disabled */
 export function MenuBoxDisable(status: boolean) {
     return !status;
 }
 
+/**
+ * Popup แก้ไขชื่อ-นามสกุลและเบอร์โทรของผู้ใช้ปัจจุบัน ตรวจฟอร์มแบบ real-time หลังผู้ใช้แตะช่อง
+ * บันทึกผ่าน PATCH /api/profile แล้วอัปเดต store
+ *
+ * @param onClose - ปิด popup
+ * @param showToast - แสดงผลลัพธ์ (จาก useToast ของหน้าที่เรียก)
+ */
 export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void; showToast: (message: string, variant?: "success" | "danger") => void }) {
     const { currentUser, setUser } = useAppStore();
 
@@ -356,6 +414,11 @@ export function EditProfileDrawer({ onClose, showToast }: { onClose: () => void;
     );
 }
 
+/**
+ * การ์ดโปรไฟล์ผู้ใช้ปัจจุบัน (ชื่อ, role, เบอร์) พร้อมปุ่มแก้ไข คืน null เมื่อยังไม่ล็อกอิน
+ *
+ * @param onEdit - เรียกเมื่อกดปุ่มแก้ไข
+ */
 export function ProfileCard({ onEdit }: { onEdit: () => void }) {
     const { currentUser } = useAppStore();
     if (!currentUser) return null;

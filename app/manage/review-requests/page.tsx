@@ -1,3 +1,44 @@
+/**
+ * @file app/manage/review-requests/page.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Review Requests
+ * @description
+ * หน้าตรวจสอบคำร้อง (/manage/review-requests, admin เท่านั้น) เจ้าของ state ทั้งหมด: แท็บสถานะ,
+ * รายการคำร้องแบบแบ่งหน้าจาก /api/review-requests, เกณฑ์มาตรฐานจาก DB สำหรับป้ายสถานะน้ำ,
+ * อนุมัติ (ทั้งใบหรือเลือกบางตัวอย่าง), ปฏิเสธพร้อมเหตุผล, แก้ไขค่าแล้วอนุมัติ และ lightbox
+ * refetch หลังดำเนินการแบบ silent ไม่ให้รายการยุบเป็น spinner และเลื่อนไปหน้าสุดท้ายที่ยังมีจริงถ้าหน้าเดิมหาย
+ * เลือก view mobile/desktop ตามจอ
+ *
+ * Admin review queue: owns tab/pagination state and the approve / reject / edit-approve
+ * actions against /api/review-requests; views only lay it out.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-13
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-16 – 2026-09-02)
+ *
+ * @lastModified 2026-09-09 10:47
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-13 16:19 by Nopparut U. - สร้างหน้าตรวจสอบคำร้อง confidence ต่ำ
+ * - 2026-07-16 13:13 by Nopparut U. - รองรับ workflow สารซ้ำ
+ * - 2026-07-23 16:08 by Nopparut U. - แยก view เป็น desktop/mobile
+ * - 2026-07-27 14:19 by Nopparut U. - แบ่งหน้าฝั่ง server
+ * - 2026-08-21 16:23 by Pachara P. - ปรับ flow การส่งตรวจ
+ * - 2026-08-25 10:02 by Nopparut U. - เลือกตัวอย่างบางส่วนเพื่ออนุมัติ และ drawer แก้ไขแล้วอนุมัติ
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับภาพที่ AI ไม่พบหลอดทดลอง
+ * - 2026-09-02 14:24 by Pachara P. - บล็อกการเข้าถึงตาม role
+ * - 2026-09-09 10:47 by Nopparut U. - แถบแบ่งหน้าใหม่พร้อมเลือกจำนวนแถวต่อหน้า
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @auth admin เท่านั้น ยิง API ด้วย LIFF access token
+ * @notes จอง scrollbar gutter ตลอด (reserve-scrollbar-gutter) กัน layout ขยับตอน SweetAlert ล็อก scroll
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -16,6 +57,7 @@ import { type ReviewStatusFilter, type ReviewRequestItem, type PreviewImages } f
 import ReviewRequestsMobile from "./reviewRequestsMobile";
 import ReviewRequestsDesktop from "./reviewRequestsDesktop";
 
+/** เจ้าของ state หน้าตรวจสอบคำร้อง เลือก view ตามจอ */
 export default function AdminReviewRequestsPage() {
     const { currentUser } = useAppStore();
     const router = useRouter();

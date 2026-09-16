@@ -1,4 +1,40 @@
-// app/api/samples/route.ts
+/**
+ * @file app/api/samples/route.ts
+ * @project Water Monitoring Project
+ * @module API / Water Samples
+ * @description
+ * [TH] Route Handler หลักสำหรับบันทึกและสืบค้นประวัติผลการตรวจวัดคุณภาพน้ำ (Samples):
+ * - GET: สืบค้นประวัติการตรวจวัดแบบแบ่งหน้า (Pagination) จัดกลุ่มตาม sessionGroup กรองตามสถานะคุณภาพน้ำ (SAFE, WARNING, DANGER), สถานะการตรวจประเมิน (PENDING, APPROVED, EDITED_APPROVED, REJECTED), ช่วงเวลา, และคำค้นหา
+ * - POST: บันทึกข้อมูลผลตรวจวัดตัวอย่างน้ำแบบหลายพารามิเตอร์ (Multi-parameter FormData) พร้อมบันทึกภาพถ่ายดิบและภาพพล็อต ประเมินผลตามเกณฑ์มาตรฐาน PCD สร้างรหัสตัวอย่างน้ำ SP[YYMMDD][Loc][Seq] และสร้าง ReviewRequest หากความมั่นใจต่ำกว่าเกณฑ์
+ * [EN] Core Route Handler for recording and querying water quality sample inspection records:
+ * - GET: Retrieves paginated sample records grouped by sessionGroup with filters for water status, review status, date range, and search terms.
+ * - POST: Handles multi-parameter sample submissions via FormData, persists raw and analyzed plot images, evaluates safety against PCD standards, generates sample codes SP[YYMMDD][Loc][Seq], and queues ReviewRequests when AI confidence falls below threshold.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.5.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-09)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-08)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-14)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-08-20)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @lastModified 2026-09-11
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial samples API handler
+ * - 2026-07-08 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Optimize query aggregation and pagination
+ * - 2026-07-14 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Multi-parameter submission mode support
+ * - 2026-08-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Low confidence review dispatch & anti-spam mechanism
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Consistent 2-phase pagination & Thai timezone alignment
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Role-based: collector, admin
+ * @see lib/standards.ts, lib/sessionGroup.ts, lib/sampleRecord.ts
+ */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -18,6 +54,15 @@ import { dayEnd, dayStart, floorToHour, nowThai, parseThaiInput, sameDayRange, t
 
 /** ลำดับความรุนแรงของสถานะ ใช้หาค่า "แย่สุด" ของกลุ่มตัวอย่าง (หนึ่ง sessionGroup อาจมีหลายแถว หนึ่งแถวต่อสาร) */
 const STATUS_SEVERITY: Record<WaterStatus, number> = { safe: 0, warning: 1, danger: 2 };
+
+/**
+ * เปรียบเทียบและคืนค่าสถานะที่รุนแรงกว่าระหว่าง 2 สถานะ (danger > warning > safe)
+ * Compares two water statuses and returns the more severe one.
+ *
+ * @param {WaterStatus} a - สถานะแรก
+ * @param {WaterStatus} b - สถานะที่สอง
+ * @returns {WaterStatus} สถานะที่แย่กว่า
+ */
 function worseStatus(a: WaterStatus, b: WaterStatus): WaterStatus {
     return STATUS_SEVERITY[b] > STATUS_SEVERITY[a] ? b : a;
 }
@@ -31,7 +76,12 @@ function worseStatus(a: WaterStatus, b: WaterStatus): WaterStatus {
 const IMAGE_RETENTION_DAYS = Number(process.env.IMAGE_RETENTION_DAYS) > 0 ? Number(process.env.IMAGE_RETENTION_DAYS) : 90;
 
 /**
- * FILENAME SANITIZER WITH DATE STAMP
+ * ทำความสะอาดชื่อไฟล์และสุ่มชื่อใหม่พร้อมประทับวันที่และ UUID
+ * Sanitizes original filename and generates a unique filename with date stamp and UUID.
+ *
+ * @param {string} originalName - ชื่อไฟล์เดิม
+ * @param {string} prefix - คำนำหน้าชื่อไฟล์ เช่น "raw-phosphate"
+ * @returns {string} ชื่อไฟล์ที่ปลอดภัยสำหรับบันทึกลงระบบไฟล์
  */
 function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw"): string {
     const dateStamp = toYmd(nowThai()).replace(/-/g, "");
@@ -44,7 +94,13 @@ function sanitizeAndGenerateFilename(originalName: string, prefix: string = "raw
 }
 
 /**
- * GENERATOR: Sample Code Format -> SP[YYMMDD][LocationID 3 หลัก][Sequence 0001-9999]
+ * สร้างรหัสตัวอย่างน้ำตามรูปแบบ SP[YYMMDD][LocationID 3 หลัก][Sequence 0001-9999]
+ * Generates formatted unique sample code SP[YYMMDD][Loc][Seq].
+ *
+ * @param {any} tx - Prisma transaction context
+ * @param {number} locationId - รหัสสถานีจุดตรวจ
+ * @param {Date} collectionTime - เวลาเก็บตัวอย่าง
+ * @returns {Promise<string>} รหัสตัวอย่างน้ำที่สร้างขึ้น
  */
 async function generateSampleCode(tx: any, locationId: number, collectionTime: Date): Promise<string> {
     // วันของรหัสและขอบเขตวันคิดจากค่า UTC ของ Date ซึ่งคือปฏิทินไทย (ดู lib/thaiTime.ts) — ไม่ขึ้นกับ TZ ของ process
@@ -66,9 +122,13 @@ async function generateSampleCode(tx: any, locationId: number, collectionTime: D
 // Anti-Spam Key ผสม IP + Action ป้องกันการกดเบิ้ลส่งข้อมูล
 const antiSpam = new Map<string, number>();
 
-// ==========================================
-// GET /api/samples
-// ==========================================
+/**
+ * ดึงรายการประวัติผลการตรวจวัดคุณภาพน้ำแบบแบ่งหน้าตามเงื่อนไขการกรอง
+ * Retrieves paginated sample records grouped by session with dynamic parameter values.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Query filters
+ * @returns {Promise<NextResponse>} ผลลัพธ์ประวัติการตรวจวัด { items, total, page, pageSize, totalPages, parameterFormulas }
+ */
 export async function GET(request: NextRequest) {
     try {
         const auth = await verifyAuth(request, ["collector", "admin"]);
@@ -354,9 +414,13 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// ==========================================
-// POST /api/samples
-// ==========================================
+/**
+ * บันทึกผลการตรวจวัดคุณภาพน้ำตัวอย่างใหม่ (FormData) พร้อมรูปภาพดิบและผลวิเคราะห์
+ * Submits water quality sample measurements, uploads parameter images, and records to database.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Multipart FormData
+ * @returns {Promise<NextResponse>} ผลการบันทึกตัวอย่างน้ำ { success: true, count, sampleCode, sessionGroup, isReviewNeeded }
+ */
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();

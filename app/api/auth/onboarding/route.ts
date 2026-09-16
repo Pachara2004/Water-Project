@@ -1,7 +1,51 @@
+/**
+ * @file app/api/auth/onboarding/route.ts
+ * @project Water Monitoring Project
+ * @module API / Authentication
+ * @description
+ * [TH] Route Handler สำหรับการลงทะเบียนข้อมูลผู้ใช้ใหม่และยื่นคำขอสิทธิ์ (PUT)
+ * ตรวจสอบความถูกต้องของชื่อ-สกุล และเบอร์โทรศัพท์ (Regex Validation) อัปเดตข้อมูลส่วนตัว
+ * และสร้างรายการคำร้องขอเปลี่ยนบทบาทสิทธิ์ (RoleRequest) เมื่อผู้ใช้เลือกสิทธิ์ที่ต้องผ่านการอนุมัติ
+ * [EN] Route Handler for user onboarding profile registration and role requests (PUT).
+ * Validates names and Thai phone format via regex, updates profile data,
+ * and creates a pending RoleRequest when non-guest roles are requested.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-25
+ * @version 1.2.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-25)
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-13)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-04)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-15)
+ *
+ * @lastModified 2026-09-15
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-25 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial onboarding flow
+ * - 2026-07-13 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Integration with LiffProvider
+ * - 2026-09-04 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Auto-skip role request approval for standard guest users
+ * - 2026-09-15 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Terms acceptance version validation on onboarding
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Bearer Token (Authenticated user)
+ * @security Server-side regex validation, IDOR prevention via token identity
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { TERMS_VERSION } from "@/lib/termsVersion";
+
+/**
+ * บันทึกข้อมูลส่วนตัวของผู้ใช้และส่งคำขอสิทธิ์การใช้งาน
+ * Updates user personal details and submits role elevation request if necessary.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม JSON payload { firstName, lastName, phoneNumber, requestedRoleName }
+ * @returns {Promise<NextResponse>} ผลการบันทึกข้อมูลและสถานะการขออนุมัติ { success, needsApproval, user }
+ */
 export async function PUT(request: NextRequest) {
     // สกัดสิทธิ์ดักจับโทเคน: อนุญาตให้ทุกบทบาทที่ล็อกอินผ่าน LINE LIFF ถูกต้องเข้าทำรายการได้
     const auth = await verifyAuth(request);

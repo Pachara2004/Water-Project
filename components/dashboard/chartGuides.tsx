@@ -1,15 +1,50 @@
+/**
+ * @file chartGuides.tsx
+ * @project Water Monitoring Project
+ * @module UI / Dashboard / Guides
+ * @description
+ * เนื้อหาคำอธิบายกราฟทั้ง 5 ส่วนของแดชบอร์ด (KPI, hotspots, temporal, trend, correlation) และปุ่ม (i)
+ * ที่กดแล้วเปิดกล่องอธิบาย รวมข้อความไว้ที่เดียวเพราะ dashboardDesktop / dashboardMobile มีโครงเหมือนกัน
+ * และต้องแก้คู่กันเสมอ กล่องคำนวณทิศทาง (บน/ล่าง) และความสูงสูงสุดตอนกดจากที่ว่างจริงรอบปุ่ม
+ * โดยหักพื้นที่ Navbar ด้านล่างบนจอแคบ
+ *
+ * Single source of the dashboard chart explanations plus the (i) button that opens
+ * them in a viewport-aware panel (flips up/down, never overflows the screen).
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-08-11
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-09-09)
+ *
+ * @lastModified 2026-09-09 14:21
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-08-11 14:38 by Nopparut U. - สร้าง tooltip อธิบายกราฟแต่ละอันและปุ่ม (i)
+ * - 2026-08-11 14:58 by Nopparut U. - กันกล่องล้นขอบจอ
+ * - 2026-09-07 13:09 by Nopparut U. - คำนวณตำแหน่งกล่องจากที่ว่างจริง ให้อยู่ใกล้ปุ่มที่กด และปรับข้อความตามกราฟใหม่
+ * - 2026-09-09 14:21 by Pachara P. - ปรับ UI และการใช้คำ
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @notes เปิดด้วยการกดเท่านั้น ไม่ใช้ hover เพราะจอสัมผัสไม่มี hover
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useRef, useState } from "react";
 import { Info, X } from "lucide-react";
 
+/** คีย์ของกราฟที่มีคำอธิบาย ตรงกับ 5 ส่วนบนแดชบอร์ด */
 export type GuideKey = "kpi" | "hotspots" | "temporal" | "trend" | "correlation";
 
 type GuideBlock = { heading: string; items: string[] };
 
-// เนื้อหาคำอธิบายกราฟทั้ง 5 ส่วนของหน้าแดชบอร์ด — รวมไว้ที่เดียวเพราะ dashboardDesktop.tsx / dashboardMobile.tsx
-// มีโครงเหมือนกันเป๊ะและต้องแก้คู่กันเสมอ ถ้าแยกข้อความไว้คนละไฟล์จะเพี้ยนจากกันเมื่อมีคนแก้คำในอนาคต
-// โครงทุกกล่องเหมือนกัน: ดูอะไร -> อ่านยังไง -> ระวัง เพื่อให้ผู้ใช้จำรูปแบบได้
+/**
+ * เนื้อหาคำอธิบายกราฟ โครงทุกกล่องเหมือนกัน: ดูอะไร → อ่านยังไง → ระวัง เพื่อให้ผู้ใช้จำรูปแบบได้
+ */
 export const CHART_GUIDES: Record<GuideKey, { title: string; blocks: GuideBlock[] }> = {
     kpi: {
         title: "ตัวชี้วัดหลัก",
@@ -98,9 +133,6 @@ export const CHART_GUIDES: Record<GuideKey, { title: string; blocks: GuideBlock[
     },
 };
 
-// ปุ่ม (i) ข้างหัวข้อกราฟ กดแล้วเปิดกล่องอธิบาย — แพทเทิร์นเดียวกับปุ่มดูตัวอย่างสีใน components/submit/ImageZone.tsx
-// กดเท่านั้น ไม่ใช้ hover เพราะจอสัมผัสไม่มี hover ให้เจอ (ดูหมายเหตุเดียวกันใน dashboardHelpers.tsx เรื่อง cursor-help)
-
 // ที่ว่างขั้นต่ำที่กล่องยังอ่านได้ ถ้าด้านที่เลือกเหลือน้อยกว่านี้ กล่องจะเลื่อนอ่านเอาแทนการล้นขอบจอ
 const MIN_PANEL_HEIGHT = 180;
 // ระยะกันชนขอบจอ กันไม่ให้กล่องแตะขอบพอดีเป๊ะ
@@ -110,6 +142,12 @@ const VIEWPORT_GUTTER = 12;
 const NAVBAR_HEIGHT = 96;
 const NAVBAR_BREAKPOINT = 1024;
 
+/**
+ * ปุ่ม (i) ข้างหัวข้อกราฟ กดแล้วเปิดกล่องอธิบายจาก CHART_GUIDES
+ * แพทเทิร์นเดียวกับปุ่มดูตัวอย่างสีใน components/submit/ImageZone.tsx
+ *
+ * @param guide - คีย์ของกราฟที่ต้องการอธิบาย
+ */
 export function ChartInfoButton({ guide }: { guide: GuideKey }) {
     const [open, setOpen] = useState(false);
     // ทิศทางและความสูงคำนวณตอนกดเปิด จากที่ว่างจริงรอบปุ่ม ณ ขณะนั้น

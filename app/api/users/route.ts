@@ -1,3 +1,37 @@
+/**
+ * @file app/api/users/route.ts
+ * @project Water Monitoring Project
+ * @module API / User Management
+ * @description
+ * [TH] Route Handler จัดการสมาชิกและคำขอเปลี่ยนบทบาทสิทธิ์สำหรับ Admin:
+ * - GET: ดึงรายชื่อผู้ใช้แบบแบ่งหน้า (Pagination) พร้อมระบบค้นหา (Search ข้ามชื่อ-สกุล) กรองตามแท็บ (all, staff, queue) และเรียงลำดับ
+ * - PATCH: อนุมัติ/ปฏิเสธคำร้องขอเปลี่ยนสิทธิ์ของผู้ใช้รายบุคคล หรือปฏิเสธคำร้องที่ค้างอยู่ทั้งหมด (Reject All)
+ * [EN] Route Handler for User Management & Role Administration (Admin only):
+ * - GET: Retrieves paginated user list with full-text multi-word search across first/last names, tab filtering (all, staff, queue), and sorting.
+ * - PATCH: Elevates/updates user roles, approves/rejects specific role requests, or bulk rejects pending role requests.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.3.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-09)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-06)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @lastModified 2026-09-11
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial users listing endpoint
+ * - 2026-07-06 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Add role elevation PATCH & RoleRequest handling
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Transaction-based consistent pagination and multi-token search
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Role-based: admin only
+ * @security Fail-closed verification with auth-guard, transactional role mutations
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard"; // 🔥 อิมพอร์ต Guard กลางเข้ามาสลักนิรภัย
@@ -16,11 +50,13 @@ const TAB_FILTERS: Record<UserTab, object> = {
     queue: { roleRequests: { some: { status: "pending" } } },
 };
 
-// ==========================================
-// GET /api/users?tab=&search=&role=&sort=&page=&pageSize= — รายชื่อผู้ใช้แบบแบ่งหน้า
-// คืน { items, total, page, pageSize, totalPages } ไม่ใช่ array เปล่า
-// กรอง/เรียง/แบ่งหน้าที่ฝั่ง DB ทั้งหมด ฝั่งหน้าเว็บเอาไปแสดงได้เลยโดยไม่ต้องกรองซ้ำ
-// ==========================================
+/**
+ * ดึงรายชื่อผู้ใช้ในระบบแบบแบ่งหน้าตามแท็บและคำค้นหา (เฉพาะ Admin)
+ * Retrieves paginated list of registered users filtered by tab, search terms, and system role.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Query params `?tab=...&search=...&role=...&page=...`
+ * @returns {Promise<NextResponse>} ผลลัพธ์ในรูปแบบโครงสร้าง Pagination { items, total, page, pageSize, totalPages }
+ */
 export async function GET(request: NextRequest) {
     // SECURITY GUARD: อนุญาตให้เฉพาะระดับสิทธิ์ 'admin' เท่านั้นที่เปิดดูรายชื่อและคำร้องขอสิทธิ์ทั้งหมดได้
     const auth = await verifyAuth(request, ["admin"]);
@@ -115,6 +151,13 @@ export async function GET(request: NextRequest) {
     }
 }
 
+/**
+ * ปรับปรุงบทบาทสิทธิ์ (Role) ของผู้ใช้ หรือตัดสินคำร้องขอเปลี่ยนสิทธิ์ (เฉพาะ Admin)
+ * Updates user role or processes/rejects role elevation requests.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม JSON payload { userId, role, action, requestId }
+ * @returns {Promise<NextResponse>} ผลการดำเนินการ { success, message, user }
+ */
 export async function PATCH(request: NextRequest) {
     // SECURITY GUARD: ป้องกันขั้นสูงสุด ล็อกให้เฉพาะ 'admin' ตัวจริงเท่านั้นที่อนุมัติหรือปฏิเสธคำร้องขอเปลี่ยนสิทธิ์ได้
     const auth = await verifyAuth(request, ["admin"]);

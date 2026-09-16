@@ -1,3 +1,40 @@
+/**
+ * @file dashboardMobile.tsx
+ * @project Water Monitoring Project
+ * @module App / Dashboard
+ * @description
+ * view มือถือของแดชบอร์ด: แถบควบคุมเรียงแนวตั้ง
+ * การ์ด KPI พร้อมป้ายแนวโน้ม, ตาราง hotspots, กราฟเปรียบเทียบเช้า-เย็น, กราฟแนวโน้มเทียบเกณฑ์ PCD
+ * และส่วนความสัมพันธ์สภาพอากาศ ตัวกรอง (หน่วยงาน / สถานี / ช่วงวันที่ / มุมมอง) และข้อมูลทั้งหมด
+ * มาจาก useDashboardAnalytics ผ่าน props ไฟล์นี้จัด layout อย่างเดียว โหลดครั้งแรกแสดง skeleton
+ * เต็มจอ ถ้าแค่เปลี่ยนตัวกรองจะคงเนื้อหาเดิมไว้แล้ว dim แทน
+ *
+ * Mobile dashboard view: KPI cards, hotspots, temporal/trend/correlation charts. Layout only —
+ * all state comes from useDashboardAnalytics via props.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-19
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-08 – 2026-09-07)
+ *
+ * @lastModified 2026-09-07 14:31
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-19 14:25 by Pachara P. - สร้างหน้าแดชบอร์ด (เดิมคือ page.tsx)
+ * - 2026-07-07 10:23 by Pachara P. - ปรับ UI ให้ไปทางเดียวกับระบบ
+ * - 2026-07-23 10:04 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-07-24 20:37 by Nopparut U. - เพิ่ม skeleton ตอนโหลด
+ * - 2026-08-11 by Nopparut U. - ปรับชื่อกราฟ รองรับจอเล็ก และเพิ่มปุ่มอธิบายกราฟ
+ * - 2026-09-02 14:24 by Pachara P. - บล็อกการเข้าถึงตาม role
+ * - 2026-09-07 14:31 by Nopparut U. - แยกตัวกรองหน่วยงานกับสถานีเป็นคนละช่อง
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect } from "react";
@@ -9,6 +46,11 @@ import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity
 import { ChartInfoButton } from "@/components/dashboard/chartGuides";
 import { DashboardContentSkeleton } from "./loading";
 
+/**
+ * แดชบอร์ดบนมือถือ
+ *
+ * @param props - state ทั้งหมดจาก useDashboardAnalytics
+ */
 export default function DashboardMobile(props: DashboardAnalyticsState) {
     const {
         theme,
@@ -52,7 +94,7 @@ export default function DashboardMobile(props: DashboardAnalyticsState) {
     }
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
+        <div className="w-full flex-1 bg-bg pb-5 antialiased transition-colors duration-300">
             <div className="w-full max-w-xl md:max-w-7xl mx-auto px-4 space-y-5 pt-6">
                 <div className="space-y-3">
                     {/* Header ควบคุมส่วนบน */}

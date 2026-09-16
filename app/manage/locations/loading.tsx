@@ -1,3 +1,27 @@
+/**
+ * @file app/manage/locations/loading.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Locations / Loading
+ * @description
+ * Skeleton ของหน้าจัดการสถานที่: แถบหัว, การ์ดฟอร์ม และรายการสถานี
+ *
+ * Route loading UI for /manage/locations.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-16
+ * @version 1.0.0
+ *
+ * @lastModified 2026-07-24 16:14
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-16 14:52 by Pachara P. - เพิ่ม skeleton loader ทุกหน้า
+ * - 2026-07-24 16:14 by Pachara P. - ปรับ UI
+ *
+ * @client-side ไม่มี hook/state เป็น Server Component ได้ (Next.js route loading UI)
+ * @license Private / Proprietary
+ */
+
 import { ArrowLeft, Search, FileText } from "lucide-react";
 
 export default function Loading() {

@@ -1,3 +1,42 @@
+/**
+ * @file app/submit/page.tsx
+ * @project Water Monitoring Project
+ * @module App / Submit
+ * @description
+ * หน้าส่งตรวจคุณภาพน้ำ (/submit) เรียก useSubmitSample ที่นี่ครั้งเดียว กันสิทธิ์ตอน render
+ * (collector/admin เท่านั้น) เริ่มวิเคราะห์ด้วย AI เบื้องหลังทันทีที่เลือกรูป และล้างผลที่พักไว้เมื่อเปลี่ยนรูป
+ * คำนวณ flag สรุปผล (สารซ้ำ / ความมั่นใจต่ำ โดยคัดภาพที่ AI ไม่พบหลอดทดลองออก) แล้วส่งให้
+ * SubmitMobile หรือ SubmitDesktop ห่อด้วย Suspense เพราะ hook อ่าน search params
+ *
+ * Submit route: owns the useSubmitSample instance, render-time role guard, background AI
+ * analysis trigger and derived result flags; views only lay it out.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-19 – 2026-09-02)
+ *
+ * @lastModified 2026-09-03 15:55
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้างหน้าส่งตรวจพร้อมโครงระบบ
+ * - 2026-07-07 10:14 by Pachara P. - เชื่อมต่อ API AI
+ * - 2026-07-07 15:30 by Pachara P. - ปรับโครงสร้างไฟล์ submit แยกคอมโพเนนต์ย่อย
+ * - 2026-07-14 12:25 by Nopparut U. - เพิ่มโหมดการส่งตัวอย่าง
+ * - 2026-07-16 13:13 by Nopparut U. - workflow สารซ้ำ
+ * - 2026-07-23 09:35 by Pachara P. - แยก view เป็น desktop/mobile
+ * - 2026-08-21 16:23 by Pachara P. - ปรับ flow การส่งตรวจ
+ * - 2026-09-02 14:13 by Nopparut U. - ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้
+ * - 2026-09-03 15:55 by Pachara P. - ปรับการยิง API AI
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @auth collector และ admin เท่านั้น การเด้งออกทำใน useSubmitSample
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { Suspense, useEffect } from "react";
@@ -10,6 +49,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import SubmitMobile from "./submitMobile";
 import SubmitDesktop from "./submitDesktop";
 
+/** เนื้อหาจริงของหน้า submit (แยกจาก SubmitPage เพื่อให้อยู่ใต้ Suspense) */
 function SubmitContent() {
     const hook = useSubmitSample();
     const {
@@ -211,6 +251,7 @@ function SubmitContent() {
     return isMobile ? <SubmitMobile {...submitProps} /> : <SubmitDesktop {...submitProps} />;
 }
 
+/** ห่อ SubmitContent ด้วย Suspense ตามข้อกำหนดของ useSearchParams */
 export default function SubmitPage() {
     return (
         <Suspense fallback={<div className="flex items-center justify-center min-h-dvh">Loading...</div>}>

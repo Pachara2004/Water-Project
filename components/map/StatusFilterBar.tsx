@@ -1,10 +1,41 @@
+/**
+ * @file StatusFilterBar.tsx
+ * @project Water Monitoring Project
+ * @module UI / Map / Filters
+ * @description
+ * ดรอปดาวน์กรองหมุดบนแผนที่ตามสถานะคุณภาพน้ำ (ทุกสถานะ / ปลอดภัย / เฝ้าระวัง / อันตราย)
+ * เป็น custom dropdown หน้าตาชุดเดียวกับ OfficerFilterBar ปิดเองเมื่อกดนอกกล่อง
+ * เทียบค่าแบบไม่สนตัวพิมพ์เพราะ API บางจุดส่งสถานะเป็นตัวพิมพ์ใหญ่
+ *
+ * Custom dropdown filtering map pins by water-quality status; case-insensitive value matching.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-11
+ * @version 1.0.0
+ *
+ * @lastModified 2026-09-02 11:44
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-11 13:57 by Pachara P. - เพิ่มตัวกรองสถานะบนแผนที่
+ * - 2026-07-01 11:18 by Pachara P. - ปรับให้ตรงธีมระบบ
+ * - 2026-07-22 10:11 by Pachara P. - รองรับ dark mode
+ * - 2026-09-02 11:44 by Pachara P. - ปรับ UI
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { Droplets, ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
+/** Props ของ StatusFilterBar */
 interface StatusFilterBarProps {
+    /** ค่าที่เลือก: "ALL" | "safe" | "warning" | "danger" (ไม่สนตัวพิมพ์) */
     value: string;
+    /** เรียกเมื่อเลือกค่าใหม่ */
     onChange: (value: string) => void;
 }
 
@@ -15,6 +46,11 @@ const STATUS_OPTIONS = [
     { value: "danger", label: "อันตราย" },
 ];
 
+/**
+ * ดรอปดาวน์กรองสถานะคุณภาพน้ำ
+ *
+ * @param props - ดู {@link StatusFilterBarProps}
+ */
 export default function StatusFilterBar({ value, onChange }: StatusFilterBarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);

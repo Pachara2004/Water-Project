@@ -1,10 +1,53 @@
+/**
+ * @file useToast.tsx
+ * @project Water Monitoring Project
+ * @module UI / Feedback
+ * @description
+ * Hook แสดง toast แจ้งผลสั้นๆ (สำเร็จ/ผิดพลาด) ลอยกลางจอด้านล่าง หายเองใน 3 วินาที
+ * คืน `showToast` สำหรับสั่งแสดง และ `toastElement` ให้ผู้เรียกนำไป render เองในหน้า
+ *
+ * Hook for a short auto-dismissing toast (success / danger). Returns the trigger
+ * function and the element to be rendered by the caller.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-07
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-13, 2026-08-19)
+ *
+ * @lastModified 2026-08-19 10:13
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-07 14:54 by Nopparut U. - สร้าง hook toast ใช้กับหน้าแก้ไขข้อมูลผู้ใช้
+ * - 2026-07-13 12:57 by Pachara P. - ใช้แจ้งผลหลังส่งคำขอสิทธิ์
+ * - 2026-08-19 10:13 by Pachara P. - ห่อ showToast ด้วย useCallback และเคลียร์ timer ตอน unmount
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 
+/** ชนิดของ toast: `success` ไอคอนติ๊กเขียว / `danger` ไอคอนกากบาทแดง */
 export type ToastVariant = "success" | "danger";
 
+/**
+ * Hook จัดการ toast หนึ่งตัวต่อหน้า (เรียกซ้ำจะแทนที่ตัวเดิมและรีเซ็ตเวลานับถอยหลัง)
+ *
+ * @returns `showToast(message, variant?)` และ `toastElement` (null เมื่อไม่มี toast)
+ *
+ * @example
+ * ```tsx
+ * const { showToast, toastElement } = useToast();
+ * showToast("บันทึกสำเร็จ");
+ * return <>{toastElement}</>;
+ * ```
+ */
 export function useToast() {
     const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
     const [leaving, setLeaving] = useState(false);

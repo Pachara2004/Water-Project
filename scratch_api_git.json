@@ -1,0 +1,1508 @@
+{
+  "app/api/analyze/route.ts": [
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-19",
+      "subject": "perf: route"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-27",
+      "subject": "fix: แก้ไม่ให้โรล officer เข้าถึงหน้าประวัติได้"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้ hardcoded standards"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-14",
+      "subject": "feat: เพิ่มโหมดการส่งตัวอย่าง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-08",
+      "subject": "perf: เพิ่มประสิทธิภาพการสืบค้นข้อมูล"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-07",
+      "subject": "fix: ปรับให้มีการเชื่อมต่อกับ API AI"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: แก้ไข UI เรื่องการแสดงผลของสาร ให้เป็นแบบ dynamic"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: ปรับ route เรื่องการส่งตรวจให้เป็นแบบ dynamic"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-30",
+      "subject": "refactor(api): convert AI analysis to in-memory processing to prevent disk clutter"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "feat(auth): integrate LINE Access Token validation across critical endpoints"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-19",
+      "subject": "feat(frontend backend): สร้าง logic การ plot รูปจาก json"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-09",
+      "subject": "setup system"
+    }
+  ],
+  "app/api/auth/accept-terms/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-15",
+      "subject": "feat: ต้องยอมรับข้อตกลงก่อนระบบจะเก็บ LINE uid"
+    }
+  ],
+  "app/api/auth/onboarding/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-15",
+      "subject": "feat: ต้องยอมรับข้อตกลงก่อนระบบจะเก็บ LINE uid"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-04",
+      "subject": "fix: ปรับให้ลงทะเบียนไม่ต้องส่งคำขอของผู้ใช้ทั่วไป"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-13",
+      "subject": "fix: แก้ไขหน้า LiffProvider"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "feat(auth): integrate LINE Access Token validation across critical endpoints"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "feat(auth): implement first-time onboarding with role request flow"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    }
+  ],
+  "app/api/auth/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-15",
+      "subject": "feat: ต้องยอมรับข้อตกลงก่อนระบบจะเก็บ LINE uid"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-09-10",
+      "subject": "fix: แก้ไขการ login ผ่าน line browser"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-08",
+      "subject": "fix: ปรับปรุง flow การส่งตรวจคุณภาพน้ำ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-30",
+      "subject": "refactor(api): convert AI analysis to in-memory processing to prevent disk clutter"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "feat(auth): integrate LINE Access Token validation across critical endpoints"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "feat(auth): implement first-time onboarding with role request flow"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-09",
+      "subject": "setup system"
+    }
+  ],
+  "app/api/auth/status/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-15",
+      "subject": "feat: ต้องยอมรับข้อตกลงก่อนระบบจะเก็บ LINE uid"
+    }
+  ],
+  "app/api/cron/cleanup-images/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-08",
+      "subject": "fix: ทำให้ระบบลบรูปหมดอายุใช้งานได้ และแก้บั๊กฝั่ง API อีกสี่จุด"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-19",
+      "subject": "perf: route"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-09",
+      "subject": "setup system"
+    }
+  ],
+  "app/api/dashboard/widgets/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ปิด Date ที่ยังหลุดออก API พร้อม Z ให้ครบทุก route"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-09-09",
+      "subject": "sty: ปรับ UI และการใช้คำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-07",
+      "subject": "fix: ป้ายแนวโน้มบนการ์ด KPI โชว์คู่ค่าแทนผลต่าง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-07",
+      "subject": "fix: เปลี่ยนกราฟความสัมพันธ์สภาพอากาศเป็นแท่งแนวนอนที่คนทั่วไปอ่านได้"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-04",
+      "subject": "fix: เก็บตกสีสารในการ์ดบน BottomSheet ให้ตรงกับกราฟ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-04",
+      "subject": "fix: รวมสีกราฟและสีสถานะทั้งระบบไว้ที่แหล่งเดียว"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-02",
+      "subject": "feat: ให้ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ แทนการบล็อกทิ้ง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-26",
+      "subject": "fix: แสดงชื่อหน่วยงานในหน้าประวัติแทนขีด"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-11",
+      "subject": "style: เพิ่ม tooltip ของกราฟแต่ละอันว่าคืออะไร"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-11",
+      "subject": "style: แก้ชื่อกราฟให้เข้าใจง่ายขึ้น"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-11",
+      "subject": "fix: แก้ logic กราฟความผันผวนใหม่"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-10",
+      "subject": "style: แก้ UI dashboard ให้อ่านง่ายขึ้น"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-06",
+      "subject": "fix: dashboard"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-31",
+      "subject": "fix: แก้ฟังก์ชัน export ข้อมูล"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-23",
+      "subject": "style: ปรับ UI เวอร์ชัน desktop หน้า dashboard"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-14",
+      "subject": "feat: เพิ่มโหมดการส่งตัวอย่าง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-13",
+      "subject": "feat: เพิ่มฟังก์ชันส่งคำร้องตรวจสอบตัวอย่างน้ำที่มีค่า confidence ต่ำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-10",
+      "subject": "perf: ปรับการกรองให้ครอบคลุมขึ้น"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-10",
+      "subject": "style: แก้ UI หน้า dashboard"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-09",
+      "subject": "fix: แก้บั๊คหน้า dashboard"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-09",
+      "subject": "Fix: บั๊คหน้า dashboard"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-08",
+      "subject": "fix: แก้ การฟิกเดือนที่แสดง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-08",
+      "subject": "feat: เพิ่มกราฟความสัมพันธ์"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-08",
+      "subject": "perf: เพิ่มประสิทธิภาพการสืบค้นข้อมูล"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-08",
+      "subject": "fix: ปรับปรุง flow การส่งตรวจคุณภาพน้ำ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-07",
+      "subject": "fix: แก้ไข Dashboard"
+    }
+  ],
+  "app/api/dev/switch-role/route.ts": [
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-20",
+      "subject": "fix:error"
+    }
+  ],
+  "app/api/location-types/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้การเปรียบเทียบเกณฑ์"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้ DB ใหม่"
+    }
+  ],
+  "app/api/locations/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-08",
+      "subject": "fix: ทำให้ระบบลบรูปหมดอายุใช้งานได้ และแก้บั๊กฝั่ง API อีกสี่จุด"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-02",
+      "subject": "feat: ให้ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ แทนการบล็อกทิ้ง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-01",
+      "subject": "feat: ปรับดรอปดาวน์หน้าจัดการสถานที่ และคุมความถูกต้องของข้อมูลที่อยู่"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-28",
+      "subject": "add: ปรับปรุงเกี่ยวกับการจัดการสถานที่"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-24",
+      "subject": "fix: ปรับเรื่องการเก็บและแสดงเวลา"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-20",
+      "subject": "fix: แก้ flow การส่งสารซ้ำ และเพิ่มการแสดงเกณฑ์ประเมิน"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้การเปรียบเทียบเกณฑ์"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้สถานะของหมุด"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-14",
+      "subject": "feat: เพิ่มโหมดการส่งตัวอย่าง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-13",
+      "subject": "feat: เพิ่มฟังก์ชันส่งคำร้องตรวจสอบตัวอย่างน้ำที่มีค่า confidence ต่ำ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-13",
+      "subject": "fix: ปรับเรื่องการเก็บสภาพอากาศ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-10",
+      "subject": "fix: แก้ไขส่งออกข้อมูลให้ใช้ได้"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-09",
+      "subject": "fix: ปรับการเรียก API และการแสดงผลของ parameter"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-03",
+      "subject": "fix: ปรับ route ให้เข้ากับ database แบบใหม่"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-30",
+      "subject": "refactor(api): convert AI analysis to in-memory processing to prevent disk clutter"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "refactor(security): complete migration to LINE Access Token auth & RBAC across 12 files"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-23",
+      "subject": "fix(frontend backend): เพิ่มการตรวจสอบการแนบ API"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-09",
+      "subject": "setup system"
+    }
+  ],
+  "app/api/manage/pending-count/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-15",
+      "subject": "fix: เพิ่มฟังก์ชันแจ้งเตือน"
+    }
+  ],
+  "app/api/nominatim/route.ts": [
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-31",
+      "subject": "fix: ปรับการเลือกสถานที่พิกัด การปรับ UI"
+    }
+  ],
+  "app/api/notifications/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ปิด Date ที่ยังหลุดออก API พร้อม Z ให้ครบทุก route"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ส่ง Date ทุกตัวออกจาก API แบบไม่มี Z และแก้ขอบเขตวันของฟิลเตอร์หน้าตรวจสอบผล"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-21",
+      "subject": "ref: ปรับ flow การส่งตรวจ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-27",
+      "subject": "sty: ปรับแก้เรื่อง UI ของการแสดงแจ้งเตือนในหน้า collector"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-15",
+      "subject": "fix: เพิ่มฟังก์ชันแจ้งเตือน"
+    }
+  ],
+  "app/api/notifications/[id]/route.ts": [
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-21",
+      "subject": "ref: ปรับ flow การส่งตรวจ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-15",
+      "subject": "fix: เพิ่มฟังก์ชันแจ้งเตือน"
+    }
+  ],
+  "app/api/parameters/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ปิด Date ที่ยังหลุดออก API พร้อม Z ให้ครบทุก route"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-08",
+      "subject": "perf: เพิ่มประสิทธิภาพการสืบค้นข้อมูล"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: ปรับ route เรื่องการส่งตรวจให้เป็นแบบ dynamic"
+    }
+  ],
+  "app/api/profile/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-07",
+      "subject": "fix: แก้ฟังก์ชันการแก้ไขข้อมูลและเพิ่มsweet alert"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-06-23",
+      "subject": "feature: แก้ไขข้อมูล"
+    }
+  ],
+  "app/api/review-requests/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ส่ง Date ทุกตัวออกจาก API แบบไม่มี Z และแก้ขอบเขตวันของฟิลเตอร์หน้าตรวจสอบผล"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-09",
+      "subject": "feat: เปลี่ยนตัวย่อสารบนป้ายเป็นสูตรเคมี"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-31",
+      "subject": "style: แสดงที่ตั้งสถานีในคำร้อง และปรับ UI หน้าตรวจสอบ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-25",
+      "subject": "fix: ปรับปรุง flow การส่งตรวจ และการตรวจ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-24",
+      "subject": "fix: ปรับเรื่องการเก็บและแสดงเวลา"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-21",
+      "subject": "ref: ปรับ flow การส่งตรวจ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-27",
+      "subject": "perf: ทำ pagination หน้า review-requests"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-24",
+      "subject": "fix: ปรับบางส่วนของฟังก์ชันตรวจสอบน้ำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-15",
+      "subject": "style: ทำ Skeleton loading ในหน้าประวัติ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-13",
+      "subject": "feat: เพิ่มฟังก์ชันส่งคำร้องตรวจสอบตัวอย่างน้ำที่มีค่า confidence ต่ำ"
+    }
+  ],
+  "app/api/review-requests/[id]/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ปิด Date ที่ยังหลุดออก API พร้อม Z ให้ครบทุก route"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-02",
+      "subject": "feat: ให้ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ แทนการบล็อกทิ้ง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-25",
+      "subject": "fix: ปรับปรุง flow การส่งตรวจ และการตรวจ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-25",
+      "subject": "perf: เพิ่ม checkbox การแก้ไขตอนอนุมัติ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-21",
+      "subject": "ref: ปรับ flow การส่งตรวจ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-24",
+      "subject": "fix: แก้ฟังก์ชันคำร้อง หากมี 2 สาร"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-24",
+      "subject": "fix: ปรับบางส่วนของฟังก์ชันตรวจสอบน้ำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-20",
+      "subject": "fix: แก้ flow การส่งสารซ้ำ และเพิ่มการแสดงเกณฑ์ประเมิน"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-16",
+      "subject": "fix: แก้ workflow การส่งตัวอย่างซ้ำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-13",
+      "subject": "feat: เพิ่มฟังก์ชันส่งคำร้องตรวจสอบตัวอย่างน้ำที่มีค่า confidence ต่ำ"
+    }
+  ],
+  "app/api/samples/export/count/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-31",
+      "subject": "fix: แก้ฟังก์ชัน export ข้อมูล"
+    }
+  ],
+  "app/api/samples/export/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-02",
+      "subject": "feat: ให้ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ แทนการบล็อกทิ้ง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-04",
+      "subject": "fix: แก้การส่งออกไฟล์"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-31",
+      "subject": "fix: แก้ฟังก์ชัน export ข้อมูล"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-20",
+      "subject": "sty: ปรับเรื่องขนาดฟอนต์ที่ไม่ได้มาตรฐานตาม standard ให้เป็นตามมาตรฐาน"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-10",
+      "subject": "fix: แก้ไขส่งออกข้อมูลให้ใช้ได้"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-03",
+      "subject": "fix: ปรับ route ให้เข้ากับ database แบบใหม่"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "refactor(security): complete migration to LINE Access Token auth & RBAC across 12 files"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-22",
+      "subject": "feat(frontend backend): เพิ่มการ export ข้อมูล"
+    }
+  ],
+  "app/api/samples/export-csv/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-02",
+      "subject": "feat: ให้ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ แทนการบล็อกทิ้ง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-04",
+      "subject": "fix: แก้การส่งออกไฟล์"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-31",
+      "subject": "fix: แก้ฟังก์ชัน export ข้อมูล"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-20",
+      "subject": "sty: ปรับเรื่องขนาดฟอนต์ที่ไม่ได้มาตรฐานตาม standard ให้เป็นตามมาตรฐาน"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-10",
+      "subject": "fix: แก้ไขส่งออกข้อมูลให้ใช้ได้"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-08",
+      "subject": "fix: ปรับปรุง flow การส่งตรวจคุณภาพน้ำ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "fix(api): resolve route data conflict and unexpected token JSON error"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-22",
+      "subject": "feat(frontend backend): เพิ่มการ export ข้อมูล"
+    }
+  ],
+  "app/api/samples/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ส่ง Date ทุกตัวออกจาก API แบบไม่มี Z และแก้ขอบเขตวันของฟิลเตอร์หน้าตรวจสอบผล"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-09",
+      "subject": "feat: เปลี่ยนตัวย่อสารบนป้ายเป็นสูตรเคมี"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-08",
+      "subject": "fix: ทำให้ระบบลบรูปหมดอายุใช้งานได้ และแก้บั๊กฝั่ง API อีกสี่จุด"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-09-02",
+      "subject": "fix: error submit"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-02",
+      "subject": "feat: ให้ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ แทนการบล็อกทิ้ง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-31",
+      "subject": "sty: ปรับการแสดงข้อมูลสถานที่"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-26",
+      "subject": "perf: ลดข้อมูลที่ดึงในหน้าประวัติการส่งตรวจ ด้วยการแบ่งหน้าแบบ 2 เฟส"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-26",
+      "subject": "Update route.ts"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-25",
+      "subject": "feat: เพิ่มตัวกรองสถานะการตรวจสอบ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-25",
+      "subject": "fix: ปรับ flow การส่งตรวจให้แอดมิน"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-24",
+      "subject": "fix: ปรับเรื่องการเก็บและแสดงเวลา"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-24",
+      "subject": "fix: ปรับ UI Logic การแสดงประวัติการส่งตรวจ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-21",
+      "subject": "ref: ปรับ flow การส่งตรวจ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-19",
+      "subject": "perf: route"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-17",
+      "subject": "fix: เวลาในการบันทึกไม่ตรงตามความจริง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-07",
+      "subject": "fix: เวลาในการบันทึกผิดเพี้ยน"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-04",
+      "subject": "add: เพิ่ม sessionGroup ลงใน api และ filter"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-31",
+      "subject": "fix: แก้รหัสตัวอย่างน้ำ และ seed"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-27",
+      "subject": "fix: แก้ไม่ให้โรล officer เข้าถึงหน้าประวัติได้"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-27",
+      "subject": "perf: ทำ pagination หน้า collector"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-24",
+      "subject": "fix: แก้ฟังก์ชันคำร้อง หากมี 2 สาร"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-20",
+      "subject": "fix: ปรับเรื่องการจับ sessionGroup"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-20",
+      "subject": "feat มีการปรับการสร้าง code และ session"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้การเปรียบเทียบเกณฑ์"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้ hardcoded standards"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-16",
+      "subject": "fix: แก้ workflow การส่งตัวอย่างซ้ำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-15",
+      "subject": "fix: แก้บัค + เพิ่ม UI หน้าsubmit"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-14",
+      "subject": "fix: แก้ให้คำนวณเกณฑ์ใหม่ใน sever"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-13",
+      "subject": "feat: เพิ่มฟังก์ชันส่งคำร้องตรวจสอบตัวอย่างน้ำที่มีค่า confidence ต่ำ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-13",
+      "subject": "fix: ปรับเรื่องการเก็บสภาพอากาศ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-10",
+      "subject": "fix: ปรับการยิง API ไปดึงค่าสภาพอากาศ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-10",
+      "subject": "refactor: ปรับการใช้จาก TMD กรมอุตุมาใช้ api.open-meteo.com"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-09",
+      "subject": "fix: ปรับการส่งข้อมูลตรวจน้ำ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-07",
+      "subject": "fix: เพิ่มข้อมูล confidence"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: ปรับ route เรื่องการส่งตรวจให้เป็นแบบ dynamic"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-03",
+      "subject": "fix: ปรับ route ให้เข้ากับ database แบบใหม่"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-02",
+      "subject": "fix:ปรับ ui ให้เหมาะกับมือถือ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-30",
+      "subject": "feat(upload): implement filename sanitization with datestamp and sweetalert2 integration"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-30",
+      "subject": "refactor(api): convert AI analysis to in-memory processing to prevent disk clutter"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "fix(api): resolve route data conflict and unexpected token JSON error"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "refactor(security): complete migration to LINE Access Token auth & RBAC across 12 files"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-19",
+      "subject": "fix(frontend backend): แก้ไขหน้า Dashboard"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-18",
+      "subject": "fix(frontend backend database): แก้ไขความสัมพันธ์ข้อมูล"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-18",
+      "subject": "fix(frontend backend): แก้ไข API การอัปโหลดรูป"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-09",
+      "subject": "setup system"
+    }
+  ],
+  "app/api/samples/[id]/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ปิด Date ที่ยังหลุดออก API พร้อม Z ให้ครบทุก route"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ล้าง snapshot/log/แคชตอน seed และ copy เวลาส่งจริงลง snapshot"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ส่ง Date ทุกตัวออกจาก API แบบไม่มี Z และแก้ขอบเขตวันของฟิลเตอร์หน้าตรวจสอบผล"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-08",
+      "subject": "fix: ทำให้ระบบลบรูปหมดอายุใช้งานได้ และแก้บั๊กฝั่ง API อีกสี่จุด"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-02",
+      "subject": "feat: ให้ส่งภาพที่ AI ไม่พบหลอดทดลองเข้าคิวตรวจสอบได้ แทนการบล็อกทิ้ง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-31",
+      "subject": "sty: ปรับการแสดงข้อมูลสถานที่"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-26",
+      "subject": "fix: แสดงชื่อหน่วยงานในหน้าประวัติแทนขีด"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-24",
+      "subject": "fix: แก้ไขการแสดงรายการที่มีการแก้ไข/ไม่อนุมัติ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-24",
+      "subject": "fix: ปรับ UI Logic การแสดงประวัติการส่งตรวจ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-21",
+      "subject": "ref: ปรับ flow การส่งตรวจ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-17",
+      "subject": "sty: ปรับปรุงหน้า collector และประวัติให้แสดงสถานะกำลังตรวจสอบ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-17",
+      "subject": "fix: เวลาในการบันทึกไม่ตรงตามความจริง"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-27",
+      "subject": "fix: แก้ไม่ให้โรล officer เข้าถึงหน้าประวัติได้"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-20",
+      "subject": "fix: แก้ flow การส่งสารซ้ำ และเพิ่มการแสดงเกณฑ์ประเมิน"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-20",
+      "subject": "feat มีการปรับการสร้าง code และ session"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-17",
+      "subject": "fix: แก้ฟังก์ชันแก้ไขข้อมูลตัวอย่างน้ำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-16",
+      "subject": "fix: แก้ workflow การส่งตัวอย่างซ้ำ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-15",
+      "subject": "fix: แก้บัค + เพิ่ม UI หน้าsubmit"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-10",
+      "subject": "fix: แก้ไขการดึงรายละเอียดประวัติการส่งคุณภาพน้ำ"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: ปรับ route เรื่องการส่งตรวจให้เป็นแบบ dynamic"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-03",
+      "subject": "fix: ปรับ route ให้เข้ากับ database แบบใหม่"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "refactor(security): complete migration to LINE Access Token auth & RBAC across 12 files"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-06-19",
+      "subject": "feat: เพิ่มฟังกชันแก้ไขประวัติ"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-06-18",
+      "subject": "feature: history by id"
+    }
+  ],
+  "app/api/uploads/[...filename]/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-27",
+      "subject": "fix: แก้ไม่ให้โรล officer เข้าถึงหน้าประวัติได้"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: ปรับ route เรื่องการส่งตรวจให้เป็นแบบ dynamic"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-30",
+      "subject": "fix:แก้ปัญหาไฟล์ที่ถูก plot ไม่ถูก save"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-22",
+      "subject": "feat(frontend backend): เพิ่มการ export ข้อมูล"
+    }
+  ],
+  "app/api/users/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ค้นหาผู้ใช้ด้วย \"ชื่อ นามสกุล\" ในช่องเดียวได้"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-08-14",
+      "subject": "style: ลบกรอบสี่เหลี่ยมดำตอนกรอกข้อมูลออกและทำให้หน้าจัดการผุ้ใช้ค้นหาตามเบอร์โทรได้"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-27",
+      "subject": "perf: ทำ pagination เป็นตัวช่วยกลาง และนำมาใช้หน้า /user"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: แก้ UX/UI หน้า /users"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "refactor(security): complete migration to LINE Access Token auth & RBAC across 12 files"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-29",
+      "subject": "refactor(admin): shift user management queue to prisma role requests"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-26",
+      "subject": "refactor: .ใช้ prettierrc ส่วนกลาง"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-25",
+      "subject": "Dev petch (#20)"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-06-22",
+      "subject": "refactor: แก้pathใหม่"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-06-22",
+      "subject": "feature: ทำหน้าจัดการข้อมูลผู้ใช้"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-06-09",
+      "subject": "setup system"
+    }
+  ],
+  "app/api/users/stats/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-07-06",
+      "subject": "fix: แก้ UX/UI หน้า /users"
+    }
+  ],
+  "app/api/weather/preview/route.ts": [
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-11",
+      "subject": "fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB"
+    },
+    {
+      "author": "Nop856",
+      "email": "indyiloveyou1@gmail.com",
+      "date": "2026-09-04",
+      "subject": "fix: บังคับให้ดึงข้อมูลสภาพอากาศสำเร็จก่อนจึงกดวิเคราะห์ได้"
+    },
+    {
+      "author": "Pachara2004",
+      "email": "pachara000004@gmail.com",
+      "date": "2026-08-10",
+      "subject": "fix: ปรับ UI การส่งตรวจคุณภาพน้ำ"
+    }
+  ]
+}

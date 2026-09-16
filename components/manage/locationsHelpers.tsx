@@ -1,3 +1,40 @@
+/**
+ * @file locationsHelpers.tsx
+ * @project Water Monitoring Project
+ * @module UI / Manage / Locations
+ * @description
+ * ส่วนประกอบของหน้าจัดการจุดตรวจวัดน้ำ (/manage/locations) ที่ desktop และ mobile ใช้ร่วมกัน:
+ * ชนิด LocationItem, แถวรายการสถานีพร้อมภาพแผนที่ย่อ (OSM tile) และ Popup แก้ไขสถานี
+ * ที่มีดรอปดาวน์หน่วยงานแบบ anchored menu และตัวเลือกที่อยู่ไทย (ThaiAddressSelector)
+ * state ของฟอร์มอยู่ที่หน้าผู้เรียก ไฟล์นี้รับผ่าน props ทั้งหมด
+ *
+ * Shared pieces of the manage-locations page: the LocationItem type, station list
+ * row with a static map thumbnail, and the edit-station popup (organization menu +
+ * Thai address selector). Form state is owned by the caller.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-27 – 2026-09-02)
+ *
+ * @lastModified 2026-09-02 12:11
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 14:42 by Nopparut U. - สร้างแถวรายการและฟอร์มสถานี ใช้ Popup กลาง
+ * - 2026-08-28 08:32 by Pachara P. - เพิ่มที่อยู่ (จังหวัด/อำเภอ/ตำบล/รหัสไปรษณีย์) ให้สถานี
+ * - 2026-08-31 12:03 by Pachara P. - เพิ่ม validation ตอนเพิ่มสถานที่
+ * - 2026-09-01 10:11 by Nopparut U. - ดรอปดาวน์หน่วยงานแบบ anchored และคุมความถูกต้องของที่อยู่
+ * - 2026-09-01 11:53 by Nopparut U. - แจ้งเตือนเมื่อบันทึกไม่สำเร็จ และแก้ดรอปดาวน์ถูกขอบ popup ตัด
+ * - 2026-09-02 12:11 by Pachara P. - ตัดส่วนแก้ไขข้อมูลสถานที่ที่ไม่ใช้แล้ว
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ createPortal
+ * @see docs/skills/SKILL_googlemap_uxui.md
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -11,6 +48,7 @@ import { ThaiAddressSelector } from "./ThaiAddressSelector";
 // ความสูงสูงสุดโดยประมาณของเมนูหน่วยงาน ใช้ตัดสินว่าจะกางขึ้นหรือลง
 const ORG_MENU_MAX_HEIGHT = 220;
 
+/** จุดตรวจวัดน้ำหนึ่งแห่งตามที่ API ส่งกลับ ที่อยู่เป็น optional เพราะข้อมูลเก่าอาจไม่มี */
 export interface LocationItem {
     id: number;
     name: string;
@@ -67,6 +105,14 @@ function MapThumbnail({ lat, lng }: { lat: number; lng: number }) {
     );
 }
 
+/**
+ * แถวสถานีหนึ่งแห่ง: ภาพแผนที่ย่อ ชื่อ หน่วยงาน ที่อยู่ พิกัด และปุ่มแก้ไข/ลบ
+ *
+ * @param loc - ข้อมูลสถานี
+ * @param deletingId - id ที่กำลังลบอยู่ (ปุ่มลบของแถวนั้นจะหมุนรอ)
+ * @param onEdit - เรียกเมื่อกดแก้ไข
+ * @param onDelete - เรียกเมื่อกดลบ
+ */
 export function StationListRow({ loc, deletingId, onEdit, onDelete }: { loc: LocationItem; deletingId: number | null; onEdit: (loc: LocationItem) => void; onDelete: (loc: LocationItem) => void }) {
     return (
         <div className="bg-card-general rounded-xl border-2 border-border  flex items-stretch transition-all hover:scale-[1.005] duration-150 min-w-0 overflow-hidden">
@@ -119,6 +165,15 @@ export function StationListRow({ loc, deletingId, onEdit, onDelete }: { loc: Loc
     );
 }
 
+/**
+ * Popup แก้ไขสถานี: ชื่อ, หน่วยงาน (เลือกจากที่มีหรือพิมพ์ใหม่), ที่อยู่ไทย และปุ่มบันทึก
+ * ค่าและ setter ทุกช่องมาจากหน้าผู้เรียก เพื่อให้หน้านั้นเป็นเจ้าของ state ตอนบันทึก
+ *
+ * @param uniqueOrgs - รายชื่อหน่วยงานที่มีอยู่แล้ว ใช้เป็นตัวเลือกในดรอปดาวน์
+ * @param editSaving - กำลังบันทึก (ปิดปุ่ม)
+ * @param onClose - ปิด popup
+ * @param onSave - บันทึก
+ */
 export function LocationEditDrawer({
     editName,
     setEditName,

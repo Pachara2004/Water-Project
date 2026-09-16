@@ -1,3 +1,27 @@
+/**
+ * @file app/collector/history/[id]/loading.tsx
+ * @project Water Monitoring Project
+ * @module App / Collector / History / Loading
+ * @description
+ * Skeleton ของหน้ารายละเอียดตัวอย่างน้ำ: แถบหัวพร้อมปุ่มย้อนกลับ, การ์ดสรุป และกล่องภาพ
+ *
+ * Route loading UI for /collector/history/[id].
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-16
+ * @version 1.0.0
+ *
+ * @lastModified 2026-07-24 16:14
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-16 14:52 by Pachara P. - เพิ่ม skeleton loader ทุกหน้า
+ * - 2026-07-24 16:14 by Pachara P. - ปรับ UI
+ *
+ * @client-side ไม่มี hook/state เป็น Server Component ได้ (Next.js route loading UI)
+ * @license Private / Proprietary
+ */
+
 import { ArrowLeft } from "lucide-react";
 
 export default function Loading() {

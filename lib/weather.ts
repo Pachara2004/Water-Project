@@ -1,5 +1,33 @@
-// src/lib/weather.ts
+/**
+ * @fileoverview Weather condition codes and WMO mapping utilities
+ *
+ * [TH] โมดูลรหัสสภาพอากาศ คำอธิบายภาษาไทย และการแปลงรหัส WMO เข้ากับรหัสสภาพอากาศระบบ
+ * [EN] Weather condition codes, Thai descriptions, and WMO code mapping utilities
+ *
+ * @description
+ * [TH] นิยามรหัสสภาพอากาศภาษาไทย (1-12) และแปลงรหัส WMO Weather Code จาก Open-Meteo
+ * ให้สอดคล้องกับพฤติกรรมสภาพอากาศในประเทศไทย (ปรับลดระดับ WMO 80 ป้องกันฝนทิพย์)
+ * [EN] Defines Thai weather condition codes and maps WMO standard codes from Open-Meteo
+ * to system weather categories tailored to Thai meteorological conditions.
+ *
+ * @module lib/weather
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-06-09
+ * @modified 2026-09-11
+ *
+ * @history
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix: ปรับ mapWmoToLegacyCode ย้าย WMO 80 ให้เป็นฝนตกเล็กน้อย (แก้บั๊กฝนทิพย์)
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - initial commit
+ */
 
+/**
+ * [TH] พจนานุกรมรหัสสภาพอากาศและข้อความภาษาไทย (1: ท้องฟ้าแจ่มใส ถึง 12: อากาศร้อนจัด)
+ * [EN] Dictionary mapping numeric weather codes (1-12) to descriptive Thai labels
+ * @constant {Record<number, string>}
+ */
 export const WEATHER_CONDITIONS: Record<number, string> = {
     1: "ท้องฟ้าแจ่มใส",
     2: "มีเมฆบางส่วน",
@@ -16,8 +44,12 @@ export const WEATHER_CONDITIONS: Record<number, string> = {
 };
 
 /**
- * ฟังก์ชันแปลงรหัสสภาพอากาศ WMO ให้สอดคล้องกับสภาพจริงเมืองไทย
- * ซ่อมแซมบั๊กฝนทิพย์ ปล่อยรหัสฝนตกหนักเฉพาะเวลาที่แบบจำลองเทฝนลงมาจริง ๆ เท่านั้น
+ * [TH] แปลงรหัสสภาพอากาศมาตรฐาน WMO (จาก Open-Meteo) ให้เป็นรหัสสภาพอากาศระบบ (1-8)
+ * [EN] Maps WMO standard weather code to internal legacy weather category code
+ *
+ * @function mapWmoToLegacyCode
+ * @param {number | null | undefined} wmoCode - รหัสสภาพอากาศ WMO
+ * @returns {number | null} รหัสสภาพอากาศระบบ หรือ null
  */
 export function mapWmoToLegacyCode(wmoCode: number | null | undefined): number | null {
     if (wmoCode === null || wmoCode === undefined) return null;
@@ -65,6 +97,14 @@ export function mapWmoToLegacyCode(wmoCode: number | null | undefined): number |
     }
 }
 
+/**
+ * [TH] รับข้อความภาษาไทยอธิบายสภาพอากาศตามรหัสตัวเลข
+ * [EN] Retrieves localized Thai label corresponding to a weather condition code
+ *
+ * @function getWeatherConditionLabel
+ * @param {number | null | undefined} code - รหัสสภาพอากาศระบบ
+ * @returns {string} ข้อความอธิบายสภาพอากาศภาษาไทย
+ */
 export function getWeatherConditionLabel(code: number | null | undefined): string {
     if (code === null || code === undefined) return "ไม่พบข้อมูลสภาพอากาศ";
     return WEATHER_CONDITIONS[code] || `สภาพอากาศรหัส ${code}`;

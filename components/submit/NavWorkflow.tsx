@@ -1,7 +1,40 @@
-// components/submit/NavWorkflow.tsx
+/**
+ * @file NavWorkflow.tsx
+ * @project Water Monitoring Project
+ * @module UI / Submit / Navigation
+ * @description
+ * ส่วนนำทางของหน้า submit: sidebar บน desktop (ข้อมูล session และขั้นตอน) และปุ่ม "วิเคราะห์"
+ * ที่กดได้เฉพาะเมื่อเปิดสารอย่างน้อยหนึ่งตัว มีภาพอัปโหลด เลือกสถานีแล้ว และดึงสภาพอากาศสำเร็จ
+ * (weatherStatus = "ready") เพราะสภาพอากาศถูกบันทึกลงใบตรวจตอน save ถ้าดึงไม่ได้ตอนนี้ตอน save ก็จะเป็น null
+ *
+ * Submit-page navigation: desktop sidebar with session info/steps and the Analyze
+ * button, which is gated on parameters, images, station and a ready weather fetch.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-07
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-14 – 2026-09-04)
+ *
+ * @lastModified 2026-09-07 10:48
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-07 15:30 by Pachara P. - แยกส่วนนำทางออกมาตอนปรับโครงสร้างไฟล์ submit
+ * - 2026-07-14 12:25 by Nopparut U. - เพิ่มโหมดการส่งตัวอย่าง
+ * - 2026-07-23 11:05 by Pachara P. - ปรับ UI ให้เข้ากับ desktop (sidebar)
+ * - 2026-09-04 10:02 by Nopparut U. - บังคับให้ดึงสภาพอากาศสำเร็จก่อนจึงกดวิเคราะห์ได้
+ * - 2026-09-07 10:48 by Pachara P. - ไม่บังคับส่งสองสารแม้เปิด 2 ช่อง มี validate บอก
+ *
+ * @client-side ไม่มี hook/state ใช้ได้ทั้ง Server และ Client Component
+ * @license Private / Proprietary
+ */
+
 import { Loader2, Camera, Sparkles, MapPin, ToggleLeft, CloudOff, CloudAlert } from "lucide-react";
 import { SubmitSteps } from "./SubmitSteps";
 
+/** Props ของ DesktopSidebar */
 interface DesktopSidebarProps {
     sessionId?: string | number;
     locationName?: string;
@@ -9,6 +42,11 @@ interface DesktopSidebarProps {
     step: "upload" | "analyzing" | "results";
 }
 
+/**
+ * Sidebar ซ้ายบน desktop (ซ่อนต่ำกว่า `md`) แสดง session / สถานี / ผู้เก็บ / วันที่ และขั้นตอนแนวตั้ง
+ *
+ * @param props - ดู {@link DesktopSidebarProps}
+ */
 export function DesktopSidebar({ sessionId, locationName, currentUser, step }: DesktopSidebarProps) {
     return (
         <aside className="hidden md:flex flex-col border-r border-border bg-card-general min-h-full w-52 shrink-0">
@@ -39,8 +77,10 @@ export function DesktopSidebar({ sessionId, locationName, currentUser, step }: D
     );
 }
 
+/** สถานะการดึงสภาพอากาศของหน้า submit; ต้อง "ready" จึงวิเคราะห์ได้ */
 export type WeatherStatus = "idle" | "loading" | "ready" | "unavailable" | "error";
 
+/** Props ของ AnalyzeButton */
 interface AnalyzeButtonProps {
     activeParameters: Array<{ id: string; [key: string]: any }>;
     imageFiles: Record<string, any>;
@@ -51,6 +91,11 @@ interface AnalyzeButtonProps {
     handleAnalyze: () => void;
 }
 
+/**
+ * ปุ่มวิเคราะห์ พร้อมข้อความบอกเหตุผลเมื่อยังกดไม่ได้
+ *
+ * @param props - ดู {@link AnalyzeButtonProps}
+ */
 export function AnalyzeButton({ activeParameters = [], imageFiles = {}, currentLocationId, isRecommending, weatherStatus = "idle", handleAnalyze }: AnalyzeButtonProps) {
     const hasEnabledParam = activeParameters.length > 0;
     const uploadedCount = activeParameters.filter((p) => imageFiles[p.id] !== undefined).length;

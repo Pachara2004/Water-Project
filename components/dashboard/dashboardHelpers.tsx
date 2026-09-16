@@ -1,3 +1,40 @@
+/**
+ * @file dashboardHelpers.tsx
+ * @project Water Monitoring Project
+ * @module UI / Dashboard / Helpers
+ * @description
+ * ฟังก์ชันและคอมโพเนนต์ย่อยที่หน้าแดชบอร์ดทั้ง desktop และ mobile ใช้ร่วมกัน: จัดรูปแบบวันที่/ตัวเลข,
+ * class ความกว้างการ์ด KPI, สีโครงกราฟตามธีม, ป้ายแนวโน้ม (renderTrend) ที่ไม่โชว์ตัวเลขเมื่อฐานตัวอย่างน้อย,
+ * จัดกลุ่มแท่งเช้า-เย็น, ช่องเลือกวันที่ (DateField), กล่องค้นหาแบบดรอปดาวน์ (FilterCombo)
+ * และส่วนกราฟความสัมพันธ์สภาพอากาศ (CorrelationSection) ที่แปลค่า r เป็นประโยคไทย
+ *
+ * Shared helpers and sub-components for the desktop/mobile dashboard pages:
+ * formatting, KPI grid classes, theme-aware chart tokens, trend badges, date and
+ * combo inputs, and the weather-correlation section.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-09-09)
+ *
+ * @lastModified 2026-09-09 14:21
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 10:04 by Nopparut U. - แยก helper ออกมาตอนแยกหน้าแดชบอร์ดเป็น desktop/mobile
+ * - 2026-08-11 by Nopparut U. - ปรับชื่อกราฟให้เข้าใจง่าย รองรับจอเล็ก และเพิ่มปุ่มอธิบายกราฟ
+ * - 2026-09-04 14:09 by Nopparut U. - ย้ายสีสารไปใช้ lib/chartColors.ts แหล่งเดียว
+ * - 2026-09-07 13:09 by Nopparut U. - ป้ายแนวโน้มโชว์คู่ค่าแทนผลต่าง; กราฟความสัมพันธ์เป็นแท่งแนวนอนพร้อมประโยคสรุป
+ * - 2026-09-07 14:31 by Nopparut U. - แยกตัวกรองหน่วยงานกับสถานีเป็นคนละช่อง (FilterCombo)
+ * - 2026-09-09 14:21 by Pachara P. - ปรับ UI และการใช้คำ
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @notes สีใน chartTokens เป็นค่า hex ตายตัว เพราะ Recharts/SVG รับ CSS variable ไม่ได้
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useRef, useState, useMemo, useEffect } from "react";
@@ -7,7 +44,12 @@ import { ChartInfoButton } from "@/components/dashboard/chartGuides";
 import { ResponsiveContainer, BarChart, Bar, Cell, LabelList, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { parameterColor } from "@/lib/chartColors";
 
-// แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
+/**
+ * แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (ไม่ผ่าน UTC) กัน off-by-one วันตอนใกล้เที่ยงคืน
+ *
+ * @param d - วันที่ต้นทาง
+ * @returns สตริง `YYYY-MM-DD`
+ */
 export function toISODate(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -15,13 +57,22 @@ export function toISODate(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
-// จัดรูปแบบตัวเลขสำหรับแสดงผลในหน้า dashboard — จำกัดทศนิยมไม่เกิน 3 ตำแหน่ง (ตัดศูนย์ท้ายทิ้ง) โดยไม่แตะค่าจริงที่ใช้คำนวณ
+/**
+ * จัดรูปแบบตัวเลขสำหรับแสดงผล — ทศนิยมไม่เกิน 3 ตำแหน่ง (ตัดศูนย์ท้ายทิ้ง) โดยไม่แตะค่าจริงที่ใช้คำนวณ
+ *
+ * @param value - ตัวเลขดิบ
+ * @returns สตริงตาม locale ของเบราว์เซอร์
+ */
 export function formatDisplayNumber(value: number): string {
     return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
 }
 
-// แปลงค่า w (1-12 ช่อง ตามที่ตั้งไว้ใน dashboard_widgets) เป็น Tailwind class แบบ static lookup
-// (ต้องเขียนเป็น literal string ครบทุก class เพราะ Tailwind ไม่รู้จัก class ที่ประกอบด้วย template string แบบ dynamic)
+/**
+ * แปลงความกว้าง w (3/4/6/12 ช่อง ตามที่ตั้งไว้ใน dashboard_widgets) เป็น Tailwind class แบบ static lookup
+ * ต้องเขียนเป็น literal string ครบทุก class เพราะ Tailwind ไม่รู้จัก class ที่ประกอบจาก template string
+ *
+ * @param w - จำนวนช่องบน grid 12 ช่อง; undefined หรือค่าอื่น = 3
+ */
 export function kpiSpanClass(w: number | undefined): string {
     switch (w) {
         case 12:
@@ -36,8 +87,12 @@ export function kpiSpanClass(w: number | undefined): string {
     }
 }
 
-// สีโครงกราฟ (เส้นกริด/แกน/tooltip) แยกตามธีม
-// Recharts กับ SVG รับได้เฉพาะค่าสีจริง ใช้ CSS variable ไม่ได้ สีชุดนี้จึงอยู่นอกระบบ token ใน globals.css
+/**
+ * สีโครงกราฟ (เส้นกริด/แกน/tooltip) แยกตามธีม
+ * Recharts กับ SVG รับได้เฉพาะค่าสีจริง ใช้ CSS variable ไม่ได้ สีชุดนี้จึงอยู่นอกระบบ token ใน globals.css
+ *
+ * @param isDark - true = ธีมมืด
+ */
 export function chartTokens(isDark: boolean) {
     return {
         grid: isDark ? "#334155" : "#e2e8f0",
@@ -52,12 +107,18 @@ export function chartTokens(isDark: boolean) {
     };
 }
 
-// สีประจำสารเคมี — ค่าจริงอยู่ที่ lib/chartColors.ts ที่เดียว ใช้ร่วมกับกราฟบนแผนที่และการ์ด
-// คีย์ nh3/po4 เป็นชื่อที่หน้าแดชบอร์ดใช้เรียกสารสองตัวนี้ ไม่ใช่ชื่อในตาราง `parameters`
+/**
+ * สีประจำสารเคมี — ค่าจริงอยู่ที่ lib/chartColors.ts ที่เดียว ใช้ร่วมกับกราฟบนแผนที่และการ์ด
+ * คีย์ nh3/po4 เป็นชื่อที่หน้าแดชบอร์ดใช้เรียกสารสองตัวนี้ ไม่ใช่ชื่อในตาราง `parameters`
+ */
 export const CHEM_COLOR: Record<"nh3" | "po4", string> = { nh3: parameterColor("ammonia"), po4: parameterColor("phosphate") };
 
-// ตีความว่าทิศทางไหนของการ์ดนี้คือ "ดี" — ใช้ตัดสินสีของ trend badge แทนการฟันธงว่าขึ้น=เขียว/ลง=แดงเสมอ
-// (ตัวอย่างเกินมาตรฐาน/เฝ้าระวังยิ่งลดยิ่งดี ในขณะที่อัตราความปลอดภัยยิ่งขึ้นยิ่งดี ส่วนจำนวนตัวอย่างรวมไม่มีทิศทางที่ดี/แย่ตายตัว)
+/**
+ * ตีความว่าทิศทางไหนของการ์ดนี้คือ "ดี" — ใช้ตัดสินสีของ trend badge แทนการฟันธงว่าขึ้น=เขียว/ลง=แดงเสมอ
+ * (ตัวอย่างเกินมาตรฐาน/เฝ้าระวังยิ่งลดยิ่งดี อัตราความปลอดภัยยิ่งขึ้นยิ่งดี จำนวนตัวอย่างรวมไม่มีทิศทางตายตัว)
+ *
+ * @param title - ชื่อการ์ด KPI (ตัดสินจากคำในชื่อ)
+ */
 export function getTrendPolarity(title: string): "up-good" | "down-good" | "neutral" {
     if (title.includes("ปลอดภัย")) return "up-good";
     if (title.includes("วิกฤต") || title.includes("Danger") || (title.includes("อันตราย") && !title.includes("เฝ้าระวัง"))) return "down-good";
@@ -70,6 +131,14 @@ export function getTrendPolarity(title: string): "up-good" | "down-good" | "neut
 // (เห็นชัดช่วงต้นสัปดาห์/ต้นเดือนที่เพิ่งเก็บตัวอย่างไปไม่กี่ชิ้น)
 const MIN_TREND_SAMPLES = 10;
 
+/**
+ * ป้ายแนวโน้มใต้ตัวเลข KPI แสดง "ค่าช่วงก่อน → ค่าช่วงนี้" พร้อมสีตาม polarity
+ * ไม่โชว์ตัวเลขเมื่อฝั่งใดมีตัวอย่างน้อยกว่า MIN_TREND_SAMPLES หรือช่วงก่อนไม่มีข้อมูล แต่บอกเหตุผลแทนการซ่อน
+ *
+ * @param trend - ข้อมูลแนวโน้มจาก /api/dashboard/widgets (null = ไม่แสดง)
+ * @param modeLabel - ป้ายรอบเปรียบเทียบ เช่น "รายสัปดาห์"
+ * @param polarity - ทิศทางที่ถือว่าดี จาก {@link getTrendPolarity}
+ */
 export function renderTrend(trend: any, modeLabel: string, polarity: "up-good" | "down-good" | "neutral") {
     if (!trend) return null;
 
@@ -139,7 +208,12 @@ export function renderTrend(trend: any, modeLabel: string, polarity: "up-good" |
     );
 }
 
-// 🚀 ลอจิกกลุ่มแท่งกราฟ เช้า-เย็น แยกออกจากกันแบบไดนามิกจับคู่คีย์
+/**
+ * จัดกลุ่มแท่งกราฟเช้า-เย็นตามชื่อสาร โดยตัดคำ Morning/Evening ออกจากคีย์ (เช่น "ammoniaMorning" → "ammonia")
+ *
+ * @param analytics - ผลจาก /api/dashboard/widgets (ใช้ `temporalConfig.bars`)
+ * @returns รายการกลุ่ม `{ title, items }` ต่อสารหนึ่งตัว
+ */
 export function getGroupedBars(analytics: any) {
     if (!analytics?.temporalConfig?.bars) return [];
     const bars = analytics.temporalConfig.bars;
@@ -159,9 +233,14 @@ export function getGroupedBars(analytics: any) {
     return Object.values(groups);
 }
 
-// ช่องเลือกวันที่ที่ใช้ไอคอนของเราเองแทนไอคอนปฏิทินของ browser
-// ไอคอนเดิมเป็น ::-webkit-calendar-picker-indicator ซึ่ง browser เป็นคนวาด กำหนดสี/ขนาดจาก CSS ไม่ได้
-// ซ่อนแล้วผูกปุ่มของเราเข้ากับ showPicker() แทน — ตัว input ยังพิมพ์/โฟกัสได้ตามปกติ
+/**
+ * ช่องเลือกวันที่ที่ใช้ไอคอนของเราเองแทนไอคอนปฏิทินของ browser
+ * ไอคอนเดิม (::-webkit-calendar-picker-indicator) กำหนดสี/ขนาดจาก CSS ไม่ได้ จึงซ่อนแล้วผูกปุ่มของเราเข้ากับ showPicker()
+ *
+ * @param label - ป้ายกำกับช่อง
+ * @param value - ค่า `YYYY-MM-DD`
+ * @param onChange - เรียกพร้อมค่าใหม่เมื่อผู้ใช้เปลี่ยน
+ */
 export function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -198,7 +277,7 @@ export function DateField({ label, value, onChange }: { label: string; value: st
     );
 }
 
-// จำนวนจุดขั้นต่ำที่ยอมให้วาด heatmap/เส้น trend — น้อยกว่านี้ความหนาแน่นและค่า r ไม่มีความหมายทางสถิติ
+/** ตัวเลือกหนึ่งรายการใน FilterCombo; `hint` คือคำกำกับที่ค้นหาได้ด้วย (เช่น หน่วยงานของสถานี) */
 export type ComboOption = { key: string | number; label: string; hint?: string };
 
 /**
@@ -345,7 +424,12 @@ function correlationSentence(axis: "rain" | "temp", chem: "nh3" | "po4", r: numb
     return `${AXIS_PHRASE[axis]} ${subject}มีแนวโน้ม${direction}${degree}`;
 }
 
-// 🌦️ Correlation — กราฟเส้นค่าเฉลี่ยรายกลุ่มสภาพอากาศ แยกเป็น component ลูก กดสลับแล้ว re-render เฉพาะส่วนนี้
+/**
+ * ส่วนกราฟความสัมพันธ์สภาพอากาศกับสาร: แท่งแนวนอนค่าเฉลี่ยรายกลุ่ม (ฝน/อุณหภูมิ × NH3/PO4)
+ * พร้อมประโยคสรุปจากค่า r แยกเป็นคอมโพเนนต์ลูกเพื่อให้กดสลับแล้ว re-render เฉพาะส่วนนี้
+ *
+ * @param correlation - ข้อมูล `correlation` จาก /api/dashboard/widgets
+ */
 export function CorrelationSection({ correlation }: { correlation: any }) {
     const { theme } = useAppStore();
     const isDark = theme === "dark";

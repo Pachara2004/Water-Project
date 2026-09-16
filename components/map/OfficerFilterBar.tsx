@@ -1,10 +1,47 @@
+/**
+ * @file OfficerFilterBar.tsx
+ * @project Water Monitoring Project
+ * @module UI / Map / Filters
+ * @description
+ * ดรอปดาวน์กรองหมุดบนแผนที่ตามหน่วยงาน โหลดรายชื่อหน่วยงานเองจาก /api/locations ตอน mount
+ * (ดึงค่า organization ที่ไม่ซ้ำ) มีช่องค้นหาในเมนูเพราะรายการอาจยาว ปิดเองเมื่อกดนอกกล่อง
+ * เป็นต้นแบบสไตล์ดรอปดาวน์ที่ PaginationBar และ StatusFilterBar ใช้ตาม
+ *
+ * Organization filter dropdown for the map. Loads distinct organizations from
+ * /api/locations on mount and offers in-menu search.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-11, 2026-08-14, 2026-09-01)
+ *
+ * @lastModified 2026-09-11 12:34
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้างตัวกรองหน่วยงานพร้อมโครงระบบ
+ * - 2026-06-11 10:58 by Pachara P. - ดึงรายชื่อหน่วยงานจาก API แทนค่าคงที่
+ * - 2026-07-22 10:11 by Pachara P. - รองรับ dark mode
+ * - 2026-08-14 12:18 by Nopparut U. - เอากรอบโฟกัสสีดำของเบราว์เซอร์ออก
+ * - 2026-09-11 12:34 by Pachara P. - แก้ขนาด filter bar
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @notes ชื่อไฟล์คือ OfficerFilterBar แต่คอมโพเนนต์ export ชื่อ FilterBar (MapView import เป็น FilterBar)
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { Filter, ChevronDown, Search, X } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 
+/** Props ของ FilterBar */
 interface FilterBarProps {
+    /** ชื่อหน่วยงานที่เลือก หรือ "ALL" */
     value: string;
+    /** เรียกเมื่อเลือกค่าใหม่ */
     onChange: (value: string) => void;
 }
 
@@ -13,6 +50,11 @@ interface Option {
     label: string;
 }
 
+/**
+ * ดรอปดาวน์กรองหน่วยงาน โหลดตัวเลือกเองตอน mount
+ *
+ * @param props - ดู {@link FilterBarProps}
+ */
 export default function FilterBar({ value, onChange }: FilterBarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);

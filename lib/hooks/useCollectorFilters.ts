@@ -1,10 +1,37 @@
 "use client";
 
+/**
+ * @fileoverview Custom React hook for sample history filtering, pagination, and persistence
+ *
+ * [TH] React Hook สำหรับจัดการตัวกรอง การค้นหา การแบ่งหน้า และการจำค่าสถานะของหน้าประวัติผลตรวจ (/collector)
+ * [EN] React hook managing server-side filtering, pagination, debounced search, and sessionStorage persistence for collector history
+ *
+ * @description
+ * [TH] รวมการดึงข้อมูลผลตรวจจาก API (/api/samples), การแบ่งหน้า (Pagination), ตัวกรองสถานะคุณภาพน้ำและสถานะการตรวจสอบ,
+ * ช่วงเวลา, และการบันทึกสถานะตัวกรองลงใน sessionStorage พร้อมคืนค่าเมื่อกลับมาจากหน้ารายละเอียด
+ * [EN] Encapsulates sample data fetching, multi-status filtering, date-range filtering,
+ * debounced search, sort toggles, and seamless sessionStorage synchronization.
+ *
+ * @module lib/hooks/useCollectorFilters
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-07-20
+ * @modified 2026-07-20
+ *
+ * @history
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: แยกตรรกะการกรอง/ค้นหา/แบ่งหน้าในหน้า collector ออกมาเป็น hook useCollectorFilters
+ */
+
 import { useEffect, useRef, useState } from "react";
 import liff from "@line/liff";
 import { readCollectorFilters, writeCollectorFilters, type CollectorFilterState } from "@/lib/collectorFilters";
 import type { CurrentUser } from "@/lib/store";
 
+/**
+ * [TH] โครงสร้างข้อมูลตัวอย่างน้ำสำหรับแสดงผลในหน้ารายการประวัติผู้เก็บตัวอย่าง
+ * [EN] Sample item representation structured for collector history list display
+ */
 export interface CollectorSample {
     id: number;
     locationId: number;
@@ -33,10 +60,18 @@ export interface CollectorSample {
     [key: string]: any;
 }
 
+/**
+ * [TH] อาร์กิวเมนต์ที่ส่งเข้ามายัง Hook useCollectorFilters
+ * [EN] Parameters for useCollectorFilters hook
+ */
 interface UseCollectorFiltersArgs {
     currentUser: CurrentUser | null;
 }
 
+/**
+ * [TH] ชนิดข้อมูลสถานะและตัวควบคุมที่คืนค่าจาก useCollectorFilters
+ * [EN] Return type of useCollectorFilters hook containing states and dispatchers
+ */
 export type CollectorFiltersState = ReturnType<typeof useCollectorFilters>;
 
 const SEARCH_DEBOUNCE_MS = 400;
@@ -50,6 +85,15 @@ const DEFAULT_PAGE_SIZE = 10;
    ทั้งหมดเกิดที่ฝั่ง API (/api/samples) ไม่ใช่ในหน่วยความจำฝั่ง client แล้ว
    รวมไว้ที่เดียวเพราะลำดับการทำงานของ effect ในนี้ผูกกันแน่น (ดูคอมเมนต์แต่ละจุด)
    ถ้ากระจายอยู่ในหน้า 700 บรรทัด การย้ายบล็อกโค้ดสลับที่จะทำให้การกู้ค่าพังเงียบๆ */
+
+/**
+ * [TH] Hook จัดการสถานะตัวกรอง การแบ่งหน้า และการดึงข้อมูลประวัติผลตรวจน้ำฝั่งเซิร์ฟเวอร์
+ * [EN] Hook managing collector sample list filters, search, pagination, and remote fetching
+ *
+ * @function useCollectorFilters
+ * @param {UseCollectorFiltersArgs} args - ข้อมูลผู้ใช้งานปัจจุบัน
+ * @returns {CollectorFiltersState} ชุดสถานะและฟังก์ชันจัดการตัวกรอง
+ */
 export function useCollectorFilters({ currentUser }: UseCollectorFiltersArgs) {
     const [samples, setSamples] = useState<CollectorSample[]>([]);
     const [loading, setLoading] = useState(true);

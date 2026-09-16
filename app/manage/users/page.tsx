@@ -1,3 +1,40 @@
+/**
+ * @file app/manage/users/page.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Users
+ * @description
+ * หน้าจัดการผู้ใช้ (/manage/users, admin เท่านั้น) เจ้าของ state ทั้งหมด: แท็บ (ทั้งหมด/เจ้าหน้าที่/คิวคำขอ),
+ * ค้นหาแบบหน่วงเวลา (ยิง DB ทุกคำค้น), เรียงลำดับ, แบ่งหน้าจาก /api/users, สถิติจาก /api/users/stats,
+ * เปลี่ยน role, อนุมัติ/ปฏิเสธคำขอสิทธิ์ และปฏิเสธคำขอทั้งหมด หลังดำเนินการดึงใหม่ทั้งหน้าเพราะแถว
+ * อาจหลุดจากแท็บที่เปิดอยู่ เลือก view mobile/desktop ตามจอ
+ *
+ * Admin user management: owns tab/search/sort/pagination state and the role-change and
+ * request approve/reject actions against /api/users; views only lay it out.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-22
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-25 – 2026-09-02)
+ *
+ * @lastModified 2026-09-09 10:47
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-22 14:47 by Nopparut U. - สร้างหน้าจัดการผู้ใช้
+ * - 2026-06-29 10:16 by Pachara P. - ย้ายคิวคำขอสิทธิ์ไปใช้ตาราง role requests
+ * - 2026-07-15 14:52 by Pachara P. - แก้เปลี่ยนสิทธิ์ไม่ได้
+ * - 2026-07-23 14:57 by Nopparut U. - แยก view เป็น desktop/mobile
+ * - 2026-07-27 11:49 by Nopparut U. - แบ่งหน้าฝั่ง server ด้วย PaginationBar กลาง
+ * - 2026-09-02 14:24 by Pachara P. - บล็อกการเข้าถึงตาม role
+ * - 2026-09-09 10:47 by Nopparut U. - แถบแบ่งหน้าใหม่พร้อมเลือกจำนวนแถวต่อหน้า
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @auth admin เท่านั้น ยิง API ด้วย LIFF access token
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,6 +50,7 @@ import { type Role, type UserItem, ROLE_CONFIG } from "@/components/manage/users
 import UsersMobile from "./usersMobile";
 import UsersDesktop from "./usersDesktop";
 
+/** เจ้าของ state หน้าจัดการผู้ใช้ เลือก view ตามจอ */
 export default function AdminUsersPage() {
     const { currentUser } = useAppStore();
     const router = useRouter();

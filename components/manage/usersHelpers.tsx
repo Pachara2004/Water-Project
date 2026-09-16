@@ -1,8 +1,41 @@
-// components/manage/usersHelpers.tsx
+/**
+ * @file usersHelpers.tsx
+ * @project Water Monitoring Project
+ * @module UI / Manage / Users
+ * @description
+ * ชนิดข้อมูล ค่าคงที่ และแถวรายการผู้ใช้ที่หน้าจัดการผู้ใช้ (desktop/mobile) ใช้ร่วมกัน:
+ * ป้ายและสีของแต่ละ role, ตัวจัดรูปแบบวันที่ และ UserListRow ที่แสดงข้อมูลผู้ใช้พร้อมดรอปดาวน์
+ * เปลี่ยน role หรือปุ่มอนุมัติ/ปฏิเสธคำขอสิทธิ์ (ในแท็บคิว)
+ *
+ * Types, role constants and the shared user-list row for the manage-users page,
+ * including the role dropdown and approve/reject actions for pending requests.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-11 – 2026-09-02)
+ *
+ * @lastModified 2026-09-02 11:44
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 14:57 by Nopparut U. - แยก helper ออกมาตอนแยกหน้าจัดการผู้ใช้เป็น desktop/mobile
+ * - 2026-07-27 11:49 by Nopparut U. - ใช้ pagination กลางกับหน้า /user
+ * - 2026-08-11 13:17 by Pachara P. - ปรับ UI รายการผู้ใช้
+ * - 2026-09-02 11:44 by Pachara P. - ปรับ UI
+ *
+ * @client-side ไม่มี hook/state ในไฟล์นี้ แต่ถูกใช้จาก Client Component
+ * @license Private / Proprietary
+ */
+
 import { SquareChevronUp, CheckCircle2, ChevronDown, RefreshCw, Phone, CalendarDays, Layers, XCircle, User } from "lucide-react";
 
+/** สิทธิ์ผู้ใช้ในระบบ ตรงกับ enum ใน Prisma */
 export type Role = "guest" | "collector" | "officer" | "admin";
 
+/** ผู้ใช้หนึ่งรายการตามที่ /api/manage/users ส่งกลับ */
 export interface UserItem {
     id: number;
     lineProfileName: string;
@@ -12,12 +45,16 @@ export interface UserItem {
     registeredAt: string;
     lastActiveAt: string;
     samplesCount: number;
+    /** id ของคำขอสิทธิ์ที่ค้างอยู่; null = ไม่มี */
     pendingRequestId: number | null;
+    /** role ที่ขอ (คู่กับ pendingRequestId) */
     requestedRole: Role | null;
 }
 
+/** ลำดับ role ที่แสดงในดรอปดาวน์ */
 export const ROLE_OPTIONS: Role[] = ["guest", "collector", "officer", "admin"];
 
+/** ป้ายภาษาไทยและ class สีของแต่ละ role */
 export const ROLE_CONFIG: Record<Role, { label: string; color: string;}> = {
     guest: {
         label: "ผู้ใช้ทั่วไป",
@@ -37,6 +74,11 @@ export const ROLE_CONFIG: Record<Role, { label: string; color: string;}> = {
     },
 };
 
+/**
+ * จัดรูปแบบวันที่เป็นไทยแบบย่อ เช่น "5 ก.ย. 2569"
+ *
+ * @param iso - วันที่ในรูปแบบ ISO string
+ */
 export function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString("th-TH", {
         day: "numeric",
@@ -45,6 +87,19 @@ export function formatDate(iso: string) {
     });
 }
 
+/**
+ * แถวผู้ใช้หนึ่งคนในรายการ แสดงชื่อ เบอร์ วันลงทะเบียน จำนวนตัวอย่าง และ role
+ * ในแท็บ "queue" จะแสดงปุ่มอนุมัติ/ปฏิเสธคำขอสิทธิ์แทนดรอปดาวน์เปลี่ยน role
+ *
+ * @param user - ข้อมูลผู้ใช้
+ * @param tab - แท็บที่กำลังดู มีผลต่อปุ่มที่แสดง
+ * @param isUpdating - กำลังบันทึกการเปลี่ยนแปลงของแถวนี้
+ * @param isOpen - ดรอปดาวน์ role ของแถวนี้เปิดอยู่
+ * @param onToggleDropdown - เปิด/ปิดดรอปดาวน์ role
+ * @param onRoleChange - เรียกเมื่อเลือก role ใหม่
+ * @param onApprove - อนุมัติคำขอสิทธิ์ (แท็บ queue)
+ * @param onReject - ปฏิเสธคำขอสิทธิ์ (แท็บ queue)
+ */
 export function UserListRow({
     user,
     tab,

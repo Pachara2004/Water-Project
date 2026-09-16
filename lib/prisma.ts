@@ -1,3 +1,41 @@
+/**
+ * @file lib/prisma.ts
+ * @project Water Monitoring Project
+ * @module Database / Prisma Client Management
+ * @description
+ * [TH] ตัวจัดการ Prisma Client ส่วนกลาง (Singleton Instance) ที่ติดตั้ง Extension อัตโนมัติสำหรับจัดการเวลาไทย (Thai Timestamps)
+ * ดักจับคำสั่งเขียนข้อมูล (create, createMany, update, updateMany, upsert) รวมถึง Nested Writes ในทุกระดับ
+ * เพื่อแทนที่ค่าเวลาเริ่มต้น (default now / updatedAt) จาก UTC เป็นเวลาประเทศไทย (GMT+7 ผ่าน nowThai())
+ * พร้อมทั้งจัดการการเชื่อมต่อบนโหมด Development เพื่อป้องกันการสร้าง Connection ซ้ำซ้อนจากการทำ Hot Reload
+ *
+ * [EN] Centralized Prisma Client singleton instance with custom Thai Timestamps extension.
+ * Intercepts all write operations (create, createMany, update, updateMany, upsert) including recursive nested writes
+ * to ensure all automated DateTime columns conform to Thailand timezone (GMT+7 via nowThai()) instead of UTC defaults.
+ * Prevents redundant database connection leaks during development hot-reloading.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @modified 2026-09-11
+ * @version 2.1.0
+ * @license Proprietary
+ *
+ * @see {@link /lib/thaiTime.ts} ยูทิลิตี้เวลาไทย nowThai()
+ * @see {@link prisma/schema.prisma} นิยามโมเดลฐานข้อมูล MySQL
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - ออกแบบและเริ่มต้นระบบเชื่อมต่อฐานข้อมูล Prisma
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - พัฒนา Prisma Extension บังคับเวลาไทยและปรับปรุง Global Cache Key
+ *
+ * @lastModified 2026-09-11
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix: เปลี่ยน key ที่ cache prisma client ใน globalThis กัน dev server หยิบตัวเก่า
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix: ยึดเวลาไทยเป็นนิยามเดียวของทุกคอลัมน์ DateTime ใน DB
+ * - 2026-06-26 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - refactor: .ใช้ prettierrc ส่วนกลาง
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - setup system
+ */
+
 import { Prisma, PrismaClient } from "@prisma/client";
 import { nowThai } from "@/lib/thaiTime";
 
@@ -113,11 +151,18 @@ function createClient() {
     });
 }
 
+/**
+ * [TH] ไทป์ของ Prisma Client ที่ได้รับการติดตั้ง Thai Timestamps Extension แล้ว
+ * [EN] Type definition of PrismaClient extended with Thai timestamps auto-injection
+ */
 export type ExtendedPrismaClient = ReturnType<typeof createClient>;
 
 /**
- * client ภายใน interactive transaction ของ client ที่ต่อ extension แล้ว
- * ใช้แทน Prisma.TransactionClient ในทุกฟังก์ชันที่รับ tx — type เดิมเป็นของ client เปล่า จึงรับ tx จาก client นี้ไม่ได้
+ * [TH] ไทป์ของ Client ภายใน Interactive Transaction (`$transaction`) ของ Client ที่ติดตั้ง Extension แล้ว
+ * ใช้ทดแทน `Prisma.TransactionClient` ในฟังก์ชันที่ต้องการส่งต่อ Interactive Transaction
+ *
+ * [EN] Transaction Client type derived from the extended Prisma Client.
+ * Use this in place of `Prisma.TransactionClient` across transactional helper functions.
  */
 export type TxClient = Parameters<Parameters<ExtendedPrismaClient["$transaction"]>[0] extends (tx: infer T) => unknown ? (tx: T) => unknown : never>[0];
 
@@ -127,6 +172,10 @@ const globalForPrisma = globalThis as unknown as {
     prismaThaiTimestamps: ExtendedPrismaClient | undefined;
 };
 
+/**
+ * [TH] Prisma Client Singleton Instance สำหรับการเข้าถึงฐานข้อมูล MySQL ทั่วทั้งแอปพลิเคชัน
+ * [EN] Global Prisma Client singleton instance for MySQL database operations across application
+ */
 export const prisma = globalForPrisma.prismaThaiTimestamps ?? createClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prismaThaiTimestamps = prisma;

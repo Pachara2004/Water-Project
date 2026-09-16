@@ -1,3 +1,37 @@
+/**
+ * @file app/manage/page.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage
+ * @description
+ * หน้าจัดการระบบ (/manage): โปรไฟล์ผู้ใช้, เมนูผู้ดูแล (พร้อมจำนวนคำร้องค้างจาก /api/manage/pending-count
+ * รีเฟรชเมื่อโฟกัสหน้า), เมนูทั่วไป, การตั้งค่า และปุ่มออกจากระบบ (ยืนยันผ่าน SweetAlert, liff.logout
+ * เฉพาะนอก LINE app, ล้าง hasLoggedIntoApp แล้ว reload เป็น guest) เลือก view mobile/desktop ตามจอ
+ *
+ * Manage route: profile, admin menus with pending counts, general menus, settings and logout.
+ * Owns the state and handlers; the mobile/desktop views only lay them out.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-22
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-25 – 2026-09-10)
+ *
+ * @lastModified 2026-09-10 12:16
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-22 14:28 by Nopparut U. - สร้างหน้า admin panel
+ * - 2026-07-14 13:39 by Pachara P. - เพิ่มระบบออกจากระบบ
+ * - 2026-07-15 12:00 by Nopparut U. - จำนวนคำร้องค้างบนเมนูแอดมิน
+ * - 2026-07-23 13:37 by Nopparut U. - แยก view เป็น desktop/mobile
+ * - 2026-09-10 12:16 by Pachara P. - แก้ล็อกอิน/ล็อกเอาต์ผ่าน LINE browser
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @auth admin เห็นเมนูผู้ดูแล; guest เห็นปุ่มเข้าสู่ระบบแทนโปรไฟล์
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -11,6 +45,7 @@ import { confirmLogoutAlert } from "@/lib/swal";
 import ManageMobile from "./manageMobile";
 import ManageDesktop from "./manageDesktop";
 
+/** เจ้าของ state หน้าจัดการระบบ เลือก view ตามจอ */
 export default function ManagePage() {
     const { currentUser, setUser } = useAppStore(); // ดึง setUser มาใช้เคลียร์สเตทเมื่อล็อกเอาต์
     const router = useRouter();

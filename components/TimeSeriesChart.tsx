@@ -1,3 +1,36 @@
+/**
+ * @file TimeSeriesChart.tsx
+ * @project Water Monitoring Project
+ * @module UI / Map / Chart
+ * @description
+ * กราฟเส้นแนวโน้มคุณภาพน้ำของสถานีหนึ่ง (Recharts) แสดงใน BottomSheet บนแผนที่
+ * รองรับสารกี่ตัวก็ได้ตามที่ผู้เรียกส่งมาใน `series` ค่า null = รอบนั้นไม่ได้วัด กราฟจะเว้นช่อง
+ * ไม่ลากเส้นข้าม บนจอสัมผัสจะปิด tooltip เองเมื่อแตะนอกกราฟ
+ *
+ * Multi-series line chart of a station's water-quality trend (Recharts). Null
+ * values render as gaps; tooltip is dismissed on touch outside the chart.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-04)
+ *
+ * @lastModified 2026-09-04 15:23
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้างกราฟแนวโน้มพร้อมโครงระบบ
+ * - 2026-07-10 10:48 by Pachara P. - ปรับ UI ให้เข้ากับ BottomSheet
+ * - 2026-09-04 13:40 by Nopparut U. - เปลี่ยนเป็น series แบบไดนามิก รองรับสารทุกตัว และแยก "ไม่ได้วัด" (null) ออกจาก 0
+ * - 2026-09-04 15:23 by Nopparut U. - ปิด tooltip เมื่อแตะนอกกราฟบนจอสัมผัส
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @notes ล็อกความสูงกล่องนอกสุดไว้ เพื่อเลี่ยงบั๊ก ResponsiveContainer ของ Recharts หดเหลือ 0px
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -7,7 +40,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 export interface TimeSeriesSeries {
     /** คีย์ที่ใช้อ่านค่าจากแต่ละจุดข้อมูล */
     key: string;
+    /** ชื่อที่แสดงใน legend และ tooltip */
     label: string;
+    /** สีเส้น (ควรมาจาก lib/chartColors.ts) */
     color: string;
 }
 
@@ -16,15 +51,25 @@ export interface TimeSeriesSeries {
  * null = รอบนั้นไม่ได้วัดสารตัวนี้ กราฟจะเว้นช่องให้ (ห้ามส่ง 0 แทน เพราะจะกลายเป็นผลตรวจจริง)
  */
 export interface TimeSeriesDataPoint {
+    /** ป้ายแกน X (วันที่ในรูปแบบที่ผู้เรียกจัดมาแล้ว) */
     date: string;
     [seriesKey: string]: string | number | null;
 }
 
+/** Props ของ TimeSeriesChart */
 interface TimeSeriesChartProps {
+    /** จุดข้อมูลเรียงตามเวลา */
     data: TimeSeriesDataPoint[];
+    /** รายการเส้นที่จะวาด (สารแต่ละตัว) */
     series: TimeSeriesSeries[];
 }
 
+/**
+ * กราฟแนวโน้มคุณภาพน้ำ แสดงกล่อง "ไม่มีข้อมูลย้อนหลัง" เมื่อ data หรือ series ว่าง
+ *
+ * @param data - จุดข้อมูลเรียงตามเวลา
+ * @param series - เส้นที่จะวาด ผู้เรียกกำหนดคีย์/ชื่อ/สีเอง
+ */
 export default function TimeSeriesChart({ data, series }: TimeSeriesChartProps) {
     const wrapperRef = useRef<HTMLDivElement>(null);
 

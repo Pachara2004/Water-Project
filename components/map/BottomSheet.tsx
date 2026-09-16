@@ -1,3 +1,44 @@
+/**
+ * @file BottomSheet.tsx
+ * @project Water Monitoring Project
+ * @module UI / Map / Bottom Sheet
+ * @description
+ * แผงข้อมูลสถานีที่เลื่อนขึ้นจากขอบล่างเมื่อกดหมุดบนแผนที่ ลากปรับได้ 3 ระดับ (collapsed / half / full)
+ * พร้อม snap ตามความเร็วปัด แสดงที่อยู่ ป้ายสถานะน้ำ ค่าสารล่าสุดพร้อมแนวโน้มเทียบครั้งก่อน
+ * สภาพอากาศตอนเก็บตัวอย่าง ตารางเปรียบเทียบเกณฑ์ตามประเภทแหล่งน้ำ (StandardsComparison)
+ * และกราฟแนวโน้ม (TimeSeriesChart โหลดแบบ dynamic) ที่ series งอกตามสารที่พบจริงในข้อมูล
+ * รอบที่ไม่ได้วัดสารตัวนั้นถูกแปลงเป็น null ไม่ใช่ 0
+ *
+ * Draggable three-snap bottom sheet showing a station's latest readings, trends,
+ * weather, standards comparison and a dynamic multi-series trend chart.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-11 – 2026-09-04)
+ *
+ * @lastModified 2026-09-10 09:48
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้าง bottom sheet พร้อมโครงระบบ
+ * - 2026-06-11 – 06-19 by Nopparut U. - แก้บั๊กการลากและรหัสสภาพอากาศ
+ * - 2026-07-13 09:24 by Pachara P. - ทำให้แสดงสารแบบ dynamic ตามข้อมูล
+ * - 2026-07-17 14:53 by Nopparut U. - ใช้ StandardsComparison ร่วมกับหน้า submit
+ * - 2026-07-22 10:11 by Pachara P. - รองรับ dark mode
+ * - 2026-08-03 16:00 by Pachara P. - ปรับ UI สำหรับ desktop
+ * - 2026-09-04 13:40 by Nopparut U. - กราฟแนวโน้มรองรับสารทุกตัว แยก "ไม่ได้วัด" ออกจาก 0 และสีสารตรงกับกราฟ
+ * - 2026-09-07 12:19 by Pachara P. - แก้ไข bottom sheet (reapply หลัง revert)
+ * - 2026-09-10 09:48 by Pachara P. - ปรับตามการอัปโหลดรูปแบบมี progress bar
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ touch/mouse gesture และ next/dynamic
+ * @responsive ความสูงคำนวณจาก window.innerHeight; เว้น safe-area ด้านล่างสำหรับ LINE LIFF
+ * @see docs/skills/SKILL_googlemap_uxui.md
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { X, MapPin, Calendar, FlaskConical, TrendingUp, TrendingDown, Minus, Waves, CloudRain, Thermometer } from "lucide-react";
@@ -24,6 +65,7 @@ const TimeSeriesChart = dynamic(() => import("../TimeSeriesChart"), {
     ),
 });
 
+/** สถานีที่เลือกพร้อมตัวอย่างล่าสุดและประวัติย้อนหลัง (recentSamples) ตามที่ /api/locations ส่งกลับ */
 export interface BottomSheetLocation {
     id: string;
     name: string;
@@ -62,6 +104,12 @@ interface BottomSheetProps {
     onClose: () => void;
 }
 
+/**
+ * แผงข้อมูลสถานี คืน null เมื่อ location เป็น null
+ *
+ * @param location - สถานีที่เลือก
+ * @param onClose - เรียกเมื่อผู้ใช้ปิดแผง (ปุ่ม X หรือลากลงสุด)
+ */
 export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const router = useRouter();
     const { currentUser } = useAppStore();

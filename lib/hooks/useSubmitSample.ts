@@ -1,3 +1,28 @@
+/**
+ * @fileoverview Custom React hook managing the multi-step water sample collection and AI analysis flow
+ *
+ * [TH] React Hook สำหรับจัดการกระบวนการบันทึกตัวอย่างน้ำ การวิเคราะห์ภาพ AI และการส่งตรวจแบบหลายขั้นตอน (/submit)
+ * [EN] React hook orchestrating multi-step water sample submission, AI image analysis, and review workflows
+ *
+ * @description
+ * [TH] รวบรวมตรรกะสำหรับหน้าส่งผลตรวจน้ำ (/submit): การเปิด/ปิดสารตรวจวัด (Dynamic N-parameters),
+ * การดึงพิกัดจาก GPS/EXIF เพื่อแนะนำสถานีใกล้เคียง, การดึงสภาพอากาศล่วงหน้า, การส่งวิเคราะห์ภาพพื้นหลัง (Background AI Analysis),
+ * การตรวจสอบความผิดปกติ (หลอดทดลองหาย/สารไม่ตรงช่อง/สารซ้ำ), และการบันทึกผลพร้อมรองรับคิวรอการตรวจสอบ (Review Queue)
+ * [EN] Manages the complete sample submission lifecycle: dynamic parameter selection, GPS/EXIF geo-lookup,
+ * weather previewing, background AI analysis, anomaly verification, and submission into the review queue.
+ *
+ * @module lib/hooks/useSubmitSample
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @created 2026-07-20
+ * @modified 2026-09-11
+ *
+ * @history
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - fix(submit): handle non-test-tube images and lock admin change permission
+ * - 2026-07-20 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - feat: แยกตรรกะการส่งตัวอย่างน้ำและการวิเคราะห์ภาพ AI เป็น hook useSubmitSample
+ */
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import liff from "@line/liff";
@@ -26,6 +51,13 @@ const getNowLocalDateTimeString = () => {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
+/**
+ * [TH] Hook จัดการกระบวนการบันทึกตัวอย่างน้ำและวิเคราะห์ภาพถ่าย AI ครบวงจร
+ * [EN] Hook managing the comprehensive water sample collection and AI vision analysis workflow
+ *
+ * @function useSubmitSample
+ * @returns {object} ชุดตัวแปรสถานะและฟังก์ชันสำหรับหน้าส่งผลตรวจน้ำ
+ */
 export function useSubmitSample() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -78,8 +110,8 @@ export function useSubmitSample() {
     const [sessionId, setSessionId] = useState<string>(generateSessionId);
 
     // ── Background Analysis State ──
-    const analysisPromisesRef = useRef<Record<number, Promise<any>>>({});
-    const analysisAbortControllersRef = useRef<Record<number, AbortController>>({});
+    const analysisPromisesRef = useRef<Partial<Record<number, Promise<any>>>>({});
+    const analysisAbortControllersRef = useRef<Partial<Record<number, AbortController>>>({});
 
     const triggerBackgroundAnalysis = useCallback((paramId: number, file: File) => {
         const param = systemParameters.find(p => p.id === paramId);
@@ -714,7 +746,7 @@ export function useSubmitSample() {
     // เคลียร์ผลวิเคราะห์/รูป/ข้อผิดพลาดทั้งหมด กลับไปเริ่มถ่ายภาพใหม่ — ใช้เมื่อผลลัพธ์ไม่ใช่สิ่งที่ต้องการบันทึก
     // คงค่าสถานี/เวลา/toggle สารไว้ตามเดิม (ไม่ต้องกรอกซ้ำ) แต่ออก sessionGroup ใหม่เพราะเป็นการเก็บตัวอย่างรอบใหม่จริง ๆ
     const resetToUpload = () => {
-        Object.values(analysisAbortControllersRef.current).forEach(c => c.abort());
+        Object.values(analysisAbortControllersRef.current).forEach(c => c?.abort());
         analysisAbortControllersRef.current = {};
         analysisPromisesRef.current = {};
         setResults({});

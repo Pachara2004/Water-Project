@@ -1,3 +1,33 @@
+/**
+ * @file manageMobile.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage
+ * @description
+ * view มือถือของหน้าจัดการระบบ: โปรไฟล์ (หรือปุ่ม LINE login), เมนูผู้ดูแลแบบ stack แนวตั้งพร้อมจุดแดง
+ * เมนูทั่วไป, ThemeToggle/GpsAutoTrackToggle, ปุ่มออกจากระบบ และ EditProfileDrawer
+ * ประกาศ ManagePageProps ที่ manageDesktop ใช้ร่วมด้วย
+ *
+ * Mobile manage view; also declares the shared ManagePageProps.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-24 – 2026-09-14)
+ *
+ * @lastModified 2026-09-14 09:10
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 13:37 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-09-10 14:28 by Pachara P. - เพิ่มเมนูข้อตกลงและนโยบายความเป็นส่วนตัว
+ * - 2026-09-14 09:10 by Pachara P. - ปรับ UI และแก้คำ
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import type { CurrentUser } from "@/lib/store";
@@ -8,6 +38,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import GpsAutoTrackToggle from "@/components/GpsAutoTrackToggle";
 import { adminMenus, generalMenus, MenuBoxDisable, EditProfileDrawer, ProfileCard } from "@/components/manage/manageHelpers";
 
+/** Props ร่วมของ ManageMobile / ManageDesktop ทั้งหมดมาจาก page.tsx */
 export interface ManagePageProps {
     currentUser: CurrentUser | null | undefined;
     isAdmin: boolean;
@@ -20,9 +51,14 @@ export interface ManagePageProps {
     toastElement: React.ReactNode;
 }
 
+/**
+ * หน้าจัดการระบบบนมือถือ
+ *
+ * @param props - ดู {@link ManagePageProps}
+ */
 export default function ManageMobile({ currentUser, isAdmin, pendingCounts, showEdit, setShowEdit, handleLogout, router, showToast, toastElement }: ManagePageProps) {
     return (
-        <div className="min-h-dvh w-full bg-bg transition-colors duration-75">
+        <div className="w-full flex-1 bg-bg pb-6 transition-colors duration-75">
             <div className="w-full max-w-2xl mx-auto px-4">
                 <div className="pt-8 pb-1 mb-1 p-1">
                     <h1 className="font-display text-2xl font-semibold text-primary ">การจัดการระบบ</h1>

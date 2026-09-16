@@ -1,9 +1,45 @@
+/**
+ * @file ThemeToggle.tsx
+ * @project Water Monitoring Project
+ * @module UI / Theme
+ * @description
+ * ปุ่มสลับโหมดสว่าง/มืด อ่านและเขียน theme ผ่าน `useAppStore` มี 2 ทรง: ปุ่มกลมไอคอนอย่างเดียว
+ * และปุ่มยาวพร้อมข้อความ ก่อน mount จะ render placeholder ขนาดเท่าปุ่มจริงเพื่อกัน layout ขยับ
+ *
+ * Light/dark theme toggle bound to the global store. Icon-only or labelled variant;
+ * renders a same-size placeholder before mount to avoid layout shift.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-23 – 2026-07-07)
+ *
+ * @lastModified 2026-07-24 16:24
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้างปุ่มสลับธีมพร้อมโครงระบบ
+ * - 2026-07-07 16:13 by Nopparut U. - ปรับฟอนต์ให้ตรงมาตรฐาน
+ * - 2026-07-22 10:11 by Pachara P. - ปรับสี/ขอบให้รองรับ dark mode ตาม design token
+ * - 2026-07-24 16:24 by Pachara P. - เพิ่มทรงปุ่มมีข้อความ (showLabel) สำหรับหน้า manage
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useAppStore } from "@/lib/store";
 import { Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+/**
+ * ปุ่มสลับธีม
+ *
+ * @param showLabel - true = ปุ่มยาวมีข้อความ "โหมดสว่าง/โหมดมืด"; false (ค่าเริ่มต้น) = ปุ่มกลมไอคอนอย่างเดียว
+ */
 export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean }) {
     const { theme, toggleTheme } = useAppStore();
     const [mounted, setMounted] = useState(false);

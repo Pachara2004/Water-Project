@@ -1,3 +1,41 @@
+/**
+ * @file NotificationBell.tsx
+ * @project Water Monitoring Project
+ * @module UI / Notifications
+ * @description
+ * ปุ่มกระดิ่งแจ้งผลการตรวจสอบตัวอย่างน้ำ (อนุมัติ / อนุมัติแบบแก้ไข / ไม่อนุมัติ) สำหรับ collector
+ * ดึงรายการจาก /api/notifications ตอน mount และเมื่อโฟกัสหน้า กด "รับทราบ" จะ PATCH แบบ
+ * optimistic แล้วย้อนกลับถ้าล้มเหลว บน desktop เปิดเป็น dropdown บนมือถือเป็น bottom-sheet
+ * ลากปรับได้ 3 ระดับ (collapsed / half / full) พร้อมคำนวณความเร็วปัดเพื่อ snap
+ *
+ * Notification bell for sample review results. Fetches from /api/notifications,
+ * acknowledges optimistically, and renders as a dropdown on desktop or a
+ * draggable three-snap bottom-sheet on mobile.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-15
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-16 – 2026-09-14)
+ *
+ * @lastModified 2026-09-14 09:07
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-15 12:00 by Nopparut U. - สร้างกระดิ่งแจ้งเตือนพร้อม API รับทราบ
+ * - 2026-07-27 11:26 by Pachara P. - ปรับ UI การแสดงแจ้งเตือนในหน้า collector
+ * - 2026-08-03 16:16 by Pachara P. - แยกทรง desktop (dropdown) ออกจากมือถือ (bottom-sheet)
+ * - 2026-08-06 09:34 by Nopparut U. - แก้บั๊กการแสดงผล popup
+ * - 2026-08-21 16:23 by Pachara P. - รองรับสถานะ edited_approved ตาม flow การส่งตรวจใหม่
+ * - 2026-09-14 09:07 by Pachara P. - ย้ายตำแหน่งและเพิ่มแอนิเมชัน
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ @line/liff, touch/mouse gesture
+ * @responsive แยก desktop/mobile ด้วย `window.innerWidth >= 768`
+ * @auth ยิง API ด้วย LIFF access token
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
@@ -6,11 +44,15 @@ import { Bell, X, MapPin, FileScan, Calendar, AlertCircle, ImageOff, Check, Bell
 import { refreshNavDots } from "@/lib/navEvents";
 import { useRouter } from "next/navigation";
 
+/** หนึ่งรายการแจ้งเตือน ตามรูปแบบที่ /api/notifications ส่งกลับ */
 interface NotificationItem {
     id: number;
+    /** รหัสตัวอย่างน้ำ */
     code: string | null;
     status: "approved" | "edited_approved" | "rejected";
+    /** ข้อความจากผู้ตรวจสอบ */
     message: string | null;
+    /** true = ผู้ใช้กดรับทราบแล้ว */
     isReading: boolean;
     createdAt: string;
     collectionTime: string | null;
@@ -18,6 +60,7 @@ interface NotificationItem {
     location: { id: number; name: string; organization: string } | null;
 }
 
+/** จัดรูปแบบวันเวลาเป็นไทยแบบย่อ คืน "-" เมื่อ null */
 function formatDateTime(value: string | null) {
     if (!value) return "-";
     return new Date(value).toLocaleDateString("th-TH", {
@@ -29,6 +72,7 @@ function formatDateTime(value: string | null) {
     });
 }
 
+/** ปุ่มกระดิ่ง + แผงรายการแจ้งเตือน ไม่รับ props ดึงข้อมูลเองด้วย token ของ LIFF */
 export default function NotificationBell() {
     const [open, setOpen] = useState(false);
     const [items, setItems] = useState<NotificationItem[]>([]);

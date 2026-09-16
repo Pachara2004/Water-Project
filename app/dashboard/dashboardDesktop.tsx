@@ -1,3 +1,37 @@
+/**
+ * @file dashboardDesktop.tsx
+ * @project Water Monitoring Project
+ * @module App / Dashboard
+ * @description
+ * view desktop ของแดชบอร์ด: ขยาย layout ของ mobile ให้เต็มจอ แถบควบคุมเรียงแนวนอนแถวเดียว
+ * การ์ด KPI พร้อมป้ายแนวโน้ม, ตาราง hotspots, กราฟเปรียบเทียบเช้า-เย็น, กราฟแนวโน้มเทียบเกณฑ์ PCD
+ * และส่วนความสัมพันธ์สภาพอากาศ ตัวกรอง (หน่วยงาน / สถานี / ช่วงวันที่ / มุมมอง) และข้อมูลทั้งหมด
+ * มาจาก useDashboardAnalytics ผ่าน props ไฟล์นี้จัด layout อย่างเดียว โหลดครั้งแรกแสดง skeleton
+ * เต็มจอ ถ้าแค่เปลี่ยนตัวกรองจะคงเนื้อหาเดิมไว้แล้ว dim แทน
+ *
+ * Desktop dashboard view: same content as mobile on a wider grid with a single-row control bar.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-04, 2026-09-02)
+ *
+ * @lastModified 2026-09-07 14:31
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 10:04 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-07-24 20:37 by Nopparut U. - เพิ่ม skeleton ตอนโหลด
+ * - 2026-08-11 by Nopparut U. - ปรับชื่อกราฟ รองรับจอเล็ก และเพิ่มปุ่มอธิบายกราฟ
+ * - 2026-09-02 14:24 by Pachara P. - บล็อกการเข้าถึงตาม role
+ * - 2026-09-07 14:31 by Nopparut U. - แยกตัวกรองหน่วยงานกับสถานีเป็นคนละช่อง
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect } from "react";
@@ -9,8 +43,11 @@ import { chartTokens, kpiSpanClass, CHEM_COLOR, getGroupedBars, getTrendPolarity
 import { ChartInfoButton } from "@/components/dashboard/chartGuides";
 import { DashboardContentSkeleton } from "./loading";
 
-// Desktop = ขยาย layout เดิมของ mobile ให้เต็มจอ (container กว้างขึ้น, แถบควบคุมเรียงแนวนอน)
-// ไม่เปลี่ยน logic/สี/การคำนวณ ใช้ state ชุดเดียวกับ dashboardMobile (มาจาก useDashboardAnalytics ที่ page.tsx เรียกครั้งเดียว)
+/**
+ * แดชบอร์ดบน desktop ไม่เปลี่ยน logic/สี/การคำนวณจาก mobile
+ *
+ * @param props - state ทั้งหมดจาก useDashboardAnalytics
+ */
 export default function DashboardDesktop(props: DashboardAnalyticsState) {
     const {
         theme,
@@ -54,7 +91,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
     }
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+        <div className="w-full flex-1 bg-bg antialiased transition-colors duration-300">
             <div className="w-full mx-auto p-4">
                 <div className="space-y-4">
                     {/* Header + แถบควบคุมทั้งหมดเรียงแนวนอนแถวเดียว ใช้พื้นที่กว้างของจอเดสก์ท็อป */}

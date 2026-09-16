@@ -1,3 +1,34 @@
+/**
+ * @file usersDesktop.tsx
+ * @project Water Monitoring Project
+ * @module App / Manage / Users
+ * @description
+ * view desktop ของหน้าจัดการผู้ใช้: แถบควบคุมเรียงแนวนอนและรายการเป็น grid 2 คอลัมน์
+ * ใช้ UsersPageProps ชุดเดียวกับ mobile
+ *
+ * Desktop user-management view with a horizontal control bar and two-column user grid.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-24 – 2026-09-02)
+ *
+ * @lastModified 2026-09-09 10:47
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 14:57 by Nopparut U. - แยกไฟล์ออกจาก page.tsx
+ * - 2026-07-27 11:49 by Nopparut U. - ใช้ PaginationBar กลาง
+ * - 2026-08-14 12:18 by Nopparut U. - ค้นหาตามเบอร์โทรได้
+ * - 2026-09-09 10:47 by Nopparut U. - แถบแบ่งหน้าใหม่
+ * - 2026-08-11 13:17 by Pachara P. - ปรับ UI desktop
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { Users, UserCog, Clock, CheckCircle2, XCircle, RefreshCw, Search, ArrowUp, ArrowDown } from "lucide-react";
@@ -6,6 +37,11 @@ import { type UserItem, UserListRow } from "@/components/manage/usersHelpers";
 import PaginationBar from "@/components/PaginationBar";
 import type { UsersPageProps } from "./usersMobile";
 
+/**
+ * หน้าจัดการผู้ใช้บน desktop
+ *
+ * @param props - ดู UsersPageProps ใน usersMobile.tsx
+ */
 export default function UsersDesktop(props: UsersPageProps) {
     const {
         router,
@@ -41,7 +77,7 @@ export default function UsersDesktop(props: UsersPageProps) {
     };
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
+        <div className="min-h-dvh w-full bg-bg antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
             <PageHeader title="จัดการผู้ใช้งาน" onBack={() => router.back()} />
 
             <div className="w-full mx-auto p-4 space-y-4">

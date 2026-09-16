@@ -1,3 +1,39 @@
+/**
+ * @file app/api/samples/[id]/route.ts
+ * @project Water Monitoring Project
+ * @module API / Water Samples
+ * @description
+ * [TH] Route Handler สำหรับดึงรายละเอียดและปรับปรุงข้อมูลผลตรวจวัดตัวอย่างน้ำรายรายการ:
+ * - GET: ดึงรายละเอียดผลตรวจวัด พร้อมควบรวมรูปภาพดิบและภาพพล็อตแยกตาม ID พารามิเตอร์ โดยค้นหาจาก `SampleRecord` (Snapshot ถาวร) ก่อน และค้นหาจาก `WaterSample` กรณีเป็นสถานะรอตรวจสอบ (PENDING) หรือถูกปฏิเสธ (REJECTED) พร้อมคำนวณสถานะสถานที่ ณ วันที่เก็บตัวอย่าง
+ * - PUT: ปรับปรุงแก้ไขประวัติการตรวจวัด (เฉพาะ admin) โดยใช้เทคนิค Soft-Delete แถวเดิมและสร้างแถวใหม่ที่สืบทอด `code` และ `sessionGroup` เดิม พร้อมบันทึกประวัติการแก้ไข
+ * [EN] Route Handler for querying single sample details and updating sample measurements:
+ * - GET: Retrieves detailed sample measurements with per-parameter image mappings. Checks finalized `SampleRecord` first, falling back to `WaterSample` for PENDING/REJECTED status, and evaluates as-of station safety.
+ * - PUT: Updates sample measurements (admin only) via immutable soft-delete of the old row and creation of a new row inheriting the original `code` and `sessionGroup`.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-06-18
+ * @version 1.4.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-06-18)
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-08)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-08-25)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @lastModified 2026-09-11
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-18 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Initial sample detail endpoint
+ * - 2026-07-08 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Support immutable update and session group inheritance
+ * - 2026-08-25 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - SampleRecord snapshot lookup & fallback mechanism
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - As-of location status evaluation and Thai time formatting
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Role-based: collector, admin
+ * @security IDOR verification for collectors, immutable revision tracking
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
@@ -7,16 +43,27 @@ import { loadAllStandards } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 import { nowThai, parseThaiInput, toApiString } from "@/lib/thaiTime";
 
-// ค่าที่ส่งให้ client มาได้ทั้ง Date จาก DB และสตริงจาก snapshot (SampleRecord) — ทั้งสองต้องออกไปแบบไม่มี Z/offset
+/**
+ * ตัดเครื่องหมาย Timezone / Offset ท้ายสตริงวันที่เพื่อให้เป็นรูปแบบมาตรฐานเวลาไทย
+ * Strips UTC 'Z' and timezone offsets from date representations to maintain local Thai timestamp format.
+ *
+ * @param {Date | string | null | undefined} dateVal - ค่าวันที่นำเข้า
+ * @returns {string | null} ข้อความวันที่แบบสะอาด หรือ null
+ */
 function cleanDateString(dateVal: Date | string | null | undefined): string | null {
     if (!dateVal) return null;
     if (dateVal instanceof Date) return toApiString(dateVal);
     return String(dateVal).replace(/(Z|[+-]\d{2}:\d{2})$/, "");
 }
 
-// ========================================================
-// PUT /api/samples/[id] — ปรับปรุงประวัติน้ำแบบผูกสืบทอดกลุ่มรหัสเซสชัน
-// ========================================================
+/**
+ * ปรับปรุงแก้ไขข้อมูลผลการตรวจวัดคุณภาพน้ำ (เฉพาะ Admin)
+ * Updates sample measurement records immutably by soft-deleting old row and creating a revision.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม JSON payload { collectionTime, locationId, oxygen, measurements }
+ * @param {object} context - Route context params พร้อม `id` ของตัวอย่างน้ำ
+ * @returns {Promise<NextResponse>} ข้อมูลผลการตรวจวัดที่ได้รับการปรับปรุง
+ */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const auth = await verifyAuth(request, ["admin"]);
     if (!auth.isValid) {
@@ -202,9 +249,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 }
 
-// ========================================================
-// GET /api/samples/[id] — ดึงรายละเอียดผลตรวจน้ำพร้อมควบรวมรูปภาพแยกตาม Parameter ID
-// ========================================================
+/**
+ * ดึงรายละเอียดผลการตรวจวัดตัวอย่างน้ำตาม ID หรือ sessionGroup
+ * Retrieves comprehensive sample details, merged per-parameter images, and as-of location status.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Bearer Token
+ * @param {object} context - Route context params พร้อม `id` ของตัวอย่างน้ำหรือ sessionGroup
+ * @returns {Promise<NextResponse>} รายละเอียดผลตรวจและรูปภาพประกอบ
+ */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const auth = await verifyAuth(request, ["collector", "admin"]);
     if (!auth.isValid) {

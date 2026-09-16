@@ -1,3 +1,27 @@
+/**
+ * @file app/submit/loading.tsx
+ * @project Water Monitoring Project
+ * @module App / Submit / Loading
+ * @description
+ * Skeleton ของหน้าส่งตรวจ: แถบหัว, ขั้นตอน และการ์ดฟอร์ม
+ *
+ * Route loading UI for /submit.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-16
+ * @version 1.0.0
+ *
+ * @lastModified 2026-07-24 16:14
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-16 14:52 by Pachara P. - เพิ่ม skeleton loader ทุกหน้า
+ * - 2026-07-24 16:14 by Pachara P. - ปรับ UI
+ *
+ * @client-side ไม่มี hook/state เป็น Server Component ได้ (Next.js route loading UI)
+ * @license Private / Proprietary
+ */
+
 import { ArrowLeft } from "lucide-react";
 
 export default function Loading() {
