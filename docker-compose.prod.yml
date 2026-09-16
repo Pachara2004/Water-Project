@@ -33,7 +33,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality}
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality?charset=utf8mb4}
       CRON_SECRET: ${CRON_SECRET:-}
       TMD_API_TOKEN: ${TMD_API_TOKEN:-}
     depends_on:
@@ -54,7 +54,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality}
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-mysql://root:rootpassword@mysql:3306/water_quality?charset=utf8mb4}
       CRON_SECRET: ${CRON_SECRET:-}
       TMD_API_TOKEN: ${TMD_API_TOKEN:-}
       PORT: 3000
@@ -63,6 +63,7 @@ services:
         condition: service_healthy
       db-setup:
         condition: service_completed_successfully
+    command: npm run start
 
 volumes:
   mysql_data:
