@@ -1,16 +1,31 @@
 /**
- * เติมค่า Parameter.formula ให้สารที่ถูกสร้างไว้ก่อนจะมีคอลัมน์นี้
+ * @file prisma/backfill-parameter-formula.ts
+ * @project Water Monitoring Project
+ * @module Prisma / Backfill Script
+ * @description
+ * สคริปต์เติมค่า Parameter.formula (สูตรเคมี เช่น NH3, PO4) ให้สารที่สร้างไว้ก่อนมีคอลัมน์นี้ ใช้แทนการรัน
+ * seed บนฐานที่มีข้อมูลจริง เพราะ seed.ts เริ่มด้วย deleteMany ที่จะลากผลตรวจหายไปด้วย รันซ้ำได้:
+ * อัปเดตเฉพาะแถวที่ formula ยัง null/ว่าง เติมเฉพาะสารที่ระบบรู้จักมาแต่แรก สารที่แอดมินเพิ่มเองข้ามไป
  *
- * ใช้แทนการรัน `npm run seed` บนฐานที่มีข้อมูลจริง — seed.ts เริ่มด้วย parameter.deleteMany()
- * ซึ่งจะลากผลตรวจที่ผูกอยู่หายไปด้วย สคริปต์นี้แตะแค่คอลัมน์ formula อย่างเดียว
+ * One-off idempotent backfill of Parameter.formula for the built-in parameters; safe to run on
+ * a database with real data, unlike the seed.
  *
- * สูตรของสารที่ระบบรู้จักมาแต่แรกเท่านั้น สารที่แอดมินเพิ่มเองภายหลังไม่ถูกแตะ
- * (ปล่อยเป็น null ให้ฝั่งแสดงผลตกไปใช้ชื่อย่อ แล้วค่อยกรอกสูตรเองทีหลัง)
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-09-09
+ * @version 1.0.0
  *
- * รันซ้ำได้ — อัปเดตเฉพาะแถวที่ formula ยังเป็น null หรือว่าง ไม่ทับค่าที่คนกรอกไว้แล้ว
+ * @lastModified 2026-09-09 13:18
+ * @lastModifiedBy Nopparut Udomlert
  *
- *   npx tsx prisma/backfill-parameter-formula.ts
+ * @changelog
+ * - 2026-09-09 13:18 by Nopparut U. - สร้างสคริปต์คู่กับการเปลี่ยนป้ายสารเป็นสูตรเคมี
+ *
+ * @database Prisma Client (MySQL) ใช้ client ใหม่ในสคริปต์ ไม่ผ่าน lib/prisma
+ * @notes สารที่ไม่รู้จักสูตรจะถูกรายงานให้กรอกเองใน DB; ฝั่งแสดงผลตกไปใช้ชื่อย่อจนกว่าจะกรอก
+ * @example `npx tsx prisma/backfill-parameter-formula.ts`
+ * @license Private / Proprietary
  */
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -21,6 +36,7 @@ const KNOWN_FORMULA: Record<string, string> = {
     phosphate: "PO4",
 };
 
+/** ค้นสารที่ยังไม่มีสูตร เติมจาก KNOWN_FORMULA ทีละแถว และรายงานสารที่ไม่รู้จัก */
 async function main() {
     const pending = await prisma.parameter.findMany({
         where: { OR: [{ formula: null }, { formula: "" }] },
