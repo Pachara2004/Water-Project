@@ -1,3 +1,47 @@
+/**
+ * @file app/api/dashboard/widgets/route.ts
+ * @project Water Monitoring Project
+ * @module API / Dashboard & Analytics
+ * @description
+ * [TH] Route Handler หลักสำหรับคำนวณและรวบรวมข้อมูลสถิติ แดชบอร์ด วิดเจ็ต และการวิเคราะห์คุณภาพน้ำ (GET)
+ * ประกอบด้วย:
+ * 1. KPI Cards Blueprint: ดึงโครงสร้างจากการตั้งค่าในตาราง `dashboard_widgets` คำนวณแบบ Dynamic พร้อมแนวโน้ม WoW และ MoM
+ * 2. Danger Hotspots: 5 อันดับสถานีที่มีความเสี่ยงสะสมสูงสุด หรือรายละเอียดเจาะจงสถานีเมื่อผู้ใช้เลือกสถานีเดี่ยว
+ * 3. Temporal Data Engine: เปรียบเทียบความผันผวนของสารเคมี (แอมโมเนีย/ฟอสเฟต) ช่วงก่อนเที่ยง vs หลังเที่ยง พร้อมปรับระดับความละเอียดอัตโนมัติ (วัน/สัปดาห์/เดือน/ไตรมาส/ปี)
+ * 4. WaterTrendChart: เส้นแนวโน้มคุณภาพน้ำสะสมเปรียบเทียบกับเกณฑ์ควบคุมมลพิษของ PCD
+ * 5. Correlation Analytics: ความสัมพันธ์ระหว่างสภาพอากาศ (ปริมาณฝน/อุณหภูมิน้ำ) กับความเข้มข้นสารเคมี พร้อมค่าสัมประสิทธิ์สหสัมพันธ์ Pearson (r)
+ * [EN] Core Route Handler for computing and aggregating comprehensive water quality analytics and dashboard widgets (GET).
+ * Features:
+ * 1. Dynamic KPI cards from `dashboard_widgets` schema with calendar-based WoW/MoM trend badges.
+ * 2. Danger Hotspots ranking top 5 at-risk stations or single station risk drilldown.
+ * 3. Temporal Data Engine comparing before-noon vs after-noon chemical concentrations with auto-bucket granularity.
+ * 4. PCD Standards-based longitudinal water trend lines.
+ * 5. Weather-water quality correlation series and Pearson correlation coefficient (r).
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-07
+ * @version 1.5.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-07)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-15)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-08-10)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @lastModified 2026-09-11
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-07-07 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial dashboard widgets analytics API
+ * - 2026-07-15 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Optimize aggregation queries & filter support
+ * - 2026-08-10 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Add weather correlation analytics
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Refactor calendar-based WoW/MoM metrics and auto granularity
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Role-based: admin, officer, collector
+ * @security Verified LINE LIFF token required, pending review sessions excluded from public calculations
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
@@ -19,6 +63,13 @@ const formatThaiSpan = (a: Date, b: Date) => {
     return from === to ? from : `${from}–${to}`;
 };
 
+/**
+ * ดึงข้อมูลสถิติ แดชบอร์ด วิดเจ็ต และการวิเคราะห์คุณภาพน้ำครบวงจร
+ * Retrieves comprehensive water quality dashboard analytics, KPIs, hotspots, temporal, and correlation data.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Query params สำหรับ Filter (startDate, endDate, locationId, org, etc.)
+ * @returns {Promise<NextResponse>} โครงสร้างข้อมูล JSON สรุปภาพรวมสำหรับหน้า Dashboard
+ */
 export async function GET(request: NextRequest) {
     try {
         // SECURITY GUARD: บังคับต้องมี Token ที่ตรวจสอบผ่าน LINE จริง ก่อนอ่านสถิติใด ๆ
@@ -690,13 +741,24 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// ฟังก์ชันช่วยแปลงงูเลื้อย (snake_case) เป็นอูฐ (camelCase) ป้องกันบั๊กฟิลด์โมเดล Prisma
+/**
+ * แปลงรูปแบบสตริง snake_case หรือ kebab-case ให้เป็น camelCase
+ * Converts a snake_case or kebab-case string to camelCase format.
+ *
+ * @param {string} str - ข้อความนำเข้า เช่น "dissolved_oxygen"
+ * @returns {string} ข้อความในรูปแบบ camelCase เช่น "dissolvedOxygen"
+ */
 function toCamelCase(str: string) {
     return str.replace(/([-_][a-z])/g, (group) => group.toUpperCase().replace("-", "").replace("_", ""));
 }
 
-// จุดเริ่มต้นสัปดาห์แบบ ISO (จันทร์ 00:00) ของวันที่ที่กำหนด — ใช้คำนวณ WoW ตามปฏิทินสากล
-// อ่าน/เขียนด้วย getUTC*/setUTC* เพราะค่า UTC ของ Date ในระบบนี้คือปฏิทินไทย (ดู lib/thaiTime.ts)
+/**
+ * คำนวณจุดเริ่มต้นของสัปดาห์ตามมาตรฐาน ISO (วันจันทร์ เวลา 00:00:00 UTC/Thai)
+ * Calculates the start of the ISO week (Monday 00:00:00 UTC/Thai) for a given date.
+ *
+ * @param {Date} d - วันที่ที่ต้องการคำนวณ
+ * @returns {Date} วันจันทร์ต้นสัปดาห์
+ */
 function startOfISOWeek(d: Date): Date {
     const date = new Date(d);
     const day = date.getUTCDay(); // 0=อาทิตย์ ... 6=เสาร์
@@ -706,13 +768,25 @@ function startOfISOWeek(d: Date): Date {
     return date;
 }
 
-
-// ต้นเดือนปฏิทินของ d
+/**
+ * คำนวณวันแรกของเดือนปฏิทิน (วันที่ 1 เวลา 00:00:00)
+ * Returns the first day of the calendar month for a given date.
+ *
+ * @param {Date} d - วันที่ที่ต้องการคำนวณ
+ * @returns {Date} วันที่ 1 ของเดือนนั้น
+ */
 function startOfCalendarMonth(d: Date): Date {
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
 }
 
-// ถอยหลัง N เดือนแบบปฏิทิน พร้อม clamp วันที่ที่เกินจำนวนวันของเดือนเป้าหมาย (เช่น 31 มี.ค. ถอย 1 เดือน -> 28/29 ก.พ.)
+/**
+ * คำนวณวันที่ย้อนหลังตามจำนวนเดือนปฏิทิน พร้อมจำกัดวันไม่ให้เกินวันสิ้นสุดของเดือนเป้าหมาย (Clamped)
+ * Subtracts N calendar months from a date with clamping to the maximum days in the target month.
+ *
+ * @param {Date} d - วันที่ตั้งต้น
+ * @param {number} months - จำนวนเดือนที่ต้องการถอยหลัง
+ * @returns {Date} วันที่เป้าหมายหลังการถอยเดือน
+ */
 function subtractMonthClamped(d: Date, months: number): Date {
     const targetMonthDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - months, 1));
     const lastDayOfTargetMonth = new Date(Date.UTC(targetMonthDate.getUTCFullYear(), targetMonthDate.getUTCMonth() + 1, 0)).getUTCDate();
@@ -720,7 +794,13 @@ function subtractMonthClamped(d: Date, months: number): Date {
     return new Date(Date.UTC(targetMonthDate.getUTCFullYear(), targetMonthDate.getUTCMonth(), clampedDay, d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds()));
 }
 
-// ค่าสหสัมพันธ์ Pearson (r) จากคู่ข้อมูล [x, y] — คืน null หากจุดน้อยกว่า 2 หรือไม่มีความแปรปรวน
+/**
+ * คำนวณค่าสัมประสิทธิ์สหสัมพันธ์เพียร์สัน (Pearson Correlation Coefficient, r) จากชุดคู่ข้อมูลตัวเลข [x, y]
+ * Computes the Pearson correlation coefficient (r) between two continuous variables.
+ *
+ * @param {[number, number][]} pairs - อาเรย์ของคู่ลำดับข้อมูล [x, y]
+ * @returns {number | null} ค่า r ทศนิยม 2 ตำแหน่ง (-1.00 ถึง 1.00) หรือ null เมื่อข้อมูลไม่เพียงพอ/ไม่มีความแปรปรวน
+ */
 function pearson(pairs: [number, number][]): number | null {
     const n = pairs.length;
     if (n < 2) return null;

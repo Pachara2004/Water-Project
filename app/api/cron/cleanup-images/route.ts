@@ -1,10 +1,50 @@
+/**
+ * @file app/api/cron/cleanup-images/route.ts
+ * @project Water Monitoring Project
+ * @module API / Background Jobs & Maintenance
+ * @description
+ * [TH] Cron Route Handler สำหรับทำความสะอาดและลบไฟล์รูปภาพดิบที่หมดอายุการจัดเก็บบนดิสก์ (GET)
+ * ตรวจสอบความปลอดภัยด้วย Bearer Token เทียบกับ `CRON_SECRET` (Fail-Closed)
+ * ค้นหารายการ `waterSample` ที่ `imageExpiresAt` ถึงกำหนด แล้วทำการลบไฟล์ใน `public/uploads` แบบ Non-blocking Parallel
+ * พร้อม Batch Update เซ็ต `rawImageUrl = null` ในฐานข้อมูล
+ * [EN] Cron Route Handler for cleaning up expired raw sample images from disk storage (GET).
+ * Enforces fail-closed security via Bearer `CRON_SECRET` authorization.
+ * Queries `waterSample` records where `imageExpiresAt <= nowThai()`, unlinks physical files
+ * in parallel, and batch-updates `rawImageUrl = null` in Prisma.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.1.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-06-09)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @lastModified 2026-09-11
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-06-09 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Initial cleanup route implementation
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Fail-closed CRON_SECRET guard & Thai time timezone alignment
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Bearer CRON_SECRET header
+ * @security Fail-closed when CRON_SECRET is undefined, preventing unauthorized deletion
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
 import { nowThai } from "@/lib/thaiTime";
 
-// GET /api/cron/cleanup-images
+/**
+ * ดำเนินการลบรูปภาพตัวอย่างน้ำที่หมดอายุการจัดเก็บออกจากระบบไฟล์และอัปเดตฐานข้อมูล
+ * Executes cleanup of expired sample images from the local filesystem and clears references in the database.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Authorization Header (`Bearer ${CRON_SECRET}`)
+ * @returns {Promise<NextResponse>} สรุปผลการลบ { processed, deletedFiles, message }
+ */
 export async function GET(request: NextRequest) {
     try {
         // endpoint นี้ลบไฟล์บนดิสก์จริง จึงต้องปิดตายเมื่อไม่มีความลับตั้งไว้ (fail-closed)

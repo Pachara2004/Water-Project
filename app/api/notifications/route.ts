@@ -1,11 +1,48 @@
+/**
+ * @file app/api/notifications/route.ts
+ * @project Water Monitoring Project
+ * @module API / Notifications
+ * @description
+ * [TH] Route Handler สำหรับดึงรายการแจ้งเตือนของผู้ใช้ปัจจุบัน (GET)
+ * ดึงการแจ้งเตือนล่าสุด 50 รายการ พร้อมเชื่อมโยงข้อมูลสถานี, เวลาเก็บตัวอย่าง, และภาพถ่ายจาก `WaterSample`
+ * รวมถึงคำนวณจำนวนการแจ้งเตือนที่ยังไม่ได้เปิดอ่าน (`unreadCount`)
+ * [EN] Route Handler for retrieving notifications for the current authenticated user (GET).
+ * Fetches recent 50 notifications, merges related sample location, time, and image data,
+ * and calculates the unread notification count (`unreadCount`).
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-15
+ * @version 1.1.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-15)
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-21)
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-11)
+ *
+ * @lastModified 2026-09-11
+ * @lastModifiedBy Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ *
+ * @changelog
+ * - 2026-07-15 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Initial notification system
+ * - 2026-08-21 by Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) - Attach station and thumbnail image to notification items
+ * - 2026-09-11 by Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) - Optimize batch lookups and Thai time formatting
+ *
+ * @database Prisma Client (MySQL)
+ * @auth Role-based: collector, admin
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { toApiString } from "@/lib/thaiTime";
 
-// ==========================================
-// GET /api/notifications
-// ==========================================
+/**
+ * ดึงรายการแจ้งเตือนทั้งหมดของผู้ใช้พร้อมจำนวนรายการที่ยังไม่ได้อ่าน
+ * Retrieves user notifications list and unread count.
+ *
+ * @param {NextRequest} request - HTTP Request object พร้อม Bearer Token
+ * @returns {Promise<NextResponse>} รายการการแจ้งเตือน { items, unreadCount }
+ */
 export async function GET(request: NextRequest) {
     const auth = await verifyAuth(request, ["collector", "admin"]);
     if (!auth.isValid) {
