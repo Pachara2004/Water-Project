@@ -1,8 +1,40 @@
+/**
+ * @file MapSearchBar.tsx
+ * @project Water Monitoring Project
+ * @module UI / Map / Search
+ * @description
+ * ช่องค้นหาสถานีบนแผนที่ กรองจากรายการที่โหลดมาแล้วในเบราว์เซอร์ตามชื่อสถานีหรือหน่วยงาน
+ * (ไม่ยิง API) แสดงผลลัพธ์เป็นดรอปดาวน์ เลือกแล้วส่งสถานีกลับให้ MapView เลื่อนแผนที่และเปิด BottomSheet
+ *
+ * Client-side station search box for the map; filters the already-loaded list by
+ * name or organization and hands the picked station back to MapView.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-17
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-08-14, 2026-09-01)
+ *
+ * @lastModified 2026-09-02 11:44
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-17 09:05 by Pachara P. - เพิ่มช่องค้นหาบนแผนที่
+ * - 2026-07-22 10:11 by Pachara P. - รองรับ dark mode
+ * - 2026-08-14 12:18 by Nopparut U. - เอากรอบโฟกัสสีดำของเบราว์เซอร์ออก
+ * - 2026-09-02 11:44 by Pachara P. - ปรับ UI
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Search, MapPin, X } from "lucide-react";
 
+/** สถานีในรูปแบบย่อที่ใช้ค้นหา */
 interface SearchLocationItem {
     id: number;
     name: string;
@@ -11,11 +43,19 @@ interface SearchLocationItem {
     lng: number;
 }
 
+/** Props ของ MapSearchBar */
 interface MapSearchBarProps {
+    /** รายการสถานีทั้งหมดที่โหลดมาแล้ว */
     locations: SearchLocationItem[];
+    /** เรียกเมื่อผู้ใช้เลือกผลลัพธ์ */
     onSelectLocation: (loc: SearchLocationItem) => void;
 }
 
+/**
+ * ช่องค้นหาสถานีพร้อมดรอปดาวน์ผลลัพธ์ (สูงสุดตามพื้นที่ max-h-56 เลื่อนได้)
+ *
+ * @param props - ดู {@link MapSearchBarProps}
+ */
 export default function MapSearchBar({ locations, onSelectLocation }: MapSearchBarProps) {
     const [keyword, setKeyword] = useState("");
     const [isOpen, setIsOpen] = useState(false);

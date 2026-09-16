@@ -1,3 +1,45 @@
+/**
+ * @file reviewRequestsHelpers.tsx
+ * @project Water Monitoring Project
+ * @module UI / Manage / Review Requests
+ * @description
+ * ชนิดข้อมูลและคอมโพเนนต์ทั้งหมดของหน้าตรวจสอบคำร้อง (/manage/review-requests) ที่ desktop และ
+ * mobile ใช้ร่วมกัน: แท็บสถานะ, ป้ายความมั่นใจของ AI (ConfidenceChip), การ์ดคำร้องแบบ desktop/mobile
+ * ที่เลือกตัวอย่างบางส่วนเพื่ออนุมัติได้, popup รายละเอียด, drawer ปฏิเสธ, drawer แก้ไขค่าแล้วอนุมัติ
+ * (เปลี่ยนสารและค่าที่วัดได้), lightbox ดูภาพต้นฉบับ/ภาพวิเคราะห์ และตัวช่วยประเมินสถานะน้ำ
+ * ภาพที่ AI ไม่พบหลอดทดลอง ([NO_TEST_TUBE]) อนุมัติตามค่าเดิมไม่ได้ ต้องแก้ค่าหรือปฏิเสธ
+ *
+ * Types and UI building blocks for the admin review queue: status tabs, AI
+ * confidence chip, request cards (desktop/mobile) with per-sample selection,
+ * detail popup, reject and edit-approve drawers, image lightbox and water-status
+ * evaluation helpers.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-08-04 – 2026-09-14)
+ *
+ * @lastModified 2026-09-14 09:10
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-23 16:08 by Nopparut U. - แยก helper ออกมาตอนแยกหน้าตรวจสอบเป็น desktop/mobile
+ * - 2026-08-04 15:12 by Nopparut U. - แก้ปุ่มอนุมัติและเพิ่ม popup รายละเอียดคำร้อง
+ * - 2026-08-17 14:00 by Nopparut U. - ป้ายความมั่นใจแบบใหม่ (ConfidenceChip)
+ * - 2026-08-21 – 08-25 by Pachara P. - ปรับ flow การส่งตรวจ/ตรวจสอบของ admin และ UI การ์ด
+ * - 2026-08-25 10:02 by Nopparut U. - เลือกตัวอย่างบางส่วนเพื่ออนุมัติ (checkbox) และ drawer แก้ไขแล้วอนุมัติ
+ * - 2026-09-02 14:13 by Nopparut U. - รองรับภาพที่ AI ไม่พบหลอดทดลอง: กันอนุมัติตามค่าเดิม ต้องแก้หรือปฏิเสธ
+ * - 2026-09-07 10:25 by Pachara P. - ปุ่มดาวน์โหลดรูปใน lightbox
+ * - 2026-09-09 13:18 by Nopparut U. - ป้ายสารแสดงสูตรเคมีแทนตัวย่อ
+ * - 2026-09-14 09:10 by Pachara P. - ปรับ UI และแก้คำ
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @notes การบังคับกฎ [NO_TEST_TUBE] จริงอยู่ที่ PATCH /api/review-requests/[id]; ฝั่งนี้แค่กันไม่ให้กดเสียเที่ยว
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -8,19 +50,25 @@ import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCir
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
+/** สถานะคำร้องที่ใช้เป็นแท็บกรอง (edited_approved ถูกจัดอยู่ในแท็บ approved) */
 export type ReviewStatusFilter = "pending" | "approved" | "rejected";
 
+/** ค่าที่ AI อ่านได้ของสารหนึ่งตัวในตัวอย่างหนึ่งชิ้น */
 export interface ReviewMeasurement {
     parameterId: number;
     parameterName: string | null;
     /** สูตรเคมีที่ /api/review-requests ส่งมาคู่กับค่า — null = สารนี้ยังไม่ได้กรอกสูตรใน DB */
     parameterFormula?: string | null;
     unit: string | null;
+    /** null = AI อ่านค่าไม่ได้ */
     value: number | null;
+    /** 0–1; ไม่มีความหมายเมื่อ message มี [NO_TEST_TUBE] */
     confidence: number | null;
+    /** ข้อความจากโมเดล อาจมี marker เช่น [NO_TEST_TUBE] */
     message: string | null;
 }
 
+/** ตัวอย่างน้ำหนึ่งชิ้น (หนึ่งภาพ) ในคำร้อง */
 export interface ReviewSample {
     id: number;
     rawImageUrl: string | null;
@@ -28,12 +76,14 @@ export interface ReviewSample {
     measurements: ReviewMeasurement[];
 }
 
+/** ชุดภาพที่ส่งให้ ImageLightbox: ภาพต้นฉบับ ภาพวิเคราะห์ และแท็บที่เปิดก่อน */
 export interface PreviewImages {
     raw: string | null;
     analyzed: string | null;
     active: "raw" | "analyzed";
 }
 
+/** คำร้องตรวจสอบหนึ่งรายการตามที่ /api/review-requests ส่งกลับ */
 export interface ReviewRequestItem {
     id: number;
     sessionGroup: string;
@@ -95,12 +145,19 @@ export function hasNoTestTubeSample(samples: ReviewSample[]): boolean {
     return samples.some((s) => s.measurements.some((m) => m.message?.includes("[NO_TEST_TUBE]")));
 }
 
+/** แท็บสถานะพร้อมป้ายและไอคอน */
 export const TAB_CONFIG: { id: ReviewStatusFilter; label: string; icon: typeof Check }[] = [
     { id: "pending", label: "รออนุมัติ", icon: Clock },
     { id: "approved", label: "อนุมัติแล้ว", icon: Check },
     { id: "rejected", label: "ปฏิเสธแล้ว", icon: X },
 ];
 
+/**
+ * แถบแท็บสลับสถานะคำร้อง (รออนุมัติ / อนุมัติแล้ว / ปฏิเสธแล้ว)
+ *
+ * @param tab - แท็บปัจจุบัน
+ * @param setTab - เรียกเมื่อเลือกแท็บใหม่
+ */
 export function StatusTabs({ tab, setTab }: { tab: ReviewStatusFilter; setTab: (v: ReviewStatusFilter) => void }) {
     return (
         <div className="mb-2">
@@ -125,6 +182,11 @@ export function StatusTabs({ tab, setTab }: { tab: ReviewStatusFilter; setTab: (
     );
 }
 
+/**
+ * วันที่แบบย่อ (วัน เดือนย่อ ปี 2 หลัก) สำหรับการ์ด คืน "-" เมื่อ null
+ *
+ * @param value - ISO string
+ */
 export function formatDateTime(value: string | null) {
     if (!value) return "-";
     return new Date(value).toLocaleDateString("th-TH", {
@@ -135,14 +197,15 @@ export function formatDateTime(value: string | null) {
 }
 
 /**
- * คำนวณประเมินสถานะคุณภาพน้ำ (safe/warning/danger) ของคำร้อง
- */
-/**
  * สถานะคุณภาพน้ำของคำร้อง — คืน null เมื่อ "ประเมินไม่ได้"
  *
  * evaluateSample เริ่มนับจาก "safe" แล้วไล่ทำให้แย่ลงตามค่าที่เจอ ดังนั้นถ้าไม่มีค่าให้ประเมินเลย
  * (ทุกสารเป็น null เพราะ AI อ่านไม่ออก) มันจะคืน "safe" ซึ่งอ่านว่า "ปลอดภัย" ทั้งที่ไม่เคยประเมิน
  * จึงต้องเช็คก่อนว่ามีค่าที่ใช้ตัดสินได้จริงอย่างน้อยหนึ่งตัว
+ *
+ * @param item - คำร้อง
+ * @param standards - เกณฑ์มาตรฐานจาก lib/standards
+ * @returns safe / warning / danger หรือ null เมื่อไม่มีค่าให้ประเมิน
  */
 export function getSampleWaterStatus(item: ReviewRequestItem, standards: StandardRow[]): "safe" | "warning" | "danger" | null {
     const values: MeasuredValue[] = item.samples.flatMap((s) => s.measurements).map((m) => ({ parameterId: m.parameterId, value: m.value }));
@@ -150,7 +213,11 @@ export function getSampleWaterStatus(item: ReviewRequestItem, standards: Standar
     return evaluateSample(values, standards);
 }
 
-/** วันที่พร้อมเวลาแบบเต็ม สำหรับหน้ารายละเอียด — ต่างจาก formatDateTime ที่ย่อเหลือเฉพาะวัน */
+/**
+ * วันที่พร้อมเวลาแบบเต็ม สำหรับหน้ารายละเอียด — ต่างจาก formatDateTime ที่ย่อเหลือเฉพาะวัน
+ *
+ * @param value - ISO string; null คืน "-"
+ */
 export function formatDateTimeFull(value: string | null) {
     if (!value) return "-";
     return new Date(value).toLocaleString("th-TH", {
@@ -202,6 +269,11 @@ function DetailThumb({ url, label, onOpen }: { url: string; label: string; onOpe
 /**
  * กล่องรายละเอียดคำร้องแบบเต็ม — ข้อมูลจุดตรวจ ค่าที่วัดได้ทุกสาร ภาพประกอบ และผลการตัดสิน
  * รูปในนี้เป็นแค่ตัวย่อ กดแล้วส่งต่อให้ ImageLightbox ที่หน้าแม่เปิดขนาดเต็มอีกที
+ *
+ * @param item - คำร้อง
+ * @param standards - เกณฑ์มาตรฐานสำหรับประเมินสถานะน้ำ
+ * @param onClose - ปิด popup
+ * @param onPreviewImage - เปิด lightbox ด้วยชุดภาพที่กด
  */
 export function RequestDetailPopup({
     item,
@@ -399,6 +471,19 @@ export function RequestDetailPopup({
     );
 }
 
+/**
+ * การ์ดคำร้องแบบรวม (ใช้ prop `mobile` สลับ layout) มีตรรกะเลือกตัวอย่างบางส่วนเพื่ออนุมัติ
+ * และกันอนุมัติเมื่อตัวที่เลือกมีภาพที่ AI ไม่พบหลอดทดลอง
+ *
+ * @param item - คำร้อง
+ * @param standards - เกณฑ์มาตรฐาน
+ * @param actingId - id คำร้องที่กำลังดำเนินการอยู่ (ปิดปุ่มของการ์ดนั้น)
+ * @param onOpenReject - เปิด drawer ปฏิเสธ
+ * @param onApprove - อนุมัติ; ส่ง approvedSampleIds เมื่อเลือกบางตัวอย่าง
+ * @param onPreviewImage - เปิด lightbox
+ * @param onOpenEditApprove - เปิด drawer แก้ไขแล้วอนุมัติ
+ * @warning ณ 2026-09-16 หน้า desktop/mobile import RequestCardDesktop / RequestCardMobile แทน ไม่มีที่ใดใช้ตัวนี้
+ */
 export function RequestCard({
     item,
     standards,
@@ -643,6 +728,18 @@ export function RequestCard({
     );
 }
 
+/**
+ * Popup ปฏิเสธคำร้อง: กรอกเหตุผล (จำกัด REVIEW_NOTE_MAX_LENGTH) พร้อมแสดงภาพอ้างอิงของตัวอย่าง
+ * ค่า note และ setter เป็นของหน้าผู้เรียก
+ *
+ * @param rejectTarget - คำร้องที่จะปฏิเสธ
+ * @param rejectNote - เหตุผลที่กรอก
+ * @param setRejectNote - อัปเดตเหตุผล
+ * @param rejectSaving - กำลังบันทึก
+ * @param onClose - ปิด popup
+ * @param onSubmit - ยืนยันปฏิเสธ
+ * @param onPreviewImage - เปิด lightbox (ถ้ามี)
+ */
 export function RejectDrawer({
     rejectTarget,
     rejectNote,
@@ -924,6 +1021,17 @@ function ParameterSelect({
     );
 }
 
+/**
+ * Popup แก้ไขค่าแล้วอนุมัติ: เลือกตัวอย่างที่จะอนุมัติ เปลี่ยนสาร (ParameterSelect) และแก้ค่าที่วัดได้
+ * ของแต่ละตัวอย่าง พร้อมบันทึกเหตุผล state ทั้งหมดเป็นของหน้าผู้เรียก
+ *
+ * @param editTarget - คำร้องที่จะแก้ไข
+ * @param editMeasurements - ค่าที่แก้ต่อ sampleId
+ * @param editParameters - สารที่เลือกใหม่ต่อ sampleId
+ * @param editSelectedSampleIds - ตัวอย่างที่จะอนุมัติ
+ * @param systemParameters - รายการสารทั้งหมดในระบบ
+ * @param onSubmit - ยืนยันแก้ไขแล้วอนุมัติ
+ */
 export function EditApproveDrawer({
     editTarget,
     editNote,
@@ -1205,6 +1313,12 @@ export function EditApproveDrawer({
     );
 }
 
+/**
+ * ภาพขนาดเต็มพร้อมแท็บสลับภาพต้นฉบับ/ภาพวิเคราะห์ และปุ่มดาวน์โหลด
+ *
+ * @param images - ชุดภาพและแท็บเริ่มต้น
+ * @param onClose - ปิด lightbox
+ */
 export function ImageLightbox({ images, onClose }: { images: PreviewImages; onClose: () => void }) {
     const [active, setActive] = useState<"raw" | "analyzed">(images.active);
     const currentUrl = active === "raw" ? images.raw : images.analyzed;
@@ -1283,6 +1397,10 @@ export function ImageLightbox({ images, onClose }: { images: PreviewImages; onCl
         </div>
     );
 }
+/**
+ * การ์ดคำร้องสำหรับมือถือ: ข้อมูลย่อ ป้ายสถานะน้ำ เลือกตัวอย่างเพื่ออนุมัติ และปุ่มดำเนินการ
+ * props ชุดเดียวกับ {@link RequestCard}
+ */
 export function RequestCardMobile({
     item,
     standards,
@@ -1518,6 +1636,10 @@ export function RequestCardMobile({
     );
 }
 
+/**
+ * การ์ดคำร้องสำหรับ desktop: แสดงเป็นแถวกว้างพร้อมภาพย่อและปุ่มดำเนินการในบล็อกเดียว
+ * props ชุดเดียวกับ {@link RequestCard}
+ */
 export function RequestCardDesktop({
     item,
     standards,

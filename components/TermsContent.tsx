@@ -1,11 +1,34 @@
+/**
+ * @file TermsContent.tsx
+ * @project Water Monitoring Project
+ * @module UI / Auth / Terms
+ * @description
+ * เนื้อหาข้อตกลงการใช้งานและนโยบายความเป็นส่วนตัว ฉบับเดียวกันสำหรับหน้า /terms และขั้นตอน
+ * ยอมรับข้อตกลงตอนลงทะเบียน (TermsGate ใน LiffProvider) แก้เนื้อหาที่นี่ที่เดียว และเมื่อแก้
+ * สาระสำคัญต้องขยับ TERMS_VERSION ใน lib/termsVersion.ts ด้วย โครงเนื้อหาอิง LINE User Data
+ * Policy และ PDPA (รายการข้อมูลที่เก็บ วัตถุประสงค์ ระยะเวลาเก็บ ผลของการยกเลิกบัญชี ช่องทางติดต่อ)
+ *
+ * Single source of the Terms of Service + Privacy Policy text, rendered both on
+ * /terms and in the registration gate. Structured after LINE User Data Policy and PDPA.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-09-15
+ * @version 1.0.0
+ *
+ * @lastModified 2026-09-15 14:15
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-09-15 14:15 by Nopparut U. - สร้างเนื้อหาข้อตกลงและนโยบายความเป็นส่วนตัว
+ *
+ * @warning ข้อความในวงเล็บเหลี่ยม [ ] ยังเป็นค่าที่ต้องเติมจริง (ชื่อหน่วยงาน, ช่องทางติดต่อ, ระยะเวลาเก็บข้อมูล)
+ * @notes ไม่มี hook/state ใช้ได้ทั้ง Server และ Client Component
+ * @license Private / Proprietary
+ */
+
 import { TERMS_VERSION } from "@/lib/termsVersion";
 
-// เนื้อหาข้อตกลงการใช้งาน + นโยบายความเป็นส่วนตัว ฉบับเดียวกันสำหรับทั้งหน้า /terms และ step ยอมรับข้อตกลง
-// ตอนลงทะเบียน (components/LiffProvider.tsx) — แก้เนื้อหาที่นี่ที่เดียว และเมื่อแก้สาระสำคัญต้องขยับ TERMS_VERSION ด้วย
-//
-// โครงเนื้อหาอิงข้อบังคับของ LINE User Data Policy และ PDPA: ต้องระบุรายการข้อมูลที่เก็บ วัตถุประสงค์
-// ระยะเวลาเก็บ ผลของการยกเลิกบัญชี และช่องทางติดต่อ — ข้อความในวงเล็บเหลี่ยม [ ] ยังเป็นค่าที่ต้องเติมจริง
-
+/** รายการข้อมูลส่วนบุคคลที่ระบบเก็บ พร้อมวัตถุประสงค์ แสดงในหัวข้อ "ข้อมูลที่เก็บและวัตถุประสงค์" */
 const DATA_COLLECTED = [
     { label: "รหัสผู้ใช้ LINE (User ID)", purpose: "ใช้ผูกบัญชีและยืนยันตัวตนทุกครั้งที่เข้าใช้งาน" },
     { label: "ชื่อโปรไฟล์ LINE", purpose: "ใช้แสดงชื่อในระบบและตรวจสอบย้อนหลังว่าใครเป็นผู้ส่งข้อมูล" },
@@ -37,6 +60,10 @@ function List({ items }: { items: React.ReactNode[] }) {
     );
 }
 
+/**
+ * เนื้อหาข้อตกลงฉบับเต็ม ไม่รับ props แสดงเลขฉบับจาก TERMS_VERSION ที่บรรทัดแรก
+ * ผู้เรียกเป็นคนห่อกล่องเลื่อนเอง (ดู TermsGate)
+ */
 export default function TermsContent() {
     return (
         <div>

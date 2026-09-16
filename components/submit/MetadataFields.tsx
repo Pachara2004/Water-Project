@@ -1,12 +1,48 @@
-// components/submit/MetadataFields.tsx
+/**
+ * @file MetadataFields.tsx
+ * @project Water Monitoring Project
+ * @module UI / Submit / Metadata
+ * @description
+ * ส่วนกรอกข้อมูลประกอบตัวอย่าง: วัน-เวลาที่เก็บ (ห้ามเกินเวลาปัจจุบัน, มีปุ่มรีเซ็ตเป็นตอนนี้)
+ * ค่าออกซิเจน (ถ้ามี) และช่องแสดงสภาพอากาศ (อุณหภูมิ / ฝนสะสม / สภาพอากาศ) ที่ระบบดึงให้
+ * ตามสถานีและเวลา ระหว่างโหลดแสดง skeleton ไม่ใช่ "-" เพื่อไม่ให้ดูเหมือนไม่มีข้อมูล
+ * รองรับชื่อฟิลด์อากาศทั้งชุดเก่าและใหม่จาก API
+ *
+ * Sample metadata inputs (collection time, oxygen) plus read-only weather tiles
+ * fetched for the chosen station/time, with loading skeletons and retry.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-07
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-09-04)
+ *
+ * @lastModified 2026-09-11 12:40
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-07 15:30 by Pachara P. - แยกส่วน metadata ออกมาตอนปรับโครงสร้างไฟล์ submit
+ * - 2026-07-22 14:45 by Pachara P. - กันเลือกเวลาเกินปัจจุบัน
+ * - 2026-08-07 15:37 by Pachara P. - แก้เวลาบันทึกเพี้ยน
+ * - 2026-09-04 10:02 by Nopparut U. - แสดงสถานะโหลด/ผิดพลาดของสภาพอากาศพร้อมปุ่มลองใหม่
+ * - 2026-09-11 12:40 by Pachara P. - แก้วันเวลาเปลี่ยนตอนแสดงผลวิเคราะห์
+ *
+ * @client-side ไม่มี hook/state ในไฟล์นี้ แต่ถูกใช้จาก Client Component
+ * @license Private / Proprietary
+ */
+
 import { Clock, RotateCcw } from "lucide-react";
 import { SectionHead } from "./SharedAtoms";
 import { getWeatherConditionLabel } from "@/lib/weather";
 import type { WeatherStatus } from "./NavWorkflow";
 
+/** Props ของ MetadataFields ฟิลด์อากาศรับได้ทั้งชื่อชุดเก่า (temperature/rainVolume) และใหม่ */
 interface MetadataFieldsProps {
+    /** วัน-เวลาที่เก็บ รูปแบบ datetime-local */
     collectionTime: string;
     setCollectionTime: (t: string) => void;
+    /** ล็อกทุกช่อง (เช่น ระหว่างวิเคราะห์หรือดูประวัติ) */
     disabled?: boolean;
     oxygen?: string;
     setOxygen?: (o: string) => void;
@@ -26,7 +62,9 @@ interface MetadataFieldsProps {
         weatherCondition?: number | null;
     } | null;
 
+    /** สถานะการดึงสภาพอากาศ */
     weatherStatus?: WeatherStatus;
+    /** เรียกเมื่อกดลองดึงสภาพอากาศใหม่ */
     retryWeather?: () => void;
 }
 
@@ -47,6 +85,11 @@ function WeatherTile({ label, value, isLoading }: { label: string; value: string
     );
 }
 
+/**
+ * ส่วนกรอกข้อมูลประกอบตัวอย่างและช่องสภาพอากาศ
+ *
+ * @param props - ดู {@link MetadataFieldsProps}
+ */
 export function MetadataFields(props: MetadataFieldsProps) {
     const { collectionTime, setCollectionTime, weatherData, weatherStatus = "idle", retryWeather, disabled = false } = props;
     const isWeatherLoading = weatherStatus === "loading";

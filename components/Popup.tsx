@@ -1,3 +1,33 @@
+/**
+ * @file Popup.tsx
+ * @project Water Monitoring Project
+ * @module UI / Overlay
+ * @description
+ * เปลือก modal กลางใช้ซ้ำได้ทุกหน้า (แก้ไขโปรไฟล์, แก้ไขสถานี ฯลฯ) desktop = การ์ดลอยกลางจอ
+ * mobile = bottom-sheet เลื่อนขึ้นจากขอบล่าง เลือกอัตโนมัติตามขนาดจอหรือบังคับผ่าน `variant`
+ * จัดการ backdrop, หัวข้อ, ปุ่มปิด, ปุ่ม Esc, ล็อก scroll พื้นหลัง และแอนิเมชันให้ครบ
+ * render ผ่าน portal ไปที่ body เสมอ
+ *
+ * Shared modal shell: centered card on desktop, bottom-sheet on mobile. Handles
+ * backdrop, header, close/Esc, background scroll lock and animations; portals to body.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-23
+ * @version 1.0.0
+ *
+ * @lastModified 2026-08-04 15:12
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-07-23 15:57 by Nopparut U. - สร้างเปลือก modal กลางแทน JSX ที่เขียนซ้ำในหลายหน้า
+ * - 2026-07-24 16:17 by Nopparut U. - ล็อก scroll ที่ documentElement และจอง scrollbar gutter กันจอขยับตอนเปิด
+ * - 2026-08-04 15:12 by Nopparut U. - จัด layout เป็น flex column ให้เลื่อนเฉพาะเนื้อหา รองรับเนื้อหายาว
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ createPortal
+ * @notes portal ไป body เสมอ เพราะถ้าผู้เรียกอยู่ในกล่องที่มี transform ตัว fixed จะยึดกล่องนั้นแทน viewport
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect } from "react";
@@ -5,10 +35,15 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
-// เปลือก modal กลางใช้ซ้ำได้ทุกหน้า (แก้ไขโปรไฟล์, แก้ไขสถานี ฯลฯ)
-// desktop = การ์ดลอยกลางจอ (popup) | mobile = bottom-sheet เลื่อนขึ้นจากขอบล่าง
-// เลือกให้อัตโนมัติตามขนาดจอ หรือบังคับผ่าน prop variant ก็ได้
-// backdrop / หัวข้อ / ปุ่มปิด / Esc / แอนิเมชัน จัดการให้ครบ เนื้อหาส่งผ่าน children
+/**
+ * เปลือก modal กลาง เนื้อหาส่งผ่าน children
+ *
+ * @param onClose - เรียกเมื่อกดปิด / กด backdrop / กด Esc
+ * @param title - หัวข้อบนแถบหัว
+ * @param children - เนื้อหาภายใน (ส่วนที่เลื่อนได้)
+ * @param maxWidth - class ความกว้างสูงสุดของการ์ด มีผลเฉพาะโหมด popup (ค่าเริ่มต้น `max-w-lg`)
+ * @param variant - บังคับรูปแบบ; ไม่ส่ง = เลือกตามจอ (mobile = sheet, desktop = popup)
+ */
 export default function Popup({
     onClose,
     title,
@@ -19,9 +54,9 @@ export default function Popup({
     onClose: () => void;
     title: string;
     children: React.ReactNode;
-    // ปรับความกว้างสูงสุดของการ์ด (มีผลเฉพาะโหมด popup)
+    /** ปรับความกว้างสูงสุดของการ์ด (มีผลเฉพาะโหมด popup) */
     maxWidth?: string;
-    // บังคับรูปแบบเอง; ไม่ส่ง = เลือกตามจอ (mobile = sheet, desktop = popup)
+    /** บังคับรูปแบบเอง; ไม่ส่ง = เลือกตามจอ (mobile = sheet, desktop = popup) */
     variant?: "popup" | "sheet";
 }) {
     const isMobile = useMediaQuery("(max-width: 767px)");

@@ -1,3 +1,32 @@
+/**
+ * @file DevRoleSwitcher.tsx
+ * @project Water Monitoring Project
+ * @module Dev Tools
+ * @description
+ * แผงสลับบทบาทผู้ใช้ (guest / officer / collector / admin) และสลับธีม สำหรับใช้ระหว่างพัฒนาเท่านั้น
+ * ซ่อนเป็นขีดเล็กที่ขอบซ้ายจอ กดแล้วเลื่อนแผงออกมา เปลี่ยน role ทั้งใน store และ DB ผ่าน
+ * `/api/dev/switch-role` แล้วยิง event ให้ Navbar รีเฟรชจุดแจ้งเตือน
+ *
+ * Development-only side panel to switch the current user's role and theme.
+ * Updates the store, syncs the role to the DB, and notifies the navbar to refresh.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-07-17
+ * @version 1.0.0
+ *
+ * @lastModified 2026-08-21 16:23
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-17 14:40 by Pachara P. - สร้างสวิตช์สลับ role สำหรับช่วงพัฒนา
+ * - 2026-07-24 15:09 by Pachara P. - ย้ายเป็นแผงขอบซ้ายและเพิ่มปุ่มสลับธีม
+ * - 2026-08-21 16:23 by Pachara P. - ปรับตาม flow การส่งตรวจใหม่
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @warning ห้าม render ใน production; ผู้เรียกต้องเป็นคนคุมเงื่อนไข (เช่น NODE_ENV)
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,6 +36,7 @@ import { refreshNavDots } from "@/lib/navEvents";
 
 type Role = "guest" | "collector" | "officer" | "admin";
 
+/** แผงสลับ role/ธีมสำหรับนักพัฒนา ไม่รับ props อ่าน currentUser จาก store */
 export default function DevRoleSwitcher() {
     const { currentUser, theme, toggleTheme } = useAppStore();
     const [isOpen, setIsOpen] = useState(false);

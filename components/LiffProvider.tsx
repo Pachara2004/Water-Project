@@ -1,3 +1,43 @@
+/**
+ * @file LiffProvider.tsx
+ * @project Water Monitoring Project
+ * @module UI / Auth / LIFF
+ * @description
+ * ตัวห่อชั้นนอกสุดของแอป: init LINE LIFF, ตรวจสถานะล็อกอิน แล้วเลือกแสดง 1 ใน 5 หน้าจอ
+ * (1) กำลังโหลด (2) LIFF error (3) ข้อตกลง TermsGate สำหรับ uid ที่ยังไม่มีบัญชี/ยังไม่ยอมรับฉบับปัจจุบัน
+ * (4) ฟอร์มลงทะเบียน 2 ขั้น (ชื่อ-เบอร์ → เลือกสิทธิ์) สำหรับบัญชีที่ยังไม่มีเบอร์โทร (5) children
+ * ถ้าไม่มี NEXT_PUBLIC_LIFF_ID จะจำลองล็อกอินเป็น admin สำหรับ dev ผู้ใช้ที่ยังไม่เคยกด
+ * "เข้าสู่ระบบ" จะเป็น guest เสมอ และไม่ดึงข้อมูลผู้ใช้
+ *
+ * Root wrapper: initialises LINE LIFF, resolves login state and renders one of
+ * loading / error / terms gate / two-step onboarding form / the app itself.
+ * Falls back to a mock admin login when no LIFF ID is configured.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-10 – 2026-09-16)
+ *
+ * @lastModified 2026-09-16 09:02
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้าง provider init LIFF พร้อมโครงระบบ
+ * - 2026-06-29 10:08 by Pachara P. - เพิ่ม onboarding ครั้งแรกพร้อม flow ขอสิทธิ์ และตรวจ LINE Access Token
+ * - 2026-07-01 – 07-22 by Pachara P. - ธีมตามระบบ, dark mode, ปรับ UI หน้าโหลด/ลงทะเบียนหลายรอบ
+ * - 2026-08-27 09:00 by Pachara P. - แยกพื้นหลังออกเป็น LiffBackground
+ * - 2026-09-04 08:57 by Nopparut U. - ผู้ใช้ทั่วไปลงทะเบียนได้ทันทีโดยไม่ต้องส่งคำขอ
+ * - 2026-09-10 by Pachara P. - แก้ล็อกอินผ่าน LINE browser ให้เป็น guest จนกว่าจะกดเข้าสู่ระบบ
+ * - 2026-09-15 14:15 by Nopparut U. - เพิ่ม TermsGate บังคับยอมรับข้อตกลงก่อนเก็บ LINE uid
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ @line/liff และ localStorage
+ * @auth LINE LIFF; ตรรกะล็อกอิน/ยอมรับข้อตกลงอยู่ใน lib/lineAuth.ts
+ * @see docs/skills/SKILL_line_liff_ux.md
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,16 +45,22 @@ import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { ShieldAlert, User, Send, ArrowLeft } from "lucide-react";
 import { useToast } from "./useToast";
-import LiffBackground from "@/components/LiffBackground"; // <-- 1. Import พื้นหลังเข้ามา
+import LiffBackground from "@/components/LiffBackground";
 import TermsGate from "@/components/TermsGate";
 import { acceptTermsAndLogin, loginAfterLiff } from "@/lib/lineAuth";
 
+/** ข้อความ error รายช่องของฟอร์มลงทะเบียน (undefined = ผ่าน) */
 interface FieldErrors {
     firstName?: string;
     lastName?: string;
     phoneNumber?: string;
 }
 
+/**
+ * ตัวห่อ LIFF + ด่านลงทะเบียน วางไว้ใน root layout ห่อทั้งแอป
+ *
+ * @param children - เนื้อหาแอป จะ render เมื่อ LIFF พร้อมและผู้ใช้ผ่านทุกด่านแล้ว
+ */
 export default function LiffProvider({ children }: { children: React.ReactNode }) {
     const { showToast, toastElement } = useToast();
     const [liffLoaded, setLiffLoaded] = useState(false);

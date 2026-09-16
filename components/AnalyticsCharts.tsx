@@ -1,3 +1,39 @@
+/**
+ * @file AnalyticsCharts.tsx
+ * @project Water Monitoring Project
+ * @module UI / Dashboard / Analytics
+ * @description
+ * ชุดกราฟวิเคราะห์เชิงลึกบนแดชบอร์ด (Recharts) คำนวณจากรายการตัวอย่างน้ำที่ส่งเข้ามาทั้งก้อน
+ * ในเบราว์เซอร์: การ์ด KPI, ตัวกรอง (หน่วยงาน / สถานที่ / ช่วงเวลา / สภาพอากาศ), สัดส่วนสถานะ,
+ * สหสัมพันธ์สารเคมีกับน้ำฝนสะสม, เปรียบเทียบตามเวลาตรวจ, ขอบเขตการแกว่งของสาร 7 วัน
+ * และตารางจุดเสี่ยงวิกฤตพบบ่อย สีมาจาก lib/chartColors.ts
+ *
+ * Client-side analytics section of the dashboard: KPI cards, filters and six
+ * Recharts visualisations derived from the full list of samples.
+ *
+ * @author Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004)
+ * @created 2026-06-09
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856) (2026-07-17, 2026-09-04)
+ *
+ * @lastModified 2026-09-04 14:09
+ * @lastModifiedBy Nopparut Udomlert
+ *
+ * @changelog
+ * - 2026-06-09 09:09 by Pachara P. - สร้างชุดกราฟวิเคราะห์พร้อมโครงระบบ
+ * - 2026-07-07 11:00 by Pachara P. - ปรับสไตล์แดชบอร์ด
+ * - 2026-07-17 15:08 by Nopparut U. - ถอด getOrganizationLabel ที่ผูกสีกับหน่วยงาน
+ * - 2026-08-10 14:04 by Pachara P. - แสดงค่าสาร 2 ตำแหน่งทศนิยม
+ * - 2026-09-04 14:09 by Nopparut U. - ย้ายสีกราฟ/สถานะไปใช้ lib/chartColors.ts แหล่งเดียว
+ *
+ * @client-side ทำงานฝั่ง Client ('use client')
+ * @notes คำนวณทุกอย่างจาก props ในเบราว์เซอร์ ต่างจากหน้าแดชบอร์ดปัจจุบันที่ใช้ข้อมูลสรุปจาก /api/dashboard/widgets
+ * @warning ณ 2026-09-16 ไม่มีหน้าใด import คอมโพเนนต์นี้ (หน้าแดชบอร์ดใช้ components/dashboard/ แทน)
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,24 +42,34 @@ import { Activity, Sun, Moon, MapPin, Building2, AlertTriangle, TrendingUp, Shie
 import { useAppStore } from "@/lib/store";
 import { STATUS_COLOR, parameterColor } from "@/lib/chartColors";
 
+/** ตัวอย่างน้ำหนึ่งรายการในรูปแบบที่ชุดกราฟต้องการ (ตัดเฉพาะฟิลด์ที่ใช้คำนวณ) */
 export interface SampleItem {
     id: number;
     locationId: number;
     status: "safe" | "warning" | "danger";
     collectionTime: string | Date;
-    phosphateValue: number | null; 
-    ammoniaValue: number | null; 
+    /** mg/L; null = ไม่ได้วัด */
+    phosphateValue: number | null;
+    /** mg/L; null = ไม่ได้วัด */
+    ammoniaValue: number | null;
+    /** ปริมาณน้ำฝนสะสม (มม.) ณ เวลาเก็บตัวอย่าง */
     rainAccumulation?: number | null;
+    /** รหัสสภาพอากาศจาก weather API */
     weatherCondCode?: number | null;
     location?: {
         id?: number;
-        name: string; 
-        organization: string; 
+        name: string;
+        organization: string;
         lat?: number;
         lng?: number;
     };
 }
 
+/**
+ * ชุดกราฟวิเคราะห์ กรองและสรุปข้อมูลเองด้วย useMemo
+ *
+ * @param samples - รายการตัวอย่างน้ำทั้งหมดที่ผู้ใช้มีสิทธิ์เห็น
+ */
 export default function AnalyticsCharts({ samples }: { samples: SampleItem[] }) {
     const { theme } = useAppStore();
     const isDark = theme === "dark";

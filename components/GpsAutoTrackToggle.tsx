@@ -1,3 +1,34 @@
+/**
+ * @file GpsAutoTrackToggle.tsx
+ * @project Water Monitoring Project
+ * @module UI / Map / Settings
+ * @description
+ * สวิตช์เปิด/ปิดการติดตามตำแหน่ง GPS อัตโนมัติเมื่อเข้าหน้าแผนที่ ค่าเก็บผ่าน `lib/gpsAutoTrack`
+ * ตอนเปิดจะขอพิกัดจริงทันทีในจังหวะที่ผู้ใช้กด (จังหวะเดียวที่ permission prompt เด้งได้)
+ * ถ้าไม่ผ่านจะคงสวิตช์ไว้ที่ปิดและแจ้งวิธีแก้ ปุ่มลูกศรบนแผนที่ยังดึงตำแหน่งเองได้เสมอ
+ *
+ * Toggle for automatic GPS tracking on the map page. Requests geolocation on the
+ * user's tap (the only moment a permission prompt can appear); stays off on failure.
+ *
+ * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
+ * @created 2026-07-21
+ * @version 1.0.0
+ *
+ * @contributors
+ * - Pachara Paisrisakul (พชร ไพศรีสกุล, Pachara2004) (2026-07-24)
+ *
+ * @lastModified 2026-07-24 16:24
+ * @lastModifiedBy Pachara Paisrisakul
+ *
+ * @changelog
+ * - 2026-07-21 14:27 by Nopparut U. - สร้างสวิตช์ GPS อัตโนมัติ
+ * - 2026-07-24 16:24 by Pachara P. - ปรับ UI ให้เข้ากับหน้า manage
+ *
+ * @client-side ทำงานฝั่ง Client ('use client') ใช้ navigator.geolocation
+ * @see docs/skills/SKILL_line_liff_ux.md
+ * @license Private / Proprietary
+ */
+
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -5,8 +36,10 @@ import { LocateFixed, LocateOff } from "lucide-react";
 import { alertError } from "@/lib/swal";
 import { resolveAutoTrack, writeAutoTrackSetting } from "@/lib/gpsAutoTrack";
 
-/* สวิตช์เปิด/ปิดการติดตาม GPS อัตโนมัติตอนเข้าหน้าแผนที่
-   ปุ่มลูกศรบนแผนที่ยังกดดึงตำแหน่งเองได้เสมอ ไม่ขึ้นกับสวิตช์นี้ */
+/**
+ * สวิตช์ GPS อัตโนมัติ ไม่รับ props อ่านค่าเริ่มต้นเองจาก `resolveAutoTrack()`
+ * ระหว่างยังอ่านค่าไม่เสร็จจะ render placeholder ขนาดเท่าปุ่มจริง
+ */
 export default function GpsAutoTrackToggle() {
     const [enabled, setEnabled] = useState<boolean | null>(null); // null = ยังอ่านค่าไม่เสร็จ
     const [busy, setBusy] = useState(false);
