@@ -146,9 +146,9 @@ export function ImageZone({
     // (ค่าจริงยังถูกบันทึกลงฐานข้อมูลครบเพื่อให้ผู้ดูแลระบบใช้ประกอบการตัดสิน)
     const isPendingAdminValue = measurement?.isTestTube === false;
 
-    const hasConf = measurement?.confidence !== undefined;
-    const isLowConf = hasConf && measurement.confidence < 0.6;
-    const confDisplay = hasConf ? `${measurement.confidence}` : "N/A";
+    const hasConf = typeof measurement?.confidence === "number";
+    const isLowConf = typeof measurement?.confidence === "number" && measurement.confidence < 0.6;
+    const confDisplay = hasConf ? `${measurement?.confidence}` : "N/A";
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -212,15 +212,16 @@ export function ImageZone({
             return plotFile instanceof Blob ? URL.createObjectURL(plotFile) : (plotFile as string);
         }
         // 2. ดึงทุก Field ที่เป็นไปได้จาก DB/State
+        const m = measurement as any;
         return (
             preview ||
-            measurement?.imageUrl ||
-            measurement?.originalImageUrl ||
-            measurement?.imagePath ||
-            measurement?.plotUrl ||
-            measurement?.image ||
-            measurement?.photoUrl ||
-            (measurement as any)?.url
+            m?.imageUrl ||
+            m?.originalImageUrl ||
+            m?.imagePath ||
+            m?.plotUrl ||
+            m?.image ||
+            m?.photoUrl ||
+            m?.url
         );
     }, [step, viewMode, hasPlotImg, plotFile, preview, measurement]);
 

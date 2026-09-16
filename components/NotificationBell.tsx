@@ -49,7 +49,7 @@ interface NotificationItem {
     id: number;
     /** รหัสตัวอย่างน้ำ */
     code: string | null;
-    status: "approved" | "edited_approved" | "rejected";
+    status: "approved" | "edited_approved" | "rejected" | "pending";
     /** ข้อความจากผู้ตรวจสอบ */
     message: string | null;
     /** true = ผู้ใช้กดรับทราบแล้ว */

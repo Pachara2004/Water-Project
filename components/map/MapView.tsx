@@ -168,15 +168,26 @@ interface MapViewProps {
     panInside?: { bounds: [[number, number], [number, number]]; nonce: number } | null;
 }
 
+// In-memory cache สำหรับข้อมูลสถานี เพื่อให้สลับแท็บกลับมาหน้าแผนที่แล้วหมุดขึ้นทันทีใน 0ms (Stale-While-Revalidate)
+const locationsCache: Record<string, { raw: LocationData[]; timestamp: number }> = {};
+const LOCATIONS_CACHE_TTL = 3 * 60 * 1000; // 3 นาที
+
 /**
  * แผนที่หลัก
  *
  * @param props - ดู {@link MapViewProps}
  */
 export default function MapView({ mode = "explorer", onLocationPick, pickedPosition, panInside }: MapViewProps) {
-    const [locations, setLocations] = useState<LocationData[]>([]);
     const [agencyFilter, setAgencyFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL");
+
+    const [locations, setLocations] = useState<LocationData[]>(() => {
+        const cached = locationsCache["ALL"];
+        if (cached && Date.now() - cached.timestamp < LOCATIONS_CACHE_TTL) {
+            return cached.raw;
+        }
+        return [];
+    });
 
     const [selectedLocation, setSelectedLocation] = useState<BottomSheetLocation | null>(null);
 
@@ -230,15 +241,33 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
         };
     }, [isMounted, handleLocateMe]);
 
-    // ฟังก์ชัน fetch ข้อมูลสถานีน้ำ (คงเดิม)[cite: 10]
+    // ฟังก์ชัน fetch ข้อมูลสถานีน้ำ พร้อมบันทึก cache
     const fetchLocations = useCallback(async () => {
         try {
+            // ถอดความสดจาก cache ทันทีถ้ามีตรงกับ filter ปัจจุบัน
+            const cached = locationsCache[agencyFilter];
+            if (cached && Date.now() - cached.timestamp < LOCATIONS_CACHE_TTL) {
+                let initialData = cached.raw;
+                if (statusFilter !== "ALL") {
+                    const targetStatus = statusFilter.toLowerCase();
+                    initialData = initialData.filter((loc: LocationData) => loc.locationStatus === targetStatus);
+                }
+                setLocations(initialData);
+            }
+
             const params = agencyFilter !== "ALL" ? `?org=${agencyFilter}` : "";
             const res = await fetch(`/api/locations${params}`);
-            let data = await res.json();
+            let rawData = await res.json();
 
-            if (!Array.isArray(data)) data = [];
+            if (!Array.isArray(rawData)) rawData = [];
 
+            // อัปเดต cache
+            locationsCache[agencyFilter] = {
+                raw: rawData,
+                timestamp: Date.now(),
+            };
+
+            let data = rawData;
             if (statusFilter !== "ALL") {
                 const targetStatus = statusFilter.toLowerCase();
                 data = data.filter((loc: LocationData) => loc.locationStatus === targetStatus);
@@ -261,7 +290,7 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                 key={loc.id}
                 position={[loc.lat, loc.lng]}
                 icon={createLocationIcon(loc.locationStatus)}
-                eventHandlers={mode === "explorer" ? { click: () => setSelectedLocation(loc) } : undefined}
+                eventHandlers={mode === "explorer" ? { click: () => setSelectedLocation(loc as unknown as BottomSheetLocation) } : undefined}
             />
         ));
     }, [locations, mode]);
@@ -288,7 +317,8 @@ export default function MapView({ mode = "explorer", onLocationPick, pickedPosit
                         <MapSearchBar
                             locations={locations}
                             onSelectLocation={(loc) => {
-                                setSelectedLocation(loc);
+                                const fullLoc = locations.find((l) => l.id === loc.id) || loc;
+                                setSelectedLocation(fullLoc as unknown as BottomSheetLocation);
                             }}
                         />
                     </div>
