@@ -39,7 +39,7 @@ export interface TermsProps {
  */
 export default function TermsMobile({ onBack }: TermsProps) {
     return (
-        <div className="min-h-dvh w-full bg-bg pb-5 antialiased transition-colors duration-300">
+        <div className="w-full flex-1 bg-bg pb-5 antialiased transition-colors duration-300">
             <PageHeader title="ข้อตกลงและนโยบายความเป็นส่วนตัว" onBack={onBack} />
 
             <div className="w-full max-w-xl mx-auto px-4 pt-6">

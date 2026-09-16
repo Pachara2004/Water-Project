@@ -181,7 +181,7 @@ export default function ReviewRequestsDesktop(props: ReviewRequestsPageProps) {
     }, [requests, globalFilter, startDate, endDate, selectedStatuses, sortDesc, standards]);
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg antialiased transition-colors duration-300">
             <PageHeader title="คุณภาพน้ำที่ต้องการยืนยัน" onBack={() => router.back()} />
 
             <div className="w-full mx-auto p-4 space-y-4">

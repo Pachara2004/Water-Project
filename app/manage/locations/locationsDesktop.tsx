@@ -92,7 +92,7 @@ export default function LocationsDesktop(props: LocationsPageProps) {
     } = props;
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg antialiased transition-colors duration-300">
             <PageHeader title="จัดการจุดตรวจวัดน้ำ" onBack={() => router.back()} />
 
             <div className="w-full mx-auto p-4 space-y-4">

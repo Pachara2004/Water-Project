@@ -44,7 +44,7 @@ import type { ManagePageProps } from "./manageMobile";
  */
 export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, showEdit, setShowEdit, handleLogout, router, showToast, toastElement }: ManagePageProps) {
     return (
-        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+        <div className="w-full flex-1 bg-bg antialiased transition-colors duration-300">
             <div className="w-full mx-auto p-4">
                 <div className="pt-2 pb-2  p-1">
                     <h1 className="text-2xl text-primary font-semibold">

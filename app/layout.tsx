@@ -38,6 +38,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import LiffProvider from "@/components/LiffProvider";
 import DevRoleSwitcher from "@/components/DevRoleSwitcher";
 import { Smartphone } from "lucide-react";
@@ -118,8 +119,11 @@ export default function RootLayout({
                 <OrientationGuard />
 
                 <LiffProvider>
-                    <main className="min-h-screen lg:pl-50 lg:pb-0!" style={{ paddingBottom: "calc(88px + env(safe-area-inset-bottom))" }}>
-                        {children}
+                    <main className="min-h-screen flex flex-col justify-between lg:pl-50 lg:pb-0!" style={{ paddingBottom: "calc(88px + env(safe-area-inset-bottom))" }}>
+                        <div className="flex-1 w-full flex flex-col">
+                            {children}
+                        </div>
+                        <Footer />
                     </main>
                     <Navbar />
                     <DevRoleSwitcher />

@@ -146,7 +146,7 @@ export default function CollectorDesktop(props: CollectorProps) {
     }, [selectedReviewStatuses]);
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+        <div className="min-h-dvh w-full bg-bg antialiased transition-colors duration-300">
             {/* ── Main Content Container ── */}
             <main className="w-full mx-auto p-4">
                 <div className="w-full mx-auto space-y-4">

@@ -77,7 +77,7 @@ export default function UsersDesktop(props: UsersPageProps) {
     };
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-8 antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
+        <div className="min-h-dvh w-full bg-bg antialiased transition-colors duration-300" onClick={() => openDropdown && setOpenDropdown(null)}>
             <PageHeader title="จัดการผู้ใช้งาน" onBack={() => router.back()} />
 
             <div className="w-full mx-auto p-4 space-y-4">

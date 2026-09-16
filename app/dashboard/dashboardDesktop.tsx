@@ -91,7 +91,7 @@ export default function DashboardDesktop(props: DashboardAnalyticsState) {
     }
 
     return (
-        <div className="min-h-dvh w-full bg-bg pb-12 antialiased transition-colors duration-300">
+        <div className="w-full flex-1 bg-bg antialiased transition-colors duration-300">
             <div className="w-full mx-auto p-4">
                 <div className="space-y-4">
                     {/* Header + แถบควบคุมทั้งหมดเรียงแนวนอนแถวเดียว ใช้พื้นที่กว้างของจอเดสก์ท็อป */}
