@@ -40,14 +40,14 @@ import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
 import { useToast } from "@/components/useToast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-// อิมพอร์ตฟังก์ชันยืนยันออกจากระบบจากไฟล์ config กลาง
-import { confirmLogoutAlert } from "@/lib/swal";
+// อิมพอร์ตฟังก์ชันแจ้งเตือนออกจากระบบจากไฟล์ config กลาง
+import { confirmLogoutAlert, loadingDialog, closeDialog } from "@/lib/swal";
 import ManageMobile from "./manageMobile";
 import ManageDesktop from "./manageDesktop";
 
 /** เจ้าของ state หน้าจัดการระบบ เลือก view ตามจอ */
 export default function ManagePage() {
-    const { currentUser, setUser } = useAppStore(); // ดึง setUser มาใช้เคลียร์สเตทเมื่อล็อกเอาต์
+    const { currentUser } = useAppStore();
     const router = useRouter();
     const [showEdit, setShowEdit] = useState(false);
     const { showToast, toastElement } = useToast();
@@ -76,7 +76,7 @@ export default function ManagePage() {
         return () => window.removeEventListener("focus", fetchPendingCounts);
     }, [fetchPendingCounts]);
 
-    // ฟังก์ชันจัดการออกจากระบบ (สั่ง liff.logout + เคลียร์ Store + ส่งกลับหน้าแรก)
+    // ฟังก์ชันจัดการออกจากระบบ (สั่ง liff.logout + เคลียร์ session + นำทางตรงไป /map)
     const handleLogout = async () => {
         // 1. เรียก Alert ขึ้นมาถามผู้ใช้งานก่อน
         const result = await confirmLogoutAlert();
@@ -84,7 +84,9 @@ export default function ManagePage() {
         // ถ้าผู้ใช้กด ยกเลิก หรือ ปิดหน้าต่าง ให้หยุดทำงานทันที
         if (!result.isConfirmed) return;
 
-        // 2. ถ้าผู้ใช้กด "ออกจากระบบ" (ยืนยัน) ให้ทำตามกระบวนการเดิม
+        // 2. แสดงสถานะกำลังโหลดทันทีเพื่อบังหน้าจอ ป้องกันไม่ให้เห็นการกระพริบของหน้าหรือ Footer
+        loadingDialog("กำลังออกจากระบบ...", "กรุณารอสักครู่");
+
         try {
             // เช็คว่าเป็น LINE Browser หรือไม่ (ใช้ User-Agent ช่วยดักจับในกรณีที่ใช้ลิงก์ Cloudflare ตรงๆ)
             const isLineApp = liff.isInClient() || navigator.userAgent.includes("Line");
@@ -93,14 +95,14 @@ export default function ManagePage() {
                 liff.logout(); // ล้างโทเคนของ LINE ออกหมด (ทำได้เฉพาะในเบราว์เซอร์ปกติ)
             }
             
-            // ลบสถานะการเข้าสู่ระบบออก เพื่อให้กลับไปเป็น Guest
+            // ลบสถานะการเข้าสู่ระบบออก เพื่อให้กลับไปเป็น Guest อย่างสมบูรณ์เมื่อโหลดใหม่
             localStorage.removeItem("hasLoggedIntoApp");
-            setUser(null);
-            showToast("ออกจากระบบเรียบร้อยแล้ว", "success");
             
-            // ใช้ window.location.href เพื่อล้าง state ทั้งหมดและโหลดแอปใหม่ในฐานะ Guest อย่างสมบูรณ์
-            window.location.href = "/";
-        } catch {
+            // นำทางตรงไปยัง /map ด้วย replace เพื่อให้แอปโหลดใหม่ในสถานะ Guest โดยไม่ค้างประวัติย้อนกลับ
+            // ไม่เรียก setUser(null) ตรงนี้ เพื่อไม่ให้ React re-render หน้า /manage เป็นสถานะ Guest (ปุ่มเขียว/Footer) ก่อนย้ายหน้า
+            window.location.replace("/map");
+        } catch (err) {
+            closeDialog();
             showToast("เกิดข้อผิดพลาดในการออกจากระบบ", "danger");
         }
     };

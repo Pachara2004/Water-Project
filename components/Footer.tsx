@@ -26,15 +26,15 @@ import { Mail, Phone, ShieldCheck } from "lucide-react";
 export default function Footer() {
     const pathname = usePathname();
 
-    // ซ่อนบนหน้า /map เพื่อรักษาการแสดงผลแผนที่แบบเต็มหน้าจอ (full-bleed map)
-    if (pathname === "/map") return null;
+    // ซ่อนบนหน้า /map และ root route (/) เพื่อรักษาการแสดงผลแผนที่แบบเต็มหน้าจอและป้องกัน footer โผล่ช่วงเปลี่ยนหน้า
+    if (pathname === "/map" || pathname === "/") return null;
 
-    // บนมือถือแสดงเฉพาะหน้าจัดการระบบ (/manage) ส่วนบน desktop แสดงทุกหน้า
-    const isManagePage = pathname === "/manage" || pathname?.startsWith("/manage");
+    // บนมือถือแสดงเฉพาะหน้าจัดการระบบ (/manage) หน้าเดียวเท่านั้น ส่วนบน desktop แสดงทุกหน้า (ยกเว้น /map และ /)
+    const isManagePage = pathname === "/manage";
 
     return (
         <footer
-            className={`w-full mt-auto border-t border-border bg-card-general backdrop-blur-xs text-xs text-text transition-colors${
+            className={`w-full mt-auto border-t border-border bg-card-general backdrop-blur-xs text-xs text-text transition-colors ${
                 isManagePage ? "block" : "hidden lg:block"
             }`}
         >
