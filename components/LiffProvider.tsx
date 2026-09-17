@@ -92,7 +92,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
         }, 15000);
 
         if (!liffId) {
-            setLoadingStep("จำลองการยืนยันตัวตน...");
             fetch("/api/auth", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -116,7 +115,6 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
             return;
         }
 
-        setLoadingStep("กำลังเชื่อมต่อ LINE...");
         liff.init({ liffId })
             .then(async () => {
                 const hasLoggedIntoApp = localStorage.getItem("hasLoggedIntoApp") === "true";
@@ -124,8 +122,12 @@ export default function LiffProvider({ children }: { children: React.ReactNode }
                 // ยอมให้ดึงข้อมูลผู้ใช้ก็ต่อเมื่อ LIFF ล็อกอินแล้ว และผู้ใช้ "เคยกดปุ่มเข้าสู่ระบบ" แล้วเท่านั้น
                 if (liff.isLoggedIn() && hasLoggedIntoApp) {
                     setLoadingStep("กำลังตรวจสอบสิทธิ์ผู้ใช้...");
-                    // uid ที่ยังไม่มีในระบบจะไม่ถูกเก็บจนกว่าจะยอมรับข้อตกลง (เปิด TermsGate ผ่าน pendingTermsLogin)
-                    await loginAfterLiff();
+                    try {
+                        // uid ที่ยังไม่มีในระบบจะไม่ถูกเก็บจนกว่าจะยอมรับข้อตกลง (เปิด TermsGate ผ่าน pendingTermsLogin)
+                        await loginAfterLiff();
+                    } catch (authErr) {
+                        console.error("loginAfterLiff failed:", authErr);
+                    }
                     setLoadingStep("กำลังโหลดข้อมูลสำเร็จ...");
                     setLiffLoaded(true);
                     clearTimeout(fallbackTimer);

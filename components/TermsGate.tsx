@@ -76,18 +76,18 @@ export default function TermsGate({ onAccept, onDecline, busy = false }: TermsGa
             <LiffBackground />
 
             <div className="bg-card-general w-full max-w-md rounded-2xl border border-border p-6 sm:p-8 shadow-lg flex flex-col justify-between animate-fade-in z-10">
-                <div className="text-center space-y-2.5">
-                    <div className="w-14 h-14 text-primary flex items-center justify-center mx-auto">
-                        <ScrollText size={56} strokeWidth={2} />
+                <div className="text-center">
+                    <div className="w-10 h-10 text-primary flex items-center justify-center mx-auto">
+                        <ScrollText size={48} strokeWidth={2} />
                     </div>
-                    <h1 className="text-lg sm:text-xl font-black text-primary tracking-tight">ข้อตกลงและนโยบายความเป็นส่วนตัว</h1>
+                    <h1 className="text-md sm:text-lg font-semibold text-primary tracking-tight">ข้อตกลงและนโยบายความเป็นส่วนตัว</h1>
                     <p className="text-xs text-text leading-relaxed mx-auto">กรุณาอ่านให้ครบถ้วนก่อนลงทะเบียน ระบบจะเปิดปุ่มยอมรับเมื่อท่านเลื่อนถึงท้ายเอกสาร</p>
                 </div>
 
                 <div className="relative mt-5">
                     {/* ชั้นนอกถือขอบมนและ clip scrollbar ชั้นในเป็นตัวเลื่อน ถ้ารวมกันขอบโค้งจะไม่ clip scrollbar */}
                     <div className="rounded-xl border border-border bg-surface-subtle overflow-hidden">
-                        <div ref={scrollerRef} className="max-h-[45dvh] overflow-y-auto p-4 overscroll-contain">
+                        <div ref={scrollerRef} className="max-h-[50dvh] overflow-y-auto p-4 overscroll-contain">
                             <TermsContent />
                             <div ref={endRef} className="h-px" />
                         </div>

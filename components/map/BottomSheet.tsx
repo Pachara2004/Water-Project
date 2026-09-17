@@ -114,7 +114,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
     const router = useRouter();
     const { currentUser } = useAppStore();
     const { locationTypes } = useLocationTypes();
-    const { unitByName } = useParameterUnits();
+    const { unitByName, formulaByName } = useParameterUnits();
     const [sheetHeight, setSheetHeight] = useState<"collapsed" | "half" | "full">("collapsed");
 
     const isDraggingRef = useRef(false);
@@ -608,9 +608,9 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
                                                 .reverse()
                                                 .slice(0, 5)
                                                 .map((s, idx) => {
-                                                    // อ่านสารทุกตัวที่มีค่าในรอบนั้นจากคีย์แบน — ตัวที่ไม่มีค่าถูกตัดออกให้แล้ว
-                                                    const paramValues = readChemValues(s).map((reading) => ({
-                                                        name: reading.name.toUpperCase(),
+                                                    // อ่านสารทุกตัวที่มีค่าในรอบนั้นจากคีย์แบน — ตัวที่ไม่มีค่าถูกตัดออกให้แล้ว และใช้สูตรเคมี (formula) จาก DB เป็นชื่อย่อ
+                                                    const paramValues = readChemValues(s, formulaByName).map((reading) => ({
+                                                        name: reading.abbrev,
                                                         val: reading.value,
                                                     }));
 
