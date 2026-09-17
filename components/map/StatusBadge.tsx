@@ -50,7 +50,7 @@ interface StatusBadgeProps {
      */
     reviewStatus?: SampleReviewStatus | null;
     /** ขนาดตัวอักษร/ความกว้างคงที่ (ค่าเริ่มต้น md) */
-    size?: "sm" | "md" | "lg";
+    size?: "xs" | "sm" | "md" | "lg";
     /** กางเต็มความกว้างของคอนเทนเนอร์แม่แทนความกว้างคงที่ */
     fullWidth?: boolean;
 }
