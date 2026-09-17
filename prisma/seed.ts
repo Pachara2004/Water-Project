@@ -48,6 +48,33 @@ import { evaluateSample, type StandardRow } from "../lib/standards";
 // ใช้ client ตัวเดียวกับแอป เพื่อให้ extension เติม createdAt/updatedAt เป็นนาฬิกาไทยเหมือนข้อมูลจริง
 import { prisma } from "../lib/prisma";
 import { nowThai, toYymmdd } from "../lib/thaiTime";
+import fs from "fs";
+import path from "path";
+
+// ─────────────────────────────────────────────────────────
+// โหลดรายการรูปภาพจริงจาก public/uploads
+// ─────────────────────────────────────────────────────────
+const uploadsDir = path.join(process.cwd(), "public", "uploads");
+const allUploadImages = fs.existsSync(uploadsDir)
+    ? fs.readdirSync(uploadsDir).filter((file) => /\.(jpe?g|png|webp)$/i.test(file))
+    : [];
+
+// แยกกลุ่มรูปดิบ (raw-*.jpg) กับรูปประมวลผล/ตัวอย่างน้ำ เพื่อให้ตรงกับประเภทของช่องเก็บ
+const rawImages = allUploadImages.filter((f) => f.startsWith("raw-"));
+const plotImages = allUploadImages.filter((f) => !f.startsWith("raw-"));
+
+/**
+ * สุ่มรูปจากโฟลเดอร์ public/uploads เพื่อใช้ seed ลง rawImageUrl และ analyzedPlotUrl
+ * หากไม่มีไฟล์รูปในโฟลเดอร์ จะคืนค่า null ป้องกัน error
+ */
+function getRandomImage(type: "raw" | "plot" | "any" = "any"): string | null {
+    if (allUploadImages.length === 0) return null;
+    let pool = allUploadImages;
+    if (type === "raw" && rawImages.length > 0) pool = rawImages;
+    else if (type === "plot" && plotImages.length > 0) pool = plotImages;
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    return `/uploads/${chosen}`;
+}
 
 // ─────────────────────────────────────────────────────────
 // ตัวเจน sessionGroup / code ให้ตรงรูปแบบ production
@@ -322,8 +349,6 @@ async function main() {
         const tempValue = parseFloat((Math.random() < 0.775 ? 27.3 + ((Math.random() + Math.random() + Math.random()) / 3) * 5 : 32.1 + Math.pow(Math.random(), 3.3) * 8.1).toFixed(1));
 
         const bulkSessionGroup = nextSessionGroup(sampleDate);
-        const rawImageUrl = Math.random() > 0.5 ? `/uploads/mock-raw.jpg` : null;
-        const analyzedPlotUrl = Math.random() > 0.5 ? `/uploads/mock-plot.jpg` : null;
 
         // ฟิลด์สภาพแวดล้อมและรูปเป็นของ "การเก็บครั้งนั้น" จึงซ้ำเหมือนกันทุกแถวในกลุ่ม
         const sharedFields = {
@@ -335,8 +360,6 @@ async function main() {
             rainAccumulation: rainVol,
             weatherCondCode: weatherCode,
             sessionGroup: bulkSessionGroup,
-            rawImageUrl,
-            analyzedPlotUrl,
         };
 
         // 1 แถวต่อ 1 สาร ตรงกับที่ production เขียน (ผู้ใช้ยิงทีละขวด แล้วจับรวมเป็นกลุ่มด้วย sessionGroup)
@@ -346,6 +369,8 @@ async function main() {
                 ...sharedFields,
                 code: nextSampleCode(randomLocation.id, sampleDate),
                 status: computeStatus(0, ammoniaValue),
+                rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+                analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
                 // [UPDATED] boundingBox ส่งเป็น JSON Object แทน String
                 measurements: { create: [{ parameterId: paramAmmonia.id, value: ammoniaValue, confidence: 0.92, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
             },
@@ -356,6 +381,8 @@ async function main() {
                 ...sharedFields,
                 code: nextSampleCode(randomLocation.id, sampleDate),
                 status: computeStatus(phosphateValue, 0),
+                rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+                analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
                 measurements: { create: [{ parameterId: paramPhosphate.id, value: phosphateValue, confidence: 0.89, boundingBox: { x: 15, y: 25, w: 110, h: 210 } }] },
             },
         });
@@ -381,8 +408,8 @@ async function main() {
             airTemperature: 29.1,
             status: computeStatus(0, 2.1),
             sessionGroup: sgPendingSingle,
-            rawImageUrl: "/uploads/mock-raw.jpg",
-            analyzedPlotUrl: "/uploads/mock-plot.jpg",
+            rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+            analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 2.1, confidence: 0.35, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
@@ -401,6 +428,8 @@ async function main() {
             airTemperature: 28.4,
             status: computeStatus(0, 0.15),
             sessionGroup: sgPendingPaired,
+            rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+            analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 0.15, confidence: 0.91, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
@@ -414,6 +443,8 @@ async function main() {
             airTemperature: 28.4,
             status: computeStatus(0.6, 0),
             sessionGroup: sgPendingPaired,
+            rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+            analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
             measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.6, confidence: 0.42, boundingBox: { x: 15, y: 25, w: 110, h: 210 } }] },
         },
     });
@@ -430,6 +461,8 @@ async function main() {
             collectionTime: timePendingOther,
             status: computeStatus(0, 3.4),
             sessionGroup: sgPendingOther,
+            rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+            analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 3.4, confidence: 0.18, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
@@ -446,6 +479,8 @@ async function main() {
             collectionTime: timeApproved,
             status: computeStatus(0.02, 0),
             sessionGroup: sgApproved,
+            rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+            analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
             measurements: { create: [{ parameterId: paramPhosphate.id, value: 0.02, confidence: 0.55, boundingBox: { x: 15, y: 25, w: 110, h: 210 } }] },
         },
     });
@@ -471,6 +506,8 @@ async function main() {
             sessionGroup: sgRejected,
             isDeleted: true,
             lastModifiedBy: adminUser.id,
+            rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
+            analyzedPlotUrl: getRandomImage("plot") ?? getRandomImage("any"),
             measurements: { create: [{ parameterId: paramAmmonia.id, value: 4.5, confidence: 0.28, boundingBox: { x: 10, y: 20, w: 100, h: 200 } }] },
         },
     });
