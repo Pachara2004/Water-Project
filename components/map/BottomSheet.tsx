@@ -649,7 +649,7 @@ export default function BottomSheet({ location, onClose }: BottomSheetProps) {
 
                                                             {/* ฝั่งขวา: StatusBadge */}
                                                             <div className="shrink-0">
-                                                                <StatusBadge status={(s.status ? s.status.toLowerCase() : null) as any} size="sm" />
+                                                                <StatusBadge status={(s.status ? s.status.toLowerCase() : null) as any} size="xs" />
                                                             </div>
                                                         </div>
                                                     );
