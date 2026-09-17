@@ -167,3 +167,43 @@ export async function acceptTermsAndLogin(kind: PendingTermsKind): Promise<void>
     }
     store.setPendingTermsLogin(null);
 }
+
+/**
+ * [TH] เรียกใช้กระบวนการเข้าสู่ระบบด้วย LINE อย่างถูกต้องตามบริบทของเบราว์เซอร์
+ * - หากอยู่ใน LINE client หรือ LIFF browser แล้ว และมี session อยู่แล้ว: ดึงข้อมูลผู้ใช้เข้าสู่ระบบทันที (ไม่ reload หน้า)
+ * - หากอยู่ใน LINE In-App Browser (เปิดจากลิงก์ธรรมดาในแชท): ให้เปลี่ยนเส้นทางไปยัง LIFF Universal Link เพื่อเปิดใน LIFF browser แท้จริง ซึ่งจะยืนยันตัวตนแบบ native โดยไม่ติด popup ค้าง
+ * - หากอยู่ในเบราว์เซอร์ภายนอกทั่วไป (Chrome, Safari): ใช้ liff.login พร้อมระบุ redirectUri ที่แน่นอนเพื่อไม่ให้โดน redirect หลุดหรือ query param หาย
+ */
+export async function triggerLineLogin(targetPath = "/map"): Promise<void> {
+    if (typeof window === "undefined") return;
+
+    localStorage.setItem("hasLoggedIntoApp", "true");
+
+    const isLineApp = liff.isInClient() || /Line/i.test(navigator.userAgent);
+
+    if (isLineApp && liff.isLoggedIn()) {
+        try {
+            await loginAfterLiff();
+        } catch (err) {
+            console.error("Auto login via LINE client failed:", err);
+        }
+        return;
+    }
+
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+
+    // ถ้าอยู่ในแอป LINE แต่เปิดมาจากลิงก์ภายนอก (LINE in-app browser)
+    // การเปิด LIFF Universal link (https://liff.line.me/{liffId}/...) จะทำให้ LINE สลับเข้าสู่ Native LIFF Browser ทันที
+    // ซึ่งล็อกอินอัตโนมัติแบบ Native ไม่ต้องเด้งหน้า authorize และไม่ติด popup "แตะดำเนินการต่อ" ที่ทำให้ค้าง
+    if (isLineApp && !liff.isInClient() && liffId) {
+        const cleanPath = targetPath.startsWith("/") ? targetPath : `/${targetPath}`;
+        window.location.href = `https://liff.line.me/${liffId}${cleanPath}`;
+        return;
+    }
+
+    // กรณีเบราว์เซอร์ปกติภายนอก (Chrome, Safari ฯลฯ)
+    const cleanPath = targetPath.startsWith("/") ? targetPath : `/${targetPath}`;
+    const redirectUri = `${window.location.origin}${cleanPath}`;
+    liff.login({ redirectUri });
+}
+

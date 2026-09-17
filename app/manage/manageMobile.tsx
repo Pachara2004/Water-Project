@@ -32,7 +32,7 @@
 
 import type { CurrentUser } from "@/lib/store";
 import type { useRouter } from "next/navigation";
-import liff from "@line/liff";
+import { triggerLineLogin } from "@/lib/lineAuth";
 import { ChevronRight, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import GpsAutoTrackToggle from "@/components/GpsAutoTrackToggle";
@@ -71,7 +71,7 @@ export default function ManageMobile({ currentUser, isAdmin, pendingCounts, show
                 ) : (
                     <div className="mb-2 bg-card-general rounded-xl border border-border p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <button
-                            onClick={() => liff.login()}
+                            onClick={() => triggerLineLogin("/manage")}
                             className="w-full sm:w-auto min-w-50 h-11 flex items-center bg-[#06C755] text-white rounded-md overflow-hidden active:opacity-90 transition-opacity cursor-pointer font-sans"
                         >
                             <div className="h-full w-12 flex items-center justify-center bg-black/10 shrink-0">

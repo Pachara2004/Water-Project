@@ -30,7 +30,7 @@
 
 "use client";
 
-import liff from "@line/liff";
+import { triggerLineLogin } from "@/lib/lineAuth";
 import { ChevronRight, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import GpsAutoTrackToggle from "@/components/GpsAutoTrackToggle";
@@ -80,7 +80,7 @@ export default function ManageDesktop({ currentUser, isAdmin, pendingCounts, sho
                     <div className="mb-4 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-stretch">
                         <div className="bg-card-general rounded-xl border border-border p-4 flex items-center">
                             <button
-                                onClick={() => liff.login()}
+                                onClick={() => triggerLineLogin("/manage")}
                                 className="w-auto min-w-50 h-11 flex items-center bg-[#06C755] text-white rounded-md overflow-hidden active:opacity-90 transition-opacity cursor-pointer font-sans"
                             >
                                 <div className="h-full w-12 flex items-center justify-center bg-black/10 shrink-0">

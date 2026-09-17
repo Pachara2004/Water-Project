@@ -23,7 +23,18 @@
 
 import { redirect } from "next/navigation";
 
-/** redirect ไป /map เสมอ ไม่ render อะไร */
-export default function Home() {
-    redirect("/map");
+/** redirect ไป /map เสมอ พร้อมส่งต่อ query params (เช่น code, state สำหรับ LIFF OAuth) */
+export default async function Home({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined> }) {
+    const resolvedParams = searchParams ? await searchParams : {};
+    const queryString = new URLSearchParams();
+    for (const [key, value] of Object.entries(resolvedParams)) {
+        if (typeof value === "string") {
+            queryString.set(key, value);
+        } else if (Array.isArray(value)) {
+            value.forEach((v) => queryString.append(key, v));
+        }
+    }
+    const qs = queryString.toString();
+    redirect(qs ? `/map?${qs}` : "/map");
 }
+

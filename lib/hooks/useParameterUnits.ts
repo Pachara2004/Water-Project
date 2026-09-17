@@ -38,10 +38,11 @@ import { useEffect, useState } from "react";
  * [EN] Hook fetching parameter measurement units keyed by lowercase parameter names
  *
  * @function useParameterUnits
- * @returns {{ unitByName: Map<string, string> }} Map จับคู่ชื่อสารตัวพิมพ์เล็กกับหน่วยการวัด
+ * @returns {{ unitByName: Map<string, string>, formulaByName: Record<string, string> }} Map จับคู่ชื่อสารตัวพิมพ์เล็กกับหน่วยการวัด และ Record จับคู่ชื่อสารกับสูตรเคมี (formula)
  */
 export function useParameterUnits() {
     const [unitByName, setUnitByName] = useState<Map<string, string>>(new Map());
+    const [formulaByName, setFormulaByName] = useState<Record<string, string>>({});
 
     useEffect(() => {
         let cancelled = false;
@@ -50,12 +51,18 @@ export function useParameterUnits() {
             .then((res) => res.json())
             .then((data) => {
                 if (cancelled) return;
-                const rows: Array<{ name?: string; unit?: string | null }> = Array.isArray(data) ? data : [];
+                const rows: Array<{ name?: string; unit?: string | null; formula?: string | null }> = Array.isArray(data) ? data : [];
                 const map = new Map<string, string>();
+                const fMap: Record<string, string> = {};
                 for (const row of rows) {
-                    if (row.name && row.unit) map.set(row.name.toLowerCase(), row.unit);
+                    if (row.name) {
+                        const lower = row.name.toLowerCase();
+                        if (row.unit) map.set(lower, row.unit);
+                        if (row.formula) fMap[lower] = row.formula.trim();
+                    }
                 }
                 setUnitByName(map);
+                setFormulaByName(fMap);
             })
             .catch((err) => {
                 console.error("Failed to fetch parameter units:", err);
@@ -66,5 +73,5 @@ export function useParameterUnits() {
         };
     }, []);
 
-    return { unitByName };
+    return { unitByName, formulaByName };
 }

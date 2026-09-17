@@ -47,7 +47,7 @@ import { Map, BarChart2, User, Settings as SettingsIcon, FileScan as FileScanIco
 import { useAppStore } from "@/lib/store";
 import { useCallback, useEffect, useMemo, useState, useRef, useLayoutEffect } from "react";
 import liff from "@line/liff";
-import { loginAfterLiff } from "@/lib/lineAuth";
+import { triggerLineLogin } from "@/lib/lineAuth";
 import { onNavDotsRefresh } from "@/lib/navEvents";
 
 // ดึงการประกาศ Mapping ข้อความออกมาข้างนอก เพื่อไม่ให้สร้างขึ้นใหม่ทุกรอบการเรนเดอร์
@@ -267,28 +267,12 @@ export default function Navbar() {
 
         if (!currentUser) {
             items.push({
-                href: "#login",
+                href: pathname || "/map",
                 label: "เข้าสู่ระบบ",
                 icon: User,
                 onClick: async (e: React.MouseEvent) => {
                     e.preventDefault();
-
-                    // บันทึกว่าผู้ใช้เคยกดปุ่มเข้าสู่ระบบแล้ว
-                    localStorage.setItem("hasLoggedIntoApp", "true");
-
-                    const isLineApp = liff.isInClient() || navigator.userAgent.includes("Line");
-
-                    if (isLineApp && liff.isLoggedIn()) {
-                        // แทนที่จะโหลดหน้าใหม่แล้วค้าง ให้ยิง API ดึงข้อมูลและอัปเดต State ทันที
-                        // (ผ่าน loginAfterLiff เพื่อให้ uid ใหม่ต้องยอมรับข้อตกลงก่อนถูกเก็บ เหมือน path ตอนเปิดแอป)
-                        try {
-                            await loginAfterLiff();
-                        } catch (err) {
-                            console.error("Auto login via LINE client failed:", err);
-                        }
-                    } else {
-                        liff.login();
-                    }
+                    await triggerLineLogin(pathname || "/map");
                 },
             });
         } else {
@@ -301,7 +285,7 @@ export default function Navbar() {
         }
 
         return items;
-    }, [userRole, currentUser, navDots.hasUnreadRejection, navDots.hasPendingManageQueue]);
+    }, [userRole, currentUser, navDots.hasUnreadRejection, navDots.hasPendingManageQueue, pathname]);
 
     /* ─── Blob refs (รวม ready + prevIndex ไว้ใน object เดียวเพื่อลดจำนวน ref) ─── */
     const mobileContainerRef = useRef<HTMLDivElement>(null);
