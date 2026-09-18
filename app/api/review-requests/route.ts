@@ -28,6 +28,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentStandardVersion, resolveStandardVersionIdForSample } from "@/lib/standards-db";
+import { parseStandardSnapshot, snapshotToStandardRows } from "@/lib/standards";
 import { toApiString } from "@/lib/thaiTime";
 import { verifyAuth } from "@/lib/auth-guard";
 import { ReviewStatus } from "@prisma/client";
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
             versionIdByGroup.set(group, groupSamples[0] ? await resolveStandardVersionIdForSample(groupSamples[0]) : null);
         }
         const versionIds = Array.from(new Set(Array.from(versionIdByGroup.values()).filter((id): id is number => id !== null)));
-        const versions = versionIds.length ? await prisma.standardVersion.findMany({ where: { id: { in: versionIds } }, select: { id: true, version: true } }) : [];
+        const versions = versionIds.length ? await prisma.standardVersion.findMany({ where: { id: { in: versionIds } }, select: { id: true, version: true, snapshot: true } }) : [];
         const versionById = new Map(versions.map((v) => [v.id, v]));
 
         const result = reviewRequests.map((r) => {
@@ -137,7 +138,15 @@ export async function GET(request: NextRequest) {
 
                 collectionTime: toApiString(first?.collectionTime),
                 // เกณฑ์ที่กลุ่มนี้จะถูกตัดสินด้วย isCurrent=false แปลว่าเกณฑ์ถูกแก้หลังจากส่ง
-                standardVersion: version ? { id: version.id, version: version.version, isCurrent: version.id === currentVersion?.id } : null,
+                // แนบ standards เฉพาะเวอร์ชันเก่า ให้หน้าเว็บคำนวณ badge ได้ตรงกับที่ server จะตัดสิน
+                standardVersion: version
+                    ? {
+                          id: version.id,
+                          version: version.version,
+                          isCurrent: version.id === currentVersion?.id,
+                          standards: version.id === currentVersion?.id ? null : snapshotToStandardRows(parseStandardSnapshot(version.snapshot)),
+                      }
+                    : null,
                 location: first?.location
                     ? {
                           id: first.location.id,
