@@ -7,12 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ระดับคุณภาพน้ำที่ประเมินได้ เทียบกับเกณฑ์ค่าสูงสุดของสาร
 enum WaterStatus {
   safe
   warning
   danger
 }
 
+// สถานะคำร้อง
 enum ReviewStatus {
   pending
   approved
@@ -20,6 +22,7 @@ enum ReviewStatus {
   rejected
 }
 
+// บทบาทในระบบ (admin / officer / collector / guest)
 model Role {
   id           Int           @id @default(autoincrement())
   roleName     String        @unique @map("role_name")
@@ -30,6 +33,7 @@ model Role {
   @@map("roles")
 }
 
+// ผู้ใช้ที่ล็อกอินผ่าน LINE
 model User {
   id               Int             @id @default(autoincrement())
   lineUniqueId     String          @unique @map("line_unique_id")
@@ -50,6 +54,7 @@ model User {
   roleRequests     RoleRequest[]
   reviewedRequests ReviewRequest[] @relation("ReviewedByUser")
   notifications    Notification[]  @relation("UserNotifications") // เชื่อมโยงกับแจ้งเตือนของ User
+  standardVersions StandardVersion[] @relation("StandardVersionCreatedBy")
 
   registeredAt     DateTime        @default(now()) @map("registered_at")
   lastActiveAt     DateTime        @updatedAt @map("last_active_at")
@@ -57,6 +62,7 @@ model User {
   @@map("users")
 }
 
+// คำขอเปลี่ยนบทบาทของผู้ใช้ รอแอดมินอนุมัติ
 model RoleRequest {
   id              Int      @id @default(autoincrement())
   userId          Int      @map("user_id")
@@ -72,6 +78,7 @@ model RoleRequest {
   @@map("role_requests")
 }
 
+// ประเภทการใช้ประโยชน์แหล่งน้ำ (อนุรักษ์, เพาะเลี้ยง, ฯลฯ) แต่ละประเภทมีเกณฑ์ของตัวเอง
 model LocationType {
   id        Int        @id @default(autoincrement())
   code      String     @unique @map("code")
@@ -82,6 +89,7 @@ model LocationType {
   @@map("location_types")
 }
 
+// เกณฑ์ค่าสูงสุดของสารต่อประเภทแหล่งน้ำ 1 แถว = 1 คู่ (ประเภท × สาร) เป็นค่าปัจจุบันเสมอ
 model Standard {
   id             Int          @id @default(autoincrement())
 
@@ -100,6 +108,29 @@ model Standard {
   @@map("standards")
 }
 
+// ประวัติชุดเกณฑ์มาตรฐานทีละเวอร์ชัน ตาราง standards = ค่าปัจจุบัน ตารางนี้ = สำเนาแต่ละรอบที่แอดมินบันทึก
+model StandardVersion {
+  id            Int            @id @default(autoincrement())
+  // เลขเวอร์ชันสำหรับแสดงผล (1, 2, 3, …)
+  version       Int            @unique @map("version")
+  // สำเนาตาราง standards ทั้งชุด ณ เวอร์ชันนี้ พร้อมชื่อประเภท/สาร ไม่พึ่ง FK
+  // [{ locationTypeId, locationTypeCode, locationTypeLabelTh, parameterId, parameterName, parameterUnit, maxValue }]
+  snapshot      Json           @map("snapshot")
+  // เหตุผลที่แก้ null = เวอร์ชันแรกจาก seed
+  note          String?        @map("note") @db.Text
+  // แอดมินที่บันทึก null = seed หรือผู้ใช้ถูกลบ
+  createdById   Int?           @map("created_by_id")
+  createdBy     User?          @relation("StandardVersionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  // เวลาไทยดิบ เซ็ตด้วย nowThai()
+  createdAt     DateTime       @map("created_at")
+
+  samples       WaterSample[]
+  sampleRecords SampleRecord[]
+
+  @@map("standard_versions")
+}
+
+// สถานีเก็บตัวอย่างน้ำบนแผนที่
 model Location {
   id              Int           @id @default(autoincrement())
   stationName     String        @map("station_name")
@@ -125,6 +156,7 @@ model Location {
 // 1. STAGING / WORKFLOW TABLES
 // -------------------------------------------------------------
 
+// ตัวอย่างน้ำ 1 ขวดที่ผู้เก็บส่งเข้ามา (1 แถวต่อ 1 สาร) รวมกลุ่มด้วย sessionGroup
 model WaterSample {
   id               Int                      @id @default(autoincrement())
   code             String?                  @map("code")
@@ -145,6 +177,9 @@ model WaterSample {
   
   // null = ประเมินไม่ได้ (ไม่มีค่าที่วัดได้เลย เช่น AI อ่านภาพไม่ออก) — ต่างจาก safe ที่แปลว่าตัดสินแล้วว่าผ่าน
   status           WaterStatus?
+  // เวอร์ชันเกณฑ์ที่ใช้คำนวณ status ตอน submit null = แถวเก่าก่อนมีระบบเวอร์ชัน
+  standardVersionId Int?                    @map("standard_version_id")
+  standardVersion   StandardVersion?        @relation(fields: [standardVersionId], references: [id], onDelete: Restrict)
   sessionGroup     String?                  @map("session_group")
   
   rawImageUrl      String?                  @map("raw_image_url") @db.Text
@@ -165,6 +200,7 @@ model WaterSample {
   @@map("samples")
 }
 
+// สารที่ระบบตรวจวัดได้ (ammonia, phosphate, …)
 model Parameter {
   id          Int                      @id @default(autoincrement())
   name        String                   @unique @map("name")
@@ -183,6 +219,7 @@ model Parameter {
   @@map("parameters")
 }
 
+// ค่าที่ AI อ่านได้จากภาพของตัวอย่าง 1 ใบ
 model WaterSampleMeasurement {
   id          Int         @id @default(autoincrement())
   sampleId    Int         @map("sample_id")
@@ -201,6 +238,7 @@ model WaterSampleMeasurement {
   @@map("sample_measurements")
 }
 
+// คำร้องให้เจ้าหน้าที่ตรวจทานกลุ่มตัวอย่างที่ AI ไม่มั่นใจ 1 แถวต่อ 1 sessionGroup
 model ReviewRequest {
   id             Int          @id @default(autoincrement())
   sessionGroup   String       @unique @map("session_group")
@@ -224,6 +262,7 @@ model ReviewRequest {
 // 2. MASTER DATA (IMMUTABLE & INDEPENDENT)
 // -------------------------------------------------------------
 
+// สำเนาถาวรของกลุ่มตัวอย่างที่ผ่านแล้ว (auto-approve หรือเจ้าหน้าที่อนุมัติ) ใช้แสดงประวัติ ไม่แก้ตามข้อมูลต้นทาง
 model SampleRecord {
   id                       Int         @id @default(autoincrement())
   code                     String?     @map("code")
@@ -247,6 +286,9 @@ model SampleRecord {
   weatherCondCode          Int?        @map("weather_cond_code")
   // null = ประเมินไม่ได้ ณ เวลาที่ snapshot — ต่างจาก safe ที่แปลว่าตัดสินแล้วว่าผ่าน
   status                   WaterStatus? @map("status")
+  // copy จาก WaterSample ต้นทาง null = record เก่าก่อนมีระบบเวอร์ชัน
+  standardVersionId        Int?             @map("standard_version_id")
+  standardVersion          StandardVersion? @relation(fields: [standardVersionId], references: [id], onDelete: Restrict)
   
   imageUrl                 Json?       @map("image_url") // รวม { rawImageUrl, plotImageUrl }
   imageExpiresAt           DateTime?   @map("image_expires_at")
@@ -269,6 +311,7 @@ model SampleRecord {
 // 3. NOTIFICATION & AUDIT LOGS
 // -------------------------------------------------------------
 
+// แจ้งเตือนผลการตรวจทานถึงผู้เก็บตัวอย่าง
 model Notification {
   id        Int          @id @default(autoincrement())
   userId    Int?         @map("user_id") // ส่งให้ User คนไหน
@@ -285,6 +328,7 @@ model Notification {
   @@map("noti")
 }
 
+// บันทึกค่าเดิมก่อนถูกเจ้าหน้าที่แก้ หรือค่าที่ถูกปฏิเสธ ไว้ตรวจสอบย้อนหลัง
 model SampleRawLog {
   id                  Int      @id @default(autoincrement())
   sessionGroup        String?  @map("session_group")
@@ -302,6 +346,7 @@ model SampleRawLog {
 // 4. DASHBOARD & SYSTEM
 // -------------------------------------------------------------
 
+// นิยามการ์ด/กราฟบนแดชบอร์ด บอกว่าดึงค่าจากสารหรือคอลัมน์ไหน
 model DashboardWidget {
   id           Int        @id @default(autoincrement())
   title        String     @map("title")
@@ -323,6 +368,7 @@ model DashboardWidget {
   @@map("dashboard_widgets")
 }
 
+// สภาพอากาศรายชั่วโมงของแต่ละสถานี ดึงจาก API ภายนอกมาเก็บไว้
 model WeatherData {
   id               String   @id @default(uuid())
   locationId       Int      @map("location_id")

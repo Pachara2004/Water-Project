@@ -46,7 +46,7 @@ import { useState, useRef, useEffect } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
 import { readChemMeasurements, formatMeasuredValue } from "@/lib/chemLabels";
-import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown, Download } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown, Download, ClipboardPenLine } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
@@ -93,6 +93,8 @@ export interface ReviewRequestItem {
     reviewNote: string | null;
     reviewedBy: { id: number; name: string } | null;
     collectionTime: string | null;
+    // เกณฑ์เวอร์ชันที่กลุ่มนี้สังกัด standards มีค่าเฉพาะเวอร์ชันเก่า (isCurrent=false)
+    standardVersion: { id: number; version: number; isCurrent: boolean; standards: StandardRow[] | null } | null;
     location: { id: number; name: string; organization: string; province?: string | null; district?: string | null; subdistrict?: string | null } | null;
     collector: { id: number; name: string } | null;
     samples: ReviewSample[];
@@ -204,13 +206,29 @@ export function formatDateTime(value: string | null) {
  * จึงต้องเช็คก่อนว่ามีค่าที่ใช้ตัดสินได้จริงอย่างน้อยหนึ่งตัว
  *
  * @param item - คำร้อง
- * @param standards - เกณฑ์มาตรฐานจาก lib/standards
+ * @param standards - เกณฑ์ปัจจุบัน ใช้เมื่อกลุ่มไม่ได้สังกัดเวอร์ชันเก่า
  * @returns safe / warning / danger หรือ null เมื่อไม่มีค่าให้ประเมิน
  */
 export function getSampleWaterStatus(item: ReviewRequestItem, standards: StandardRow[]): "safe" | "warning" | "danger" | null {
     const values: MeasuredValue[] = item.samples.flatMap((s) => s.measurements).map((m) => ({ parameterId: m.parameterId, value: m.value }));
     if (!values.some((v) => v.value !== null && v.value !== undefined)) return null;
-    return evaluateSample(values, standards);
+    return evaluateSample(values, item.standardVersion?.standards ?? standards);
+}
+
+/**
+ * ป้ายเวอร์ชันเกณฑ์ แสดงเฉพาะกลุ่มที่สังกัดเวอร์ชันเก่ากว่าปัจจุบัน
+ */
+export function StandardVersionChip({ item }: { item: ReviewRequestItem }) {
+    if (!item.standardVersion || item.standardVersion.isCurrent) return null;
+    return (
+        <span
+            className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md border border-border bg-surface-subtle text-text-muted shrink-0"
+            title="กลุ่มนี้ส่งก่อนเกณฑ์ถูกแก้ จะถูกตัดสินด้วยเกณฑ์เวอร์ชันนี้"
+        >
+            <ClipboardPenLine size={11} />
+            เกณฑ์ v{item.standardVersion.version}
+        </span>
+    );
 }
 
 /**
@@ -330,6 +348,9 @@ export function RequestDetailPopup({
                     <InfoRow icon={Calendar} label="เวลาเก็บตัวอย่าง" value={formatDateTimeFull(item.collectionTime)} />
                     <InfoRow icon={UserRound} label="ผู้เก็บตัวอย่าง" value={item.collector?.name || "-"} />
                     <InfoRow icon={Clock} label="ส่งคำร้องเมื่อ" value={formatDateTimeFull(item.createdAt)} />
+                    {item.standardVersion && !item.standardVersion.isCurrent && (
+                        <InfoRow icon={ClipboardPenLine} label="เกณฑ์ที่ใช้ตัดสิน" value={`เวอร์ชัน ${item.standardVersion.version} (ก่อนแก้เกณฑ์)`} />
+                    )}
                 </div>
 
                 {/* แสดงหมายเหตุและคำเตือนจากผู้แจ้ง (เฉพาะสถานะ pending) */}
@@ -532,6 +553,7 @@ export function RequestCard({
                                     <Calendar size={13} className="text-text-muted shrink-0" />
                                     <span className="font-semibold sm:font-medium">{formatDateTime(item.collectionTime || item.createdAt)}</span>
                                 </div>
+                                <StandardVersionChip item={item} />
                             </div>
 
                             {/* แถวล่าง: แสดงค่าสารเคมีชิปเล็ก — dynamic ตามสารที่มีอยู่จริง */}
@@ -1449,6 +1471,7 @@ export function RequestCardMobile({
                             <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
                                 <Calendar size={13} className="text-text-muted shrink-0" />
                                 <span className="leading-none">{formatDateTime(item.collectionTime || item.createdAt)}</span>
+                                <StandardVersionChip item={item} />
                             </div>
                             <div className="flex items-center gap-2 w-full flex-wrap pt-2.5">
                                 {chemReadings.map((c) => (

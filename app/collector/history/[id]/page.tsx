@@ -42,7 +42,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import liff from "@line/liff";
-import { evaluateAgainstLocationType } from "@/lib/standards";
+import { evaluateAgainstLocationType, snapshotToLocationTypes, type StandardSnapshotRow } from "@/lib/standards";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ComparisonRow } from "@/components/StandardsComparison";
@@ -75,6 +75,8 @@ interface SampleDetail {
     analyzedPlotUrl: string | null;
     sampleImagesMap?: Record<number, { raw: string | null; plot: string | null }>;
     locationStatus?: WaterStatus | null;
+    // เกณฑ์เวอร์ชันที่ใช้ตัดสินตัวอย่างนี้ null = ใช้เกณฑ์ปัจจุบัน
+    standardVersion?: { id: number; version: number; createdAt: string; snapshot: StandardSnapshotRow[] } | null;
     latestByParameter?: { parameterId: number; parameterName: string; value: number; collectedAt: string }[];
     location: {
         id: number;
@@ -249,9 +251,14 @@ export default function CollectorHistoryDetailPage() {
     const collectorFullName = `${sample.collector.firstName || ""} ${sample.collector.lastName || ""}`.trim() || sample.collector.lineProfileName;
 
     const latestByParameter = sample.latestByParameter ?? [];
+    // เทียบด้วยเกณฑ์ชุดที่ตัดสินตัวอย่างนี้จริง ไม่ใช่เกณฑ์ปัจจุบันที่อาจถูกแก้ไปแล้ว
+    const comparisonTypes = sample.standardVersion ? snapshotToLocationTypes(sample.standardVersion.snapshot) : locationTypes;
+    const standardVersionLabel = sample.standardVersion
+        ? `ประเมินด้วยเกณฑ์เวอร์ชัน ${sample.standardVersion.version} (${formatDateTime(sample.standardVersion.createdAt)})`
+        : null;
     const locationComparisonRows: ComparisonRow[] =
-        locationTypes.length > 0 && latestByParameter.length > 0
-            ? locationTypes.map((type) => ({
+        comparisonTypes.length > 0 && latestByParameter.length > 0
+            ? comparisonTypes.map((type) => ({
                   key: type.code,
                   label: type.labelTh,
                   status: evaluateAgainstLocationType(
@@ -267,6 +274,9 @@ export default function CollectorHistoryDetailPage() {
         resultEntries,
         collectorFullName,
         locationComparisonRows,
+        standardVersionLabel,
+        // ส่งให้ ResultsPanel เทียบด้วยเวอร์ชันเดียวกับการ์ดผลประเมินสถานที่ ไม่ใช่เกณฑ์ปัจจุบัน
+        comparisonTypes: sample.standardVersion ? comparisonTypes : undefined,
         isEditing,
         locationDropdownRef,
         locationSearch,

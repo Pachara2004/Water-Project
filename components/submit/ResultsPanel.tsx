@@ -39,6 +39,7 @@ import { ChevronDown, ChevronUp, Check, ArrowLeft, FlaskConical, Clock } from "l
 import { evaluateValueAgainstStandards, groupStandardsByParameter } from "@/lib/standards";
 import { formatMeasuredValue } from "@/lib/chemLabels";
 import { useLocationTypes } from "@/lib/hooks/useLocationTypes";
+import type { LocationTypeWithStandards } from "@/lib/standards";
 import { StandardsComparison, type ComparisonRow } from "../StandardsComparison";
 import { DbParameter, MeasurementResult } from "./types";
 import { ThresholdBar } from "./SharedAtoms";
@@ -62,6 +63,13 @@ interface ResultsPanelProps {
     reviewNote?: string | null;
     /** บันทึกแล้ว = โหมดอ่านอย่างเดียว */
     saved?: boolean;
+    /**
+     * เกณฑ์ชุดที่ใช้เทียบแทนเกณฑ์ปัจจุบัน — หน้าประวัติส่ง snapshot ของเวอร์ชันที่ตัดสินตัวอย่างนั้นมา
+     * ไม่ส่ง = ใช้เกณฑ์ปัจจุบันจาก /api/location-types (หน้า submit)
+     */
+    locationTypesOverride?: LocationTypeWithStandards[];
+    /** ข้อความบอกเวอร์ชันเกณฑ์ แสดงใต้ตารางเปรียบเทียบ */
+    standardVersionLabel?: string | null;
 }
 
 /**
@@ -69,9 +77,20 @@ interface ResultsPanelProps {
  *
  * @param props - ดู {@link ResultsPanelProps}
  */
-export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, chooseDuplicate, revertAutoSwitch, reviewNote, saved }: ResultsPanelProps) {
+export function ResultsPanel({
+    results,
+    systemParameters,
+    duplicateChoice = {},
+    chooseDuplicate,
+    revertAutoSwitch,
+    reviewNote,
+    saved,
+    locationTypesOverride,
+    standardVersionLabel,
+}: ResultsPanelProps) {
     const [openParamId, setOpenParamId] = useState<number | null>(null);
-    const { locationTypes } = useLocationTypes();
+    const { locationTypes: currentLocationTypes } = useLocationTypes();
+    const locationTypes = locationTypesOverride ?? currentLocationTypes;
 
     if (Object.keys(results).length === 0) return null;
 
@@ -266,6 +285,7 @@ export function ResultsPanel({ results, systemParameters, duplicateChoice = {}, 
                                                     };
                                                 })}
                                             />
+                                            {standardVersionLabel && <p className="text-xs text-text-muted mt-2">{standardVersionLabel}</p>}
                                         </div>
                                     )}
                                 </div>

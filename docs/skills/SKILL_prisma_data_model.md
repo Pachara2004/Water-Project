@@ -31,6 +31,14 @@ Always keep data model changes minimal, explicit, and aligned with the existing 
 - `LocationType` should reflect station categories such as `CONSERVATION`, `CORAL_REEF`, `AQUACULTURE`, `RECREATION`, `INDUSTRY`, `COMMUNITY`.
 - `OrganizationType` should distinguish `FISHERY`, `POLLUTION`, `OTHER`.
 
+### Standards versioning
+- `standards` = ค่าเกณฑ์ปัจจุบันเสมอ 1 แถวต่อคู่ (`locationTypeId`, `parameterId`) แก้ผ่าน `PUT /api/standards` เท่านั้น
+- `standard_versions` = สำเนาทั้งชุดเป็น JSON ทุกครั้งที่บันทึก (รวมเวอร์ชันปัจจุบัน) ห้ามแก้หรือลบเวอร์ชันที่สร้างแล้ว
+- `WaterSample.standardVersionId` ปักตอน submit และ `SampleRecord.standardVersionId` copy จาก sample — ใช้บอกว่าตัดสินด้วยเกณฑ์ชุดไหน
+- การตัดสินสถานะของตัวอย่างที่มีอยู่แล้ว (เช่น `edited_approve`) ต้องใช้ `resolveStandardVersionIdForSample` + `loadStandardVersionSnapshot` จาก `lib/standards-db.ts` ไม่ใช่ `loadAllStandards()` (เกณฑ์ปัจจุบัน)
+- แถวที่ `standardVersionId` เป็น null (ข้อมูลก่อนมีระบบเวอร์ชัน) resolver จะเทียบ `uploadedActiveAt` กับ `createdAt` ของเวอร์ชันแทน
+- ห้าม recompute สถานะย้อนหลังเมื่อแก้เกณฑ์ สถานะเดิมถูกต้อง ณ เวอร์ชันที่มันถูกตัดสิน
+
 ### Relationship guidance
 - Prefer one-to-many relations with explicit foreign keys.
 - Use `select` or `include` intentionally to avoid N+1 loading.
@@ -102,5 +110,6 @@ await prisma.user.upsert({
 - `prisma/schema.prisma` — source of truth for data models.
 - `lib/prisma.ts` — shared Prisma client singleton.
 - `app/api/*/route.ts` — API route data access patterns.
+- `lib/standards-db.ts` — server-only loader/resolver ของเกณฑ์และเวอร์ชัน; `lib/standards.ts` — ตัวประเมินและตัวแปลง snapshot (client ใช้ได้)
 
 Use these files as the primary reference when making schema or backend data changes.

@@ -38,8 +38,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth-guard";
 import { toMeasuredNumber } from "@/lib/standards";
-import { evaluateSample, computeValueByParameterAsOf } from "@/lib/standards";
-import { loadAllStandards } from "@/lib/standards-db";
+import { evaluateSample, computeValueByParameterAsOf, snapshotToStandardRows } from "@/lib/standards";
+import { loadAllStandards, loadStandardVersionSnapshot, resolveStandardVersionIdForSample } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 import { nowThai, parseThaiInput, toApiString } from "@/lib/thaiTime";
 
@@ -257,6 +257,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * @param {object} context - Route context params พร้อม `id` ของตัวอย่างน้ำหรือ sessionGroup
  * @returns {Promise<NextResponse>} รายละเอียดผลตรวจและรูปภาพประกอบ
  */
+/**
+ * เกณฑ์เวอร์ชันที่ตัวอย่างนี้สังกัด ไว้ส่งให้หน้าประวัติแสดงตารางเปรียบเทียบด้วยเกณฑ์ชุดเดียวกับตอนตัดสิน
+ * null = ไม่มีเวอร์ชันในระบบเลย ฝั่งอ่านใช้เกณฑ์ปัจจุบันแทน
+ */
+async function loadStandardVersionForSample(sample: { standardVersionId: number | null; uploadedActiveAt: Date }) {
+    const versionId = await resolveStandardVersionIdForSample(sample);
+    if (versionId === null) return null;
+    const v = await loadStandardVersionSnapshot(versionId);
+    return v ? { id: v.id, version: v.version, createdAt: toApiString(v.createdAt), snapshot: v.snapshot } : null;
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const auth = await verifyAuth(request, ["collector", "admin"]);
     if (!auth.isValid) {
@@ -347,7 +358,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 }),
             ]);
             const latestByParameter = computeValueByParameterAsOf(beforeOrAtSamples, afterSamples);
-            const locationStandards = await loadAllStandards();
+            const standardVersion = await loadStandardVersionForSample(sampleRecord);
+            const locationStandards = standardVersion ? snapshotToStandardRows(standardVersion.snapshot) : await loadAllStandards();
             const locationStatus =
                 latestByParameter.length > 0
                     ? evaluateSample(
@@ -395,6 +407,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 rainAccumulation: sampleRecord.rainAccumulation,
                 weatherCondCode: sampleRecord.weatherCondCode,
                 status: sampleRecord.status,
+                standardVersion,
                 rawImageUrl: rawImageUrl,
                 analyzedPlotUrl: analyzedPlotUrl,
                 sessionGroup: sampleRecord.code,
@@ -560,7 +573,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             }),
         ]);
         const latestByParameter = computeValueByParameterAsOf(beforeOrAtSamples, afterSamples);
-        const locationStandards = await loadAllStandards();
+        const standardVersion = await loadStandardVersionForSample(mainSample);
+        const locationStandards = standardVersion ? snapshotToStandardRows(standardVersion.snapshot) : await loadAllStandards();
         const locationStatus =
             latestByParameter.length > 0
                 ? evaluateSample(
@@ -585,6 +599,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             rainAccumulation: mainSample.rainAccumulation,
             weatherCondCode: mainSample.weatherCondCode,
             status: mainSample.status,
+            standardVersion,
             rawImageUrl: mainSample.rawImageUrl,
             analyzedPlotUrl: mainSample.analyzedPlotUrl,
             sessionGroup: mainSample.sessionGroup,
