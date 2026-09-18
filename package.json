@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "next dev",
+        "dev": "next dev --experimental-https",
         "build": "npm run gen:location-types && next build",
         "start": "next start",
         "start:prod": "prisma db push && npm run seed && next start",

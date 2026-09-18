@@ -174,15 +174,13 @@ function SubmitContent() {
                 text: 'ข้อมูลนี้จะถูกส่งเข้าสถานะ "รออนุมัติ" และไม่แสดงบนแผนที่จนกว่าผู้ดูแลระบบจะตรวจสอบและยืนยัน',
                 reasons,
                 requireNote: !needsAdminReview && forceReview,
-                // AI ไม่พบหลอดทดลอง = ยืนยันไม่ได้ทั้งค่าและชนิดสาร ต้องให้ผู้ดูแลระบบแก้ไขได้เสมอ
-                forceAllowAdminChange: hasNotTestTube,
             });
 
             if (!result.confirmed) return;
             
             loadingDialog("กำลังบันทึกข้อมูล...", "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล");
             try {
-                await handleSave(isReviewSubmit, result.reviewNote, result.allowAdminChange);
+                await handleSave(isReviewSubmit, result.reviewNote);
                 closeDialog();
             } catch (err: any) {
                 alertError("เกิดข้อผิดพลาด", err.message || "ไม่สามารถบันทึกข้อมูลได้สำเร็จ กรุณาลองใหม่อีกครั้ง");

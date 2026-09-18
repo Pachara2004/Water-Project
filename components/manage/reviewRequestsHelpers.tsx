@@ -332,21 +332,9 @@ export function RequestDetailPopup({
                     <InfoRow icon={Clock} label="ส่งคำร้องเมื่อ" value={formatDateTimeFull(item.createdAt)} />
                 </div>
 
-                {/* แสดงสิทธิ์การแก้ไขสาร และ หมายเหตุจากผู้แจ้ง (เฉพาะสถานะ pending) */}
+                {/* แสดงหมายเหตุและคำเตือนจากผู้แจ้ง (เฉพาะสถานะ pending) */}
                 {item.statusRequest === "pending" && (
                     <div className="space-y-2">
-                        {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-teal-50 text-teal-700 rounded-md text-xs font-bold border border-teal-200">
-                                <CheckCircle2 size={14} />
-                                <span>ผู้แจ้งอนุญาตให้ผู้เชี่ยวชาญสลับสารได้</span>
-                            </div>
-                        ) : (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-red-50 text-red-700 rounded-md text-xs font-bold border border-red-200">
-                                <XCircle size={14} />
-                                <span>ไม่อนุญาตให้ผู้เชี่ยวชาญสลับสาร</span>
-                            </div>
-                        )}
-
                         {/* ค่าในคำร้องนี้อ่านมาจากภาพที่ AI ไม่พบหลอดทดลอง — ต้องเทียบกับภาพดิบก่อนยืนยัน */}
                         {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
                             <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
@@ -566,28 +554,13 @@ export function RequestCard({
                                 </div>
                             )}
 
-                            {/* แจ้งเตือนสิทธิ์การแก้ไขชนิดสาร (เฉพาะสถานะ pending) */}
-                            {item.statusRequest === "pending" && (
+                            {/* แจ้งเตือนเมื่อ AI ไม่พบหลอดทดลอง (เฉพาะสถานะ pending) */}
+                            {item.statusRequest === "pending" && item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
                                 <div className="mt-2 flex items-center gap-2">
-                                    {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-xs font-bold border border-teal-200">
-                                            <CheckCircle2 size={12} />
-                                            <span>ผู้แจ้งอนุญาตให้สลับสารได้</span>
-                                        </div>
-                                    ) : (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-xs font-bold border border-red-200">
-                                            <XCircle size={12} />
-                                            <span>ไม่อนุญาตให้สลับสาร</span>
-                                        </div>
-                                    )}
-
-                                    {/* ค่าในคำร้องนี้อ่านมาจากภาพที่ AI ไม่พบหลอดทดลอง — ต้องเทียบกับภาพดิบก่อนยืนยัน */}
-                                    {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
-                                            <ImageOff size={12} />
-                                            <span>AI ไม่พบหลอดทดลองในภาพ</span>
-                                        </div>
-                                    )}
+                                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
+                                        <ImageOff size={12} />
+                                        <span>AI ไม่พบหลอดทดลองในภาพ</span>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -944,7 +917,7 @@ function ParameterSelect({
     originalId,
     disabledIds,
     disabled,
-    title,
+    title = "",
     onChange,
 }: {
     value: number;
@@ -952,7 +925,7 @@ function ParameterSelect({
     originalId: number;
     disabledIds: number[];
     disabled: boolean;
-    title: string;
+    title?: string;
     onChange: (id: number) => void;
 }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -1064,7 +1037,6 @@ export function EditApproveDrawer({
     onPreviewImage?: (images: PreviewImages) => void;
 }) {
     const isMultiSample = editTarget.samples.length > 1;
-    const userRequestedChange = editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]"));
     const toggleSample = (id: number) => setEditSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     const noneSelected = editSelectedSampleIds.length === 0;
     const referenceSamples = editTarget.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
@@ -1233,8 +1205,7 @@ export function EditApproveDrawer({
                                                                 options={systemParameters}
                                                                 originalId={m.parameterId}
                                                                 disabledIds={otherSelectedParams}
-                                                                disabled={!isSelected || !userRequestedChange}
-                                                                title={!userRequestedChange ? "ผู้ใช้ไม่ได้เปิดสิทธิ์ให้แอดมินเปลี่ยนสาร (หากผิดกรุณากดปฏิเสธ)" : ""}
+                                                                disabled={!isSelected}
                                                                 onChange={(val) => setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }))}
                                                             />
                                                             <div className="flex items-center gap-2">
@@ -1496,24 +1467,8 @@ export function RequestCardMobile({
                     </div>
                 </div>
 
-                {/* Section 2: Request specific info (Notes, Permissions, Sample Select) */}
+                {/* Section 2: Request specific info (Notes, Sample Select) */}
                 <div className="flex flex-col gap-3 px-4 py-3 border-t border-secondary bg-surface-subtle/20">
-                    {/* Permissions */}
-                    {item.statusRequest === "pending" && (
-                        <div className="flex items-center gap-2">
-                            {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                                <div className="inline-flex items-center gap-1.5 w-100  text-teal-700 text-xs font-medium ">
-                                    <CheckCircle2 size={12} />
-                                    <span>ผู้ส่งตรวจคุณภาพน้ำอนุญาตให้สลับสารได้</span>
-                                </div>
-                            ) : (
-                                <div className="inline-flex items-center gap-1.5 w-100 text-text-danger text-xs font-medium">
-                                    <XCircle size={12} />
-                                    <span>ผู้ส่งตรวจคุณภาพน้ำไม่อนุญาตให้สลับสาร</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
                     {/* Notes */}
                     {item.statusRequest === "pending" && item.reviewNote && (
                         <div className="text-xs font-medium sm:font-semibold text-text border border-dashed border-secondary p-2.5 rounded-md wrap-break-word">

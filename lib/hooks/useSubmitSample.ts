@@ -649,7 +649,7 @@ export function useSubmitSample() {
     };
 
 
-    const handleSave = async (forceReview = false, reviewNote?: string, allowAdminChange = false) => {
+    const handleSave = async (forceReview = false, reviewNote?: string) => {
         if (Object.keys(results).length === 0 || !currentLocationId || !currentUser) return;
 
         try {
@@ -680,9 +680,6 @@ export function useSubmitSample() {
                 if (forceReview) fd.append("forceReview", "true");
 
                 let finalMessage = resData.message || null;
-                if (allowAdminChange) {
-                    finalMessage = finalMessage ? `[USER_REQUEST_CHANGE] ${finalMessage}` : "[USER_REQUEST_CHANGE]";
-                }
 
                 // marker บอกทั้ง server และหน้าแสดงผลว่าค่านี้มาจากภาพที่ AI ไม่พบหลอดทดลอง
                 // server ใช้บังคับเข้าคิวรอตรวจสอบ โดยไม่ต้องเชื่อ forceReview จาก client เพียงอย่างเดียว
