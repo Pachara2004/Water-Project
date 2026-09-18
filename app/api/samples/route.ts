@@ -45,7 +45,7 @@ import path from "path";
 import crypto from "crypto";
 import { verifyAuth } from "@/lib/auth-guard";
 import { isLowConfidence, evaluateSample, toMeasuredNumber } from "@/lib/standards";
-import { loadStandardsForParameters } from "@/lib/standards-db";
+import { getCurrentStandardVersion, loadStandardsForParameters } from "@/lib/standards-db";
 import { getPendingSessionGroups } from "@/lib/review";
 import { generateSessionGroup } from "@/lib/sessionGroup";
 import { parsePageParams, pageResult } from "@/lib/pagination";
@@ -624,6 +624,8 @@ export async function POST(request: NextRequest) {
         }
 
         const standards = await loadStandardsForParameters(createMeasurementsData.map((m) => m.parameterId));
+        // เวอร์ชันเกณฑ์ที่ standards ข้างบนสังกัด ปักไว้กับตัวอย่างเพื่อให้แก้เกณฑ์ภายหลังไม่กระทบ
+        const currentStandardVersion = await getCurrentStandardVersion();
         const computedStatus = evaluateSample(
             createMeasurementsData.map((m) => ({ parameterId: m.parameterId, value: m.value })),
             standards,
@@ -675,6 +677,7 @@ export async function POST(request: NextRequest) {
                     weatherCondCode: finalWeather.weatherCondCode,
                     // null = ไม่มีค่าที่ประเมินได้เลย ต้องเก็บ null ไม่ใช่ safe (คอลัมน์รองรับ null แล้ว)
                     status: computedStatus,
+                    standardVersionId: currentStandardVersion?.id ?? null,
                     rawImageUrl: mainRawImageUrl,
                     analyzedPlotUrl: mainAnalyzedPlotUrl,
                     // ตั้งวันหมดอายุเฉพาะแถวที่มีไฟล์รูปจริง — แถวที่ไม่มีรูปไม่มีอะไรให้ cron ลบ

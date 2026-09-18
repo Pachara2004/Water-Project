@@ -22,7 +22,8 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import type { StandardRow } from "@/lib/standards";
+import type { TxClient } from "@/lib/prisma";
+import { parseStandardSnapshot, type StandardRow, type StandardSnapshotRow } from "@/lib/standards";
 
 /**
  * ตัวโหลดเกณฑ์มาตรฐานจากตาราง `standards`
@@ -64,4 +65,86 @@ export async function loadStandardsForParameters(parameterIds: number[]): Promis
         where: { parameterId: { in: parameterIds } },
         select: { parameterId: true, maxValue: true },
     });
+}
+
+// ─── เวอร์ชันเกณฑ์ (ตาราง standard_versions) ───
+
+/** client ที่ใช้ได้ทั้งใน $transaction และนอก */
+type DbClient = TxClient | typeof prisma;
+
+/**
+ * อ่านตาราง standards ทั้งชุดพร้อมชื่อประเภท/สาร สำหรับเก็บลง StandardVersion.snapshot
+ */
+export async function buildStandardSnapshot(db: DbClient): Promise<StandardSnapshotRow[]> {
+    const rows = await db.standard.findMany({
+        select: {
+            locationTypeId: true,
+            parameterId: true,
+            maxValue: true,
+            locationType: { select: { code: true, labelTh: true } },
+            parameter: { select: { name: true, unit: true } },
+        },
+        orderBy: [{ locationTypeId: "asc" }, { parameterId: "asc" }],
+    });
+    return rows.map((r) => ({
+        locationTypeId: r.locationTypeId,
+        locationTypeCode: r.locationType.code,
+        locationTypeLabelTh: r.locationType.labelTh,
+        parameterId: r.parameterId,
+        parameterName: r.parameter.name,
+        parameterUnit: r.parameter.unit,
+        maxValue: r.maxValue,
+    }));
+}
+
+/** ข้อมูลเวอร์ชันที่ฝั่งอ่านใช้ ไม่รวม snapshot */
+export interface StandardVersionInfo {
+    id: number;
+    version: number;
+    createdAt: Date;
+}
+
+/**
+ * เวอร์ชันล่าสุด = ชุดเกณฑ์ที่ตรงกับตาราง standards ตอนนี้ คืน null ถ้ายังไม่มีเวอร์ชันเลย
+ */
+export async function getCurrentStandardVersion(db: DbClient = prisma): Promise<StandardVersionInfo | null> {
+    return db.standardVersion.findFirst({
+        select: { id: true, version: true, createdAt: true },
+        orderBy: { version: "desc" },
+    });
+}
+
+/**
+ * หาเวอร์ชันเกณฑ์ที่ใช้ตัดสินตัวอย่างนี้
+ * ใช้ standardVersionId ที่ปักไว้ก่อน ถ้าเป็นแถวเก่า (null) ใช้เวอร์ชันล่าสุดที่มีอยู่ตอน uploadedActiveAt แทน
+ */
+export async function resolveStandardVersionIdForSample(
+    sample: { standardVersionId: number | null; uploadedActiveAt: Date },
+    db: DbClient = prisma,
+): Promise<number | null> {
+    if (sample.standardVersionId !== null) return sample.standardVersionId;
+    const v = await db.standardVersion.findFirst({
+        where: { createdAt: { lte: sample.uploadedActiveAt } },
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+    });
+    // ตัวอย่างเก่ากว่าเวอร์ชันแรก (เช่นข้อมูลก่อนมีระบบ) ให้ใช้เวอร์ชันแรก
+    if (v) return v.id;
+    const first = await db.standardVersion.findFirst({ select: { id: true }, orderBy: { version: "asc" } });
+    return first?.id ?? null;
+}
+
+/**
+ * snapshot ของเวอร์ชันที่ระบุ คืน null ถ้าไม่มีเวอร์ชันนั้น
+ */
+export async function loadStandardVersionSnapshot(
+    versionId: number,
+    db: DbClient = prisma,
+): Promise<(StandardVersionInfo & { snapshot: StandardSnapshotRow[] }) | null> {
+    const v = await db.standardVersion.findUnique({
+        where: { id: versionId },
+        select: { id: true, version: true, createdAt: true, snapshot: true },
+    });
+    if (!v) return null;
+    return { id: v.id, version: v.version, createdAt: v.createdAt, snapshot: parseStandardSnapshot(v.snapshot) };
 }

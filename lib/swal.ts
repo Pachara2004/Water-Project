@@ -162,29 +162,23 @@ export interface ReviewConfirmDialogOptions {
     reasons?: string[];
     /** [TH] บังคับให้กรอกหมายเหตุหรือไม่ [EN] Whether notes input is mandatory */
     requireNote?: boolean;
-    /**
-     * [TH] ล็อกสิทธิ์ให้ผู้ดูแลระบบแก้ไขชนิดสารได้เสมอ โดยผู้ส่งเลือกเป็นอย่างอื่นไม่ได้ (ใช้เมื่อ AI ไม่พบหลอดทดลองในภาพ)
-     * [EN] Forces permission granting admin to alter parameter type when AI detects no tube
-     */
-    forceAllowAdminChange?: boolean;
 }
 
 /**
- * [TH] แสดงกล่องข้อความยืนยันการส่งตัวอย่างน้ำเพื่อรอการตรวจสอบโดยผู้เชี่ยวชาญ (พร้อมเหตุผล, หมายเหตุ, และการอนุญาตแก้ไขชนิดสาร)
- * [EN] Displays a specialized review confirmation modal allowing input notes and admin override permissions
+ * [TH] แสดงกล่องข้อความยืนยันการส่งตัวอย่างน้ำเพื่อรอการตรวจสอบโดยผู้เชี่ยวชาญ
+ * [EN] Displays a specialized review confirmation modal allowing input notes
  *
  * @async
  * @function reviewConfirmDialog
  * @param {ReviewConfirmDialogOptions} options - การตั้งค่ากล่องข้อความส่งตรวจสอบ
- * @returns {Promise<{ confirmed: boolean; reviewNote?: string; allowAdminChange: boolean }>} ผลการตัดสินใจของผู้ใช้
+ * @returns {Promise<{ confirmed: boolean; reviewNote?: string }>} ผลการตัดสินใจของผู้ใช้
  */
 export async function reviewConfirmDialog({
     title,
     text,
     reasons = [],
     requireNote = false,
-    forceAllowAdminChange = false,
-}: ReviewConfirmDialogOptions): Promise<{ confirmed: boolean; reviewNote?: string; allowAdminChange: boolean }> {
+}: ReviewConfirmDialogOptions): Promise<{ confirmed: boolean; reviewNote?: string }> {
     const reasonsHtml = reasons.length > 0 ? `
         <div class="text-sm bg-bg-warning border border-border-warning text-text-warning" style="text-align: left; margin-bottom: 12px; padding: 12px; border-radius: 8px;">
             <p style="margin-bottom: 6px; font-weight: 600;">สาเหตุที่ต้องรอการตรวจสอบ:</p>
@@ -193,49 +187,6 @@ export async function reviewConfirmDialog({
             </ul>
         </div>
     ` : '';
-
-    // ปกติผู้ส่งเลือกเองว่าจะให้ผู้ดูแลระบบแก้ชนิดสารได้ไหม
-    // แต่เมื่อ AI ไม่พบหลอดทดลอง ยืนยันไม่ได้ทั้งค่าและชนิดสาร จึงล็อกเป็น "อนุญาต" ไม่ให้เลือก
-    // ถ้าปล่อยให้เลือก "ไม่อนุญาต" คำร้องจะเข้าคิวโดยที่ผู้ดูแลระบบแก้อะไรไม่ได้เลย กลายเป็นทางตัน
-    const permissionHtml = forceAllowAdminChange
-        ? `
-                <div class="mt-6 flex flex-col gap-2">
-                    <label class="text-xs font-semibold text-text">การอนุญาตให้แก้ไขชนิดสาร</label>
-                    <div class="flex items-start gap-2.5 p-3 rounded-lg border border-border-warning bg-bg-warning text-text-warning">
-                        <div class="flex flex-col text-xs text-left">
-                            <span class="font-semibold leading-tight">อนุญาตให้แก้ไขได้ (บังคับสำหรับกรณีนี้)</span>
-                            <span class="text-xs leading-snug mt-0.5">AI ไม่พบหลอดทดลองในภาพ จึงยืนยันทั้งค่าและชนิดสารไม่ได้ ผู้ดูแลระบบต้องแก้ไขให้ได้จึงจะตรวจสอบคำร้องนี้ต่อได้</span>
-                        </div>
-                    </div>
-                </div>
-        `
-        : `
-                <div class="mt-6 flex flex-col gap-2">
-                    <label class="text-xs font-semibold text-text">
-                        การอนุญาตให้แก้ไขชนิดสาร <span style="color: red;">*</span>
-                    </label>
-                    <div class="flex flex-col gap-2">
-                        <label id="label-allow-true" class="flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors">
-                            <div class="pt-0.5">
-                                <input type="radio" name="swal-allow-admin-change" value="true" class="w-4 h-4 text-warning focus:ring-warning cursor-pointer" />
-                            </div>
-                            <div class="flex flex-col text-xs text-left">
-                                <span class="font-semibold leading-tight">อนุญาตให้แก้ไขได้ (แนะนำ)</span>
-                                <span class="text-xs leading-snug mt-0.5">หากผู้เชี่ยวชาญตรวจสอบพบว่า AI ทำนายชนิดสารผิดพลาด</span>
-                            </div>
-                        </label>
-                        <label id="label-allow-false" class="flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors">
-                            <div class="pt-0.5">
-                                <input type="radio" name="swal-allow-admin-change" value="false" class="w-4 h-4 text-warning focus:ring-warning cursor-pointer" />
-                            </div>
-                            <div class="flex flex-col text-xs text-left">
-                                <span class="font-semibold leading-tight">ไม่อนุญาต</span>
-                                <span class="text-xs leading-snug mt-0.5">ยืนยันใช้ชนิดสารตามที่ปรากฏในระบบนี้เท่านั้น</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-        `;
 
     const result = await baseSwal.fire({
         title,
@@ -250,8 +201,6 @@ export async function reviewConfirmDialog({
                     <span id="swal-char-count" class="text-xs" style="color: var(--color-text-muted);">0 / 200</span>
                 </div>
                 <textarea id="swal-review-note" maxlength="200" placeholder="${requireNote ? 'กรุณาระบุเหตุผลที่ต้องการให้ตรวจสอบเพิ่มเติม' : 'ระบุสาเหตุที่ต้องการให้ตรวจสอบเพิ่มเติม หรือบอกสิ่งที่ต้องการให้แอดมินช่วยดู...'}" class="w-full min-h-[100px] resize-none p-3 border border-border rounded-xl text-sm bg-surface-subtle focus:bg-surface focus:border-warning focus:ring-4 focus:ring-warning/20 outline-none transition-all placeholder:text-text-muted mt-1 text-text"></textarea>
-                
-                ${permissionHtml}
             </div>
         `,
         iconHtml: ICON_SVG.info,
@@ -271,20 +220,10 @@ export async function reviewConfirmDialog({
                 const isNoteEmpty = textarea ? textarea.value.trim().length === 0 : false;
                 const noteInvalid = requireNote && isNoteEmpty;
                 
-                // โหมดบังคับไม่มี radio ให้เลือก จึงถือว่าผ่านเงื่อนไขนี้ไปเลย
-                const radios = document.querySelectorAll('input[name="swal-allow-admin-change"]');
-                let radioSelected = forceAllowAdminChange;
-                radios.forEach((r) => { if ((r as HTMLInputElement).checked) radioSelected = true; });
-
-                const isInvalid = noteInvalid || !radioSelected;
-                confirmBtn.disabled = isInvalid;
+                confirmBtn.disabled = noteInvalid;
                 
-                if (isInvalid) {
-                    if (!radioSelected) {
-                        confirmBtn.textContent = "กรุณาเลือกการอนุญาต";
-                    } else if (noteInvalid) {
-                        confirmBtn.textContent = "กรุณากรอกหมายเหตุ";
-                    }
+                if (noteInvalid) {
+                    confirmBtn.textContent = "กรุณากรอกหมายเหตุ";
                     confirmBtn.style.backgroundColor = "#e2e8f0"; // เทาอ่อน
                     confirmBtn.style.color = "#94a3b8";
                     confirmBtn.style.cursor = "not-allowed";
@@ -293,28 +232,6 @@ export async function reviewConfirmDialog({
                     confirmBtn.style.backgroundColor = "";
                     confirmBtn.style.color = "";
                     confirmBtn.style.cursor = "";
-                }
-            };
-
-            const updateRadioStyles = () => {
-                const radioTrue = document.querySelector('input[value="true"]') as HTMLInputElement;
-                const radioFalse = document.querySelector('input[value="false"]') as HTMLInputElement;
-                const labelTrue = document.getElementById("label-allow-true");
-                const labelFalse = document.getElementById("label-allow-false");
-
-                if (radioTrue && labelTrue) {
-                    if (radioTrue.checked) {
-                        labelTrue.className = "flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors border-border-warning bg-bg-warning text-text-warning";
-                    } else {
-                        labelTrue.className = "flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors";
-                    }
-                }
-                if (radioFalse && labelFalse) {
-                    if (radioFalse.checked) {
-                        labelFalse.className = "flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors border-border-warning bg-bg-warning text-text-warning";
-                    } else {
-                        labelFalse.className = "flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-subtle cursor-pointer hover:bg-surface transition-colors";
-                    }
                 }
             };
 
@@ -329,45 +246,24 @@ export async function reviewConfirmDialog({
                     updateButtonState();
                 });
             }
-
-            const radios = document.querySelectorAll('input[name="swal-allow-admin-change"]');
-            radios.forEach(radio => {
-                radio.addEventListener("change", () => {
-                    updateRadioStyles();
-                    updateButtonState();
-                });
-            });
         },
         preConfirm: () => {
             const el = document.getElementById("swal-review-note") as HTMLTextAreaElement;
-            const radioTrue = document.querySelector('input[name="swal-allow-admin-change"][value="true"]') as HTMLInputElement;
             const val = el ? el.value.trim() : "";
-            
-            // Check radio required (actually UI prevents click if invalid, but good to have fallback)
-            const radios = document.querySelectorAll('input[name="swal-allow-admin-change"]');
-            let radioSelected = forceAllowAdminChange;
-            radios.forEach((r) => { if ((r as HTMLInputElement).checked) radioSelected = true; });
-
-            if (!radioSelected) {
-                Swal.showValidationMessage("กรุณาเลือกว่าอนุญาตให้แก้ไขชนิดสารหรือไม่");
-                return false;
-            }
 
             if (requireNote && !val) {
                 Swal.showValidationMessage("กรุณากรอกเหตุผลที่ต้องการให้ตรวจสอบ");
                 return false;
             }
             return {
-                reviewNote: val,
-                allowAdminChange: forceAllowAdminChange || (radioTrue ? radioTrue.checked : false)
+                reviewNote: val
             };
         }
     });
 
     return { 
         confirmed: result.isConfirmed, 
-        reviewNote: result.value?.reviewNote,
-        allowAdminChange: result.value?.allowAdminChange || false
+        reviewNote: result.value?.reviewNote
     };
 }
 

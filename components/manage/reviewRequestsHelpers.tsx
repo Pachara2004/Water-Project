@@ -46,7 +46,7 @@ import { useState, useRef, useEffect } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
 import { readChemMeasurements, formatMeasuredValue } from "@/lib/chemLabels";
-import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown, Download } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown, Download, ClipboardPenLine } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
@@ -93,6 +93,8 @@ export interface ReviewRequestItem {
     reviewNote: string | null;
     reviewedBy: { id: number; name: string } | null;
     collectionTime: string | null;
+    // เกณฑ์เวอร์ชันที่กลุ่มนี้สังกัด standards มีค่าเฉพาะเวอร์ชันเก่า (isCurrent=false)
+    standardVersion: { id: number; version: number; isCurrent: boolean; standards: StandardRow[] | null } | null;
     location: { id: number; name: string; organization: string; province?: string | null; district?: string | null; subdistrict?: string | null } | null;
     collector: { id: number; name: string } | null;
     samples: ReviewSample[];
@@ -204,13 +206,29 @@ export function formatDateTime(value: string | null) {
  * จึงต้องเช็คก่อนว่ามีค่าที่ใช้ตัดสินได้จริงอย่างน้อยหนึ่งตัว
  *
  * @param item - คำร้อง
- * @param standards - เกณฑ์มาตรฐานจาก lib/standards
+ * @param standards - เกณฑ์ปัจจุบัน ใช้เมื่อกลุ่มไม่ได้สังกัดเวอร์ชันเก่า
  * @returns safe / warning / danger หรือ null เมื่อไม่มีค่าให้ประเมิน
  */
 export function getSampleWaterStatus(item: ReviewRequestItem, standards: StandardRow[]): "safe" | "warning" | "danger" | null {
     const values: MeasuredValue[] = item.samples.flatMap((s) => s.measurements).map((m) => ({ parameterId: m.parameterId, value: m.value }));
     if (!values.some((v) => v.value !== null && v.value !== undefined)) return null;
-    return evaluateSample(values, standards);
+    return evaluateSample(values, item.standardVersion?.standards ?? standards);
+}
+
+/**
+ * ป้ายเวอร์ชันเกณฑ์ แสดงเฉพาะกลุ่มที่สังกัดเวอร์ชันเก่ากว่าปัจจุบัน
+ */
+export function StandardVersionChip({ item }: { item: ReviewRequestItem }) {
+    if (!item.standardVersion || item.standardVersion.isCurrent) return null;
+    return (
+        <span
+            className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md border border-border bg-surface-subtle text-text-muted shrink-0"
+            title="กลุ่มนี้ส่งก่อนเกณฑ์ถูกแก้ จะถูกตัดสินด้วยเกณฑ์เวอร์ชันนี้"
+        >
+            <ClipboardPenLine size={11} />
+            เกณฑ์ v{item.standardVersion.version}
+        </span>
+    );
 }
 
 /**
@@ -330,23 +348,14 @@ export function RequestDetailPopup({
                     <InfoRow icon={Calendar} label="เวลาเก็บตัวอย่าง" value={formatDateTimeFull(item.collectionTime)} />
                     <InfoRow icon={UserRound} label="ผู้เก็บตัวอย่าง" value={item.collector?.name || "-"} />
                     <InfoRow icon={Clock} label="ส่งคำร้องเมื่อ" value={formatDateTimeFull(item.createdAt)} />
+                    {item.standardVersion && !item.standardVersion.isCurrent && (
+                        <InfoRow icon={ClipboardPenLine} label="เกณฑ์ที่ใช้ตัดสิน" value={`เวอร์ชัน ${item.standardVersion.version} (ก่อนแก้เกณฑ์)`} />
+                    )}
                 </div>
 
-                {/* แสดงสิทธิ์การแก้ไขสาร และ หมายเหตุจากผู้แจ้ง (เฉพาะสถานะ pending) */}
+                {/* แสดงหมายเหตุและคำเตือนจากผู้แจ้ง (เฉพาะสถานะ pending) */}
                 {item.statusRequest === "pending" && (
                     <div className="space-y-2">
-                        {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-teal-50 text-teal-700 rounded-md text-xs font-bold border border-teal-200">
-                                <CheckCircle2 size={14} />
-                                <span>ผู้แจ้งอนุญาตให้ผู้เชี่ยวชาญสลับสารได้</span>
-                            </div>
-                        ) : (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-red-50 text-red-700 rounded-md text-xs font-bold border border-red-200">
-                                <XCircle size={14} />
-                                <span>ไม่อนุญาตให้ผู้เชี่ยวชาญสลับสาร</span>
-                            </div>
-                        )}
-
                         {/* ค่าในคำร้องนี้อ่านมาจากภาพที่ AI ไม่พบหลอดทดลอง — ต้องเทียบกับภาพดิบก่อนยืนยัน */}
                         {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
                             <div className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
@@ -544,6 +553,7 @@ export function RequestCard({
                                     <Calendar size={13} className="text-text-muted shrink-0" />
                                     <span className="font-semibold sm:font-medium">{formatDateTime(item.collectionTime || item.createdAt)}</span>
                                 </div>
+                                <StandardVersionChip item={item} />
                             </div>
 
                             {/* แถวล่าง: แสดงค่าสารเคมีชิปเล็ก — dynamic ตามสารที่มีอยู่จริง */}
@@ -566,28 +576,13 @@ export function RequestCard({
                                 </div>
                             )}
 
-                            {/* แจ้งเตือนสิทธิ์การแก้ไขชนิดสาร (เฉพาะสถานะ pending) */}
-                            {item.statusRequest === "pending" && (
+                            {/* แจ้งเตือนเมื่อ AI ไม่พบหลอดทดลอง (เฉพาะสถานะ pending) */}
+                            {item.statusRequest === "pending" && item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
                                 <div className="mt-2 flex items-center gap-2">
-                                    {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-xs font-bold border border-teal-200">
-                                            <CheckCircle2 size={12} />
-                                            <span>ผู้แจ้งอนุญาตให้สลับสารได้</span>
-                                        </div>
-                                    ) : (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-md text-xs font-bold border border-red-200">
-                                            <XCircle size={12} />
-                                            <span>ไม่อนุญาตให้สลับสาร</span>
-                                        </div>
-                                    )}
-
-                                    {/* ค่าในคำร้องนี้อ่านมาจากภาพที่ AI ไม่พบหลอดทดลอง — ต้องเทียบกับภาพดิบก่อนยืนยัน */}
-                                    {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[NO_TEST_TUBE]")) && (
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
-                                            <ImageOff size={12} />
-                                            <span>AI ไม่พบหลอดทดลองในภาพ</span>
-                                        </div>
-                                    )}
+                                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
+                                        <ImageOff size={12} />
+                                        <span>AI ไม่พบหลอดทดลองในภาพ</span>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -944,7 +939,7 @@ function ParameterSelect({
     originalId,
     disabledIds,
     disabled,
-    title,
+    title = "",
     onChange,
 }: {
     value: number;
@@ -952,7 +947,7 @@ function ParameterSelect({
     originalId: number;
     disabledIds: number[];
     disabled: boolean;
-    title: string;
+    title?: string;
     onChange: (id: number) => void;
 }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -1064,7 +1059,6 @@ export function EditApproveDrawer({
     onPreviewImage?: (images: PreviewImages) => void;
 }) {
     const isMultiSample = editTarget.samples.length > 1;
-    const userRequestedChange = editTarget.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]"));
     const toggleSample = (id: number) => setEditSelectedSampleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     const noneSelected = editSelectedSampleIds.length === 0;
     const referenceSamples = editTarget.samples.filter((s) => s.rawImageUrl || s.analyzedPlotUrl);
@@ -1233,8 +1227,7 @@ export function EditApproveDrawer({
                                                                 options={systemParameters}
                                                                 originalId={m.parameterId}
                                                                 disabledIds={otherSelectedParams}
-                                                                disabled={!isSelected || !userRequestedChange}
-                                                                title={!userRequestedChange ? "ผู้ใช้ไม่ได้เปิดสิทธิ์ให้แอดมินเปลี่ยนสาร (หากผิดกรุณากดปฏิเสธ)" : ""}
+                                                                disabled={!isSelected}
                                                                 onChange={(val) => setEditParameters((prev) => ({ ...prev, [m.parameterId]: val }))}
                                                             />
                                                             <div className="flex items-center gap-2">
@@ -1478,6 +1471,7 @@ export function RequestCardMobile({
                             <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted">
                                 <Calendar size={13} className="text-text-muted shrink-0" />
                                 <span className="leading-none">{formatDateTime(item.collectionTime || item.createdAt)}</span>
+                                <StandardVersionChip item={item} />
                             </div>
                             <div className="flex items-center gap-2 w-full flex-wrap pt-2.5">
                                 {chemReadings.map((c) => (
@@ -1496,24 +1490,8 @@ export function RequestCardMobile({
                     </div>
                 </div>
 
-                {/* Section 2: Request specific info (Notes, Permissions, Sample Select) */}
+                {/* Section 2: Request specific info (Notes, Sample Select) */}
                 <div className="flex flex-col gap-3 px-4 py-3 border-t border-secondary bg-surface-subtle/20">
-                    {/* Permissions */}
-                    {item.statusRequest === "pending" && (
-                        <div className="flex items-center gap-2">
-                            {item.samples.flatMap((s) => s.measurements).some((m) => m.message?.includes("[USER_REQUEST_CHANGE]")) ? (
-                                <div className="inline-flex items-center gap-1.5 w-100  text-teal-700 text-xs font-medium ">
-                                    <CheckCircle2 size={12} />
-                                    <span>ผู้ส่งตรวจคุณภาพน้ำอนุญาตให้สลับสารได้</span>
-                                </div>
-                            ) : (
-                                <div className="inline-flex items-center gap-1.5 w-100 text-text-danger text-xs font-medium">
-                                    <XCircle size={12} />
-                                    <span>ผู้ส่งตรวจคุณภาพน้ำไม่อนุญาตให้สลับสาร</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
                     {/* Notes */}
                     {item.statusRequest === "pending" && item.reviewNote && (
                         <div className="text-xs font-medium sm:font-semibold text-text border border-dashed border-secondary p-2.5 rounded-md wrap-break-word">

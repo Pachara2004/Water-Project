@@ -116,7 +116,7 @@ function setBlobPos(blob: HTMLDivElement, axis: "x" | "y", offset: number, size:
 
 /** ตรวจสอบว่าเมนูนำทางนั้นๆ กำลัง active หรือไม่ รวมถึง route ลูกและ workflow ที่เกี่ยวข้องกัน */
 function isNavItemActive(itemHref: string, pathname: string | null): boolean {
-    if (!pathname) return false;
+    if (!pathname || itemHref.startsWith("#")) return false;
     if (pathname === itemHref || pathname.startsWith(itemHref + "/")) return true;
 
     // หน้า /submit เป็นส่วนหนึ่งของกระบวนการ "ตรวจคุณภาพ" (/collector)
@@ -246,10 +246,18 @@ export default function Navbar() {
     }, [currentUser, userRole, fetchDots]);
 
     const navItems = useMemo(() => {
-        const items: { href: string; label: string; icon: typeof Map; showDot?: boolean; onClick?: (e: React.MouseEvent) => void }[] = [{ href: "/map", label: "แผนที่", icon: Map }];
+        const items: {
+            key: string;
+            href: string;
+            label: string;
+            icon: typeof Map;
+            showDot?: boolean;
+            onClick?: (e: React.MouseEvent) => void;
+        }[] = [{ key: "map", href: "/map", label: "แผนที่", icon: Map }];
 
         if (userRole === "collector" || userRole === "admin") {
             items.push({
+                key: "collector",
                 href: "/collector",
                 label: "ตรวจคุณภาพ",
                 icon: FileScanIcon,
@@ -259,6 +267,7 @@ export default function Navbar() {
 
         if (userRole === "collector" || userRole === "officer" || userRole === "admin") {
             items.push({
+                key: "dashboard",
                 href: "/dashboard",
                 label: "แดชบอร์ด",
                 icon: BarChart2,
@@ -267,7 +276,8 @@ export default function Navbar() {
 
         if (!currentUser) {
             items.push({
-                href: pathname || "/map",
+                key: "login",
+                href: "#login",
                 label: "เข้าสู่ระบบ",
                 icon: User,
                 onClick: async (e: React.MouseEvent) => {
@@ -277,6 +287,7 @@ export default function Navbar() {
             });
         } else {
             items.push({
+                key: "manage",
                 href: "/manage",
                 label: "จัดการข้อมูล",
                 icon: SettingsIcon,
@@ -403,12 +414,12 @@ export default function Navbar() {
                         const displayLabel = MOBILE_LABEL_MAP[item.label] || item.label;
                         return (
                             <Link
-                                key={item.href}
+                                key={item.key}
                                 ref={(el) => {
                                     mobileItemRefs.current[i] = el;
                                 }}
                                 href={item.href}
-                                prefetch={true}
+                                prefetch={item.href.startsWith("/")}
                                 onMouseEnter={() => handlePrefetch(item.href)}
                                 onTouchStart={() => handlePrefetch(item.href)}
                                 onClick={item.onClick}
@@ -447,12 +458,12 @@ export default function Navbar() {
                             const Icon = item.icon;
                             return (
                                 <Link
-                                    key={item.href}
+                                    key={item.key}
                                     ref={(el) => {
                                         desktopItemRefs.current[i] = el;
                                     }}
                                     href={item.href}
-                                    prefetch={true}
+                                    prefetch={item.href.startsWith("/")}
                                     onMouseEnter={() => handlePrefetch(item.href)}
                                     onTouchStart={() => handlePrefetch(item.href)}
                                     onClick={item.onClick}

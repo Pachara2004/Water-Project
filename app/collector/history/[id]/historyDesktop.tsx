@@ -53,6 +53,8 @@ export default function CollectorHistoryDetailDesktop(props: any) {
         resultEntries,
         collectorFullName,
         locationComparisonRows,
+        standardVersionLabel,
+        comparisonTypes,
         isEditing,
         locationDropdownRef,
         locationSearch,
@@ -219,6 +221,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                     </div>
 
                     <StandardsComparison compact title="การผ่านเกณฑ์แบ่งตามประเภทการใช้งาน" rows={locationComparisonRows} />
+                    {standardVersionLabel && <p className="text-xs text-text-muted">{standardVersionLabel}</p>}
                 </section>
             )}
         </div>
@@ -352,7 +355,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                         ))}
 
                         <div className="bg-card-general border border-border rounded-xl p-4">
-                            <ResultsPanel {...mockSubmitHook} />
+                            <ResultsPanel {...mockSubmitHook} locationTypesOverride={comparisonTypes} standardVersionLabel={standardVersionLabel} />
                         </div>
                     </section>
                 </div>

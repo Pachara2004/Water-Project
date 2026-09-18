@@ -47,8 +47,8 @@ import { REVIEW_NOTE_MAX_LENGTH, PARTIAL_REJECT_NOTE } from "@/lib/reviewConstan
 import { generateSessionGroup } from "@/lib/sessionGroup";
 import { nowThai, toApiString } from "@/lib/thaiTime";
 import { ReviewStatus, WaterStatus } from "@prisma/client";
-import { evaluateSample } from "@/lib/standards";
-import { loadAllStandards } from "@/lib/standards-db";
+import { evaluateSample, snapshotToStandardRows, type StandardRow } from "@/lib/standards";
+import { loadStandardVersionSnapshot, resolveStandardVersionIdForSample } from "@/lib/standards-db";
 import { createSampleRecordSnapshot, createSampleRawAuditLog, createNotificationEntry } from "@/lib/sampleRecord";
 
 /**
@@ -277,8 +277,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 // ค่าถูกแก้ไปแล้ว สถานะคุณภาพน้ำที่คำนวณไว้ตอนส่งจึงใช้ไม่ได้อีก ต้องคำนวณใหม่จากค่าจริง
                 // ไม่งั้นตัวอย่างที่ถูกแก้เป็นค่าเกินเกณฑ์จะยังติดสถานะเดิมและขึ้นแผนที่เป็นสีปลอดภัย
                 // ต้องทำก่อน createSampleRecordSnapshot เพราะ snapshot อ่าน status จากอ็อบเจกต์ชุดนี้ไปตรง ๆ
-                const standards = await loadAllStandards();
+                // ใช้เกณฑ์เวอร์ชันที่ตัวอย่างสังกัดตอนส่ง ไม่ใช่เกณฑ์ปัจจุบัน
+                const standardsByVersion = new Map<number | null, StandardRow[]>();
                 for (const sample of updatedGroupSamples) {
+                    const versionId = await resolveStandardVersionIdForSample(sample, tx);
+                    let standards = standardsByVersion.get(versionId);
+                    if (!standards) {
+                        const version = versionId === null ? null : await loadStandardVersionSnapshot(versionId, tx);
+                        standards = snapshotToStandardRows(version?.snapshot ?? []);
+                        standardsByVersion.set(versionId, standards);
+                    }
                     const recomputed = evaluateSample(
                         sample.measurements.map((m) => ({ parameterId: m.parameterId, value: m.value })),
                         standards,

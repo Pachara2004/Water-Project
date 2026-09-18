@@ -211,6 +211,61 @@ export interface LocationTypeWithStandards {
 }
 
 /**
+ * แถวใน StandardVersion.snapshot — เกณฑ์ 1 คู่ (ประเภท × สาร) พร้อมชื่อไว้แสดงผลโดยไม่ต้อง join
+ */
+export interface StandardSnapshotRow {
+    locationTypeId: number;
+    locationTypeCode: string;
+    locationTypeLabelTh: string;
+    parameterId: number;
+    parameterName: string;
+    parameterUnit: string | null;
+    maxValue: number;
+}
+
+/**
+ * ตรวจว่า JSON ที่อ่านจาก DB เป็น snapshot ที่ใช้ได้ คืน [] ถ้ารูปแบบไม่ตรง
+ */
+export function parseStandardSnapshot(raw: unknown): StandardSnapshotRow[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(
+        (r): r is StandardSnapshotRow =>
+            typeof r === "object" && r !== null &&
+            typeof (r as StandardSnapshotRow).locationTypeId === "number" &&
+            typeof (r as StandardSnapshotRow).parameterId === "number" &&
+            Number.isFinite((r as StandardSnapshotRow).maxValue),
+    );
+}
+
+/**
+ * แปลง snapshot เป็น StandardRow[] สำหรับ evaluateSample
+ * ระบุ parameterIds เพื่อเอาเฉพาะสารที่สนใจ
+ */
+export function snapshotToStandardRows(snapshot: StandardSnapshotRow[], parameterIds?: number[]): StandardRow[] {
+    const filter = parameterIds ? new Set(parameterIds) : null;
+    return snapshot
+        .filter((r) => !filter || filter.has(r.parameterId))
+        .map((r) => ({ parameterId: r.parameterId, maxValue: r.maxValue }));
+}
+
+/**
+ * แปลง snapshot เป็น LocationTypeWithStandards[] สำหรับ evaluateAgainstLocationType / StandardsComparison
+ * เรียงตาม locationTypeId เหมือน /api/location-types
+ */
+export function snapshotToLocationTypes(snapshot: StandardSnapshotRow[]): LocationTypeWithStandards[] {
+    const byType = new Map<number, LocationTypeWithStandards>();
+    for (const r of snapshot) {
+        let type = byType.get(r.locationTypeId);
+        if (!type) {
+            type = { id: r.locationTypeId, code: r.locationTypeCode, labelTh: r.locationTypeLabelTh, standards: [] };
+            byType.set(r.locationTypeId, type);
+        }
+        type.standards.push({ parameterId: r.parameterId, maxValue: r.maxValue });
+    }
+    return [...byType.values()].sort((a, b) => a.id - b.id);
+}
+
+/**
  * [TH] ประเมินสถานะของชุดค่าตรวจวัดเทียบกับเกณฑ์ของประเภทการใช้ประโยชน์พื้นที่ประเภทเดียว
  * [EN] Evaluates measured values against standards of a single location type
  *

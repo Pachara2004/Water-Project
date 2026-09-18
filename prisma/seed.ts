@@ -47,6 +47,8 @@ import { WaterStatus } from "@prisma/client";
 import { evaluateSample, type StandardRow } from "../lib/standards";
 // ใช้ client ตัวเดียวกับแอป เพื่อให้ extension เติม createdAt/updatedAt เป็นนาฬิกาไทยเหมือนข้อมูลจริง
 import { prisma } from "../lib/prisma";
+import { buildStandardSnapshot } from "../lib/standards-db";
+import { createSampleRecordSnapshot } from "../lib/sampleRecord";
 import { nowThai, toYymmdd } from "../lib/thaiTime";
 import fs from "fs";
 import path from "path";
@@ -125,6 +127,7 @@ async function main() {
     await prisma.reviewRequest.deleteMany();
     await prisma.waterSampleMeasurement.deleteMany();
     await prisma.waterSample.deleteMany();
+    await prisma.standardVersion.deleteMany();
     await prisma.standard.deleteMany();
     await prisma.parameter.deleteMany();
     await prisma.location.deleteMany();
@@ -139,6 +142,8 @@ async function main() {
         "review_requests",
         "sample_measurements",
         "samples",
+        "sample_record",
+        "standard_versions",
         "standards",
         "parameters",
         "locations",
@@ -192,6 +197,17 @@ async function main() {
             ],
         });
     }
+
+    // เวอร์ชันแรกของชุดเกณฑ์ ตัวอย่างที่ seed ทุกใบชี้มาที่นี่
+    const standardVersionV1 = await prisma.standardVersion.create({
+        data: {
+            version: 1,
+            snapshot: await buildStandardSnapshot(prisma),
+            note: null,
+            createdById: null,
+            createdAt: nowThai(),
+        },
+    });
 
     const strictestPhosphate = Math.min(...locationTypesPayload.map((t) => t.phosphateMax));
     const strictestAmmonia = Math.min(...locationTypesPayload.map((t) => t.ammoniaMax));
@@ -309,6 +325,8 @@ async function main() {
     // ─── 8. WATER SAMPLES WITH PARAMETER MEASUREMENTS (250 กลุ่ม = 500 แถว) ───
     console.log("🧪 Generating 250 sample sessions (2 rows each: ammonia + phosphate)...");
     const samplesCount = 250;
+    // กลุ่มที่ต้องสร้าง SampleRecord หลัง loop (confidence สูง = auto-approve เหมือนระบบจริง)
+    const bulkSessionGroups: string[] = [];
 
     for (let i = 0; i < samplesCount; i++) {
         const daysAgo = Math.floor(Math.random() * 180);
@@ -349,12 +367,15 @@ async function main() {
         const tempValue = parseFloat((Math.random() < 0.775 ? 27.3 + ((Math.random() + Math.random() + Math.random()) / 3) * 5 : 32.1 + Math.pow(Math.random(), 3.3) * 8.1).toFixed(1));
 
         const bulkSessionGroup = nextSessionGroup(sampleDate);
+        bulkSessionGroups.push(bulkSessionGroup);
 
         // ฟิลด์สภาพแวดล้อมและรูปเป็นของ "การเก็บครั้งนั้น" จึงซ้ำเหมือนกันทุกแถวในกลุ่ม
         const sharedFields = {
             collectorId: randomCollectorObj.id,
             locationId: randomLocation.id,
             collectionTime: sampleDate,
+            uploadedActiveAt: sampleDate,
+            standardVersionId: standardVersionV1.id,
             dissolvedOxygen: doValue,
             airTemperature: tempValue,
             rainAccumulation: rainVol,
@@ -388,6 +409,17 @@ async function main() {
         });
     }
 
+    // ─── 8.5 SAMPLE RECORDS ของกลุ่ม bulk ───
+    // ใช้ฟังก์ชันเดียวกับตอน submit จริง ไม่มี reviewer เพราะเป็น auto-approve
+    console.log("📋 Creating sample records for auto-approved sessions...");
+    for (const sg of bulkSessionGroups) {
+        const groupSamples = await prisma.waterSample.findMany({
+            where: { sessionGroup: sg },
+            include: { collector: true, location: true, measurements: { include: { parameter: true } } },
+        });
+        await createSampleRecordSnapshot(prisma as any, groupSamples);
+    }
+
     // ─── 9. CONFIDENCE REVIEW TEST DATA ───
     console.log("🔍 Generating confidence-review test scenarios...");
 
@@ -404,6 +436,8 @@ async function main() {
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
             collectionTime: timePendingSingle,
+            uploadedActiveAt: timePendingSingle,
+            standardVersionId: standardVersionV1.id,
             dissolvedOxygen: 5.2,
             airTemperature: 29.1,
             status: computeStatus(0, 2.1),
@@ -424,6 +458,8 @@ async function main() {
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
             collectionTime: timePendingPaired,
+            uploadedActiveAt: timePendingPaired,
+            standardVersionId: standardVersionV1.id,
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
             status: computeStatus(0, 0.15),
@@ -439,6 +475,8 @@ async function main() {
             collectorId: collectorA.id,
             locationId: reviewLocation.id,
             collectionTime: timePendingPaired,
+            uploadedActiveAt: timePendingPaired,
+            standardVersionId: standardVersionV1.id,
             dissolvedOxygen: 6.0,
             airTemperature: 28.4,
             status: computeStatus(0.6, 0),
@@ -459,6 +497,8 @@ async function main() {
             collectorId: collectorB.id,
             locationId: insertedLocations[1].id,
             collectionTime: timePendingOther,
+            uploadedActiveAt: timePendingOther,
+            standardVersionId: standardVersionV1.id,
             status: computeStatus(0, 3.4),
             sessionGroup: sgPendingOther,
             rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
@@ -477,6 +517,8 @@ async function main() {
             collectorId: collectorB.id,
             locationId: reviewLocation.id,
             collectionTime: timeApproved,
+            uploadedActiveAt: timeApproved,
+            standardVersionId: standardVersionV1.id,
             status: computeStatus(0.02, 0),
             sessionGroup: sgApproved,
             rawImageUrl: getRandomImage("raw") ?? getRandomImage("any"),
@@ -492,6 +534,12 @@ async function main() {
             reviewedAt: new Date(nowThai().getTime() - 1000 * 60 * 60 * 20),
         },
     });
+    // กลุ่มที่เจ้าหน้าที่อนุมัติแล้วต้องมี record เหมือนระบบจริง
+    const approvedSamples = await prisma.waterSample.findMany({
+        where: { sessionGroup: sgApproved },
+        include: { collector: true, location: true, measurements: { include: { parameter: true } } },
+    });
+    await createSampleRecordSnapshot(prisma as any, approvedSamples, adminUser.id);
 
     // E) REJECTED
     const timeRejected = new Date(nowThai().getTime() - 1000 * 60 * 60 * 48);
@@ -502,6 +550,8 @@ async function main() {
             collectorId: collectorA.id,
             locationId: insertedLocations[2].id,
             collectionTime: timeRejected,
+            uploadedActiveAt: timeRejected,
+            standardVersionId: standardVersionV1.id,
             status: computeStatus(0, 4.5),
             sessionGroup: sgRejected,
             isDeleted: true,
@@ -522,6 +572,7 @@ async function main() {
     });
 
     console.log("   ✔ Pending: 3 sessions | Approved: 1 | Rejected: 1");
+    console.log(`   ✔ Sample records: ${await prisma.sampleRecord.count()} | Standard version: v${standardVersionV1.version}`);
     console.log("\n✅ Seeding completed successfully!");
 }
 
