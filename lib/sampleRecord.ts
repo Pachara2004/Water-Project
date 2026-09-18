@@ -125,6 +125,8 @@ export async function createSampleRecordSnapshot(
       rainAccumulation: baseSample.rainAccumulation,
       weatherCondCode: baseSample.weatherCondCode,
       status: overallStatus,
+      // เวอร์ชันเกณฑ์ที่ใช้ตัดสินกลุ่มนี้ ทุก sample ในกลุ่มส่งพร้อมกันจึงเป็นเวอร์ชันเดียวกัน
+      standardVersionId: baseSample.standardVersionId ?? null,
       imageUrl: imageUrlJson,
       imageExpiresAt: baseSample.imageExpiresAt,
       isDeleted: false,
