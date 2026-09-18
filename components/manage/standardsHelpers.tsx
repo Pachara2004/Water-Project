@@ -107,18 +107,13 @@ export function StandardsEditTable({
                             <td className="sticky left-0 bg-surface px-2 py-2 border-b border-border/60 font-medium text-text-primary whitespace-nowrap">{lt.labelTh}</td>
                             {parameters.map((p) => {
                                 const key = cellKey(lt.id, p.id);
+                                // undefined = คู่นี้ยังไม่มีเกณฑ์ใน DB (เช่นสารที่เพิ่งเพิ่ม) กรอกค่าเพื่อสร้างใหม่ได้ ปล่อยว่างได้
                                 const current = currentByKey.get(key);
-                                // ช่องที่ไม่มีเกณฑ์ใน DB แก้ไม่ได้ (ขอบเขตหน้านี้แก้ได้เฉพาะคู่ที่มีอยู่)
-                                if (current === undefined) {
-                                    return (
-                                        <td key={p.id} className="px-2 py-2 border-b border-border/60 text-center text-text-muted">
-                                            -
-                                        </td>
-                                    );
-                                }
-                                const draft = draftByKey.get(key) ?? String(current);
-                                const changed = Number(draft) !== current;
-                                const invalid = draft.trim() === "" || !Number.isFinite(Number(draft)) || Number(draft) <= 0;
+                                const isNew = current === undefined;
+                                const draft = draftByKey.get(key) ?? (isNew ? "" : String(current));
+                                const untouched = isNew && draft.trim() === "";
+                                const changed = !untouched && Number(draft) !== current;
+                                const invalid = !untouched && (draft.trim() === "" || !Number.isFinite(Number(draft)) || Number(draft) <= 0);
                                 return (
                                     <td key={p.id} className="px-2 py-2 border-b border-border/60 text-center">
                                         <input
@@ -128,12 +123,13 @@ export function StandardsEditTable({
                                             min="0"
                                             value={draft}
                                             disabled={disabled}
+                                            placeholder={isNew ? "ยังไม่กำหนด" : undefined}
                                             onChange={(e) => onChange(key, e.target.value)}
                                             className={`w-24 max-w-full text-center rounded-lg border px-2 py-1.5 bg-surface-subtle text-text-primary outline-hidden focus:border-primary transition-colors ${
                                                 invalid ? "border-border-danger bg-bg-danger" : changed ? "border-amber-400 bg-amber-50 dark:bg-amber-500/10" : "border-border"
                                             }`}
                                         />
-                                        {changed && !invalid && <span className="block text-xs text-text-muted mt-0.5">เดิม {current}</span>}
+                                        {changed && !invalid && <span className="block text-xs text-text-muted mt-0.5">{isNew ? "ใหม่" : `เดิม ${current}`}</span>}
                                     </td>
                                 );
                             })}
@@ -231,39 +227,41 @@ function VersionRow({
     );
 }
 
-/** 1 แถวใน diff: ค่าเดิม → ค่าใหม่ของช่องหนึ่ง */
+/** 1 แถวของเวอร์ชัน: ค่าในเวอร์ชันนี้ และค่าเดิมถ้าต่างจากเวอร์ชันก่อนหน้า */
 interface DiffRow {
     label: string;
     parameter: string;
     before: number | null;
-    after: number | null;
+    after: number;
+    changed: boolean;
 }
 
-/** เทียบ snapshot สองชุด คืนเฉพาะช่องที่ค่าต่างกัน (ถ้าไม่มีเวอร์ชันก่อนหน้า คืนทุกช่อง) */
+/** ค่าทุกช่องของเวอร์ชัน พร้อมธงว่าช่องไหนต่างจากเวอร์ชันก่อนหน้า */
 function buildDiff(prev: StandardSnapshotRow[], cur: StandardSnapshotRow[]): DiffRow[] {
     const prevByKey = new Map(prev.map((r) => [cellKey(r.locationTypeId, r.parameterId), r.maxValue]));
-    const rows: DiffRow[] = [];
-    for (const r of cur) {
+    return cur.map((r) => {
         const before = prevByKey.get(cellKey(r.locationTypeId, r.parameterId)) ?? null;
-        if (prev.length > 0 && before === r.maxValue) continue;
-        rows.push({ label: r.locationTypeLabelTh, parameter: r.parameterName, before, after: r.maxValue });
-    }
-    return rows;
+        return { label: r.locationTypeLabelTh, parameter: r.parameterName, before, after: r.maxValue, changed: prev.length > 0 && before !== r.maxValue };
+    });
 }
 
-/** ตารางแสดง diff */
+/** ตารางค่าทั้งหมดของเวอร์ชัน ช่องที่เปลี่ยนไฮไลต์และขีดฆ่าค่าเดิม */
 function DiffTable({ rows, hasPrevious }: { rows: DiffRow[]; hasPrevious: boolean }) {
-    if (rows.length === 0) return <p className="text-xs text-text-muted">ไม่มีค่าที่เปลี่ยนจากเวอร์ชันก่อนหน้า</p>;
+    if (rows.length === 0) return <p className="text-xs text-text-muted">ไม่มีข้อมูลในเวอร์ชันนี้</p>;
+    const changedCount = rows.filter((r) => r.changed).length;
     return (
-        <div className="space-y-1.5">
-            {!hasPrevious && <p className="text-xs text-text-muted">เวอร์ชันแรก แสดงค่าทั้งหมด</p>}
+        <div className="space-y-1">
+            <p className="text-xs text-text-muted mb-1.5">{hasPrevious ? `เปลี่ยน ${changedCount} ช่องจากเวอร์ชันก่อนหน้า` : "เวอร์ชันแรก"}</p>
             {rows.map((r, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-text-secondary truncate">
+                <div
+                    key={i}
+                    className={`flex items-center justify-between gap-2 text-xs rounded-md px-1.5 py-1 -mx-1.5 ${r.changed ? "bg-amber-50 dark:bg-amber-500/10" : ""}`}
+                >
+                    <span className={`truncate ${r.changed ? "text-text-primary font-medium" : "text-text-secondary"}`}>
                         {r.label} · <span className="uppercase font-medium">{r.parameter}</span>
                     </span>
-                    <span className="shrink-0 font-medium text-text-primary">
-                        {hasPrevious && r.before !== null && <span className="text-text-muted line-through mr-1.5">{r.before}</span>}
+                    <span className={`shrink-0 ${r.changed ? "font-bold text-text-primary" : "font-medium text-text-secondary"}`}>
+                        {r.changed && r.before !== null && <span className="text-text-muted font-normal line-through mr-1.5">{r.before}</span>}
                         {r.after}
                     </span>
                 </div>

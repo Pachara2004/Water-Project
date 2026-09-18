@@ -46,7 +46,7 @@ import { useState, useRef, useEffect } from "react";
 import { isLowConfidence, CONFIDENCE_THRESHOLD, evaluateSample, type StandardRow, type MeasuredValue } from "@/lib/standards";
 import { REVIEW_NOTE_MAX_LENGTH } from "@/lib/reviewConstants";
 import { readChemMeasurements, formatMeasuredValue } from "@/lib/chemLabels";
-import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown, Download, Scale } from "lucide-react";
+import { MapPin, Check, X, ImageOff, Clock, FileScan, Calendar, Beaker, CheckCircle2, XCircle, Info, UserRound, Images, Edit2, ChevronDown, Download, ClipboardPenLine } from "lucide-react";
 import StatusBadge from "@/components/map/StatusBadge";
 import Popup from "@/components/Popup";
 
@@ -225,7 +225,7 @@ export function StandardVersionChip({ item }: { item: ReviewRequestItem }) {
             className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md border border-border bg-surface-subtle text-text-muted shrink-0"
             title="กลุ่มนี้ส่งก่อนเกณฑ์ถูกแก้ จะถูกตัดสินด้วยเกณฑ์เวอร์ชันนี้"
         >
-            <Scale size={11} />
+            <ClipboardPenLine size={11} />
             เกณฑ์ v{item.standardVersion.version}
         </span>
     );
@@ -349,7 +349,7 @@ export function RequestDetailPopup({
                     <InfoRow icon={UserRound} label="ผู้เก็บตัวอย่าง" value={item.collector?.name || "-"} />
                     <InfoRow icon={Clock} label="ส่งคำร้องเมื่อ" value={formatDateTimeFull(item.createdAt)} />
                     {item.standardVersion && !item.standardVersion.isCurrent && (
-                        <InfoRow icon={Scale} label="เกณฑ์ที่ใช้ตัดสิน" value={`เวอร์ชัน ${item.standardVersion.version} (ก่อนแก้เกณฑ์)`} />
+                        <InfoRow icon={ClipboardPenLine} label="เกณฑ์ที่ใช้ตัดสิน" value={`เวอร์ชัน ${item.standardVersion.version} (ก่อนแก้เกณฑ์)`} />
                     )}
                 </div>
 

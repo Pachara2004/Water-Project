@@ -18,7 +18,7 @@
 
 "use client";
 
-import { Scale, History, RefreshCw, RotateCcw, Save, ClipboardCheck } from "lucide-react";
+import { ClipboardPenLine, History, RefreshCw, RotateCcw, Save, ClipboardCheck } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { StandardsEditTable, StandardVersionList, formatVersionDate } from "@/components/manage/standardsHelpers";
 import type { StandardsPageProps } from "./standardsMobile";
@@ -65,7 +65,7 @@ export default function StandardsDesktop(props: StandardsPageProps) {
                         <h1 className="text-xl font-bold tracking-tight text-text-primary">
                             จัดการ<span className="text-primary font-bold">เกณฑ์มาตรฐาน</span>
                         </h1>
-                        <p className="text-text-secondary font-medium text-xs mt-0.5">แก้ค่าสูงสุดของสารต่อประเภทแหล่งน้ำ ทุกครั้งที่บันทึกจะเก็บเป็นเวอร์ชันใหม่</p>
+                        <p className="text-text-secondary font-medium text-xs mt-0.5">แก้ไขค่าเกณฑ์มาตรฐานของสารต่อประเภทแหล่งน้ำ ทุกครั้งที่บันทึกจะเก็บเป็นเวอร์ชันใหม่</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3 shrink-0">
                         <div className="bg-card-summary rounded-xl border border-border p-3 text-center min-w-30">
@@ -84,8 +84,8 @@ export default function StandardsDesktop(props: StandardsPageProps) {
                     <div className="bg-surface rounded-2xl p-5 border border-border space-y-4">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                             <div className="inline-flex items-center gap-1.5">
-                                <Scale size={18} className="text-primary" />
-                                <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ค่าสูงสุดที่ยอมรับได้</h2>
+                                <ClipboardPenLine size={18} className="text-primary" />
+                                <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ค่าค่าเกณฑ์มาตรฐาน</h2>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button

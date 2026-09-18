@@ -15,7 +15,7 @@
  * @license Private / Proprietary
  */
 
-import { ArrowLeft, Scale } from "lucide-react";
+import { ArrowLeft, ClipboardPenLine } from "lucide-react";
 
 export default function Loading() {
     return (
@@ -44,7 +44,7 @@ export default function Loading() {
                 <div className="relative w-full bg-surface rounded-2xl p-4 border border-border space-y-4">
                     <div className="h-9 bg-surface-subtle border border-border rounded-xl" />
                     <div className="inline-flex items-center gap-1.5">
-                        <Scale size={16} className="text-text-muted opacity-40" />
+                        <ClipboardPenLine size={16} className="text-text-muted opacity-40" />
                         <div className="h-4 bg-surface-subtle rounded w-36" />
                     </div>
                     <div className="space-y-2">

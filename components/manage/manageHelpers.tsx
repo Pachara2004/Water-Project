@@ -41,7 +41,7 @@
 import { useState } from "react";
 import liff from "@line/liff";
 import { useAppStore } from "@/lib/store";
-import { MapPin, Users, ReceiptText, Check, AlertCircle, User, ClipboardCheck, Pencil, Scale } from "lucide-react";
+import { MapPin, Users, ReceiptText, Check, AlertCircle, User, ClipboardCheck, Pencil, ClipboardPenLine } from "lucide-react";
 import Popup from "@/components/Popup";
 
 /** เมนูสำหรับ admin; `countKey` เชื่อมกับผลลัพธ์ /api/manage/pending-count เพื่อบอกว่าเมนูไหนมีคำร้องค้างอยู่ */
@@ -81,7 +81,7 @@ export const adminMenus = [
     },
     {
         href: "/manage/standards",
-        icon: Scale,
+        icon: ClipboardPenLine,
         label: "จัดการเกณฑ์มาตรฐาน",
         description: "แก้ค่าเกณฑ์คุณภาพน้ำตามประเภทแหล่งน้ำ และดูประวัติการเปลี่ยนแปลง",
         badge: "Standards",

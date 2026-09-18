@@ -106,23 +106,23 @@ export default function AdminStandardsPage() {
 
     const currentByKey = useMemo(() => new Map((data?.standards ?? []).map((s) => [cellKey(s.locationTypeId, s.parameterId), s.maxValue])), [data]);
 
-    /** เฉพาะช่องที่ค่าต่างจากปัจจุบันและเป็นตัวเลขที่ใช้ได้ */
+    /** เฉพาะช่องที่ค่าต่างจากปัจจุบัน (หรือยังไม่มีเกณฑ์) และเป็นตัวเลขที่ใช้ได้ */
     const changes = useMemo(() => {
         const out: StandardCell[] = [];
         for (const [key, raw] of draftByKey) {
             const current = currentByKey.get(key);
             const value = Number(raw);
-            if (current === undefined || raw.trim() === "" || !Number.isFinite(value) || value <= 0 || value === current) continue;
+            if (raw.trim() === "" || !Number.isFinite(value) || value <= 0 || value === current) continue;
             const [locationTypeId, parameterId] = key.split(":").map(Number);
             out.push({ locationTypeId, parameterId, maxValue: value });
         }
         return out;
     }, [draftByKey, currentByKey]);
 
-    /** มีช่องที่พิมพ์ค่าใช้ไม่ได้ (ว่าง / ไม่ใช่ตัวเลข / ≤ 0) */
+    /** มีช่องที่พิมพ์ค่าใช้ไม่ได้ (ว่าง / ไม่ใช่ตัวเลข / ≤ 0) ช่องที่ยังไม่มีเกณฑ์ปล่อยว่างได้ */
     const hasInvalid = useMemo(() => {
         for (const [key, raw] of draftByKey) {
-            if (!currentByKey.has(key)) continue;
+            if (!currentByKey.has(key) && raw.trim() === "") continue;
             const value = Number(raw);
             if (raw.trim() === "" || !Number.isFinite(value) || value <= 0) return true;
         }
@@ -153,8 +153,8 @@ export default function AdminStandardsPage() {
         const confirmed = await confirmDialog({
             title: "ยืนยันบันทึกเกณฑ์ใหม่?",
             text:
-                `จะแก้ค่าเกณฑ์ ${changes.length} ช่อง และสร้างเวอร์ชันใหม่` +
-                (pending > 0 ? ` — คำร้องที่ค้างตรวจ ${pending} รายการจะยังถูกตัดสินด้วยเกณฑ์เดิมตอนส่ง` : ""),
+                `แก้ไขค่าเกณฑ์ ${changes.length} ช่อง ` +
+                (pending > 0 ? ` — คำร้องที่ค้างตรวจ ${pending} รายการจะยังถูกตัดสินด้วยเกณฑ์เดิม` : ""),
             confirmText: "บันทึก",
             tone: "warning",
         });

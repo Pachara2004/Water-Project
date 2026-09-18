@@ -19,7 +19,7 @@
 "use client";
 
 import type { useRouter } from "next/navigation";
-import { Scale, History, Pencil, RefreshCw, RotateCcw, Save, ClipboardCheck } from "lucide-react";
+import { ClipboardPenLine, History, Pencil, RefreshCw, RotateCcw, Save, ClipboardCheck } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import type { StandardSnapshotRow } from "@/lib/standards";
 import {
@@ -108,7 +108,7 @@ export default function StandardsMobile(props: StandardsPageProps) {
                         <h1 className="text-xl font-bold tracking-tight text-text-primary">
                             จัดการ<span className="text-primary font-bold">เกณฑ์มาตรฐาน</span>
                         </h1>
-                        <p className="text-text-secondary font-medium text-xs mt-0.5">แก้ค่าสูงสุดของสารต่อประเภทแหล่งน้ำ ทุกครั้งที่บันทึกจะเก็บเป็นเวอร์ชันใหม่</p>
+                        <p className="text-text-secondary font-medium text-xs mt-0.5">แก้ไขค่าเกณฑ์มาตรฐานของสารต่อประเภทแหล่งน้ำ ทุกครั้งที่บันทึกจะเก็บเป็นเวอร์ชันใหม่</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <div className="bg-card-summary rounded-xl border border-border p-3 text-center">
@@ -147,8 +147,8 @@ export default function StandardsMobile(props: StandardsPageProps) {
                     {tab === "edit" && (
                         <>
                             <div className="inline-flex items-center gap-1.5">
-                                <Scale size={16} className="text-primary" />
-                                <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ค่าสูงสุดที่ยอมรับได้</h2>
+                                <ClipboardPenLine size={16} className="text-primary" />
+                                <h2 className="text-sm uppercase text-primary font-bold tracking-wider">ค่าเกณฑ์มาตรฐาน</h2>
                             </div>
 
                             {loading ? (

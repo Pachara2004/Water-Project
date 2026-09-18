@@ -5,10 +5,10 @@
  * @description
  * [TH] Route Handler จัดการเกณฑ์มาตรฐานคุณภาพน้ำสำหรับ Admin:
  * - GET: ตารางเกณฑ์ปัจจุบัน (ประเภท × สาร) พร้อมเวอร์ชันล่าสุดและจำนวนคำร้องที่ค้างตรวจ
- * - PUT: แก้ค่า maxValue ของคู่ที่มีอยู่ แล้วบันทึกเป็นเวอร์ชันใหม่ใน standard_versions
+ * - PUT: แก้ค่า maxValue ของคู่ (ประเภท × สาร) หรือกำหนดเกณฑ์ให้คู่ที่ยังไม่มี แล้วบันทึกเป็นเวอร์ชันใหม่ใน standard_versions
  * [EN] Route Handler for water quality standards administration (admin only):
  * - GET: current standards matrix with latest version and pending review count
- * - PUT: update maxValue of existing pairs and record a new StandardVersion snapshot
+ * - PUT: upsert maxValue per pair and record a new StandardVersion snapshot
  *
  * @author Nopparut Udomlert (นพรัตน อุดมเลิศ, Nop856)
  * @created 2026-09-18
@@ -118,27 +118,35 @@ export async function PUT(request: NextRequest) {
         }
 
         const result = await prisma.$transaction(async (tx) => {
+            // ประเภทและสารต้องมีอยู่จริงในตาราง master (คู่ที่ยังไม่มีเกณฑ์สร้างใหม่ได้ แต่ประเภท/สารใหม่ต้องเพิ่มที่ master ก่อน)
+            const [typeIds, paramIds] = await Promise.all([
+                tx.locationType.findMany({ where: { id: { in: [...new Set(changes.map((c) => c.locationTypeId))] } }, select: { id: true } }),
+                tx.parameter.findMany({ where: { id: { in: [...new Set(changes.map((c) => c.parameterId))] } }, select: { id: true } }),
+            ]);
+            const knownTypes = new Set(typeIds.map((t) => t.id));
+            const knownParams = new Set(paramIds.map((p) => p.id));
+            const unknown = changes.find((c) => !knownTypes.has(c.locationTypeId) || !knownParams.has(c.parameterId));
+            if (unknown) {
+                return { error: `ไม่พบประเภท ${unknown.locationTypeId} หรือสาร ${unknown.parameterId} ในระบบ` } as const;
+            }
+
             const existing = await tx.standard.findMany({
                 where: { OR: changes.map((c) => ({ locationTypeId: c.locationTypeId, parameterId: c.parameterId })) },
                 select: { locationTypeId: true, parameterId: true, maxValue: true },
             });
             const existingByKey = new Map(existing.map((s) => [`${s.locationTypeId}:${s.parameterId}`, s.maxValue]));
 
-            // แก้ได้เฉพาะคู่ที่มีอยู่แล้ว การเพิ่มประเภท/สารใหม่ไม่อยู่ในขอบเขตของหน้านี้
-            const missing = changes.find((c) => !existingByKey.has(`${c.locationTypeId}:${c.parameterId}`));
-            if (missing) {
-                return { error: `ไม่พบเกณฑ์ของประเภท ${missing.locationTypeId} สาร ${missing.parameterId}` } as const;
-            }
-
+            // คู่ที่ยังไม่มีเกณฑ์นับเป็นการเปลี่ยนเสมอ
             const actualChanges = changes.filter((c) => existingByKey.get(`${c.locationTypeId}:${c.parameterId}`) !== c.maxValue);
             if (actualChanges.length === 0) {
                 return { changed: 0, version: null } as const;
             }
 
             for (const c of actualChanges) {
-                await tx.standard.update({
+                await tx.standard.upsert({
                     where: { locationTypeId_parameterId: { locationTypeId: c.locationTypeId, parameterId: c.parameterId } },
-                    data: { maxValue: c.maxValue },
+                    create: { locationTypeId: c.locationTypeId, parameterId: c.parameterId, maxValue: c.maxValue },
+                    update: { maxValue: c.maxValue },
                 });
             }
 
