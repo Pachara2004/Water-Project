@@ -9,6 +9,8 @@ services:
       MYSQL_USER: ${MYSQL_USER:-wateruser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-waterpass}
       TZ: Asia/Bangkok
+    ports:
+      - "8053:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: >
