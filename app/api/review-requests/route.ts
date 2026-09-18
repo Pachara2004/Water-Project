@@ -27,6 +27,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentStandardVersion, resolveStandardVersionIdForSample } from "@/lib/standards-db";
 import { toApiString } from "@/lib/thaiTime";
 import { verifyAuth } from "@/lib/auth-guard";
 import { ReviewStatus } from "@prisma/client";
@@ -108,10 +109,22 @@ export async function GET(request: NextRequest) {
             : [];
         const reviewerById = new Map(reviewers.map((u) => [u.id, u]));
 
+        // เวอร์ชันเกณฑ์ของแต่ละกลุ่ม ให้หน้าเว็บโชว์ป้ายเมื่อไม่ตรงกับเวอร์ชันปัจจุบัน
+        const currentVersion = await getCurrentStandardVersion();
+        const versionIdByGroup = new Map<string, number | null>();
+        for (const [group, groupSamples] of samplesByGroup) {
+            versionIdByGroup.set(group, groupSamples[0] ? await resolveStandardVersionIdForSample(groupSamples[0]) : null);
+        }
+        const versionIds = Array.from(new Set(Array.from(versionIdByGroup.values()).filter((id): id is number => id !== null)));
+        const versions = versionIds.length ? await prisma.standardVersion.findMany({ where: { id: { in: versionIds } }, select: { id: true, version: true } }) : [];
+        const versionById = new Map(versions.map((v) => [v.id, v]));
+
         const result = reviewRequests.map((r) => {
             const groupSamples = samplesByGroup.get(r.sessionGroup) ?? [];
             const first = groupSamples[0];
             const reviewer = r.reviewedById ? reviewerById.get(r.reviewedById) : null;
+            const versionId = versionIdByGroup.get(r.sessionGroup) ?? null;
+            const version = versionId !== null ? versionById.get(versionId) : null;
 
             return {
                 id: r.id,
@@ -123,6 +136,8 @@ export async function GET(request: NextRequest) {
                 reviewedBy: reviewer ? { id: reviewer.id, name: `${reviewer.firstName || ""} ${reviewer.lastName || ""}`.trim() || reviewer.lineProfileName } : null,
 
                 collectionTime: toApiString(first?.collectionTime),
+                // เกณฑ์ที่กลุ่มนี้จะถูกตัดสินด้วย isCurrent=false แปลว่าเกณฑ์ถูกแก้หลังจากส่ง
+                standardVersion: version ? { id: version.id, version: version.version, isCurrent: version.id === currentVersion?.id } : null,
                 location: first?.location
                     ? {
                           id: first.location.id,
