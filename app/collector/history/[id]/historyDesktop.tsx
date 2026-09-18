@@ -54,6 +54,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
         collectorFullName,
         locationComparisonRows,
         standardVersionLabel,
+        comparisonTypes,
         isEditing,
         locationDropdownRef,
         locationSearch,
@@ -354,7 +355,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                         ))}
 
                         <div className="bg-card-general border border-border rounded-xl p-4">
-                            <ResultsPanel {...mockSubmitHook} />
+                            <ResultsPanel {...mockSubmitHook} locationTypesOverride={comparisonTypes} standardVersionLabel={standardVersionLabel} />
                         </div>
                     </section>
                 </div>

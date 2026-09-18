@@ -19,7 +19,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, History, User } from "lucide-react";
+import { ChevronDown, ChevronUp, History, User, Trash2, Plus, RefreshCw } from "lucide-react";
 import type { StandardSnapshotRow } from "@/lib/standards";
 import { chemAbbrev } from "@/lib/chemLabels";
 
@@ -69,6 +69,7 @@ export function formatVersionDate(value: string): string {
  * ช่องที่ค่าต่างจากค่าปัจจุบันจะไฮไลต์
  *
  * @param compact - true = ตัวหนังสือเล็กลงสำหรับจอมือถือ
+ * @param onDeleteType - มีค่า = แสดงปุ่มลบท้ายแถว
  */
 export function StandardsEditTable({
     locationTypes,
@@ -78,6 +79,8 @@ export function StandardsEditTable({
     onChange,
     disabled,
     compact = false,
+    onDeleteType,
+    deleteDisabled = false,
 }: {
     locationTypes: StandardsLocationType[];
     parameters: StandardsParameter[];
@@ -86,7 +89,11 @@ export function StandardsEditTable({
     onChange: (key: string, value: string) => void;
     disabled: boolean;
     compact?: boolean;
+    onDeleteType?: (type: StandardsLocationType) => void;
+    deleteDisabled?: boolean;
 }) {
+    // ลบประเภทสุดท้ายไม่ได้ ตรงกับกติกาฝั่ง API
+    const canDelete = Boolean(onDeleteType) && locationTypes.length > 1;
     return (
         <div className="overflow-x-auto -mx-1">
             <table className={`w-full border-separate border-spacing-0 ${compact ? "text-xs" : "text-sm"}`}>
@@ -99,6 +106,7 @@ export function StandardsEditTable({
                                 <span className="block text-xs font-normal text-text-muted">{p.unit || "mg/L"}</span>
                             </th>
                         ))}
+                        {onDeleteType && <th className="border-b border-border w-10" />}
                     </tr>
                 </thead>
                 <tbody>
@@ -133,10 +141,199 @@ export function StandardsEditTable({
                                     </td>
                                 );
                             })}
+                            {onDeleteType && (
+                                <td className="px-1 py-2 border-b border-border/60 text-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => onDeleteType(lt)}
+                                        disabled={deleteDisabled || !canDelete}
+                                        title={canDelete ? `ลบประเภท ${lt.labelTh}` : "ต้องมีประเภทอย่างน้อย 1 ประเภท"}
+                                        aria-label={`ลบประเภท ${lt.labelTh}`}
+                                        className="p-1.5 rounded-md text-text-muted hover:text-text-danger hover:bg-bg-danger disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted transition-colors cursor-pointer"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </td>
+                            )}
                         </tr>
                     ))}
                 </tbody>
             </table>
+        </div>
+    );
+}
+
+/** ข้อมูลประเภทใหม่พร้อมเกณฑ์ทุกสาร ที่ฟอร์มส่งให้ page */
+export interface NewLocationTypeInput {
+    code: string;
+    labelTh: string;
+    standards: { parameterId: number; maxValue: number }[];
+    note: string;
+}
+
+/**
+ * ฟอร์มเพิ่มประเภทแหล่งน้ำ รหัส + ชื่อไทย + ค่าเกณฑ์ของทุกสาร + เหตุผล
+ * บันทึกแล้วเกิดเวอร์ชันใหม่ทันที
+ *
+ * @param onAdd - คืน true เมื่อสำเร็จ ฟอร์มจะล้างค่า
+ */
+export function AddLocationTypeForm({
+    parameters,
+    onAdd,
+    disabled,
+    compact = false,
+}: {
+    parameters: StandardsParameter[];
+    onAdd: (input: NewLocationTypeInput) => Promise<boolean>;
+    disabled: boolean;
+    compact?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const [code, setCode] = useState("");
+    const [labelTh, setLabelTh] = useState("");
+    const [values, setValues] = useState<Record<number, string>>({});
+    const [note, setNote] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    const normalizedCode = code.trim().toUpperCase();
+    const codeValid = /^[A-Z][A-Z0-9_]{1,31}$/.test(normalizedCode);
+    const isValueValid = (raw: string | undefined) => raw !== undefined && raw.trim() !== "" && Number.isFinite(Number(raw)) && Number(raw) > 0;
+    const allValuesValid = parameters.length > 0 && parameters.every((p) => isValueValid(values[p.id]));
+    const canSubmit = codeValid && labelTh.trim().length > 0 && allValuesValid && !disabled && !submitting;
+
+    const reset = () => {
+        setCode("");
+        setLabelTh("");
+        setValues({});
+        setNote("");
+    };
+
+    const submit = async () => {
+        if (!canSubmit) return;
+        setSubmitting(true);
+        try {
+            const ok = await onAdd({
+                code: normalizedCode,
+                labelTh: labelTh.trim(),
+                standards: parameters.map((p) => ({ parameterId: p.id, maxValue: Number(values[p.id]) })),
+                note: note.trim(),
+            });
+            if (ok) {
+                reset();
+                setOpen(false);
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (!open) {
+        return (
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                disabled={disabled}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-40 cursor-pointer"
+            >
+                <Plus size={13} /> เพิ่มประเภทแหล่งน้ำ
+            </button>
+        );
+    }
+
+    const inputClass = "w-full rounded-lg border px-3 py-2 text-xs bg-surface text-text-primary outline-hidden focus:border-primary placeholder:text-text-muted";
+
+    return (
+        <div className="rounded-xl border border-border bg-surface-subtle p-3 space-y-3">
+            <p className="text-xs font-semibold text-text-secondary">เพิ่มประเภทแหล่งน้ำ</p>
+
+            <div className={`grid gap-2 ${compact ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"}`}>
+                <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="รหัส เช่น MANGROVE"
+                    maxLength={32}
+                    disabled={disabled || submitting}
+                    className={`${inputClass} uppercase ${code && !codeValid ? "border-border-danger" : "border-border"}`}
+                />
+                <input
+                    type="text"
+                    value={labelTh}
+                    onChange={(e) => setLabelTh(e.target.value)}
+                    placeholder="ชื่อไทย เช่น เพื่อการอนุรักษ์ป่าชายเลน"
+                    maxLength={100}
+                    disabled={disabled || submitting}
+                    className={`${inputClass} border-border`}
+                />
+            </div>
+            {code && !codeValid && <p className="text-xs text-text-danger">รหัสต้องเป็น A–Z, 0–9, _ ขึ้นต้นด้วยตัวอักษร 2–32 ตัว</p>}
+
+            {/* ค่าเกณฑ์ของทุกสาร บังคับกรอกครบ */}
+            <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-text-secondary">ค่าเกณฑ์สูงสุดของประเภทนี้</p>
+                <div className={`grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-3"}`}>
+                    {parameters.map((p) => {
+                        const raw = values[p.id] ?? "";
+                        const invalid = raw !== "" && !isValueValid(raw);
+                        return (
+                            <label key={p.id} className="flex flex-col gap-1">
+                                <span className="text-xs text-text-muted">
+                                    {chemAbbrev(p.name, p.formula)} <span className="opacity-70">({p.unit || "mg/L"})</span>
+                                </span>
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="any"
+                                    min="0"
+                                    value={raw}
+                                    onChange={(e) => setValues((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                                    placeholder="0.00"
+                                    disabled={disabled || submitting}
+                                    className={`${inputClass} ${invalid ? "border-border-danger" : "border-border"}`}
+                                />
+                            </label>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="space-y-1">
+                <label className="text-xs font-semibold text-text-secondary">เหตุผล (ไม่บังคับ)</label>
+                <input
+                    type="text"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder={`ค่าเริ่มต้น: เพิ่มประเภทแหล่งน้ำ "${labelTh.trim() || "…"}"`}
+                    maxLength={500}
+                    disabled={disabled || submitting}
+                    onKeyDown={(e) => e.key === "Enter" && submit()}
+                    className={`${inputClass} border-border`}
+                />
+            </div>
+
+            <p className="text-xs text-text-muted">บันทึกแล้วจะเกิดเวอร์ชันใหม่ทันที</p>
+
+            <div className="flex items-center justify-end gap-2">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setOpen(false);
+                        reset();
+                    }}
+                    disabled={submitting}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border bg-surface text-text-secondary cursor-pointer"
+                >
+                    ยกเลิก
+                </button>
+                <button
+                    type="button"
+                    onClick={submit}
+                    disabled={!canSubmit}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white disabled:opacity-40 cursor-pointer"
+                >
+                    {submitting ? <RefreshCw size={13} className="animate-spin" /> : <Plus size={13} />} เพิ่มและบันทึกเวอร์ชันใหม่
+                </button>
+            </div>
         </div>
     );
 }

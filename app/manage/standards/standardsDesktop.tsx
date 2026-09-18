@@ -20,7 +20,7 @@
 
 import { ClipboardPenLine, History, RefreshCw, RotateCcw, Save, ClipboardCheck } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import { StandardsEditTable, StandardVersionList, formatVersionDate } from "@/components/manage/standardsHelpers";
+import { StandardsEditTable, StandardVersionList, AddLocationTypeForm, formatVersionDate } from "@/components/manage/standardsHelpers";
 import type { StandardsPageProps } from "./standardsMobile";
 
 /**
@@ -47,6 +47,9 @@ export default function StandardsDesktop(props: StandardsPageProps) {
         currentVersion,
         pendingReviewCount,
         handleSave,
+        typeMutating,
+        handleAddType,
+        handleDeleteType,
         versions,
         versionsLoading,
         loadSnapshot,
@@ -120,8 +123,12 @@ export default function StandardsDesktop(props: StandardsPageProps) {
                                 draftByKey={draftByKey}
                                 onChange={setDraft}
                                 disabled={saving}
+                                onDeleteType={handleDeleteType}
+                                deleteDisabled={saving || typeMutating}
                             />
                         )}
+
+                        <AddLocationTypeForm parameters={parameters} onAdd={handleAddType} disabled={saving || typeMutating} />
 
                         <div className="space-y-1.5 pt-1">
                             <label className="text-xs font-semibold text-text-secondary">เหตุผลในการแก้ไข</label>

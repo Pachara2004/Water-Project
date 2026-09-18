@@ -28,7 +28,7 @@ import { useToast } from "@/components/useToast";
 import { useAppStore } from "@/lib/store";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { StandardSnapshotRow } from "@/lib/standards";
-import { cellKey, type StandardsLocationType, type StandardsParameter, type StandardCell, type StandardVersionItem } from "@/components/manage/standardsHelpers";
+import { cellKey, type StandardsLocationType, type StandardsParameter, type StandardCell, type StandardVersionItem, type NewLocationTypeInput } from "@/components/manage/standardsHelpers";
 import StandardsMobile from "./standardsMobile";
 import StandardsDesktop from "./standardsDesktop";
 
@@ -187,6 +187,80 @@ export default function AdminStandardsPage() {
         }
     };
 
+    const [typeMutating, setTypeMutating] = useState(false);
+
+    /** เพิ่มประเภทแหล่งน้ำพร้อมเกณฑ์ เกิดเวอร์ชันใหม่ทันที ถ้ามีค่าที่แก้ค้างอยู่จะถามก่อนเพราะโหลดตารางใหม่แล้ว draft หาย */
+    const handleAddType = async (input: NewLocationTypeInput): Promise<boolean> => {
+        if (typeMutating) return false;
+        if (changes.length > 0) {
+            const ok = await confirmDialog({ title: "มีค่าที่ยังไม่บันทึก", text: "การเพิ่มประเภทจะโหลดตารางใหม่ ค่าที่แก้ค้างไว้จะหายไป ดำเนินการต่อหรือไม่?", confirmText: "ดำเนินการต่อ", tone: "warning" });
+            if (!ok) return false;
+        }
+        const confirmed = await confirmDialog({
+            title: `เพิ่มประเภท "${input.labelTh}"?`,
+            text: "จะสร้างประเภทพร้อมค่าเกณฑ์และบันทึกเป็นเวอร์ชันใหม่ทันที",
+            confirmText: "เพิ่ม",
+            tone: "warning",
+        });
+        if (!confirmed) return false;
+        setTypeMutating(true);
+        try {
+            const res = await fetch("/api/standards/location-types", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...authHeaders() },
+                body: JSON.stringify(input),
+            });
+            const json = await res.json();
+            if (!res.ok) {
+                showToast(json.error || "เพิ่มประเภทไม่สำเร็จ", "danger");
+                return false;
+            }
+            showToast(`เพิ่มประเภท ${json.type.labelTh} แล้ว บันทึกเป็นเวอร์ชัน ${json.version.version}`, "success");
+            snapshotCache.current.clear();
+            await Promise.all([fetchStandards(), fetchVersions()]);
+            return true;
+        } catch (e) {
+            console.error(e);
+            showToast("เพิ่มประเภทไม่สำเร็จ", "danger");
+            return false;
+        } finally {
+            setTypeMutating(false);
+        }
+    };
+
+    /** ลบประเภทแหล่งน้ำพร้อมเกณฑ์ของมัน ระบบจะบันทึกเวอร์ชันใหม่ให้เองถ้ามีเกณฑ์ถูกลบ */
+    const handleDeleteType = async (type: StandardsLocationType) => {
+        if (typeMutating) return;
+        const hasStandards = (data?.standards ?? []).some((s) => s.locationTypeId === type.id);
+        const confirmed = await confirmDialog({
+            title: `ลบประเภท "${type.labelTh}"?`,
+            text:
+                (hasStandards ? "เกณฑ์ของประเภทนี้จะถูกลบและบันทึกเป็นเวอร์ชันใหม่ " : "") +
+                (changes.length > 0 ? "ค่าที่แก้ค้างไว้จะหายไป " : "") +
+                "ประวัติเวอร์ชันเก่ายังแสดงประเภทนี้ได้ตามปกติ",
+            confirmText: "ลบ",
+            tone: "danger",
+        });
+        if (!confirmed) return;
+        setTypeMutating(true);
+        try {
+            const res = await fetch(`/api/standards/location-types/${type.id}`, { method: "DELETE", headers: authHeaders() });
+            const json = await res.json();
+            if (!res.ok) {
+                showToast(json.error || "ลบประเภทไม่สำเร็จ", "danger");
+                return;
+            }
+            showToast(json.version ? `ลบประเภท ${type.labelTh} แล้ว บันทึกเป็นเวอร์ชัน ${json.version.version}` : `ลบประเภท ${type.labelTh} แล้ว`, "success");
+            snapshotCache.current.clear();
+            await Promise.all([fetchStandards(), fetchVersions()]);
+        } catch (e) {
+            console.error(e);
+            showToast("ลบประเภทไม่สำเร็จ", "danger");
+        } finally {
+            setTypeMutating(false);
+        }
+    };
+
     /** snapshot ของเวอร์ชัน cache ไว้ต่อ id เพราะเวอร์ชันไม่เปลี่ยนหลังสร้าง */
     const loadSnapshot = useCallback(async (id: number): Promise<StandardSnapshotRow[] | null> => {
         const cached = snapshotCache.current.get(id);
@@ -234,6 +308,9 @@ export default function AdminStandardsPage() {
         currentVersion: data?.currentVersion ?? null,
         pendingReviewCount: data?.pendingReviewCount ?? 0,
         handleSave,
+        typeMutating,
+        handleAddType,
+        handleDeleteType,
         versions,
         versionsLoading,
         loadSnapshot,

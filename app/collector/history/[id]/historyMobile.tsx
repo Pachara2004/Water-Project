@@ -54,6 +54,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
         collectorFullName,
         locationComparisonRows,
         standardVersionLabel,
+        comparisonTypes,
         isEditing,
         locationDropdownRef,
         locationSearch,
@@ -258,7 +259,7 @@ export default function CollectorHistoryDetailMobile(props: any) {
                         isHistoryView={true}
                     />
                 ))}
-                <ResultsPanel {...mockSubmitHook} reviewNote={sample?.reviewNote} />
+                <ResultsPanel {...mockSubmitHook} reviewNote={sample?.reviewNote} locationTypesOverride={comparisonTypes} standardVersionLabel={standardVersionLabel} />
                 <HistoryMetaBlocks />
             </div>
         </div>

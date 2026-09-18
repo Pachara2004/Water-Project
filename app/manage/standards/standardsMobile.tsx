@@ -25,11 +25,13 @@ import type { StandardSnapshotRow } from "@/lib/standards";
 import {
     StandardsEditTable,
     StandardVersionList,
+    AddLocationTypeForm,
     formatVersionDate,
     type StandardsLocationType,
     type StandardsParameter,
     type StandardCell,
     type StandardVersionItem,
+    type NewLocationTypeInput,
 } from "@/components/manage/standardsHelpers";
 import type { StandardsTab } from "./page";
 
@@ -58,6 +60,12 @@ export interface StandardsPageProps {
     currentVersion: { id: number; version: number; createdAt: string } | null;
     pendingReviewCount: number;
     handleSave: () => void;
+
+    /** กำลังเพิ่ม/ลบประเภท ปิดปุ่มที่เกี่ยวข้องระหว่างนี้ */
+    typeMutating: boolean;
+    /** คืน true เมื่อเพิ่มสำเร็จ ให้ฟอร์มล้างค่า */
+    handleAddType: (input: NewLocationTypeInput) => Promise<boolean>;
+    handleDeleteType: (type: StandardsLocationType) => void;
 
     versions: StandardVersionItem[];
     versionsLoading: boolean;
@@ -90,6 +98,9 @@ export default function StandardsMobile(props: StandardsPageProps) {
         currentVersion,
         pendingReviewCount,
         handleSave,
+        typeMutating,
+        handleAddType,
+        handleDeleteType,
         versions,
         versionsLoading,
         loadSnapshot,
@@ -164,8 +175,12 @@ export default function StandardsMobile(props: StandardsPageProps) {
                                     draftByKey={draftByKey}
                                     onChange={setDraft}
                                     disabled={saving}
+                                    onDeleteType={handleDeleteType}
+                                    deleteDisabled={saving || typeMutating}
                                 />
                             )}
+
+                            <AddLocationTypeForm compact parameters={parameters} onAdd={handleAddType} disabled={saving || typeMutating} />
 
                             <div className="space-y-1.5 pt-1">
                                 <label className="text-xs font-semibold text-text-secondary">เหตุผลในการแก้ไข</label>

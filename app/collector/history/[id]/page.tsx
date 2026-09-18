@@ -275,6 +275,8 @@ export default function CollectorHistoryDetailPage() {
         collectorFullName,
         locationComparisonRows,
         standardVersionLabel,
+        // ส่งให้ ResultsPanel เทียบด้วยเวอร์ชันเดียวกับการ์ดผลประเมินสถานที่ ไม่ใช่เกณฑ์ปัจจุบัน
+        comparisonTypes: sample.standardVersion ? comparisonTypes : undefined,
         isEditing,
         locationDropdownRef,
         locationSearch,
