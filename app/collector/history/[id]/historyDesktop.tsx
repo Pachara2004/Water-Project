@@ -337,9 +337,10 @@ export default function CollectorHistoryDetailDesktop(props: any) {
 
                     {/* RIGHT COLUMN: Image Zones & Results Panel (8 Columns) */}
                     <section className="col-span-12 lg:col-span-8 space-y-4">
-                        {resultEntries.map(({ key, param, measurement }: any) => (
-                            <div key={key} className="bg-card-general border border-border rounded-xl p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            {resultEntries.map(({ key, param, measurement }: any) => (
                                 <ImageZone
+                                    key={key}
                                     param={param}
                                     step="results"
                                     preview={mockSubmitHook.imagePreviews[key] || measurement?.imageUrl || measurement?.imagePath || measurement?.plotUrl}
@@ -351,8 +352,8 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                     setIsRecommending={() => {}}
                                     isHistoryView={true}
                                 />
-                            </div>
-                        ))}
+                            ))}
+                        </div>
 
                         <div className="bg-card-general border border-border rounded-xl p-4">
                             <ResultsPanel {...mockSubmitHook} locationTypesOverride={comparisonTypes} standardVersionLabel={standardVersionLabel} />
