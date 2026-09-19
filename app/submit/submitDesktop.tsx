@@ -54,8 +54,6 @@ export default function SubmitDesktop(props: any) {
         hook,
         systemParameters,
         activeParameters,
-        enabledParamIds,
-        toggleParam,
         verifyErrors,
         imagePreviews,
         imagePlotFiles,
@@ -90,7 +88,7 @@ export default function SubmitDesktop(props: any) {
             <main className="w-full mx-auto p-4">
                 <div className="grid grid-cols-12 gap-4 items-start">
                     <aside className="col-span-12 lg:col-span-4 space-y-4">
-                        <div className="bg-card-general border border-border rounded-xl p-4">
+                        <div className="bg-card-general border border-border rounded-xl p-3">
                             <SubmitSteps step={step} isSaved={saved} />
                         </div>
 
@@ -202,8 +200,8 @@ export default function SubmitDesktop(props: any) {
                         </div>
                     </aside>
 
-                    {/* RIGHT COLUMN: Image & Parameter List (8 Columns) */}
-                    <section className="col-span-12 lg:col-span-8  space-y-4">
+                    {/* RIGHT COLUMN: Image & Parameter List (8 Columns - 2-Column Responsive Grid) */}
+                    <section className="col-span-12 lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                         {step === "upload"
                             ? systemParameters.map((param: any) => (
                                       <ImageZone
@@ -218,12 +216,10 @@ export default function SubmitDesktop(props: any) {
                                           onNearestLocationsUpdate={setNearestLocations}
                                           allLocations={allLocations}
                                           setIsRecommending={setIsRecommending}
-                                          enabled={enabledParamIds.has(param.id)}
-                                          onToggle={() => toggleParam(param.id)}
                                       />
                               ))
                             : step === "analyzing"
-                              ? activeParameters.map((param: any) => (
+                              ? systemParameters.filter((param: any) => hook.imageFiles[param.id]).map((param: any) => (
                                         <ImageZone
                                             key={param.id}
                                             param={param}

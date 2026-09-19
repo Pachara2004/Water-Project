@@ -104,12 +104,10 @@ export default function SubmitMobile(props: any) {
                               onNearestLocationsUpdate={setNearestLocations}
                               allLocations={allLocations}
                               setIsRecommending={setIsRecommending}
-                              enabled={enabledParamIds.has(param.id)}
-                              onToggle={() => toggleParam(param.id)}
                           />
                       ))
                     : step === "analyzing"
-                      ? activeParameters.map((param: any) => (
+                      ? systemParameters.filter((param: any) => hook.imageFiles[param.id]).map((param: any) => (
                             <ImageZone
                                 key={param.id}
                                 param={param}

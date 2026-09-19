@@ -182,7 +182,7 @@ export function LocationPicker({
                     <div className="space-y-1.5">
                         <p className="text-xs uppercase font-medium text-text">สถานีใกล้เคียงในรัศมี 5 กม. (เลือกอันใกล้สุดให้อัตโนมัติ)</p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-1 gap-1">
                             {nearestLocations.map((loc) => {
                                 const isSelected = currentLocationId === loc.id.toString();
                                 return (
@@ -190,19 +190,19 @@ export function LocationPicker({
                                         key={loc.id}
                                         type="button"
                                         onClick={() => setCurrentLocationId(loc.id.toString())}
-                                        className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-left transition-colors min-h-10 cursor-pointer ${
+                                        className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-left transition-colors min-h-10 cursor-pointer ${
                                             isSelected
                                                 ? "border-border-safe bg-bg-safe text-text-safe font-semibold"
                                                 : "border-border bg-surface hover:bg-surface-subtle text-text-primary"
                                         }`}
                                     >
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isSelected ? "bg-text-safe" : "bg-text-muted"}`} />
+                                        <div className="flex items-center gap-1 min-w-0">
+                                            <MapPin size={14} className={`mx-1 shrink-0 ${isSelected ? "text-text-safe" : "text-text-muted"}`} />
                                             <span className="text-xs font-medium truncate">{loc.name}</span>
                                         </div>
 
                                         <span
-                                            className={`text-xs px-1.5 py-0.5 rounded font-mono shrink-0 ${isSelected ? "bg-bg-safe border border-border-safe text-text-safe" : "bg-surface-subtle text-text-muted"}`}
+                                            className={`text-xs rounded shrink-0 ${isSelected ? "text-text-safe" : "text-text-muted"}`}
                                         >
                                             {loc.distanceKm < 1 ? `${(loc.distanceKm * 1000).toFixed(0)} ม.` : `${loc.distanceKm.toFixed(1)} กม.`}
                                         </span>

@@ -39,7 +39,8 @@
  */
 
 import { useRef, useState, useMemo, useEffect } from "react";
-import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft, Download } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Camera, ImagePlus, CheckCircle2, AlertTriangle, Eye, FlaskConical, Info, X, ToggleLeft, Download, Maximize2 } from "lucide-react";
 import { alertError, errorToast } from "@/lib/swal";
 import { DbParameter, MeasurementResult, VerifyError } from "./types";
 import { SectionHead } from "./SharedAtoms";
@@ -136,7 +137,17 @@ export function ImageZone({
 
     const [viewMode, setViewMode] = useState<"raw" | "analyzed">("analyzed");
     const [showExampleModal, setShowExampleModal] = useState(false);
+    const [showLightbox, setShowLightbox] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!showLightbox) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setShowLightbox(false);
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [showLightbox]);
 
     const paramKey = matchParamKey(param.name, PARAM_EXAMPLE_IMAGE);
     const exampleImage = paramKey ? PARAM_EXAMPLE_IMAGE[paramKey] : null;
@@ -252,12 +263,6 @@ export function ImageZone({
                             <Info size={15} />
                         </button>
                     )}
-                    {step === "upload" && onToggle && (
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" checked={enabled} onChange={onToggle} aria-label={`เปิด/ปิดสาร ${param.name}`} className="sr-only peer" />
-                            <div className="relative w-9 h-5 bg-surface-subtle peer-focus:outline-hidden peer-focus:ring-1 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:start-[2px] after:bg-surface after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary" />
-                        </label>
-                    )}
                 </div>
 
                 {/* Popover แสดงตัวอย่างสี + แถบเฉดสีเคมีจริง */}
@@ -300,199 +305,290 @@ export function ImageZone({
                 )}
             </div>
 
-            {/* สารที่ปิดสวิตช์ไว้จะไม่มีกรอบอัปโหลดให้เห็นเลย จึงต้องบอกว่าเปิดสวิตช์ก่อนถึงจะใส่รูปได้
-                เงื่อนไขตรงกับตอนที่แสดงสวิตช์ (ขั้นอัปโหลด + มี onToggle) ไม่งั้นจะชี้ไปที่ปุ่มที่ไม่มีอยู่ */}
-            {!enabled && step === "upload" && onToggle && (
-                <div className="px-4 py-3 flex items-center gap-2 text-xs text-text-muted">
-                    <ToggleLeft size={15} className="shrink-0" />
-                    <span>เปิดสวิตช์ด้านบนเพื่อถ่ายภาพหรือเลือกรูปของสารนี้</span>
-                </div>
-            )}
-
-            {enabled && (
-                <div className="p-4">
-                    {!isSaved && measurement?.isSystemUnknown && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-warning border border-border-warning text-text-warning">
-                            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-                            <div className="text-xs leading-relaxed font-medium w-full">
-                                <p className="font-semibold mb-0.5">พบสารที่ไม่รู้จักในระบบ</p>
-                                <p>
-                                    AI ทำนายว่าภาพนี้คือ {measurement.verifiedParameterName?.toUpperCase()} ซึ่งไม่ได้ถูกตั้งค่าไว้ในฐานข้อมูล การบันทึกภาพนี้จะถูกส่งไปให้ผู้ดูแลระบบตรวจสอบ
-                                </p>
-                            </div>
+            <div className="p-4">
+                {!isSaved && measurement?.isSystemUnknown && (
+                    <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-warning border border-border-warning text-text-warning">
+                        <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                        <div className="text-xs leading-relaxed font-medium w-full">
+                            <p className="font-semibold mb-0.5">พบสารที่ไม่รู้จักในระบบ</p>
+                            <p>
+                                AI ทำนายว่าภาพนี้คือ {measurement.verifiedParameterName?.toUpperCase()} ซึ่งไม่ได้ถูกตั้งค่าไว้ในฐานข้อมูล การบันทึกภาพนี้จะถูกส่งไปให้ผู้ดูแลระบบตรวจสอบ
+                            </p>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {verifyError && (
-                        <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-danger border border-border-danger text-text-danger">
-                            {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}
-                            <div className="text-xs leading-relaxed font-medium">
-                                <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "AI ไม่พบหลอดทดลองในภาพ" : "สารไม่ตรงชนิด"}</p>
-                                <p>{verifyError.detail}</p>
-                            </div>
+                {verifyError && (
+                    <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-bg-danger border border-border-danger text-text-danger">
+                        {verifyError.reason === "not_test_tube" ? <Camera size={15} className="shrink-0 mt-0.5" /> : <FlaskConical size={15} className="shrink-0 mt-0.5" />}
+                        <div className="text-xs leading-relaxed font-medium">
+                            <p className="font-semibold mb-0.5">{verifyError.reason === "not_test_tube" ? "AI ไม่พบหลอดทดลองในภาพ" : "สารไม่ตรงชนิด"}</p>
+                            <p>{verifyError.detail}</p>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {!isHistoryView && hasConf && !isPendingAdminValue && (
-                        <div
-                            className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${isLowConf
-                                ? "border border-border-danger bg-bg-danger text-text-danger"
-                                : "border border-border-safe bg-bg-safe text-text-safe"
-                                }`}
-                        >
-                            {(() => {
-                                const confValue = typeof measurement.confidence === "number" ? `${(measurement.confidence * 100).toFixed(0)}%` : "-";
-
-                                return isLowConf ? <span>ค่าความมั่นใจ: {confValue} (ต่ำ)</span> : <span>ค่าความมั่นใจ: {confValue} (ผ่าน)</span>;
-                            })()}{" "}
-                        </div>
-                    )}
-
-                    {/* Responsive Image Container: ปรับ Aspect Ratio ตาม Device */}
+                {!isHistoryView && hasConf && !isPendingAdminValue && (
                     <div
-                        onClick={() => step === "upload" && galleryInputRef.current?.click()}
-                        className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
-                        ${step === "analyzing"
-                                ? "aspect-square sm:aspect-4/3 md:aspect-video border-slate-700 bg-slate-950 cursor-default"
-                                : displayImgSrc
-                                    ? "aspect-square sm:aspect-4/3 md:aspect-video border-primary/30 bg-surface-subtle cursor-pointer"
-                                    : "aspect-square sm:aspect-4/3 border-border hover:border-primary/50 bg-surface-subtle cursor-pointer"
-                            }
-${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`}
+                        className={`mb-3 flex items-center gap-1.5 p-2.5 rounded-lg text-xs font-medium ${isLowConf
+                            ? "border border-border-danger bg-bg-danger text-text-danger"
+                            : "border border-border-safe bg-bg-safe text-text-safe"
+                            }`}
                     >
-                        {uploadProgress !== null ? (
-                            <div className="flex flex-col items-center justify-center gap-4 w-full px-6 py-10">
-                                <span className="text-xs font-medium text-primary tracking-widest uppercase animate-pulse">กำลังประมวลผล... {uploadProgress}%</span>
-                                <div className="w-full max-w-xs h-2.5 bg-surface-muted border border-border/50 rounded-full overflow-hidden shadow-inner">
-                                    <div
-                                        className="h-full bg-secondary transition-all duration-200 ease-out"
-                                        style={{ width: `${uploadProgress}%` }}
-                                    />
-                                </div>
+                        {(() => {
+                            const confValue = typeof measurement.confidence === "number" ? `${(measurement.confidence * 100).toFixed(0)}%` : "-";
+
+                            return isLowConf ? <span>ค่าความมั่นใจ: {confValue} (ต่ำ)</span> : <span>ค่าความมั่นใจ: {confValue} (ผ่าน)</span>;
+                        })()}{" "}
+                    </div>
+                )}
+
+                {/* Responsive Image Container: ปรับ Aspect Ratio และความสูงให้กะทัดรัดพอดี */}
+                <div
+                    onClick={() => step === "upload" && galleryInputRef.current?.click()}
+                    className={`relative w-full rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all duration-200
+                    ${step === "analyzing"
+                            ? "aspect-4/3 border-slate-700 bg-slate-950 cursor-default"
+                            : displayImgSrc
+                                ? "aspect-4/3 border-primary/30 bg-surface-subtle cursor-pointer"
+                                : "aspect-4/3 border-border hover:border-primary/50 bg-surface-subtle cursor-pointer"
+                        }
+${!isHistoryView && isLowConf ? "border-danger hover:border-danger-hover" : ""}`}
+                >
+                    {uploadProgress !== null ? (
+                        <div className="flex flex-col items-center justify-center gap-4 w-full px-6 py-10">
+                            <span className="text-xs font-medium text-primary tracking-widest uppercase animate-pulse">กำลังประมวลผล... {uploadProgress}%</span>
+                            <div className="w-full max-w-xs h-2.5 bg-surface-muted border border-border/50 rounded-full overflow-hidden shadow-inner">
+                                <div
+                                    className="h-full bg-secondary transition-all duration-200 ease-out"
+                                    style={{ width: `${uploadProgress}%` }}
+                                />
                             </div>
-                        ) : step === "analyzing" ? (
-                            <>
-                                {preview && <img src={preview} alt={param.name} className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
-                                <div className="animate-laser" />
-                            </>
-                        ) : displayImgSrc ? (
-                            <>
-                                <img src={displayImgSrc} alt={param.name} className="w-full h-full object-contain" />
-                                <div className="absolute top-3 right-3 flex items-center gap-2">
+                        </div>
+                    ) : step === "analyzing" ? (
+                        <>
+                            {preview && <img src={preview} alt={param.name} className="w-full h-full object-contain opacity-30 blur-[0.5px] absolute inset-0" />}
+                            <div className="animate-laser" />
+                        </>
+                    ) : displayImgSrc ? (
+                        <>
+                            <img src={displayImgSrc} alt={param.name} className="w-full h-full object-contain" />
+                            <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+                                <button
+                                    type="button"
+                                    title="ดูภาพขยายความละเอียดสูง"
+                                    className="flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowLightbox(true);
+                                    }}
+                                >
+                                    <Maximize2 size={13} strokeWidth={2.5} />
+                                    <span className="hidden sm:inline">ขยายภาพ</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    title="ดาวน์โหลดภาพ"
+                                    className="flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                            const url = displayImgSrc as string;
+                                            const res = await fetch(url);
+                                            const blob = await res.blob();
+                                            const blobUrl = URL.createObjectURL(blob);
+                                            const a = document.createElement("a");
+                                            a.href = blobUrl;
+                                            a.download = `water-test-${param.name}.jpg`;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                                        } catch (err) {
+                                            const a = document.createElement("a");
+                                            a.href = displayImgSrc as string;
+                                            a.download = `water-test-${param.name}.jpg`;
+                                            a.target = "_blank";
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                        }
+                                    }}
+                                >
+                                    <Download size={13} strokeWidth={2.5} />
+                                    <span className="hidden sm:inline">ดาวน์โหลด</span>
+                                </button>
+                                {step === "results" && hasPlotImg && (
                                     <button
                                         type="button"
-                                        className="flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
-                                        onClick={async (e) => {
+                                        title="สลับมุมมองภาพ"
+                                        className="flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
+                                        onClick={(e) => {
                                             e.stopPropagation();
-                                            try {
-                                                const url = displayImgSrc as string;
-                                                const res = await fetch(url);
-                                                const blob = await res.blob();
-                                                const blobUrl = URL.createObjectURL(blob);
-                                                const a = document.createElement("a");
-                                                a.href = blobUrl;
-                                                a.download = `water-test-${param.name}.jpg`;
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                document.body.removeChild(a);
-                                                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-                                            } catch (err) {
-                                                const a = document.createElement("a");
-                                                a.href = displayImgSrc as string;
-                                                a.download = `water-test-${param.name}.jpg`;
-                                                a.target = "_blank";
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                document.body.removeChild(a);
-                                            }
+                                            setViewMode(viewMode === "analyzed" ? "raw" : "analyzed");
                                         }}
                                     >
-                                        <Download size={13} strokeWidth={2.5} />
-                                        <span className="hidden sm:inline">ดาวน์โหลด</span>
+                                        <Eye size={13} strokeWidth={2.5} />
+                                        <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
                                     </button>
-                                    {step === "results" && hasPlotImg && (
-                                        <button
-                                            type="button"
-                                            className="flex items-center gap-1 bg-black/75 hover:bg-black/90 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md select-none backdrop-blur-xs cursor-pointer min-h-7"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setViewMode(viewMode === "analyzed" ? "raw" : "analyzed");
-                                            }}
-                                        >
-                                            <Eye size={13} strokeWidth={2.5} />
-                                            <span>{viewMode === "analyzed" ? "ดูภาพดิบ" : "ดูภาพ AI"}</span>
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* ป้ายบอกว่าแตะที่ภาพแล้วเลือกรูปใหม่ได้ — ขึ้นเฉพาะขั้นอัปโหลด ซึ่งเป็นขั้นเดียวที่กรอบภาพรับคลิก
-                                    pointer-events-none เพื่อให้คลิกทะลุไปที่กรอบภาพซึ่งเป็นตัวเปิดแกลเลอรี */}
-                                {step === "upload" && (
-                                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/75 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-md select-none backdrop-blur-xs pointer-events-none whitespace-nowrap">
-                                        <ImagePlus size={13} />
-                                        <span>แตะที่ภาพเพื่อเปลี่ยนรูป</span>
-                                    </div>
                                 )}
-                            </>
-                        ) : isHistoryView ? (
-                            <div className="flex flex-col items-center justify-center gap-2 px-4 text-center py-10 text-text-muted">
-                                <Camera size={28} className="opacity-40" />
-                                <p className="text-xs font-semibold">ไม่พบข้อมูลภาพถ่ายสำหรับรายการนี้</p>
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center gap-3 px-4 text-center py-6 sm:py-8">
-                                <p className="text-xs font-semibold text-text">เพิ่มภาพถ่ายผลการตรวจ</p>
 
-                                <div className="flex flex-wrap items-center justify-center gap-2.5 w-full max-w-xs pt-1">
-                                    {/* ปุ่ม 1: ถ่ายรูปสดจากกล้องหลัง */}
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            cameraInputRef.current?.click();
-                                        }}
-                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-secondary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary transition-all cursor-pointer"
-                                    >
-                                        <Camera size={15} />
-                                        <span>ถ่ายภาพสด</span>
-                                    </button>
-
-                                    {/* ปุ่ม 2: เลือกรูปจากแกลเลอรี */}
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            galleryInputRef.current?.click();
-                                        }}
-                                        className="px-4 py-2.5 min-w-[120px] rounded-xl bg-surface border border-border text-text text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-surface-subtle transition-all cursor-pointer"
-                                    >
-                                        <ImagePlus size={15} />
-                                        <span>เลือกรูปภาพ</span>
-                                    </button>
+                            {/* ป้ายบอกว่าแตะที่ภาพแล้วเลือกรูปใหม่ได้ — ขึ้นเฉพาะขั้นอัปโหลด */}
+                            {step === "upload" && (
+                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/75 text-white border border-white/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-md select-none backdrop-blur-xs pointer-events-none whitespace-nowrap">
+                                    <ImagePlus size={13} />
+                                    <span>แตะที่ภาพเพื่อเปลี่ยนรูป</span>
                                 </div>
+                            )}
+                        </>
+                    ) : isHistoryView ? (
+                        <div className="flex flex-col items-center justify-center gap-2 px-4 text-center py-10 text-text-muted">
+                            <Camera size={28} className="opacity-40" />
+                            <p className="text-xs font-semibold">ไม่พบข้อมูลภาพถ่ายสำหรับรายการนี้</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center gap-2 px-4 text-center py-4">
+                            <div className="w-9 h-9 rounded-full bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary mb-0.5">
+                                <Camera size={18} />
                             </div>
-                        )}
-                        {/* สำหรับถ่ายภาพสด: บังคับเลือกเฉพาะรูปภาพ และเปิดกล้องหลังมือถือทันที */}
-                        <input
-                            title="ถ่ายภาพสด"
-                            ref={cameraInputRef}
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                        />
+                            <p className="text-xs font-semibold text-text">เพิ่มภาพถ่ายผลการตรวจ</p>
+                            <p className="text-[11px] text-text-muted max-w-[200px]">ถ่ายภาพหลอดทดลองหรือเลือกภาพ</p>
 
-                        {/* สำหรับเลือกไฟล์: ไม่บังคับประเภทไฟล์ (เปิดได้ทั้งรูปและไฟล์อื่นๆ) */}
-                        <input
-                            title="เลือกรูปภาพหรือไฟล์"
-                            ref={galleryInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                        />     </div>
+                            <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-xs pt-1">
+                                {/* ปุ่ม 1: ถ่ายรูปสดจากกล้องหลัง */}
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        cameraInputRef.current?.click();
+                                    }}
+                                    className="px-3 py-2 min-w-[100px] rounded-xl bg-secondary text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-primary transition-all cursor-pointer"
+                                >
+                                    <Camera size={14} />
+                                    <span>ถ่ายภาพสด</span>
+                                </button>
+
+                                {/* ปุ่ม 2: เลือกรูปจากแกลเลอรี */}
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        galleryInputRef.current?.click();
+                                    }}
+                                    className="px-3 py-2 min-w-[100px] rounded-xl bg-surface border border-border text-text text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-surface-subtle transition-all cursor-pointer"
+                                >
+                                    <ImagePlus size={14} />
+                                    <span>เลือกรูปภาพ</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {/* สำหรับถ่ายภาพสด: บังคับเลือกเฉพาะรูปภาพ และเปิดกล้องหลังมือถือทันที */}
+                    <input
+                        title="ถ่ายภาพสด"
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                    />
+
+                    {/* สำหรับเลือกไฟล์: ไม่บังคับประเภทไฟล์ (เปิดได้ทั้งรูปและไฟล์อื่นๆ) */}
+                    <input
+                        title="เลือกรูปภาพหรือไฟล์"
+                        ref={galleryInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                    />
                 </div>
+            </div>
+
+            {/* ── Scientific Fullscreen Lightbox Modal ── */}
+            {showLightbox && displayImgSrc && typeof document !== "undefined" && createPortal(
+                <div
+                    className="fixed inset-0 z-[1000] bg-black/85 backdrop-blur-md flex flex-col p-4 sm:p-6 animate-fade-in"
+                    onClick={() => setShowLightbox(false)}
+                >
+                    {/* Header Bar */}
+                    <div
+                        className="flex items-center justify-between pb-3 border-b border-white/15 text-white shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-bold tracking-wide">
+                                ภาพถ่ายผลทดสอบ: {param.name.toUpperCase()}
+                            </span>
+                            {measurement && (
+                                <span className="text-xs px-2.5 py-1 rounded-full bg-white/10 border border-white/20 font-medium">
+                                    {measurement.concentrated !== undefined ? `${measurement.concentrated} mg/L` : "กำลังวิเคราะห์"}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {step === "results" && hasPlotImg && (
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode(viewMode === "analyzed" ? "raw" : "analyzed")}
+                                    className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border border-white/20"
+                                >
+                                    <Eye size={14} />
+                                    <span>{viewMode === "analyzed" ? "สลับดูภาพดิบ" : "สลับดูภาพ AI"}</span>
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setShowLightbox(false)}
+                                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+                                aria-label="ปิดหน้าต่างขยายภาพ"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Image Viewport (High Res) */}
+                    <div
+                        className="flex-1 flex items-center justify-center p-2 min-h-0 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={displayImgSrc}
+                            alt={param.name}
+                            className="max-h-[72vh] max-w-[92vw] object-contain rounded-xl border border-white/10 shadow-2xl"
+                        />
+                    </div>
+
+                    {/* Scientific Color Scale Reference (เปรียบเทียบเทียบสีมาตรฐานด้านล่างภาพ) */}
+                    {colorSwatches && colorSwatches.length > 0 && (
+                        <div
+                            className="shrink-0 max-w-xl mx-auto w-full bg-slate-900/90 border border-white/15 rounded-xl p-3 shadow-xl text-white"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-2 text-xs font-semibold text-slate-300">
+                                <span>แถบเทียบสีมาตรฐาน (Test Kit Standard)</span>
+                                <span>หน่วย mg/L</span>
+                            </div>
+                            <div className="grid grid-cols-6 gap-2">
+                                {colorSwatches.map((item, idx) => (
+                                    <div key={idx} className="flex flex-col items-center gap-1">
+                                        <div
+                                            className="w-full h-7 rounded-md border border-white/20 shadow-xs"
+                                            style={{ backgroundColor: item.color }}
+                                            title={`${item.value} mg/L`}
+                                        />
+                                        <span className="text-[11px] font-bold">{item.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>,
+                document.body
             )}
         </section>
     );

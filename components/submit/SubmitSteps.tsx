@@ -93,11 +93,11 @@ export function SubmitSteps({ step, orientation = "horizontal", isSaved = false 
         <div className="flex items-center px-2">
             {STEP_LABELS.map((label, i) => (
                 <div key={label} className="flex items-center flex-1 last:flex-none">
-                    <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <div className="flex flex-col items-center gap-1 shrink-0">
                         <StepCircle n={i + 1} state={states[i]} />
                         <span className={`text-xs font-medium text-center ${states[i] === "idle" ? "text-text-muted" : "text-text-primary"}`}>{label}</span>
                     </div>
-                    {i < STEP_LABELS.length - 1 && <div className="flex-1 h-px bg-border mx-2 mb-5" />}
+                    {i < STEP_LABELS.length - 1 && <div className="flex-1 h-px bg-border mx-3 mb-5" />}
                 </div>
             ))}
         </div>

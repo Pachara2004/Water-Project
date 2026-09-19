@@ -74,12 +74,12 @@ interface MetadataFieldsProps {
  */
 function WeatherTile({ label, value, isLoading }: { label: string; value: string | null; isLoading: boolean }) {
     return (
-        <div className="bg-surface-subtle p-3 rounded-xl border border-border">
+        <div className="bg-surface-subtle p-2 rounded-xl border border-border">
             <span className="text-xs font-bold text-secondary block uppercase">{label}</span>
             {isLoading ? (
                 <span className="h-7 mt-1 mx-auto block w-24 rounded-md bg-border animate-pulse" aria-label="กำลังโหลด" />
             ) : (
-                <span className="text-xl font-bold text-text mt-1 block truncate">{value ?? "-"}</span>
+                <span className="text-base font-semibold text-text block truncate">{value ?? "-"}</span>
             )}
         </div>
     );
@@ -135,9 +135,9 @@ export function MetadataFields(props: MetadataFieldsProps) {
                 <SectionHead icon={<Clock size={16} />} label="ข้อมูลการเก็บตัวอย่าง" />
             </div>
 
-            <div className="p-3.5 sm:p-4 space-y-4">
+            <div className="p-3.5 space-y-3">
                 <div>
-                    <label className="text-xs text-text-muted block mb-1.5 font-medium">เวลาที่เก็บตัวอย่าง</label>
+                    <label className="text-xs text-text block mb-1 font-medium">เวลาที่เก็บตัวอย่าง</label>
                     <input
                         title="datetime"
                         type="datetime-local"
@@ -152,10 +152,10 @@ export function MetadataFields(props: MetadataFieldsProps) {
                 </div>
 
                 {/* กล่องแสดงข้อมูลสภาพอากาศ */}
-                <div className="bg-card-general border border-border rounded-2xl p-5 sm:p-6">
-                    <h4 className="text-sm font-semibold justify-center flex text-primary mb-4">ข้อมูลสภาพอากาศขณะเก็บตัวอย่าง</h4>
+                <div className="bg-card-general border border-border rounded-2xl p-4">
+                    <h4 className="text-sm font-semibold justify-center flex text-primary mb-2">ข้อมูลสภาพอากาศขณะเก็บตัวอย่าง</h4>
 
-                    <div className="grid grid-cols-1 gap-3 text-center">
+                    <div className="grid grid-cols-1 gap-2 text-center">
                         <WeatherTile label="อุณหภูมิ" isLoading={isWeatherLoading} value={temp !== null && temp !== undefined ? `${Number(temp).toFixed(1)}°C` : null} />
                         <WeatherTile label="ปริมาณฝน" isLoading={isWeatherLoading} value={rain !== null && rain !== undefined ? `${Number(rain).toFixed(1)} mm` : null} />
                         <WeatherTile label="สภาพอากาศ" isLoading={isWeatherLoading} value={cond !== null && cond !== undefined ? getWeatherConditionLabel(cond) : null} />

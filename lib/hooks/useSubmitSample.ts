@@ -194,8 +194,8 @@ export function useSubmitSample() {
             .finally(() => setIsLoadingParams(false));
     }, []);
 
-    // สารที่เปิด toggle ไว้จริง — ตัดสินใจจาก enabledParamIds ล้วน ๆ ไม่ผูกกับจำนวน (รองรับ N สาร)
-    const activeParameters = systemParameters.filter((p) => enabledParamIds.has(p.id));
+    // ทุกสารในระบบพร้อมรับภาพเสมอ (ตัดสินใจส่งตรวจตามรูปที่อัปโหลดจริง)
+    const activeParameters = systemParameters;
 
     // ผู้ส่งเลือกภาพหลักของกลุ่มสารซ้ำ (parameterId → key ที่เลือก)
     const chooseDuplicate = (parameterId: number, key: number) => {
@@ -751,6 +751,7 @@ export function useSubmitSample() {
         setImageFiles({});
         setImagePreviews({});
         setImagePlotFiles({});
+        setEnabledParamIds(new Set(systemParameters.map((p) => p.id)));
         setVerifyErrors({});
         setPendingAnalyzedItems([]);
         setSaved(false);
