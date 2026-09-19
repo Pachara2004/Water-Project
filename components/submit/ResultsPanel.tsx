@@ -109,7 +109,7 @@ export function ResultsPanel({
             {/* ตารางแสดงรายละเอียดแต่ละสารพารามิเตอร์ */}
             <div className="w-full rounded-xl border border-border bg-surface overflow-hidden flex flex-col gap-1 p-1">
                 {reviewNote && (
-                    <div className="mx-2 mt-2 bg-bg-danger border border-border-danger rounded-lg p-3">
+                    <div className="mx-2 mt-2 bg-white border border-border-danger rounded-lg p-3">
                         <h3 className="text-xs font-semibold text-text-danger mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
                         <p className="text-xs text-text-danger whitespace-pre-wrap leading-relaxed">{reviewNote}</p>
                     </div>

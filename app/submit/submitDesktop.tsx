@@ -207,6 +207,7 @@ export default function SubmitDesktop(props: any) {
                         {step === "upload"
                             ? systemParameters.map((param: any) => (
                                       <ImageZone
+                                          key={param.id}
                                           param={param}
                                           step={step}
                                           preview={imagePreviews[param.id]}
@@ -224,6 +225,7 @@ export default function SubmitDesktop(props: any) {
                             : step === "analyzing"
                               ? activeParameters.map((param: any) => (
                                         <ImageZone
+                                            key={param.id}
                                             param={param}
                                             step={step}
                                             preview={imagePreviews[param.id]}

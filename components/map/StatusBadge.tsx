@@ -79,7 +79,7 @@ export default function StatusBadge({ status, reviewStatus, size = "md", fullWid
 
     if (reviewStatus === "PENDING") {
         return (
-            <span className={`inline-flex items-center rounded-md font-medium bg-amber-50 text-amber-700 border-amber-200 border dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 ${widthClass}`}>
+            <span className={`inline-flex items-center rounded-md font-medium bg-bg-warning text-text-warning border-border-warning border ${widthClass}`}>
                 รอตรวจสอบ
             </span>
         );

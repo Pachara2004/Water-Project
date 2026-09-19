@@ -266,9 +266,9 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                                     <span className="text-xs font-medium text-text">{sample?.sessionGroup ? sample.sessionGroup : "รายละเอียดประวัติการตรวจสอบ"}</span>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-xs text-text-muted uppercase mb-0.5 ">ผลประเมิน</span>
+                                    <span className="text-xs text-text-muted uppercase mb-1.5">ผลประเมิน</span>
                                     <StatusBadge status={sample.status} reviewStatus={sample.reviewStatus} size="sm" />
-                                    <div className="flex flex-col items-end text-center mt-0.5 shrink-0">
+                                    <div className="flex flex-col items-end text-center mt-1.5 shrink-0">
                                         {sample.reviewStatus === "PENDING" && (
                                             <span className="inline-flex items-center w-30 text-xs font-semibold text-text-warning bg-bg-warning border border-border-warning p-1 justify-center rounded-md whitespace-nowrap">
                                                 รอตรวจสอบ
@@ -290,7 +290,7 @@ export default function CollectorHistoryDetailDesktop(props: any) {
                             </div>
 
                             {sample.reviewNote && (
-                                <div className="bg-red-50/50 border border-red-100 rounded-lg p-3 my-2">
+                                <div className="bg-white border border-border-danger rounded-lg p-3 my-2">
                                     <h3 className="text-xs font-semibold text-red-700 mb-1 uppercase tracking-wider">บันทึกจากผู้ตรวจสอบ / เหตุผล</h3>
                                     <p className="text-xs text-red-600 whitespace-pre-wrap leading-relaxed">{sample.reviewNote}</p>
                                 </div>
